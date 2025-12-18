@@ -1,0 +1,820 @@
+import React, { useState } from 'react';
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  Grid,
+  Chip,
+  Alert,
+  CircularProgress,
+  Divider,
+  Paper,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon
+} from '@mui/material';
+import {
+  ArrowBack as BackIcon,
+  CheckCircle as CheckIcon,
+  Download as DownloadIcon,
+  Add as AddIcon,
+  Description as DocumentIcon
+} from '@mui/icons-material';
+import { ExtractedData, TemplateType } from '../types';
+
+interface DocumentPreviewProps {
+  extractedData: ExtractedData;
+  selectedTemplate: TemplateType;
+  onDocumentGenerated: (documentPath: string) => void;
+  onBack: () => void;
+  onNewDocument: () => void;
+}
+
+const DocumentPreview: React.FC<DocumentPreviewProps> = ({
+  extractedData,
+  selectedTemplate,
+  onDocumentGenerated,
+  onBack,
+  onNewDocument
+}) => {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationResult, setGenerationResult] = useState<{
+    success: boolean;
+    documentId?: string;
+    documentPath?: string;
+    documents?: any;
+    documentIds?: string[];
+    count?: number;
+    error?: string;
+  } | null>(null);
+
+  const handleGenerateDocument = async () => {
+    try {
+      setIsGenerating(true);
+      setGenerationResult(null);
+
+      // Генерируем документ через Electron API
+      if (!extractedData || !extractedData.fields) {
+        throw new Error('Нет данных для генерации документа');
+      }
+
+      if (!selectedTemplate) {
+        throw new Error('Не выбран шаблон документа');
+      }
+
+      // Подготавливаем данные для генерации, включая obligations
+      console.log('DocumentPreview: extractedData:', extractedData);
+      console.log('DocumentPreview: extractedData.fields:', extractedData.fields);
+      console.log('DocumentPreview: extractedData.obligations:', extractedData.obligations);
+      console.log('DocumentPreview: type of obligations:', typeof extractedData.obligations);
+
+      const generationData = {
+        ...extractedData.fields,
+        sourceDocumentType: extractedData.documentType,
+        obligations: extractedData.obligations || []
+      };
+
+      console.log('DocumentPreview: generating document with:', {
+        template_type: selectedTemplate.id,
+        data: generationData
+      });
+      console.log('DocumentPreview: generationData.obligations:', generationData.obligations);
+
+      const generationResult = await (window as any).electronAPI.generateDocument({
+        template_type: selectedTemplate.id,
+        data: generationData
+      });
+
+      if (generationResult.success) {
+        // Проверяем, генерируется ли один документ или несколько
+        if (generationResult.documents && generationResult.document_ids) {
+          // Генерируется несколько документов
+          setGenerationResult({
+            success: true,
+            documents: generationResult.documents,
+            documentIds: generationResult.document_ids,
+            count: generationResult.count
+          });
+          console.log('Generated multiple documents:', generationResult.documents);
+        } else {
+          // Генерируется один документ (старый формат)
+          setGenerationResult({
+            success: true,
+            documentId: generationResult.document_id,
+            documentPath: generationResult.file_path
+          });
+          onDocumentGenerated(generationResult.file_path);
+        }
+      } else {
+        throw new Error(generationResult.error || 'Ошибка генерации документа');
+      }
+    } catch (err) {
+      console.error('Error generating document:', err);
+      setGenerationResult({
+        success: false,
+        error: 'Ошибка при генерации документа'
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleDownloadDocument = async () => {
+    if (generationResult?.documentIds && generationResult.documentIds.length > 0) {
+      try {
+        console.log('Downloading documents with IDs:', generationResult.documentIds);
+        // Скачиваем все документы через Electron API
+        const downloadResult = await (window as any).electronAPI.downloadAllDocuments({
+          document_ids: generationResult.documentIds.join(','),
+          download_path: '' // Пустой путь для скачивания в браузер
+        });
+
+        if (downloadResult.success) {
+          console.log('Documents downloaded successfully');
+        } else {
+          throw new Error(downloadResult.error || 'Ошибка скачивания документов');
+        }
+      } catch (err) {
+        console.error('Error downloading documents:', err);
+      }
+    } else if (generationResult?.documentId) {
+      try {
+        console.log('Downloading single document with ID:', generationResult.documentId);
+        // Скачиваем один документ через Electron API
+        const downloadResult = await (window as any).electronAPI.downloadDocument(
+          generationResult.documentId
+        );
+
+        if (downloadResult.success) {
+          console.log('Document downloaded successfully');
+        } else {
+          throw new Error(downloadResult.error || 'Ошибка скачивания документа');
+        }
+      } catch (err) {
+        console.error('Error downloading document:', err);
+      }
+    } else {
+      console.error('No document ID available for download');
+    }
+  };
+
+  const getFieldValue = (fieldName: string) => {
+    return extractedData.fields[fieldName] || 'Не указано';
+  };
+
+  const getTemplatePreview = () => {
+    if (selectedTemplate.id === 'rtk_single_obligation') {
+      return (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Решение о включении в РТК (одно обязательство)
+          </Typography>
+          <Typography variant="body2" paragraph>
+            В Арбитражный суд города Москвы
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Заявитель:</strong> {getFieldValue('applicantName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Адрес заявителя:</strong> {getFieldValue('applicantAddress')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Дело №:</strong> {getFieldValue('caseNumber')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Основной долг:</strong> {getFieldValue('principalDebt')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Ссудная задолженность:</strong> {getFieldValue('loanDebt')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Проценты:</strong> {getFieldValue('interest')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Штрафные санкции:</strong> {getFieldValue('penalties')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Неустойка:</strong> {getFieldValue('forfeit')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Общая сумма долга:</strong> {getFieldValue('totalDebt')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Кредитор:</strong> {getFieldValue('creditorName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Должник:</strong> {getFieldValue('debtorName')}
+          </Typography>
+        </Box>
+      );
+    } else if (selectedTemplate.id === 'rtk_multiple_obligations') {
+      return (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Решение о включении в РТК (несколько обязательств)
+          </Typography>
+          <Typography variant="body2" paragraph>
+            В Арбитражный суд города Москвы
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Заявитель:</strong> {getFieldValue('applicantName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Адрес заявителя:</strong> {getFieldValue('applicantAddress')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Дело №:</strong> {getFieldValue('caseNumber')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Основной долг:</strong> {getFieldValue('principalDebt')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Ссудная задолженность:</strong> {getFieldValue('loanDebt')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Проценты:</strong> {getFieldValue('interest')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Штрафные санкции:</strong> {getFieldValue('penalties')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Неустойка:</strong> {getFieldValue('forfeit')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Общая сумма долга:</strong> {getFieldValue('totalDebt')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Количество обязательств:</strong> {extractedData.obligations?.length || 0}
+          </Typography>
+        </Box>
+      );
+    } else if (selectedTemplate.id === 'observation_single' || selectedTemplate.id === 'observation_multiple') {
+      return (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Наблюдение — комплект судебных актов ({selectedTemplate.id === 'observation_multiple' ? 'несколько обязательств' : 'одно обязательство'})
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Должник:</strong> {getFieldValue('applicantName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Юридический адрес:</strong> {getFieldValue('applicantAddress')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Дело №:</strong> {getFieldValue('caseNumber')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Сумма требований:</strong> {getFieldValue('totalDebt')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Количество обязательств:</strong> {extractedData.obligations?.length || 0}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            В комплект входят: основное определение, резолютивная часть и определение о принятии требований.
+          </Typography>
+        </Box>
+      );
+    } else if (selectedTemplate.id === 'observation_collateral') {
+      return (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Наблюдение с залогом — комплект судебных актов
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Должник:</strong> {getFieldValue('applicantName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Юридический адрес:</strong> {getFieldValue('applicantAddress')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Дело №:</strong> {getFieldValue('caseNumber')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Договор залога:</strong> №{getFieldValue('ipCollateralContractNumber')} от {getFieldValue('ipCollateralContractDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Сумма требований в реестре:</strong> {getFieldValue('ipCollateralClaimAmount')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Описание предмета залога:</strong> {getFieldValue('mortgageCollateralDescription1221')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Сумма требований:</strong> {getFieldValue('totalDebt')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Количество обязательств:</strong> {extractedData.obligations?.length || 0}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            В комплект входят: принятие РТК наблюдение, наблюдение ВКЛ в РТК с залогом.
+          </Typography>
+        </Box>
+      );
+    } else if (selectedTemplate.id === 'competition_collateral') {
+      return (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Конкурсное производство с залогом — комплект судебных актов
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Должник:</strong> {getFieldValue('applicantName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Юридический адрес:</strong> {getFieldValue('applicantAddress')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Дело №:</strong> {getFieldValue('caseNumber')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Договор залога:</strong> №{getFieldValue('ipCollateralContractNumber')} от {getFieldValue('ipCollateralContractDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Сумма требований в реестре:</strong> {getFieldValue('ipCollateralClaimAmount')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Описание предмета залога:</strong> {getFieldValue('mortgageCollateralDescription1221')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Сумма требований:</strong> {getFieldValue('totalDebt')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Количество обязательств:</strong> {extractedData.obligations?.length || 0}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            В комплект входят: принятие РТК конкурсное, конкурсное ВКЛ в РТК с залогом.
+          </Typography>
+        </Box>
+      );
+    } else if (selectedTemplate.id === 'initiation_physical') {
+      return (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Инициирование банкротства физического лица
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Должник:</strong> {getFieldValue('applicantName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Адрес регистрации:</strong> {getFieldValue('applicantAddress')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Дата рождения:</strong> {getFieldValue('birthDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Дело №:</strong> {getFieldValue('caseNumber')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Сумма задолженности:</strong> {getFieldValue('totalDebt')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>ИНН:</strong> {getFieldValue('inn')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            В комплект входят: принятие заявления, определение о введении реструктуризации долгов, определение о введении реализации имущества.
+          </Typography>
+        </Box>
+      );
+    } else if (selectedTemplate.id === 'ip_enforcement_realization' || selectedTemplate.id === 'ip_enforcement_restructuring') {
+      return (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Взыскание с индивидуального предпринимателя ({selectedTemplate.id.includes('realization') ? 'реализация' : 'реструктуризация'})
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>ИП:</strong> {getFieldValue('applicantName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>ИНН / ОГРНИП:</strong> {getFieldValue('inn')} / {getFieldValue('ogrnip')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Адрес регистрации:</strong> {getFieldValue('applicantAddress')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Кредитный договор:</strong> №{getFieldValue('contractNumber')} от {getFieldValue('contractDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Условия кредита:</strong> {getFieldValue('creditAmount')} руб., срок {getFieldValue('creditTermMonths')} мес., ставка {getFieldValue('creditInterestRate')} %
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Просроченный долг:</strong> {getFieldValue('principalDebt13')} руб., проценты {getFieldValue('interest14')} руб., неустойка {getFieldValue('forfeit15')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Госпошлина:</strong> {getFieldValue('stateDuty16')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            В комплект входят: принятие иска о взыскании с ИП, решение взыскание с ИП.
+          </Typography>
+        </Box>
+      );
+    } else if (selectedTemplate.id === 'ip_enforcement_realization_collateral' || selectedTemplate.id === 'ip_enforcement_restructuring_collateral') {
+      const procedureType = selectedTemplate.id.includes('realization') ? 'реализация' : 'реструктуризация';
+      return (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Взыскание с индивидуального предпринимателя ({procedureType} с залогом)
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>ИП:</strong> {getFieldValue('applicantName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>ИНН / ОГРНИП:</strong> {getFieldValue('inn')} / {getFieldValue('ogrnip')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Адрес регистрации:</strong> {getFieldValue('applicantAddress')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Кредитный договор:</strong> №{getFieldValue('contractNumber')} от {getFieldValue('contractDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Договор залога:</strong> №{getFieldValue('ipCollateralContractNumber')} от {getFieldValue('ipCollateralContractDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Сумма требований в реестре:</strong> {getFieldValue('ipCollateralClaimAmount')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Описание предмета залога:</strong> {getFieldValue('mortgageCollateralDescription1221')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Просроченный долг:</strong> {getFieldValue('principalDebt13')} руб., проценты {getFieldValue('interest14')} руб., неустойка {getFieldValue('forfeit15')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Госпошлина:</strong> {getFieldValue('stateDuty16')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            В комплект входят: принятие РТК с залогом, решение о включении в РТК с залогом, резолютивная часть.
+          </Typography>
+        </Box>
+      );
+    } else if (selectedTemplate.id === 'physical_realization_collateral') {
+      return (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Реализация имущества физического лица с залогом
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Должник:</strong> {getFieldValue('applicantName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Адрес регистрации:</strong> {getFieldValue('applicantAddress')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Дата рождения:</strong> {getFieldValue('birthDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>СНИЛС:</strong> {getFieldValue('snils')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Дело №:</strong> {getFieldValue('caseNumber')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Кредитный договор:</strong> №{getFieldValue('contractNumber')} от {getFieldValue('contractDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Договор залога:</strong> №{getFieldValue('ipCollateralContractNumber')} от {getFieldValue('ipCollateralContractDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Сумма требований в реестре:</strong> {getFieldValue('ipCollateralClaimAmount')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Описание предмета залога:</strong> {getFieldValue('mortgageCollateralDescription1221')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Просроченный долг:</strong> {getFieldValue('principalDebt13')} руб., проценты {getFieldValue('interest14')} руб., неустойка {getFieldValue('forfeit15')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            В комплект входят: принятие РТК с залогом, решение о включении в РТК с залогом, резолютивная часть.
+          </Typography>
+        </Box>
+      );
+    } else if (selectedTemplate.id === 'physical_restructuring_collateral') {
+      return (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Реструктуризация долгов физического лица с залогом
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Должник:</strong> {getFieldValue('applicantName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Адрес регистрации:</strong> {getFieldValue('applicantAddress')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Дата рождения:</strong> {getFieldValue('birthDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>СНИЛС:</strong> {getFieldValue('snils')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Дело №:</strong> {getFieldValue('caseNumber')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Кредитный договор:</strong> №{getFieldValue('contractNumber')} от {getFieldValue('contractDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Договор залога:</strong> №{getFieldValue('ipCollateralContractNumber')} от {getFieldValue('ipCollateralContractDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Сумма требований в реестре:</strong> {getFieldValue('ipCollateralClaimAmount')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Описание предмета залога:</strong> {getFieldValue('mortgageCollateralDescription1221')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Просроченный долг:</strong> {getFieldValue('principalDebt13')} руб., проценты {getFieldValue('interest14')} руб., неустойка {getFieldValue('forfeit15')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            В комплект входят: принятие РТК с залогом, решение о включении в РТК с залогом, резолютивная часть.
+          </Typography>
+        </Box>
+      );
+    } else if (selectedTemplate.id === 'kfh_observation') {
+      return (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            КФХ — комплект судебных актов (наблюдение)
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Должник:</strong> {getFieldValue('applicantName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Глава КФХ:</strong> {getFieldValue('kfhHeadName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Адрес регистрации:</strong> {getFieldValue('applicantAddress')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Дело №:</strong> {getFieldValue('caseNumber')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Сумма требований:</strong> {getFieldValue('totalDebt')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Количество обязательств:</strong> {extractedData.obligations?.length || 0}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            В комплект входят: принятие и инициирование КФХ, наблюдение КФХ.
+          </Typography>
+        </Box>
+      );
+    } else if (selectedTemplate.id === 'kfh_observation_collateral') {
+      return (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            КФХ с залогом — комплект судебных актов (наблюдение с залогом)
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Должник:</strong> {getFieldValue('applicantName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Глава КФХ:</strong> {getFieldValue('kfhHeadName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Адрес регистрации:</strong> {getFieldValue('applicantAddress')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Дело №:</strong> {getFieldValue('caseNumber')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Договор залога:</strong> №{getFieldValue('ipCollateralContractNumber')} от {getFieldValue('ipCollateralContractDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Сумма требований в реестре:</strong> {getFieldValue('ipCollateralClaimAmount')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Описание предмета залога:</strong> {getFieldValue('mortgageCollateralDescription1221')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Сумма требований:</strong> {getFieldValue('totalDebt')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Количество обязательств:</strong> {extractedData.obligations?.length || 0}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            В комплект входят: принятие и инициирование КФХ (залог), наблюдение КФХ залог.
+          </Typography>
+        </Box>
+      );
+    } else if (selectedTemplate.id === 'deceased') {
+      return (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Умерший — комплект судебных актов
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Должник:</strong> {getFieldValue('applicantName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Суд:</strong> {getFieldValue('courtName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Дело №:</strong> {getFieldValue('caseNumber')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Сумма требований:</strong> {getFieldValue('totalDebt')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            В комплект входят: принятие заявления о признании должника банкротом умерший, решение умерший.
+          </Typography>
+        </Box>
+      );
+    }
+
+    return (
+      <Typography variant="body2" color="text.secondary">
+        Предварительный просмотр недоступен для данного шаблона
+      </Typography>
+    );
+  };
+
+  return (
+    <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+        <Button
+          variant="outlined"
+          onClick={onBack}
+          startIcon={<BackIcon />}
+          sx={{ mr: 2 }}
+        >
+          Назад
+        </Button>
+        <Typography variant="h4" component="h1">
+          Предварительный просмотр
+        </Typography>
+      </Box>
+
+      <Grid container spacing={3}>
+        {/* Информация о шаблоне */}
+        <Grid item xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Выбранный шаблон
+              </Typography>
+
+              <Box sx={{ mb: 2 }}>
+                <Chip
+                  label={selectedTemplate.category}
+                  color="primary"
+                  size="small"
+                  sx={{ mb: 1 }}
+                />
+                <Typography variant="body1" fontWeight="medium">
+                  {selectedTemplate.name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {selectedTemplate.description}
+                </Typography>
+              </Box>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Поля шаблона:
+              </Typography>
+
+              <List dense>
+                {selectedTemplate.fields.map((field) => (
+                  <ListItem key={field.name} sx={{ py: 0.5 }}>
+                    <ListItemIcon sx={{ minWidth: 32 }}>
+                      <DocumentIcon fontSize="small" color="primary" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={field.label}
+                      secondary={getFieldValue(field.name)}
+                      primaryTypographyProps={{ variant: 'body2', fontWeight: 'medium' }}
+                      secondaryTypographyProps={{ variant: 'body2' }}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Предварительный просмотр */}
+        <Grid item xs={12} md={8}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Предварительный просмотр документа
+              </Typography>
+
+              <Paper sx={{ p: 3, backgroundColor: 'grey.50', border: '1px solid', borderColor: 'grey.300' }}>
+                {getTemplatePreview()}
+              </Paper>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Генерация документа */}
+      {!generationResult && (
+        <Box sx={{ textAlign: 'center', mt: 4 }}>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={handleGenerateDocument}
+            disabled={isGenerating}
+            startIcon={isGenerating ? <CircularProgress size={20} /> : <CheckIcon />}
+            sx={{ px: 4 }}
+          >
+            {isGenerating ? 'Генерируем документ...' : 'Сгенерировать документ'}
+          </Button>
+        </Box>
+      )}
+
+      {/* Результат генерации */}
+      {generationResult && (
+        <Card sx={{ mt: 4 }}>
+          <CardContent>
+            {generationResult.success ? (
+              <Box sx={{ textAlign: 'center' }}>
+                <CheckIcon sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
+                <Typography variant="h5" gutterBottom color="success.main">
+                  {generationResult.count ? `${generationResult.count} документов успешно сгенерированы!` : 'Документ успешно сгенерирован!'}
+                </Typography>
+                <Typography variant="body1" sx={{ mb: 3 }}>
+                  {generationResult.count ? 'Все документы готовы к скачиванию' : 'Судебный акт готов к скачиванию'}
+                </Typography>
+
+                {/* Показываем список сгенерированных документов */}
+                {generationResult.documents && (
+                  <Box sx={{ mb: 3, textAlign: 'left' }}>
+                    <Typography variant="h6" gutterBottom>
+                      Сгенерированные документы:
+                    </Typography>
+                    <List>
+                      {Object.entries(generationResult.documents).map(([key, doc]: [string, any]) => (
+                        <ListItem key={key} sx={{ py: 1 }}>
+                          <ListItemIcon>
+                            <DocumentIcon color="primary" />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={doc.name}
+                            secondary={`ID: ${doc.document_id}`}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Box>
+                )}
+
+                <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    onClick={handleDownloadDocument}
+                    startIcon={<DownloadIcon />}
+                    sx={{ px: 4 }}
+                  >
+                    {generationResult.count ? 'Скачать все документы' : 'Скачать документ'}
+                  </Button>
+
+                  <Button
+                    variant="outlined"
+                    size="large"
+                    onClick={onNewDocument}
+                    startIcon={<AddIcon />}
+                    sx={{ px: 4 }}
+                  >
+                    Создать новый документ
+                  </Button>
+                </Box>
+              </Box>
+            ) : (
+              <Box sx={{ textAlign: 'center' }}>
+                <Alert severity="error" sx={{ mb: 3 }}>
+                  {generationResult.error}
+                </Alert>
+                <Button
+                  variant="outlined"
+                  onClick={handleGenerateDocument}
+                  startIcon={<CheckIcon />}
+                >
+                  Попробовать снова
+                </Button>
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Прогресс генерации */}
+      {isGenerating && (
+        <Paper sx={{ p: 3, mt: 3, textAlign: 'center' }}>
+          <CircularProgress sx={{ mb: 2 }} />
+          <Typography variant="body1">
+            Генерируем судебный акт...
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Это может занять несколько секунд
+          </Typography>
+        </Paper>
+      )}
+    </Box>
+  );
+};
+
+export default DocumentPreview;

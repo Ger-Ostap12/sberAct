@@ -19,17 +19,18 @@ import {
   DialogActions,
   TextField,
 } from '@mui/material';
+import { SelectChangeEvent } from '@mui/material/Select';
 import {
   ArrowBack,
   Download,
   Description,
   PictureAsPdf,
 } from '@mui/icons-material';
-import { DocumentData, DocumentType, ExtractedField } from '../types';
+import { ExtractedData, TemplateType } from '../types';
 
 interface DocumentGenerationProps {
-  documentData: DocumentData;
-  documentTypes: DocumentType[];
+  documentData: ExtractedData;
+  documentTypes: TemplateType[];
   onBack: () => void;
   onComplete: () => void;
 }
@@ -87,12 +88,12 @@ const DocumentGeneration: React.FC<DocumentGenerationProps> = ({
   const getSuggestedTemplate = () => {
     // Простая логика для определения подходящего шаблона
     if (documentData.documentType.includes('bankruptcy')) {
-      return documentTypes.find((t: DocumentType) =>
+      return documentTypes.find((t: TemplateType) =>
         t.name.toLowerCase().includes('банкротство')
       );
     }
     if (documentData.documentType.includes('inheritance')) {
-      return documentTypes.find((t: DocumentType) =>
+      return documentTypes.find((t: TemplateType) =>
         t.name.toLowerCase().includes('наследство')
       );
     }
@@ -128,10 +129,10 @@ const DocumentGeneration: React.FC<DocumentGenerationProps> = ({
                 <InputLabel>Тип судебного акта</InputLabel>
                 <Select
                   value={selectedTemplate}
-                  onChange={(e: React.ChangeEvent<{ value: unknown }>) => setSelectedTemplate(e.target.value as string)}
+                  onChange={(e: SelectChangeEvent<string>) => setSelectedTemplate(e.target.value as string)}
                   label="Тип судебного акта"
                 >
-                  {documentTypes.map((type: DocumentType) => (
+                  {documentTypes.map((type: TemplateType) => (
                     <MenuItem key={type.id} value={type.id}>
                       {type.name}
                     </MenuItem>
@@ -141,7 +142,10 @@ const DocumentGeneration: React.FC<DocumentGenerationProps> = ({
 
               {suggestedTemplate && !selectedTemplate && (
                 <Alert severity="info" sx={{ mb: 2 }}>
-                  Рекомендуемый тип: <strong>{suggestedTemplate.name}</strong>
+                  Рекомендуемый тип:
+
+Егор Ромаш, [11.09.2025 9:14]
+<strong>{suggestedTemplate.name}</strong>
                 </Alert>
               )}
 
@@ -149,7 +153,7 @@ const DocumentGeneration: React.FC<DocumentGenerationProps> = ({
                 <InputLabel>Формат экспорта</InputLabel>
                 <Select
                   value={outputFormat}
-                  onChange={(e: React.ChangeEvent<{ value: unknown }>) =>
+                  onChange={(e: SelectChangeEvent<'docx' | 'pdf'>) =>
                     setOutputFormat(e.target.value as 'docx' | 'pdf')
                   }
                   label="Формат экспорта"
@@ -212,17 +216,16 @@ const DocumentGeneration: React.FC<DocumentGenerationProps> = ({
               </Typography>
 
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {documentData.extractedFields.map((
-                  field: ExtractedField,
-                  index: number
-                ) => (
-                  <Chip
-                    key={index}
-                    label={`${field.name}: ${field.value}`}
-                    variant="outlined"
-                    size="small"
-                  />
-                ))}
+                {Object.entries(documentData.fields)
+                  .filter(([, value]) => typeof value !== 'undefined' && value !== '')
+                  .map(([name, value], index) => (
+                    <Chip
+                      key={index}
+                      label={`${name}: ${value as string}`}
+                      variant="outlined"
+                      size="small"
+                    />
+                  ))}
               </Box>
             </CardContent>
           </Card>

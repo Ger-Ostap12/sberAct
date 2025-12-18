@@ -1,46 +1,27 @@
 {
-  "name": "sberact",
+  "name": "sberact-document-generator",
   "version": "1.0.0",
-  "description": "Приложение для автоматизации работы с юридическими документами",
+  "description": "Генератор судебных актов на основе заявлений для Astra Linux",
   "main": "electron-app/main.js",
   "scripts": {
-    "start": "electron .",
     "dev": "concurrently \"npm run dev:react\" \"npm run dev:electron\"",
-    "dev:react": "cd electron-app && npm start",
+    "dev:react": "cd electron-app && npm run start",
     "dev:electron": "wait-on http://localhost:3000 && electron .",
     "build": "cd electron-app && npm run build",
-    "dist": "electron-builder",
     "dist:linux": "electron-builder --linux",
     "postinstall": "electron-builder install-app-deps"
   },
-  "keywords": [
-    "electron",
-    "legal",
-    "documents",
-    "automation"
-  ],
-  "author": "SberAct Team",
-  "license": "MIT",
-  "dependencies": {
-    "electron-is-dev": "^2.0.0"
-  },
-  "devDependencies": {
-    "electron": "^28.0.0",
-    "electron-builder": "^24.9.1",
-    "concurrently": "^8.2.2",
-    "wait-on": "^7.2.0"
-  },
   "build": {
-    "appId": "com.sberact.app",
-    "productName": "SberAct",
+    "appId": "com.sberact.documentgenerator",
+    "productName": "SberAct Document Generator",
     "directories": {
       "output": "dist"
     },
     "files": [
       "electron-app/build/**/*",
-      "electron-app/public/**/*",
+      "electron-app/main.js",
+      "electron-app/preload.js",
       "python-backend/**/*",
-      "node_modules/**/*",
       "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
       "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
       "!**/node_modules/*.d.ts",
@@ -48,41 +29,50 @@
       "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
       "!.editorconfig",
       "!**/._*",
-      "!**/{.DS_Store,.git,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
       "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
       "!**/{appveyor.yml,.travis.yml,circle.yml}",
       "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
     ],
     "asarUnpack": [
-      "python-backend/**"
+      "python-backend/**/*"
     ],
     "extraResources": [
       {
-        "from": "python-backend/",
-        "to": "python-backend",
-        "filter": ["**/*"]
+        "from": "python-backend",
+        "to": "python-backend"
       }
     ],
     "linux": {
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
-        },
-        {
-          "target": "deb",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "category": "Office",
-      "synopsis": "Автоматизация работы с юридическими документами",
+      "synopsis": "Генератор судебных актов на основе заявлений",
       "artifactName": "${productName}-${version}-${arch}.${ext}"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
     }
-  }
+  },
+  "dependencies": {
+    "electron-is-dev": "^2.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "electron": "^38.0.0",
+    "electron-builder": "^24.13.3",
+    "wait-on": "^7.2.0"
+  },
+  "keywords": [
+    "electron",
+    "react",
+    "document-generation",
+    "legal-documents",
+    "astra-linux"
+  ],
+  "author": "SberAct Team",
+  "license": "MIT"
 }
