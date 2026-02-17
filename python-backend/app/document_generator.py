@@ -4,7 +4,7 @@ import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional, Set
+from typing import Dict, Any, Optional, Set, List
 from docx import Document
 from docx.shared import Inches, Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -86,6 +86,62 @@ class DocumentGenerator:
         tokens = [token for token in re.split(r"\s+", full_name.strip()) if token]
         return " ".join(_capitalize_token(token) for token in tokens)
 
+    def _normalize_name_case(self, name: str) -> str:
+        """
+        Нормализует регистр имени: первая буква заглавная, остальные строчные.
+        Для ИП префикс "ИП" остается заглавным.
+        Примеры:
+        - "РОМАНОВ ИВАН ЛЮДМИЛОВИЧ" -> "Романов Иван Людмилович"
+        - "ИП РОМАНОВ ВАСИЛИЙ СЕРГЕЕВИЧ" -> "ИП Романов Василий Сергеевич"
+        - "ип романов василий сергеевич" -> "ИП Романов Василий Сергеевич"
+        """
+        if not name:
+            return name
+
+        name = name.strip()
+
+        # Проверяем наличие префикса "ИП" (может быть в разных регистрах)
+        ip_prefix = ""
+        remaining_name = name
+
+        # Ищем префикс "ИП" в начале строки (может быть с пробелом или без)
+        ip_match = re.match(r'^(ИП|ип|Ип)\s*(.+)$', name, re.IGNORECASE)
+        if ip_match:
+            ip_prefix = "ИП"  # Всегда заглавными
+            remaining_name = ip_match.group(2).strip()
+
+        # Если имя пустое после удаления префикса, возвращаем только префикс
+        if not remaining_name:
+            return ip_prefix if ip_prefix else name
+
+        # Нормализуем оставшуюся часть имени
+        def _capitalize_word(word: str) -> str:
+            if not word:
+                return word
+            # Обрабатываем дефисы (например, "Иванов-Петров")
+            if "-" in word:
+                parts = word.split("-")
+                capitalized_parts = []
+                for part in parts:
+                    if part:
+                        capitalized_parts.append(part[:1].upper() + part[1:].lower())
+                    else:
+                        capitalized_parts.append(part)
+                return "-".join(capitalized_parts)
+            # Для обычных слов: первая буква заглавная, остальные строчные
+            return word[:1].upper() + word[1:].lower()
+
+        # Разбиваем на слова и нормализуем каждое
+        words = [w for w in re.split(r"\s+", remaining_name) if w]
+        normalized_words = [_capitalize_word(word) for word in words]
+        normalized_name = " ".join(normalized_words)
+
+        # Возвращаем с префиксом "ИП", если он был
+        if ip_prefix:
+            return f"{ip_prefix} {normalized_name}"
+
+        return normalized_name
+
     def replace_document_data(self, doc: Document, data: Dict[str, Any]):
         """
         Заменяет данные в существующем документе, используя нумерацию [1], [2], [3] и т.д.
@@ -123,6 +179,7 @@ class DocumentGenerator:
                 cleaned_data[key] = value
 
         logger.info(f"Очищенные данные: {cleaned_data}")
+        logger.info(f"📊 Ключевые поля в cleaned_data: creditorName={cleaned_data.get('creditorName')}, inn={cleaned_data.get('inn')}, creditorAddress={cleaned_data.get('creditorAddress')}")
 
         # Гарантируем наличие даты публикации ЕФРСБ для плейсхолдера [11]
         if not cleaned_data.get("efirsbPublicationDate"):
@@ -266,6 +323,66 @@ class DocumentGenerator:
         cleaned_data["currentDate"] = current_date
         logger.info(f"📅 Текущая дата формирования акта: {current_date}")
 
+        # Обработка пользовательской даты
+        if cleaned_data.get("date"):
+            # Если дата в формате YYYY-MM-DD (из input type="date"), конвертируем в DD.MM.YYYY
+            date_value = cleaned_data.get("date")
+            if re.match(r'^\d{4}-\d{2}-\d{2}$', date_value):
+                try:
+                    date_obj = datetime.strptime(date_value, "%Y-%m-%d")
+                    cleaned_data["date"] = date_obj.strftime("%d.%m.%Y")
+                    logger.info(f"📅 Конвертирована дата: {date_value} -> {cleaned_data['date']}")
+                except ValueError:
+                    logger.warning(f"⚠️ Не удалось распарсить дату: {date_value}")
+
+        # Синхронизация loanDebt и principalDebt
+        if cleaned_data.get("loanDebt") and not cleaned_data.get("principalDebt"):
+            cleaned_data["principalDebt"] = cleaned_data["loanDebt"]
+            cleaned_data["principalDebt13"] = cleaned_data["loanDebt"]
+        elif cleaned_data.get("principalDebt") and not cleaned_data.get("loanDebt"):
+            cleaned_data["loanDebt"] = cleaned_data["principalDebt"]
+
+        # Синхронизация interest и interest14
+        if cleaned_data.get("interest") and not cleaned_data.get("interest14"):
+            cleaned_data["interest14"] = cleaned_data["interest"]
+        elif cleaned_data.get("interest14") and not cleaned_data.get("interest"):
+            cleaned_data["interest"] = cleaned_data["interest14"]
+
+        # Синхронизация forfeit и forfeit15
+        if cleaned_data.get("forfeit") and not cleaned_data.get("forfeit15"):
+            cleaned_data["forfeit15"] = cleaned_data["forfeit"]
+        elif cleaned_data.get("forfeit15") and not cleaned_data.get("forfeit"):
+            cleaned_data["forfeit"] = cleaned_data["forfeit15"]
+
+        # Синхронизация penalties и forfeit15
+        if cleaned_data.get("penalties") and not cleaned_data.get("forfeit15"):
+            cleaned_data["forfeit15"] = cleaned_data["penalties"]
+            cleaned_data["forfeit"] = cleaned_data["penalties"]
+
+        # Синхронизация stateDuty и stateDuty16
+        if cleaned_data.get("stateDuty") and not cleaned_data.get("stateDuty16"):
+            cleaned_data["stateDuty16"] = cleaned_data["stateDuty"]
+        elif cleaned_data.get("stateDuty16") and not cleaned_data.get("stateDuty"):
+            cleaned_data["stateDuty"] = cleaned_data["stateDuty16"]
+
+        # Форматирование сумм: убеждаемся, что суммы в правильном формате (с точкой как разделителем)
+        amount_fields = ["loanDebt", "principalDebt", "principalDebt13", "interest", "interest14",
+                        "forfeit", "forfeit15", "penalties", "stateDuty", "stateDuty16", "totalDebt", "debtAmount", "bankCommission"]
+        for field in amount_fields:
+            if field in cleaned_data and cleaned_data[field]:
+                value = str(cleaned_data[field]).strip()
+                # Заменяем запятую на точку для десятичных чисел
+                value = value.replace(',', '.')
+                # Убираем все кроме цифр и точки
+                value = re.sub(r'[^\d.]', '', value)
+                # Убираем лишние точки, оставляем только одну
+                parts = value.split('.')
+                if len(parts) > 2:
+                    value = parts[0] + '.' + ''.join(parts[1:])
+                if value:
+                    cleaned_data[field] = value
+                    logger.info(f"💰 Форматирована сумма {field}: {value}")
+
         placeholders_in_doc = self._collect_placeholders(doc)
 
         # Дополнительная подготовка данных для заявлений к ИП
@@ -274,7 +391,9 @@ class DocumentGenerator:
             cleaned_data.setdefault("sourceDocumentType", source_document_type)
         if source_document_type in ["ip_enforcement_statement", "ip_enforcement_statement_collateral",
                                     "ip_enforcement_realization", "ip_enforcement_realization_collateral",
-                                    "ip_enforcement_restructuring", "ip_enforcement_restructuring_collateral"]:
+                                    "ip_enforcement_restructuring", "ip_enforcement_restructuring_collateral",
+                                    "ip_collection", "ip_collection_collateral", "ip_collection_collateral_auto",
+                                    "legal_collection", "legal_collection_collateral", "legal_collection_collateral_auto"]:
             applicant_name = cleaned_data.get("applicantName")
             if applicant_name and not applicant_name.upper().startswith("ИП"):
                 cleaned_data["applicantNameRaw"] = applicant_name
@@ -286,6 +405,20 @@ class DocumentGenerator:
 
             if "debtAmount" not in cleaned_data and cleaned_data.get("totalDebt"):
                 cleaned_data["debtAmount"] = cleaned_data["totalDebt"]
+
+            # Для ip_collection, ip_collection_collateral и ip_collection_collateral_auto проверяем наличие полей [1000], [1001], [1004]
+            if source_document_type in ("ip_collection", "ip_collection_collateral", "ip_collection_collateral_auto"):
+                logger.info(f"🔍 Проверка полей для ip_collection:")
+                logger.info(f"  creditAmount [1000]: {cleaned_data.get('creditAmount')}")
+                logger.info(f"  creditTermMonths [1001]: {cleaned_data.get('creditTermMonths')}")
+                logger.info(f"  debtSnapshotDate [1004]: {cleaned_data.get('debtSnapshotDate')}")
+                # Защищаем эти поля от перезаписи
+                if not cleaned_data.get('creditAmount'):
+                    logger.warning(f"⚠️ Поле creditAmount [1000] не найдено для ip_collection")
+                if not cleaned_data.get('creditTermMonths'):
+                    logger.warning(f"⚠️ Поле creditTermMonths [1001] не найдено для ip_collection")
+                if not cleaned_data.get('debtSnapshotDate'):
+                    logger.warning(f"⚠️ Поле debtSnapshotDate [1004] не найдено для ip_collection")
 
         # Для шаблонов с несколькими обязательствами используем данные первого договора в базовых плейсхолдерах
         # НО для ипотеки не делаем этого, так как там обязательства обрабатываются отдельно
@@ -339,21 +472,34 @@ class DocumentGenerator:
             "totalDebt": "12",           # [12] - Общая сумма долга
             "mortgageInterestAmount12": "12",  # [12] - Просроченные проценты (ипотека)
             "sroName": "987",            # [987] - Название СРО (саморегулируемая организация)
+            "creditorName": "989",       # [989] - Название кредитора
+            "creditorAddress": "988",    # [988] - Юридический адрес кредитора
+            "creditorOgrn": "990",       # [990] - ОГРН кредитора
+            "creditorInn": "991",        # [991] - ИНН кредитора
             # Исключаем старые поля, чтобы не конфликтовать с новыми
             # "principalDebt": "13",     # [13] - Основной долг (старое поле)
             # "interest": "14",          # [14] - Проценты (старое поле)
             # "forfeit": "15",           # [15] - Неустойка (старое поле)
             # "stateDuty": "16",         # [16] - Госпошлина (старое поле)
             "principalDebt13": "13",     # [13] - Основной долг из блока "ПРОСИТ СУД"
+            "principalDebt": "13",       # [13] - Основной долг (общее поле)
+            "loanDebt": "13",           # [13] - Ссудная задолженность (синхронизируется с principalDebt)
             "interest14": "14",          # [14] - Проценты из блока "ПРОСИТ СУД"
+            "interest": "14",            # [14] - Проценты (общее поле)
             "forfeit15": "15",           # [15] - Неустойка из блока "ПРОСИТ СУД"
+            "forfeit": "15",             # [15] - Неустойка (общее поле)
+            "penalties": "15",           # [15] - Штрафные санкции (синоним неустойки)
             "stateDuty16": "16",         # [16] - Госпошлина из блока "ПРОСИТ СУД"
+            "stateDuty": "16",           # [16] - Госпошлина (общее поле)
+            "judge": "415",              # [415] - Судья
+            "date": "DATE",              # [DATE] - Дата (пользовательская)
             "mortgageCreditAmount111": "111",  # [111] - Сумма кредита (ипотека)
             "mortgageCreditTerm112": "112",    # [112] - Срок кредита (ипотека)
             "mortgageInterestRate113": "113",  # [113] - Процентная ставка (ипотека)
             "mortgagePenaltyRate114": "114",   # [114] - Ставка неустойки (ипотека)
             "mortgagePeriodStart120": "120",   # [120] - Начало расчетного периода (ипотека)
             "mortgagePeriodEnd121": "121",     # [121] - Конец расчетного периода (ипотека)
+            "bankCommission": "122",           # [122] - Комиссия Банка (сумма)
             "mortgageCollateralDescription1221": "1221",  # [1221] - Описание предмета залога
             # Специальная дата для юр. инициирования конкурсного (ликвидируемый) — маркер [5555]
             "liquidationRecordDate5555": "5555",
@@ -374,11 +520,25 @@ class DocumentGenerator:
             "ipCollateralContractDate": "0006",   # [0006] - Дата договора залога (ИП)
             "ipCollateralClaimAmount": "0007",    # [0007] - Сумма требований в реестре (ИП)
             "penalty0071": "0071",                # [0071] - Неустойка в обязательстве по залогу
+            "other35": "35",                      # [35] - Иное
+            "currentInterest36": "36",            # [36] - Срочные проценты на основной долг
+            "currentInterestOverdue37": "37",    # [37] - Срочные проценты на просроченный основной долг
         }
 
         is_mortgage_document = (cleaned_data.get("sourceDocumentType") or "").lower() == "mortgage_claim"
         is_ip_collateral = (cleaned_data.get("sourceDocumentType") or "").lower() == "ip_enforcement_statement_collateral"
         is_physical_collateral = (cleaned_data.get("sourceDocumentType") or "").lower() in ["physical_realization_collateral", "physical_restructuring_collateral", "observation_collateral", "competition_collateral"]
+
+        # Для всех типов, кроме ипотеки, [2.2] - это имя должника в дательном падеже (applicantNameDative)
+        # Для ипотеки [2.2] - это представитель истца (mortgageRepresentative22)
+        if not is_mortgage_document:
+            # Если есть applicantNameDative, используем его для [2.2]
+            if cleaned_data.get("applicantNameDative"):
+                field_mapping["applicantNameDative"] = "2.2"
+                # Убираем mortgageRepresentative22 из маппинга для не-ипотечных документов
+                field_mapping.pop("mortgageRepresentative22", None)
+                logger.info(f"Используем applicantNameDative для [2.2]: {cleaned_data.get('applicantNameDative')}")
+
         if is_mortgage_document:
             field_mapping = dict(field_mapping)
             field_mapping.pop("totalDebt", None)
@@ -408,9 +568,10 @@ class DocumentGenerator:
                     return match.group(1).strip(' «»"')
                 return trimmed
 
-            mortgage_debtor_name = strip_ooo(cleaned_data.get("mortgageDebtorName", ""))
-            debtor_name = strip_ooo(cleaned_data.get("debtorName", ""))
-            # Обновляем очищенные значения в данных, чтобы маркер [2] всегда был без приставки ООО
+            # Для маркеров [2], [2.1], [2.2] сохраняем ОПФ (ООО, АО и т.д.) вместе с названием организации
+            mortgage_debtor_name = cleaned_data.get("mortgageDebtorName", "")
+            debtor_name = cleaned_data.get("debtorName", "")
+            # Обновляем значения в данных, сохраняя ОПФ для маркеров
             if mortgage_debtor_name:
                 cleaned_data["mortgageDebtorName"] = mortgage_debtor_name
             if debtor_name:
@@ -513,6 +674,23 @@ class DocumentGenerator:
                 logger.warning(f"applicantName содержит 'суд' ({current_applicant_name}), не используем для [2]. mortgageDebtorName: {mortgage_debtor_name}, debtorName: {debtor_name[:100] if debtor_name else 'None'}")
             else:
                 logger.warning(f"Не удалось найти правильное ФИО ответчика. mortgageDebtorName: {mortgage_debtor_name}, debtorName: {debtor_name[:100] if debtor_name else 'None'}, applicantName: {current_applicant_name[:100] if current_applicant_name else 'None'}")
+
+        # Нормализуем регистр всех имен перед заменой в документе
+        name_fields = [
+            "applicantName", "debtorName", "creditorName", "legalShortName",
+            "applicantNameGenitive", "applicantNameInstrumental", "applicantNameAccusative", "applicantNameDative",
+            "mortgageDebtorName", "mortgageDebtorNameDative", "mortgageRepresentative22", "kfhHeadName"
+        ]
+        for field_name in name_fields:
+            if field_name in cleaned_data and cleaned_data[field_name]:
+                original_value = cleaned_data[field_name]
+                # Пропускаем нормализацию, если значение уже содержит только префикс "ИП" без имени
+                if original_value.strip().upper() == "ИП":
+                    continue
+                normalized_value = self._normalize_name_case(original_value)
+                if normalized_value != original_value:
+                    cleaned_data[field_name] = normalized_value
+                    logger.info(f"📝 Нормализован регистр {field_name}: '{original_value}' -> '{normalized_value}'")
 
         # Заменяем данные в параграфах
         logger.info("🔍 Начинаем замену данных в документе...")
@@ -622,22 +800,395 @@ class DocumentGenerator:
         # Обрабатываем поля без нумерации (по контексту)
         self.replace_contextual_fields(doc, cleaned_data)
 
+        # Обрабатываем специальные маркеры [DATE], [415] и [66]
+        if cleaned_data.get("date"):
+            date_value = cleaned_data.get("date")
+            if self._replace_placeholder_in_doc(doc, "[DATE]", date_value):
+                logger.info(f"🔄 Заменено [DATE] на {date_value}")
+            # [66] — дата определения о принятии заявления к производству в формате «___» __________ 20__ года
+            date_66 = self._format_date_66(date_value)
+            if date_66 and self._replace_placeholder_in_doc(doc, "[66]", date_66):
+                logger.info(f"🔄 Заменено [66] на {date_66}")
+
+        if cleaned_data.get("judge"):
+            judge_value = cleaned_data.get("judge")
+            if self._replace_placeholder_in_doc(doc, "[415]", judge_value):
+                logger.info(f"🔄 Заменено [415] на {judge_value}")
+
+        # Удаляем все пустые маркеры, для которых нет значений
+        self._remove_empty_placeholders(doc, cleaned_data, field_mapping)
+
+    def _remove_empty_placeholders(self, doc: Document, cleaned_data: Dict[str, Any], field_mapping: Dict[str, str]):
+        """
+        Удаляет из документа все маркеры, для которых нет значений в данных.
+        Также удаляет контекст вокруг маркеров (например, "Дело№ [1]" удаляется полностью).
+
+        Args:
+            doc: Документ для обработки
+            cleaned_data: Данные с заполненными полями
+            field_mapping: Маппинг полей на номера маркеров
+        """
+        logger.info("🧹 Удаляем пустые маркеры из документа")
+
+        # Собираем все маркеры из документа
+        all_placeholders = self._collect_placeholders(doc)
+
+        # Создаем обратный маппинг: номер маркера -> список полей
+        marker_to_fields = {}
+        for field_name, marker_number in field_mapping.items():
+            marker = f"[{marker_number}]"
+            if marker not in marker_to_fields:
+                marker_to_fields[marker] = []
+            marker_to_fields[marker].append(field_name)
+
+        # Специальные маркеры, которые обрабатываются отдельно
+        # Проверяем, был ли заполнен [992] в replace_obligations_data
+        # [992] заполняется только если обязательств > 5
+        obligations = cleaned_data.get('obligations', [])
+        obligations_count = len(obligations) if isinstance(obligations, list) else 0
+        marker_992_filled = obligations_count > 5
+
+        special_markers = {
+            "[DATE]": cleaned_data.get("date"),
+            "[415]": cleaned_data.get("judge"),
+            "[66]": cleaned_data.get("date"),  # [66] — дата определения о принятии заявления к производству (то же поле "дата")
+            "[992]": marker_992_filled,  # Заполнен только если обязательств > 5
+        }
+
+        removed_count = 0
+        for placeholder in all_placeholders:
+            # Пропускаем маркеры обязательств (100-129) - они обрабатываются отдельно
+            match = re.match(r'\[(\d+)\]', placeholder)
+            if match:
+                number = int(match.group(1))
+                if 100 <= number < 130:
+                    continue  # Маркеры обязательств обрабатываются в replace_obligations_data
+
+            # Проверяем специальные маркеры
+            if placeholder in special_markers:
+                marker_value = special_markers[placeholder]
+                # Если значение False или пустое, удаляем маркер с контекстом
+                if not marker_value:
+                    # Удаляем пустой специальный маркер с контекстом
+                    self._remove_placeholder_with_context(doc, placeholder)
+                    removed_count += 1
+                    logger.info(f"🗑️ Удален пустой специальный маркер с контекстом: {placeholder}")
+                # Если значение есть, маркер уже был заменен в предыдущих шагах, пропускаем
+                continue
+
+            # Проверяем обычные маркеры через field_mapping
+            if placeholder in marker_to_fields:
+                # Проверяем, есть ли хотя бы одно поле с значением для этого маркера
+                has_value = False
+                for field_name in marker_to_fields[placeholder]:
+                    value = cleaned_data.get(field_name)
+                    if value and str(value).strip():
+                        has_value = True
+                        break
+
+                if not has_value:
+                    # Удаляем пустой маркер с контекстом
+                    self._remove_placeholder_with_context(doc, placeholder)
+                    removed_count += 1
+                    logger.info(f"🗑️ Удален пустой маркер с контекстом: {placeholder} (поля: {', '.join(marker_to_fields[placeholder])})")
+            else:
+                # Маркер не найден в маппинге - возможно, это неизвестный маркер
+                # Удаляем его с контекстом, чтобы не было видно в финальном документе
+                self._remove_placeholder_with_context(doc, placeholder)
+                removed_count += 1
+                logger.info(f"🗑️ Удален неизвестный маркер с контекстом: {placeholder}")
+
+        if removed_count > 0:
+            logger.info(f"✅ Удалено {removed_count} пустых маркеров из документа")
+        else:
+            logger.info("ℹ️ Пустых маркеров не найдено")
+
+    def _remove_placeholder_with_context(self, doc: Document, placeholder: str):
+        """
+        Удаляет маркер вместе с контекстом вокруг него (например, "Дело№ [1]" удаляется полностью).
+
+        Args:
+            doc: Документ для обработки
+            placeholder: Маркер для удаления (например, "[1]", "[4]", "[990]")
+        """
+        # Экранируем маркер для использования в регулярном выражении
+        escaped_placeholder = re.escape(placeholder)
+
+        # Определяем паттерны контекста для разных маркеров
+        context_patterns = self._get_context_patterns_for_marker(placeholder)
+
+        # Пробуем удалить маркер с контекстом по каждому паттерну
+        removed = False
+        for pattern in context_patterns:
+            # Заменяем {MARKER} на экранированный маркер
+            regex_pattern = pattern.replace("{MARKER}", escaped_placeholder)
+            # Добавляем опциональные пробелы и знаки препинания после контекста
+            # Это позволяет удалить контекст даже если после него есть запятая, точка и т.д.
+            regex_pattern_with_punctuation = regex_pattern + r"(?:\s*[,\s\.;:]*)?"
+            # Используем регулярное выражение для поиска и удаления
+            if self._replace_regex_in_doc(doc, regex_pattern_with_punctuation, ""):
+                logger.debug(f"Удален маркер {placeholder} с контекстом по паттерну: {pattern}")
+                removed = True
+                break
+
+        # Если не удалось удалить с контекстом, удаляем только маркер
+        if not removed:
+            self._replace_placeholder_in_doc(doc, placeholder, "")
+
+    def _get_context_patterns_for_marker(self, placeholder: str) -> List[str]:
+        """
+        Возвращает список паттернов контекста для указанного маркера.
+
+        Args:
+            placeholder: Маркер (например, "[1]", "[4]", "[990]")
+
+        Returns:
+            Список регулярных выражений для поиска маркера с контекстом
+        """
+        # Извлекаем номер маркера
+        match = re.match(r'\[([^\]]+)\]', placeholder)
+        if not match:
+            return [f"{re.escape(placeholder)}"]  # Если не удалось распарсить, возвращаем только маркер
+
+        marker_number = match.group(1)
+
+        # Паттерны контекста для разных маркеров
+        context_patterns_map = {
+            # [1] - Номер дела
+            "1": [
+                r"(?:Дело|дело)[\s№]*{MARKER}",
+                r"(?:Дело|дело)[\s:]*№[\s]*{MARKER}",
+                r"номер\s+дела[\s:]*№?[\s]*{MARKER}",
+                r"по\s+делу[\s:]*№[\s]*{MARKER}",
+                r"№[\s]*{MARKER}(?=\s|$|,|\.|;|:|\n)",
+                r"(?:Дело|дело)\s*№\s*{MARKER}",
+                r"(?:Дело|дело)\s*{MARKER}",
+            ],
+            # [2], [2.1], [2.2], [2.3], [2.4] - ФИО должника (обычно без префикса)
+            "2": [],
+            "2.1": [],
+            "2.2": [],
+            "2.3": [],
+            "2.4": [],
+            # [3] - Дата рождения
+            "3": [
+                r"(?:дата\s+рождения|Дата\s+рождения)[\s:]*{MARKER}",
+                r"(?:дата\s+рожд\.|Дата\s+рожд\.)[\s:]*{MARKER}",
+            ],
+            # [4] - ИНН
+            "4": [
+                r"(?:ИНН|инн)[\s:]*{MARKER}",
+                r"(?:ИНН|инн)[\s№]*{MARKER}",
+            ],
+            # [4.1] - ОГРНИП
+            "4.1": [
+                r"(?:ОГРНИП|огрнип)[\s:]*{MARKER}",
+                r"(?:ОГРНИП|огрнип)[\s№]*{MARKER}",
+            ],
+            # [5] - СНИЛС
+            "5": [
+                r"(?:СНИЛС|снилс)[\s:]*{MARKER}",
+                r"(?:СНИЛС|снилс)[\s№]*{MARKER}",
+            ],
+            # [6] - Адрес регистрации
+            "6": [
+                r"(?:адрес|Адрес)[\s:]*{MARKER}",
+                r"(?:адрес\s+регистрации|Адрес\s+регистрации)[\s:]*{MARKER}",
+            ],
+            # [7] - Дата решения суда
+            "7": [
+                r"(?:дата\s+решения|Дата\s+решения)[\s:]*{MARKER}",
+                r"(?:дата\s+решения\s+суда|Дата\s+решения\s+суда)[\s:]*{MARKER}",
+            ],
+            # [8] - ФИО финансового управляющего
+            "8": [
+                r"(?:финансовый\s+управляющий|Финансовый\s+управляющий)[\s:]*{MARKER}",
+                r"(?:ФИО\s+финансового\s+управляющего|ФИО\s+Финансового\s+управляющего)[\s:]*{MARKER}",
+            ],
+            # [9] - Номер сообщения
+            "9": [
+                r"(?:номер\s+сообщения|Номер\s+сообщения)[\s:]*№?[\s]*{MARKER}",
+                r"(?:сообщение|Сообщение)[\s:]*№?[\s]*{MARKER}",
+            ],
+            # [11] - Дата публикации ЕФРСБ
+            "11": [
+                r"(?:дата\s+публикации|Дата\s+публикации)[\s:]*{MARKER}",
+                r"(?:дата\s+публикации\s+на\s+сайте|Дата\s+публикации\s+на\s+сайте)[\s:]*{MARKER}",
+            ],
+            # [12] - Общая сумма долга
+            "12": [
+                r"(?:общая\s+сумма|Общая\s+сумма)[\s:]*{MARKER}",
+                r"(?:сумма\s+долга|Сумма\s+долга)[\s:]*{MARKER}",
+            ],
+            # [13] - Основной долг
+            "13": [
+                r"(?:основной\s+долг|Основной\s+долг)[\s:]*{MARKER}",
+            ],
+            # [14] - Проценты
+            "14": [
+                r"(?:проценты|Проценты)[\s:]*{MARKER}",
+            ],
+            # [15] - Неустойка
+            "15": [
+                r"(?:неустойка|Неустойка)[\s:]*{MARKER}",
+                r"(?:штрафные\s+санкции|Штрафные\s+санкции)[\s:]*{MARKER}",
+            ],
+            # [16] - Госпошлина
+            "16": [
+                r"(?:госпошлина|Госпошлина)[\s:]*{MARKER}",
+                r"(?:государственная\s+пошлина|Государственная\s+пошлина)[\s:]*{MARKER}",
+            ],
+            # [88] - Дата состояния задолженности
+            "88": [
+                r"(?:дата\s+состояния|Дата\s+состояния)[\s:]*{MARKER}",
+                r"(?:дата\s+состояния\s+задолженности|Дата\s+состояния\s+задолженности)[\s:]*{MARKER}",
+            ],
+            # [989] - Название кредитора
+            "989": [
+                r"(?:кредитор|Кредитор)[\s:]*{MARKER}",
+                r"(?:название\s+кредитора|Название\s+кредитора)[\s:]*{MARKER}",
+            ],
+            # [990] - ОГРН кредитора
+            "990": [
+                r"(?:ОГРН|огрн)[\s:]*{MARKER}",
+                r"(?:ОГРН|огрн)[\s№]*{MARKER}",
+            ],
+            # [991] - ИНН кредитора
+            "991": [
+                r"(?:ИНН|инн)[\s:]*{MARKER}",
+                r"(?:ИНН|инн)[\s№]*{MARKER}",
+            ],
+            # [1000] - Сумма кредита
+            "1000": [
+                r"(?:сумма\s+кредита|Сумма\s+кредита)[\s:]*{MARKER}",
+            ],
+            # [1001] - Срок кредита
+            "1001": [
+                r"(?:срок\s+кредита|Срок\s+кредита)[\s:]*{MARKER}",
+            ],
+            # [1002] - Процентная ставка
+            "1002": [
+                r"(?:процентная\s+ставка|Процентная\s+ставка)[\s:]*{MARKER}",
+            ],
+            # [1003] - Ставка неустойки
+            "1003": [
+                r"(?:ставка\s+неустойки|Ставка\s+неустойки)[\s:]*{MARKER}",
+            ],
+            # [1004] - Дата расчета задолженности
+            "1004": [
+                r"(?:дата\s+расчета|Дата\s+расчета)[\s:]*{MARKER}",
+                r"(?:дата\s+расчета\s+задолженности|Дата\s+расчета\s+задолженности)[\s:]*{MARKER}",
+            ],
+            # [1221] - Описание предмета залога
+            "1221": [
+                r"(?:описание\s+предмета\s+залога|Описание\s+предмета\s+залога)[\s:]*{MARKER}",
+            ],
+            # [35] - Иное
+            "35": [
+                r"(?:иное|Иное)[\s:]*{MARKER}",
+                r"(?:иное|Иное)[\s–—-]*{MARKER}",
+            ],
+            # [36] - Срочные проценты на основной долг
+            "36": [
+                r"(?:срочные\s+проценты\s+на\s+основной\s+долг|Срочные\s+проценты\s+на\s+основной\s+долг)[\s:]*{MARKER}",
+                r"(?:срочные\s+проценты\s+на\s+основной\s+долг|Срочные\s+проценты\s+на\s+основной\s+долг)[\s–—-]*{MARKER}",
+            ],
+            # [37] - Срочные проценты на просроченный основной долг
+            "37": [
+                r"(?:срочные\s+проценты\s+на\s+просроченный\s+основной\s+долг|Срочные\s+проценты\s+на\s+просроченный\s+основной\s+долг)[\s:]*{MARKER}",
+                r"(?:срочные\s+проценты\s+на\s+просроченный\s+основной\s+долг|Срочные\s+проценты\s+на\s+просроченный\s+основной\s+долг)[\s–—-]*{MARKER}",
+            ],
+            # [66] - Дата определения о принятии заявления к производству
+            "66": [
+                r"(?:дата\s+определения\s+о\s+принятии\s+заявления\s+к\s+производству|Дата\s+определения\s+о\s+принятии\s+заявления\s+к\s+производству)[\s:]*{MARKER}",
+                r"(?:дата\s+определения|Дата\s+определения)[\s:]*{MARKER}",
+            ],
+        }
+
+        # Получаем паттерны для данного маркера
+        patterns = context_patterns_map.get(marker_number, [])
+
+        # Если паттернов нет, возвращаем только маркер
+        if not patterns:
+            return [f"{re.escape(placeholder)}"]
+
+        return patterns
+
     def _collect_placeholders(self, doc: Document) -> Set[str]:
         """
-        Собирает все плейсхолдеры вида [123] из параграфов и таблиц документа.
+        Собирает все плейсхолдеры вида [123] из параграфов и таблиц документа, включая колонтитулы.
         """
         pattern = re.compile(r'\[[^\]]+\]')
         placeholders: Set[str] = set()
 
+        # Собираем из основных параграфов
         for paragraph in doc.paragraphs:
             placeholders.update(pattern.findall(paragraph.text))
 
+        # Собираем из таблиц основного документа
         for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
                     placeholders.update(pattern.findall(cell.text))
 
+        # Собираем из колонтитулов
+        for section in doc.sections:
+            # Заголовки
+            for paragraph in section.header.paragraphs:
+                placeholders.update(pattern.findall(paragraph.text))
+            for table in section.header.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        placeholders.update(pattern.findall(cell.text))
+
+            # Подвалы
+            for paragraph in section.footer.paragraphs:
+                placeholders.update(pattern.findall(paragraph.text))
+            for table in section.footer.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        placeholders.update(pattern.findall(cell.text))
+
         return placeholders
+
+    def _format_date_66(self, date_value: str) -> str:
+        """
+        Форматирует дату для маркера [66] в вид: «день» месяц год года.
+        Пример: 15.03.2025 -> «15» марта 2025 года.
+        Принимает дату в форматах DD.MM.YYYY или YYYY-MM-DD.
+        """
+        if not date_value or not str(date_value).strip():
+            return ""
+        date_str = str(date_value).strip()
+        day, month, year = None, None, None
+        if re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+            try:
+                dt = datetime.strptime(date_str, "%Y-%m-%d")
+                day, month, year = dt.day, dt.month, dt.year
+            except ValueError:
+                return ""
+        elif re.match(r"^\d{1,2}[.,]\d{1,2}[.,]\d{4}$", date_str):
+            normalized = date_str.replace(",", ".")
+            parts = normalized.split(".")
+            if len(parts) == 3:
+                try:
+                    day = int(parts[0])
+                    month = int(parts[1])
+                    year = int(parts[2])
+                    if day < 1 or day > 31 or month < 1 or month > 12 or year < 1900 or year > 2100:
+                        return ""
+                except (ValueError, IndexError):
+                    return ""
+        if day is None or month is None or year is None:
+            return ""
+        months_genitive = [
+            "", "января", "февраля", "марта", "апреля", "мая", "июня",
+            "июля", "августа", "сентября", "октября", "ноября", "декабря"
+        ]
+        if month < 1 or month > 12:
+            return ""
+        month_name = months_genitive[month]
+        return f"«{day}» {month_name} {year} года"
 
     def _replace_placeholder_in_doc(self, doc: Document, placeholder: str, value: str) -> bool:
         """
@@ -1350,6 +1901,175 @@ class DocumentGenerator:
 
         return templates
 
+    def _get_ip_collection_templates(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Возвращает шаблоны для искового заявления о взыскании с ИП.
+        Генерирует 2 акта: "Принятие иска о взыскании с ИП" и "Решение взыскание с ИП".
+        """
+        root_dir = Path(__file__).resolve().parents[2]
+        collection_dir = root_dir / "Взыскания ИП + Залог"
+
+        def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
+            logger.info(f"📁 Шаблон взыскания ИП: {name} -> {path.absolute()} (существует: {path.exists()})")
+            return {"name": name, "path": path, "order": order}
+
+        templates = {
+            "acceptance": entry(
+                "Принятие иска о взыскании с ИП",
+                collection_dir / "Принятие иска о взыскании с ИП.docx",
+                1
+            ),
+            "decision": entry(
+                "Решение взыскание с ИП",
+                collection_dir / "Решение взыскание с ИП.docx",
+                2
+            )
+        }
+
+        logger.info("⚖️ Используются шаблоны для искового заявления о взыскании с ИП.")
+        return templates
+
+    def _get_ip_collection_collateral_templates(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Возвращает шаблоны для искового заявления о взыскании с ИП с залогом.
+        Генерирует 2 акта: "Принятие иска о взыскании с ИП Залог" и "Решение о взысканнии с ИП залог".
+        """
+        root_dir = Path(__file__).resolve().parents[2]
+        collection_dir = root_dir / "Взыскания ИП + Залог" / "Взыскаие ИП залог"
+
+        def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
+            logger.info(f"📁 Шаблон взыскания ИП с залогом: {name} -> {path.absolute()} (существует: {path.exists()})")
+            return {"name": name, "path": path, "order": order}
+
+        templates = {
+            "acceptance": entry(
+                "Принятие иска о взыскании с ИП Залог",
+                collection_dir / "Принятие иска о взыскании с ИП Залог.docx",
+                1
+            ),
+            "decision": entry(
+                "Решение о взысканнии с ИП залог",
+                collection_dir / "Решение о взысканнии с ИП залог.docx",
+                2
+            )
+        }
+
+        logger.info("⚖️ Используются шаблоны для искового заявления о взыскании с ИП с залогом.")
+        return templates
+
+    def _get_ip_collection_collateral_auto_templates(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Возвращает шаблоны для искового заявления о взыскании с ИП залог авто.
+        Маркер [1221] — описание авто (марка, модель, год, VIN и т.д.).
+        """
+        root_dir = Path(__file__).resolve().parents[2]
+        collection_dir = root_dir / "Взыскание ИП залог авто"
+
+        def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
+            logger.info(f"📁 Шаблон взыскания ИП залог авто: {name} -> {path.absolute()} (существует: {path.exists()})")
+            return {"name": name, "path": path, "order": order}
+
+        templates = {
+            "acceptance": entry(
+                "Принятие иска о взыскании с ИП залог авто",
+                collection_dir / "Принятие иска о взыскании с ИП Залог авто.docx",
+                1
+            ),
+            "decision": entry(
+                "Решение о взыскании с ИП залог авто",
+                collection_dir / "Решение о взысканнии с ИП залог.docx",
+                2
+            )
+        }
+
+        logger.info("⚖️ Используются шаблоны для искового заявления о взыскании с ИП залог авто.")
+        return templates
+
+    def _get_legal_collection_templates(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Возвращает шаблоны для искового заявления о взыскании с ЮЛ.
+        Генерирует 2 акта: "Принятие иска о взыскании с ЮЛ" и "Решение о взыскании с ЮЛ".
+        """
+        root_dir = Path(__file__).resolve().parents[2]
+        collection_dir = root_dir / "Взыскание ЮЛ"
+
+        def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
+            logger.info(f"📁 Шаблон взыскания ЮЛ: {name} -> {path.absolute()} (существует: {path.exists()})")
+            return {"name": name, "path": path, "order": order}
+
+        templates = {
+            "acceptance": entry(
+                "Принятие иска о взыскании с ЮЛ",
+                collection_dir / "Принятие иска о взыскании с ЮЛ.docx",
+                1
+            ),
+            "decision": entry(
+                "Решение о взыскании с ЮЛ",
+                collection_dir / "Решение о взыскании с ЮЛ.docx",
+                2
+            )
+        }
+
+        logger.info("⚖️ Используются шаблоны для искового заявления о взыскании с ЮЛ.")
+        return templates
+
+    def _get_legal_collection_collateral_templates(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Возвращает шаблоны для искового заявления о взыскании с ЮЛ с залогом.
+        Генерирует 2 акта: "Принятие иска о взыскании с ЮЛ Залог" и "Решение о взыскании с ЮЛ Залог".
+        """
+        root_dir = Path(__file__).resolve().parents[2]
+        collection_dir = root_dir / "ЮЛ взыскание залог"
+
+        def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
+            logger.info(f"📁 Шаблон взыскания ЮЛ с залогом: {name} -> {path.absolute()} (существует: {path.exists()})")
+            return {"name": name, "path": path, "order": order}
+
+        templates = {
+            "acceptance": entry(
+                "Принятие иска о взыскании с ЮЛ Залог",
+                collection_dir / "Принятие иска о взыскании с ЮЛ Залог.docx",
+                1
+            ),
+            "decision": entry(
+                "Решение о взыскании с ЮЛ Залог",
+                collection_dir / "Решение о взыскании с ЮЛ Залог.docx",
+                2
+            )
+        }
+
+        logger.info("⚖️ Используются шаблоны для искового заявления о взыскании с ЮЛ с залогом.")
+        return templates
+
+    def _get_legal_collection_collateral_auto_templates(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Возвращает шаблоны для искового заявления о взыскании с ЮЛ залог авто.
+        Генерирует 2 акта: "Принятие иска о взыскании с ЮЛ Залог авто" и "Решение о взыскании с ЮЛ Залог авто".
+        Маркер [1221] — описание авто (марка, модель, год, VIN и т.д.).
+        """
+        root_dir = Path(__file__).resolve().parents[2]
+        collection_dir = root_dir / "взыскание ЮЛ залог авто"
+
+        def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
+            logger.info(f"📁 Шаблон взыскания ЮЛ залог авто: {name} -> {path.absolute()} (существует: {path.exists()})")
+            return {"name": name, "path": path, "order": order}
+
+        templates = {
+            "acceptance": entry(
+                "Принятие иска о взыскании с ЮЛ Залог авто",
+                collection_dir / "Принятие иска о взыскании с ЮЛ Залог авто.docx",
+                1
+            ),
+            "decision": entry(
+                "Решение о взыскании с ЮЛ Залог авто",
+                collection_dir / "Решение о взыскании с ЮЛ Залог авто.docx",
+                2
+            )
+        }
+
+        logger.info("⚖️ Используются шаблоны для искового заявления о взыскании с ЮЛ залог авто.")
+        return templates
+
     def _get_physical_collateral_templates(self) -> Dict[str, Dict[str, Any]]:
         """
         Возвращает шаблоны для ФЛ с залогом в реализации.
@@ -1627,6 +2347,36 @@ class DocumentGenerator:
                     f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для КФХ "
                     f"({'наблюдение с залогом' if has_collateral else 'наблюдение, без залога'})"
                 )
+            elif normalized_template == "ip_collection_collateral" or source_document_type == "ip_collection_collateral":
+                # Шаблоны для искового заявления о взыскании с ИП с залогом
+                templates = self._get_ip_collection_collateral_templates()
+                procedure_type = "ip_collection_collateral"
+                logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП с залогом")
+            elif normalized_template == "ip_collection_collateral_auto" or source_document_type == "ip_collection_collateral_auto":
+                # Шаблоны для искового заявления о взыскании с ИП залог авто ([1221] — описание авто)
+                templates = self._get_ip_collection_collateral_auto_templates()
+                procedure_type = "ip_collection_collateral_auto"
+                logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП залог авто")
+            elif normalized_template == "legal_collection" or source_document_type == "legal_collection":
+                # Шаблоны для искового заявления о взыскании с ЮЛ
+                templates = self._get_legal_collection_templates()
+                procedure_type = "legal_collection"
+                logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ")
+            elif normalized_template == "legal_collection_collateral" or source_document_type == "legal_collection_collateral":
+                # Шаблоны для искового заявления о взыскании с ЮЛ с залогом
+                templates = self._get_legal_collection_collateral_templates()
+                procedure_type = "legal_collection_collateral"
+                logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ с залогом")
+            elif normalized_template == "legal_collection_collateral_auto" or source_document_type == "legal_collection_collateral_auto":
+                # Шаблоны для искового заявления о взыскании с ЮЛ залог авто ([1221] — описание авто)
+                templates = self._get_legal_collection_collateral_auto_templates()
+                procedure_type = "legal_collection_collateral_auto"
+                logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ залог авто")
+            elif normalized_template == "ip_collection" or source_document_type == "ip_collection":
+                # Шаблоны для искового заявления о взыскании с ИП
+                templates = self._get_ip_collection_templates()
+                procedure_type = "ip_collection"
+                logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП")
             elif normalized_template in ["ip_enforcement", "ip_enforcement_realization", "ip_enforcement_realization_collateral",
                                          "ip_enforcement_restructuring", "ip_enforcement_restructuring_collateral"] or \
                  source_document_type in ["ip_enforcement_statement", "ip_enforcement_statement_collateral",
@@ -1786,6 +2536,20 @@ class DocumentGenerator:
                 logger.info(f"✅ Документ '{template_info['name']}' успешно сгенерирован: {file_path}")
 
             logger.info(f"🎉 Сгенерировано документов: {len(generated_documents)}")
+
+            # Проверяем, были ли сгенерированы документы
+            if len(generated_documents) == 0:
+                missing_templates = []
+                for doc_type, template_info in templates.items():
+                    if not template_info['path'].exists():
+                        missing_templates.append(f"{template_info['name']} ({template_info['path'].absolute()})")
+
+                error_message = f"Не найдены шаблоны документов. Отсутствующие файлы:\n" + "\n".join(missing_templates)
+                logger.error(error_message)
+                return {
+                    "success": False,
+                    "error": error_message
+                }
 
             return {
                 "success": True,

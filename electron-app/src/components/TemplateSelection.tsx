@@ -252,6 +252,109 @@ const TemplateSelection: React.FC<TemplateSelectionProps> = ({
           ]
         },
         {
+          id: 'ip_collection',
+          name: 'Взыскания ИП',
+          description: 'Комплект актов для искового заявления о взыскании с ИП: принятие иска и решение',
+          category: 'ИП',
+          fields: [
+            { name: 'applicantName', label: 'ИП (ФИО)', type: 'text', required: true },
+            { name: 'inn', label: 'ИНН ИП', type: 'text', required: true },
+            { name: 'ogrnip', label: 'ОГРНИП', type: 'text', required: true },
+            { name: 'bankCommission', label: 'Комиссия Банка [122]', type: 'number', required: false },
+            { name: 'principalDebt13', label: 'Основной долг', type: 'number', required: true },
+            { name: 'interest14', label: 'Проценты', type: 'number', required: true }
+          ]
+        },
+        {
+          id: 'ip_collection_collateral',
+          name: 'Взыскания ИП + Залог',
+          description: 'Комплект актов для искового заявления о взыскании с ИП с залогом: принятие иска и решение',
+          category: 'ИП',
+          fields: [
+            { name: 'applicantName', label: 'ИП (ФИО)', type: 'text', required: true },
+            { name: 'inn', label: 'ИНН ИП', type: 'text', required: true },
+            { name: 'ogrnip', label: 'ОГРНИП', type: 'text', required: true },
+            { name: 'bankCommission', label: 'Комиссия Банка [122]', type: 'number', required: false },
+            { name: 'principalDebt13', label: 'Основной долг', type: 'number', required: true },
+            { name: 'interest14', label: 'Проценты', type: 'number', required: true },
+            { name: 'ipCollateralContractNumber', label: 'Номер договора залога [0005]', type: 'text', required: true },
+            { name: 'ipCollateralContractDate', label: 'Дата договора залога [0006]', type: 'date', required: true },
+            { name: 'ipCollateralClaimAmount', label: 'Сумма требований [0007]', type: 'number', required: true },
+            { name: 'mortgageCollateralDescription1221', label: 'Описание предмета залога [1221]', type: 'textarea', required: true }
+          ]
+        },
+        {
+          id: 'ip_collection_collateral_auto',
+          name: 'Взыскание ИП залог авто',
+          description: 'Комплект актов для искового заявления о взыскании с ИП с залогом авто: принятие иска и решение. [1221] — описание авто (марка, модель, год, VIN).',
+          category: 'ИП',
+          fields: [
+            { name: 'applicantName', label: 'ИП (ФИО)', type: 'text', required: true },
+            { name: 'inn', label: 'ИНН ИП', type: 'text', required: true },
+            { name: 'ogrnip', label: 'ОГРНИП', type: 'text', required: true },
+            { name: 'bankCommission', label: 'Комиссия Банка [122]', type: 'number', required: false },
+            { name: 'principalDebt13', label: 'Основной долг', type: 'number', required: true },
+            { name: 'interest14', label: 'Проценты', type: 'number', required: true },
+            { name: 'ipCollateralContractNumber', label: 'Номер договора залога [0005]', type: 'text', required: true },
+            { name: 'ipCollateralContractDate', label: 'Дата договора залога [0006]', type: 'date', required: true },
+            { name: 'ipCollateralClaimAmount', label: 'Сумма требований [0007]', type: 'number', required: true },
+            { name: 'mortgageCollateralDescription1221', label: 'Описание предмета залога (авто) [1221]', type: 'textarea', required: true }
+          ]
+        },
+        {
+          id: 'legal_collection',
+          name: 'Взыскание с ЮЛ',
+          description: 'Комплект актов для искового заявления о взыскании с юридического лица: принятие иска и решение',
+          category: 'ЮЛ',
+          fields: [
+            { name: 'applicantName', label: 'Название организации', type: 'text', required: true },
+            { name: 'inn', label: 'ИНН', type: 'text', required: true },
+            { name: 'ogrn', label: 'ОГРН', type: 'text', required: true },
+            { name: 'principalDebt13', label: 'Основной долг', type: 'number', required: true },
+            { name: 'interest14', label: 'Проценты', type: 'number', required: true },
+            { name: 'forfeit15', label: 'Неустойка', type: 'number', required: false },
+            { name: 'totalDebt', label: 'Общая сумма долга', type: 'number', required: true }
+          ]
+        },
+        {
+          id: 'legal_collection_collateral',
+          name: 'Взыскание с ЮЛ + Залог',
+          description: 'Комплект актов для искового заявления о взыскании с ЮЛ с залогом: принятие иска и решение',
+          category: 'ЮЛ',
+          fields: [
+            { name: 'applicantName', label: 'Название организации', type: 'text', required: true },
+            { name: 'inn', label: 'ИНН', type: 'text', required: true },
+            { name: 'ogrn', label: 'ОГРН', type: 'text', required: true },
+            { name: 'principalDebt13', label: 'Основной долг', type: 'number', required: true },
+            { name: 'interest14', label: 'Проценты', type: 'number', required: true },
+            { name: 'forfeit15', label: 'Неустойка', type: 'number', required: false },
+            { name: 'totalDebt', label: 'Общая сумма долга', type: 'number', required: true },
+            { name: 'ipCollateralContractNumber', label: 'Номер договора залога [0005]', type: 'text', required: true },
+            { name: 'ipCollateralContractDate', label: 'Дата договора залога [0006]', type: 'date', required: true },
+            { name: 'ipCollateralClaimAmount', label: 'Сумма требований [0007]', type: 'number', required: true },
+            { name: 'mortgageCollateralDescription1221', label: 'Описание предмета залога [1221]', type: 'textarea', required: true }
+          ]
+        },
+        {
+          id: 'legal_collection_collateral_auto',
+          name: 'Взыскание с ЮЛ залог авто',
+          description: 'Комплект актов для искового заявления о взыскании с ЮЛ с залогом авто: принятие иска и решение. [1221] — описание авто (марка, модель, год, VIN).',
+          category: 'ЮЛ',
+          fields: [
+            { name: 'applicantName', label: 'Название организации', type: 'text', required: true },
+            { name: 'inn', label: 'ИНН', type: 'text', required: true },
+            { name: 'ogrn', label: 'ОГРН', type: 'text', required: true },
+            { name: 'principalDebt13', label: 'Основной долг', type: 'number', required: true },
+            { name: 'interest14', label: 'Проценты', type: 'number', required: true },
+            { name: 'forfeit15', label: 'Неустойка', type: 'number', required: false },
+            { name: 'totalDebt', label: 'Общая сумма долга', type: 'number', required: true },
+            { name: 'ipCollateralContractNumber', label: 'Номер договора залога [0005]', type: 'text', required: true },
+            { name: 'ipCollateralContractDate', label: 'Дата договора залога [0006]', type: 'date', required: true },
+            { name: 'ipCollateralClaimAmount', label: 'Сумма требований [0007]', type: 'number', required: true },
+            { name: 'mortgageCollateralDescription1221', label: 'Описание предмета залога (авто) [1221]', type: 'textarea', required: true }
+          ]
+        },
+        {
           id: 'physical_realization_collateral',
           name: 'Реализация ФЛ с залогом',
           description: 'Комплект актов для реализации имущества физического лица с залогом',
@@ -333,6 +436,18 @@ const TemplateSelection: React.FC<TemplateSelectionProps> = ({
         setSelectedTemplateId('physical_restructuring_collateral');
       } else if (sourceDocumentType === 'physical_realization_collateral') {
         setSelectedTemplateId('physical_realization_collateral');
+      } else if (sourceDocumentType === 'ip_collection_collateral_auto') {
+        setSelectedTemplateId('ip_collection_collateral_auto');
+      } else if (sourceDocumentType === 'ip_collection_collateral') {
+        setSelectedTemplateId('ip_collection_collateral');
+      } else if (sourceDocumentType === 'ip_collection') {
+        setSelectedTemplateId('ip_collection');
+      } else if (sourceDocumentType === 'legal_collection_collateral_auto') {
+        setSelectedTemplateId('legal_collection_collateral_auto');
+      } else if (sourceDocumentType === 'legal_collection_collateral') {
+        setSelectedTemplateId('legal_collection_collateral');
+      } else if (sourceDocumentType === 'legal_collection') {
+        setSelectedTemplateId('legal_collection');
       } else if (sourceDocumentType === 'ip_enforcement_realization') {
         setSelectedTemplateId('ip_enforcement_realization');
       } else if (sourceDocumentType === 'ip_enforcement_realization_collateral') {
@@ -413,6 +528,10 @@ const TemplateSelection: React.FC<TemplateSelectionProps> = ({
       return '🏠';
     } else if (templateId.includes('kfh')) {
       return '🚜';
+    } else if (templateId === 'ip_collection' || templateId === 'ip_collection_collateral' || templateId === 'ip_collection_collateral_auto') {
+      return '📝';
+    } else if (templateId === 'legal_collection') {
+      return '🏢';
     } else if (templateId.includes('ip_enforcement')) {
       return '👤';
     } else if (templateId === 'initiation_physical') {
@@ -438,6 +557,10 @@ const TemplateSelection: React.FC<TemplateSelectionProps> = ({
       return 'info';
     } else if (templateId.includes('kfh')) {
       return 'success';
+    } else if (templateId === 'ip_collection' || templateId === 'ip_collection_collateral' || templateId === 'ip_collection_collateral_auto') {
+      return 'warning';
+    } else if (templateId === 'legal_collection') {
+      return 'info';
     } else if (templateId.includes('ip_enforcement')) {
       return 'warning';
     } else if (templateId === 'initiation_physical') {

@@ -109,13 +109,18 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
           onDocumentGenerated(generationResult.file_path);
         }
       } else {
-        throw new Error(generationResult.error || 'Ошибка генерации документа');
+        // Показываем конкретное сообщение об ошибке из API
+        setGenerationResult({
+          success: false,
+          error: generationResult.error || 'Ошибка при генерации документа'
+        });
+        return;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error generating document:', err);
       setGenerationResult({
         success: false,
-        error: 'Ошибка при генерации документа'
+        error: err?.message || err?.error || 'Ошибка при генерации документа'
       });
     } finally {
       setIsGenerating(false);
@@ -176,10 +181,10 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
             В Арбитражный суд города Москвы
           </Typography>
           <Typography variant="body2" paragraph>
-            <strong>Заявитель:</strong> {getFieldValue('applicantName')}
+            <strong>ФИО должника:</strong> {getFieldValue('applicantName')}
           </Typography>
           <Typography variant="body2" paragraph>
-            <strong>Адрес заявителя:</strong> {getFieldValue('applicantAddress')}
+            <strong>Адрес должника:</strong> {getFieldValue('applicantAddress')}
           </Typography>
           <Typography variant="body2" paragraph>
             <strong>Дело №:</strong> {getFieldValue('caseNumber')}
@@ -220,10 +225,10 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
             В Арбитражный суд города Москвы
           </Typography>
           <Typography variant="body2" paragraph>
-            <strong>Заявитель:</strong> {getFieldValue('applicantName')}
+            <strong>ФИО должника:</strong> {getFieldValue('applicantName')}
           </Typography>
           <Typography variant="body2" paragraph>
-            <strong>Адрес заявителя:</strong> {getFieldValue('applicantAddress')}
+            <strong>Адрес должника:</strong> {getFieldValue('applicantAddress')}
           </Typography>
           <Typography variant="body2" paragraph>
             <strong>Дело №:</strong> {getFieldValue('caseNumber')}
@@ -373,6 +378,324 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
           </Typography>
           <Typography variant="body2" paragraph>
             В комплект входят: принятие заявления, определение о введении реструктуризации долгов, определение о введении реализации имущества.
+          </Typography>
+        </Box>
+      );
+    } else if (selectedTemplate.id === 'ip_collection') {
+      return (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Взыскания ИП
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>ИП:</strong> {getFieldValue('applicantName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>ИНН / ОГРНИП:</strong> {getFieldValue('inn')} / {getFieldValue('ogrnip')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Адрес регистрации:</strong> {getFieldValue('applicantAddress')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Кредитный договор:</strong> №{getFieldValue('contractNumber')} от {getFieldValue('contractDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Сумма кредита:</strong> {getFieldValue('creditAmount')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Срок кредита:</strong> {getFieldValue('creditTermMonths')} мес.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Процентная ставка:</strong> {getFieldValue('creditInterestRate')} %
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Ставка неустойки:</strong> {getFieldValue('creditPenaltyRate')} %
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Дата расчета задолженности:</strong> {getFieldValue('debtSnapshotDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Основной долг:</strong> {getFieldValue('principalDebt13')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Проценты:</strong> {getFieldValue('interest14')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Неустойка:</strong> {getFieldValue('forfeit15')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Комиссия Банка:</strong> {getFieldValue('bankCommission')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Госпошлина:</strong> {getFieldValue('stateDuty16')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Общая сумма долга:</strong> {getFieldValue('totalDebt')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            В комплект входят: Решение взыскание с ИП, Принятие иска о взыскании с ИП.
+          </Typography>
+        </Box>
+      );
+    } else if (selectedTemplate.id === 'ip_collection_collateral') {
+      return (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Взыскания ИП + Залог
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>ИП:</strong> {getFieldValue('applicantName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>ИНН / ОГРНИП:</strong> {getFieldValue('inn')} / {getFieldValue('ogrnip')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Адрес регистрации:</strong> {getFieldValue('applicantAddress')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Кредитный договор:</strong> №{getFieldValue('contractNumber')} от {getFieldValue('contractDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Договор залога:</strong> №{getFieldValue('ipCollateralContractNumber')} от {getFieldValue('ipCollateralContractDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Сумма требований в реестре:</strong> {getFieldValue('ipCollateralClaimAmount')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Описание предмета залога:</strong> {getFieldValue('mortgageCollateralDescription1221')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Сумма кредита:</strong> {getFieldValue('creditAmount')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Срок кредита:</strong> {getFieldValue('creditTermMonths')} мес.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Процентная ставка:</strong> {getFieldValue('creditInterestRate')} %
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Ставка неустойки:</strong> {getFieldValue('creditPenaltyRate')} %
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Дата расчета задолженности:</strong> {getFieldValue('debtSnapshotDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Основной долг:</strong> {getFieldValue('principalDebt13')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Проценты:</strong> {getFieldValue('interest14')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Неустойка:</strong> {getFieldValue('forfeit15')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Комиссия Банка:</strong> {getFieldValue('bankCommission')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Госпошлина:</strong> {getFieldValue('stateDuty16')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Общая сумма долга:</strong> {getFieldValue('totalDebt')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            В комплект входят: Решение о взысканнии с ИП залог, Принятие иска о взыскании с ИП Залог.
+          </Typography>
+        </Box>
+      );
+    } else if (selectedTemplate.id === 'ip_collection_collateral_auto') {
+      return (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Взыскание ИП залог авто
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>ИП:</strong> {getFieldValue('applicantName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>ИНН / ОГРНИП:</strong> {getFieldValue('inn')} / {getFieldValue('ogrnip')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Адрес регистрации:</strong> {getFieldValue('applicantAddress')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Кредитный договор:</strong> №{getFieldValue('contractNumber')} от {getFieldValue('contractDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Договор залога:</strong> №{getFieldValue('ipCollateralContractNumber')} от {getFieldValue('ipCollateralContractDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Сумма требований в реестре:</strong> {getFieldValue('ipCollateralClaimAmount')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Описание предмета залога (авто) [1221]:</strong> {getFieldValue('mortgageCollateralDescription1221')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Сумма кредита:</strong> {getFieldValue('creditAmount')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Срок кредита:</strong> {getFieldValue('creditTermMonths')} мес.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Процентная ставка:</strong> {getFieldValue('creditInterestRate')} %
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Ставка неустойки:</strong> {getFieldValue('creditPenaltyRate')} %
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Дата расчета задолженности:</strong> {getFieldValue('debtSnapshotDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Основной долг:</strong> {getFieldValue('principalDebt13')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Проценты:</strong> {getFieldValue('interest14')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Неустойка:</strong> {getFieldValue('forfeit15')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Комиссия Банка:</strong> {getFieldValue('bankCommission')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Госпошлина:</strong> {getFieldValue('stateDuty16')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Общая сумма долга:</strong> {getFieldValue('totalDebt')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            В комплект входят: Решение о взыскании с ИП залог авто, Принятие иска о взыскании с ИП залог авто.
+          </Typography>
+        </Box>
+      );
+    } else if (selectedTemplate.id === 'legal_collection_collateral') {
+      return (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Взыскание с ЮЛ + Залог
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Организация:</strong> {getFieldValue('applicantName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>ИНН / ОГРН:</strong> {getFieldValue('inn')} / {getFieldValue('ogrn')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Юридический адрес:</strong> {getFieldValue('applicantAddress')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Кредитный договор:</strong> №{getFieldValue('contractNumber')} от {getFieldValue('contractDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Договор залога:</strong> №{getFieldValue('ipCollateralContractNumber')} от {getFieldValue('ipCollateralContractDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Сумма требований в реестре:</strong> {getFieldValue('ipCollateralClaimAmount')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Описание предмета залога:</strong> {getFieldValue('mortgageCollateralDescription1221')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Основной долг:</strong> {getFieldValue('principalDebt13')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Проценты:</strong> {getFieldValue('interest14')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Неустойка:</strong> {getFieldValue('forfeit15')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Госпошлина:</strong> {getFieldValue('stateDuty16')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Общая сумма долга:</strong> {getFieldValue('totalDebt')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            В комплект входят: Решение о взыскании с ЮЛ Залог, Принятие иска о взыскании с ЮЛ Залог.
+          </Typography>
+        </Box>
+      );
+    } else if (selectedTemplate.id === 'legal_collection_collateral_auto') {
+      return (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Взыскание с ЮЛ залог авто
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Организация:</strong> {getFieldValue('applicantName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>ИНН / ОГРН:</strong> {getFieldValue('inn')} / {getFieldValue('ogrn')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Юридический адрес:</strong> {getFieldValue('applicantAddress')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Кредитный договор:</strong> №{getFieldValue('contractNumber')} от {getFieldValue('contractDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Договор залога:</strong> №{getFieldValue('ipCollateralContractNumber')} от {getFieldValue('ipCollateralContractDate')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Сумма требований в реестре:</strong> {getFieldValue('ipCollateralClaimAmount')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Описание предмета залога (авто):</strong> {getFieldValue('mortgageCollateralDescription1221')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Основной долг:</strong> {getFieldValue('principalDebt13')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Проценты:</strong> {getFieldValue('interest14')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Неустойка:</strong> {getFieldValue('forfeit15')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Госпошлина:</strong> {getFieldValue('stateDuty16')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Общая сумма долга:</strong> {getFieldValue('totalDebt')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            В комплект входят: Решение о взыскании с ЮЛ Залог авто, Принятие иска о взыскании с ЮЛ Залог авто.
+          </Typography>
+        </Box>
+      );
+    } else if (selectedTemplate.id === 'legal_collection') {
+      return (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Взыскание с ЮЛ
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Организация:</strong> {getFieldValue('applicantName')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>ИНН / ОГРН:</strong> {getFieldValue('inn')} / {getFieldValue('ogrn')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Юридический адрес:</strong> {getFieldValue('applicantAddress')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Дело №:</strong> {getFieldValue('caseNumber')}
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Основной долг:</strong> {getFieldValue('principalDebt13')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Проценты:</strong> {getFieldValue('interest14')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Неустойка:</strong> {getFieldValue('forfeit15')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Общая сумма долга:</strong> {getFieldValue('totalDebt')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            <strong>Госпошлина:</strong> {getFieldValue('stateDuty16')} руб.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            В комплект входят: Решение о взыскании с ЮЛ, Принятие иска о взыскании с ЮЛ.
           </Typography>
         </Box>
       );

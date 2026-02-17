@@ -202,13 +202,6 @@ const DocumentGeneration: React.FC<DocumentGenerationProps> = ({
                   color="primary"
                   sx={{ mr: 1, mb: 1 }}
                 />
-                <Chip
-                  label={`Уверенность: ${Math.round(
-                    documentData.confidence * 100
-                  )}%`}
-                  color="success"
-                  sx={{ mb: 1 }}
-                />
               </Box>
 
               <Typography variant="subtitle2" gutterBottom>
