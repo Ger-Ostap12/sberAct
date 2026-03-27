@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, globalShortcut, Menu } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -122,9 +122,101 @@ function createWindow() {
     // Не открываем DevTools автоматически, чтобы избежать спама сообщениями Autofill
   } else {
     mainWindow.loadFile(path.join(__dirname, 'build/index.html'));
+    // ВАЖНО: Автоматически открываем DevTools в production для отладки
+    // Можно закомментировать эту строку после исправления проблем
+    mainWindow.webContents.openDevTools();
   }
+
+  // Добавляем горячие клавиши для открытия DevTools
+  // Используем несколько методов для надежности
+
+  // Функция для переключения DevTools
+  const toggleDevTools = () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.webContents.isDevToolsOpened()) {
+        mainWindow.webContents.closeDevTools();
+      } else {
+        mainWindow.webContents.openDevTools();
+      }
+    }
+  };
+
+  // Метод 1: Обработчик событий клавиатуры в окне (основной метод)
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    // F12 для открытия/закрытия DevTools
+    if (input.key === 'F12' || input.code === 'F12') {
+      event.preventDefault();
+      toggleDevTools();
+      return;
+    }
+    // Ctrl+Shift+I для открытия DevTools
+    if (input.control && input.shift && (input.key === 'I' || input.key === 'i')) {
+      event.preventDefault();
+      if (!mainWindow.webContents.isDevToolsOpened()) {
+        mainWindow.webContents.openDevTools();
+      }
+      return;
+    }
+    // Ctrl+Shift+J для открытия DevTools (альтернатива)
+    if (input.control && input.shift && (input.key === 'J' || input.key === 'j')) {
+      event.preventDefault();
+      if (!mainWindow.webContents.isDevToolsOpened()) {
+        mainWindow.webContents.openDevTools();
+      }
+      return;
+    }
+  });
+
+  // Метод 2: IPC обработчик для открытия DevTools из рендерера
+  ipcMain.handle('toggle-devtools', () => {
+    toggleDevTools();
+    return { opened: mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents.isDevToolsOpened() };
+  });
+
+  // Метод 3: Создаем меню с опцией открытия DevTools
+  const template = [
+    {
+      label: 'Вид',
+      submenu: [
+        {
+          label: 'Открыть консоль разработчика',
+          accelerator: 'F12',
+          click: () => {
+            toggleDevTools();
+          }
+        },
+        {
+          label: 'Перезагрузить',
+          accelerator: 'Ctrl+R',
+          click: () => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.reload();
+            }
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Выход',
+          accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
+          click: () => {
+            app.quit();
+          }
+        }
+      ]
+    }
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+
+  // Метод 4: Добавляем обработчик на уровне приложения (для отладки)
+  console.log('[main] DevTools shortcuts registered: F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+D');
+  console.log('[main] DevTools menu added: View -> Open DevTools');
   mainWindow.on('closed', () => {
-    mainWindow = null;
+    // Отменяем регистрацию глобальных шорткатов при закрытии окна
+    globalShortcut.unregisterAll();
+    // Не обнуляем mainWindow сразу, чтобы диалоги могли работать
+    // mainWindow = null;
   });
 }
 
@@ -132,9 +224,34 @@ app.whenReady().then(() => {
   startPythonBackend();
   createWindow();
 
+  // Регистрируем глобальные шорткаты после создания окна
+  // Используем альтернативные комбинации (F12 не работает как глобальный шорткат)
+  const registerGlobalShortcuts = () => {
+    const windows = BrowserWindow.getAllWindows();
+    if (windows.length === 0) return;
+    const win = windows[0];
+
+    // Ctrl+Shift+D для переключения DevTools
+    globalShortcut.register('CommandOrControl+Shift+D', () => {
+      if (win && !win.isDestroyed()) {
+        if (win.webContents.isDevToolsOpened()) {
+          win.webContents.closeDevTools();
+        } else {
+          win.webContents.openDevTools();
+        }
+      }
+    });
+
+    console.log('[main] Global shortcuts registered: Ctrl+Shift+D');
+  };
+
+  // Регистрируем после небольшой задержки, чтобы окно точно было создано
+  setTimeout(registerGlobalShortcuts, 500);
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
+      setTimeout(registerGlobalShortcuts, 500);
     }
   });
 });
@@ -156,7 +273,9 @@ ipcMain.handle('select-file', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile'],
     filters: [
+      { name: 'Заявления (Word и PDF)', extensions: ['docx', 'pdf'] },
       { name: 'Word Documents', extensions: ['docx'] },
+      { name: 'PDF', extensions: ['pdf'] },
       { name: 'All Files', extensions: ['*'] }
     ]
   });
@@ -216,80 +335,186 @@ ipcMain.handle('generate-document', async (event, data) => {
 // API для скачивания одного документа
 ipcMain.handle('download-document', async (event, documentId) => {
   try {
+    console.log(`[main] download-document: Starting download for document ID: ${documentId}`);
+
     const response = await fetch(`http://localhost:8000/download-document/${documentId}`);
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorText = await response.text().catch(() => 'Unknown error');
+      console.error(`[main] download-document: HTTP error ${response.status}: ${errorText}`);
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
     }
+
+    console.log(`[main] download-document: Response received, content-type: ${response.headers.get('content-type')}`);
 
     // Получаем файл как blob
     const blob = await response.blob();
     const arrayBuffer = await blob.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Показываем диалог сохранения
-    const result = await dialog.showSaveDialog(mainWindow, {
-      defaultPath: `document_${documentId}.docx`,
-      filters: [
-        { name: 'Word Documents', extensions: ['docx'] }
-      ]
-    });
+    console.log(`[main] download-document: File loaded, size: ${buffer.length} bytes`);
 
-    if (!result.canceled) {
-      fs.writeFileSync(result.filePath, buffer);
-      return { success: true, filePath: result.filePath };
+    // Показываем диалог сохранения
+    if (!mainWindow) {
+      console.error('[main] download-document: mainWindow is null!');
+      const windows = BrowserWindow.getAllWindows();
+      if (windows.length > 0) {
+        mainWindow = windows[0];
+        console.log('[main] download-document: Using first available window');
+      } else {
+        throw new Error('Main window не доступен для показа диалога');
+      }
     }
 
-    return { success: false, error: 'Сохранение отменено' };
+    console.log('[main] download-document: Showing save dialog...');
+    // Убеждаемся, что окно видимо и в фокусе
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore();
+    }
+    mainWindow.focus();
+
+    // Принудительно показываем окно поверх всех окон
+    mainWindow.setAlwaysOnTop(true);
+    mainWindow.show();
+
+    console.log('[main] download-document: Calling dialog.showSaveDialog...');
+
+    // Используем асинхронный вызов диалога
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Сохранить документ',
+      defaultPath: `Судебный_акт_${documentId}.docx`,
+      filters: [
+        { name: 'Word Documents', extensions: ['docx'] },
+        { name: 'All Files', extensions: ['*'] }
+      ],
+      properties: ['showOverwriteConfirmation']
+    });
+
+    // Убираем alwaysOnTop после показа диалога
+    mainWindow.setAlwaysOnTop(false);
+
+    console.log('[main] download-document: Dialog result:', result);
+
+    if (result && !result.canceled && result.filePath) {
+      const filePath = result.filePath;
+      console.log(`[main] download-document: Saving to: ${filePath}`);
+      fs.writeFileSync(filePath, buffer);
+      console.log(`[main] download-document: File saved successfully`);
+      return { success: true, filePath: filePath };
+    }
+
+    console.log(`[main] download-document: Save dialog canceled`);
+    return { success: false, error: 'Сохранение отменено пользователем' };
   } catch (error) {
-    console.error('Error downloading document:', error);
-    return { success: false, error: error.message };
+    console.error('[main] download-document: Error:', error);
+    return { success: false, error: error.message || 'Ошибка при скачивании документа' };
   }
 });
 
 // API для скачивания всех документов
 ipcMain.handle('download-all-documents', async (event, data) => {
   try {
+    console.log(`[main] ========== download-all-documents IPC HANDLER CALLED ==========`);
+    console.log(`[main] download-all-documents: Starting download with data:`, data);
+
+    // ВСЕГДА показываем диалог сохранения, даже если указан download_path
+    // Пользователь должен выбрать место сохранения через проводник
+    const documentIds = data.document_ids || '';
+    const ids = documentIds.split(',').filter(id => id.trim());
+
+    if (!ids || ids.length === 0) {
+      throw new Error('Не указаны ID документов для скачивания');
+    }
+
+    console.log(`[main] download-all-documents: Document IDs: ${ids.join(', ')}`);
+
+    // Получаем ZIP файл с сервера
     const response = await fetch('http://localhost:8000/download-all-documents', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify({
+        document_ids: documentIds,
+        download_path: '' // Всегда пустой, чтобы получить файл для диалога
+      })
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorText = await response.text().catch(() => 'Unknown error');
+      console.error(`[main] download-all-documents: HTTP error ${response.status}: ${errorText}`);
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
     }
 
-    // Если указан путь для сохранения, возвращаем информацию
-    if (data.download_path) {
-      const result = await response.json();
-      return result;
-    } else {
-      // Иначе скачиваем файл
-      const blob = await response.blob();
-      const arrayBuffer = await blob.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+    // Скачиваем файл
+    console.log(`[main] download-all-documents: Response received, downloading ZIP`);
+    const blob = await response.blob();
+    const arrayBuffer = await blob.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
-      // Показываем диалог сохранения
-      const result = await dialog.showSaveDialog(mainWindow, {
-        defaultPath: 'generated_documents.zip',
-        filters: [
-          { name: 'ZIP Archives', extensions: ['zip'] }
-        ]
-      });
+    console.log(`[main] download-all-documents: ZIP loaded, size: ${buffer.length} bytes`);
 
-      if (!result.canceled) {
-        fs.writeFileSync(result.filePath, buffer);
-        return { success: true, filePath: result.filePath };
+    // ВСЕГДА показываем диалог сохранения
+    if (!mainWindow) {
+      console.error('[main] download-all-documents: mainWindow is null!');
+      // Пытаемся получить активное окно
+      const windows = BrowserWindow.getAllWindows();
+      if (windows.length > 0) {
+        mainWindow = windows[0];
+        console.log('[main] download-all-documents: Using first available window');
+      } else {
+        throw new Error('Main window не доступен для показа диалога');
       }
-
-      return { success: false, error: 'Сохранение отменено' };
     }
+
+    console.log('[main] ========== SHOWING SAVE DIALOG ==========');
+    console.log('[main] download-all-documents: Showing save dialog...');
+    console.log('[main] download-all-documents: mainWindow exists:', !!mainWindow);
+    console.log('[main] download-all-documents: mainWindow.isDestroyed():', mainWindow ? mainWindow.isDestroyed() : 'N/A');
+
+    // КРИТИЧЕСКИ ВАЖНО: Убеждаемся, что окно видимо перед показом диалога
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      mainWindow.show();
+      mainWindow.focus();
+      mainWindow.setAlwaysOnTop(true);
+      console.log('[main] Window prepared for dialog');
+    }
+
+    console.log('[main] download-all-documents: Calling dialog.showSaveDialog...');
+
+    // Используем асинхронный вызов диалога
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Сохранить документы',
+      defaultPath: 'generated_documents.zip',
+      filters: [
+        { name: 'ZIP Archives', extensions: ['zip'] },
+        { name: 'All Files', extensions: ['*'] }
+      ],
+      properties: ['showOverwriteConfirmation']
+    });
+
+    // Убираем alwaysOnTop после показа диалога
+    mainWindow.setAlwaysOnTop(false);
+
+    console.log('[main] ========== DIALOG RESULT ==========');
+    console.log('[main] download-all-documents: Dialog result:', JSON.stringify(result, null, 2));
+
+    if (result && !result.canceled && result.filePath) {
+      const filePath = result.filePath;
+      console.log(`[main] download-all-documents: Saving to: ${filePath}`);
+      fs.writeFileSync(filePath, buffer);
+      console.log(`[main] download-all-documents: ZIP saved successfully to: ${filePath}`);
+      return { success: true, filePath: filePath };
+    }
+
+    console.log(`[main] download-all-documents: Save dialog canceled by user`);
+    return { success: false, error: 'Сохранение отменено пользователем' };
   } catch (error) {
-    console.error('Error downloading all documents:', error);
-    return { success: false, error: error.message };
+    console.error('[main] download-all-documents: Error:', error);
+    return { success: false, error: error.message || 'Ошибка при скачивании документов' };
   }
 });
 

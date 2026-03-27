@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { CssBaseline, Box, Container, Typography, AppBar, Toolbar } from '@mui/material';
-import { LocalOffer as DocumentIcon } from '@mui/icons-material';
+import { CssBaseline, Box, Container, Typography, AppBar, Toolbar, IconButton, Tooltip } from '@mui/material';
+import { LocalOffer as DocumentIcon, BugReport as DevToolsIcon } from '@mui/icons-material';
 import DocumentUpload from './components/DocumentUpload';
 import DocumentAnalysis from './components/DocumentAnalysis';
 import TemplateSelection from './components/TemplateSelection';
@@ -88,6 +88,16 @@ function App() {
     setGeneratedDocument(null);
   };
 
+  const handleOpenDevTools = () => {
+    if ((window as any).electronAPI && typeof (window as any).electronAPI.toggleDevTools === 'function') {
+      (window as any).electronAPI.toggleDevTools();
+    } else if ((window as any).openDevTools && typeof (window as any).openDevTools === 'function') {
+      (window as any).openDevTools();
+    } else {
+      console.warn('DevTools API not available');
+    }
+  };
+
   const renderCurrentStep = () => {
     switch (currentStep) {
       case 'upload':
@@ -134,6 +144,15 @@ function App() {
             <Typography variant="h4" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
               SberAct Document Generator
             </Typography>
+            <Tooltip title="Открыть консоль разработчика (F12)">
+              <IconButton
+                color="inherit"
+                onClick={handleOpenDevTools}
+                sx={{ ml: 2 }}
+              >
+                <DevToolsIcon />
+              </IconButton>
+            </Tooltip>
           </Toolbar>
         </AppBar>
 

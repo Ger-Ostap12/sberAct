@@ -27,9 +27,10 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded }) =
 
     const file = acceptedFiles[0];
 
-    // Проверяем тип файла
-    if (!file.name.endsWith('.docx')) {
-      setError('Поддерживаются только файлы формата .docx');
+    // Проверяем тип файла (.docx или .pdf)
+    const nameLower = file.name.toLowerCase();
+    if (!nameLower.endsWith('.docx') && !nameLower.endsWith('.pdf')) {
+      setError('Поддерживаются только файлы формата .docx и .pdf');
       return;
     }
 
@@ -75,7 +76,8 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded }) =
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/pdf': ['.pdf']
     },
     multiple: false
   });
@@ -124,7 +126,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded }) =
       </Typography>
 
       <Typography variant="body1" color="text.secondary" align="center" sx={{ mb: 4 }}>
-        Загрузите Word документ (.docx) с заявлением для автоматического анализа и генерации судебного акта
+        Загрузите заявление в формате Word (.docx) или PDF для анализа. Генерация актов — в формате .docx
       </Typography>
 
       {error && (
@@ -175,7 +177,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded }) =
               </Typography>
 
               <Typography variant="body2" color="text.secondary">
-                Поддерживаются только файлы .docx
+                Поддерживаются файлы .docx и .pdf
               </Typography>
             </Box>
           </div>

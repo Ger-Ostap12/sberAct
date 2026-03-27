@@ -1,7 +1,9 @@
 import os
+import sys
 import uuid
 import logging
 import re
+import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional, Set, List
@@ -22,7 +24,10 @@ class DocumentGenerator:
         """
         Инициализация генератора документов
         """
-        self.generated_dir = Path("generated")
+        if getattr(sys, "frozen", False):
+            self.generated_dir = Path(sys.executable).parent / "generated"
+        else:
+            self.generated_dir = Path(__file__).resolve().parents[2] / "generated"
         self.generated_dir.mkdir(exist_ok=True)
 
         # Словарь для отслеживания сгенерированных документов
@@ -30,6 +35,118 @@ class DocumentGenerator:
 
         # Загружаем шаблоны
         self.templates = self.load_templates()
+
+    def _templates_root(self) -> Path:
+        """
+        Корень папки с шаблонами. Проверяем несколько возможных путей.
+        Приоритет: Shablony, затем Templates/templates для совместимости.
+        При запуске из exe: Shablony рядом с exe, _internal, шаблоны актов без залогов.
+        При запуске из исходников — Shablony в корне проекта.
+        """
+        project_root = self._project_root()
+        candidates = []
+
+        if getattr(sys, "frozen", False):
+            exe_dir = Path(sys.executable).parent
+            # Папка должна содержать "шаблоны актов без залогов" как подпапку
+            candidates = [
+                exe_dir / "Shablony",  # Основная папка шаблонов
+                exe_dir / "Templates",  # Fallback для совместимости
+                exe_dir / "templates",  # lowercase (Windows)
+                exe_dir / "_internal" / "Shablony",
+                exe_dir / "_internal" / "Templates",
+                exe_dir / "_internal" / "templates",
+                project_root / "Shablony",
+                project_root / "Templates",
+                project_root / "templates",
+                exe_dir,  # exe_dir/шаблоны актов без залогов (из spec datas)
+                project_root,
+            ]
+            if hasattr(sys, "_MEIPASS"):
+                candidates.insert(1, Path(sys._MEIPASS) / "Shablony")
+                candidates.insert(2, Path(sys._MEIPASS) / "Templates")
+                candidates.insert(3, Path(sys._MEIPASS))
+        else:
+            candidates = [
+                project_root / "Shablony",  # Основная папка шаблонов
+                project_root / "Templates",  # Fallback для совместимости
+                project_root,  # project_root/шаблоны актов без залогов
+            ]
+
+        for p in candidates:
+            if not p.exists() or not p.is_dir():
+                continue
+            # Проверяем наличие шаблонов: Shablony/шаблоны..., Templates/шаблоны..., либо шаблоны... напрямую
+            if (p / "шаблоны актов без залогов").exists():
+                return p
+            if (p / "Shablony" / "шаблоны актов без залогов").exists():
+                return p / "Shablony"
+            if (p / "Templates" / "шаблоны актов без залогов").exists():
+                return p / "Templates"
+            if (p / "templates" / "шаблоны актов без залогов").exists():
+                return p / "templates"
+
+        return candidates[0] if candidates else project_root / "Shablony"
+
+    def _project_root(self) -> Path:
+        """Корень проекта (родитель python-backend)."""
+        return Path(__file__).resolve().parents[2]
+
+    def _resolve_template_path(self, path: Path) -> Path:
+        """
+        Если шаблон не найден — ищем по fallback: корень проекта, альтернативные имена,
+        любой .docx в той же папке, папки шаблоны актов без залогов в корне проекта.
+        """
+        if path.exists():
+            return path
+
+        root = self._templates_root()
+        proj = self._project_root()
+
+        # 1. Тот же относительный путь в корне проекта (шаблоны актов без залогов/...)
+        try:
+            rel = path.relative_to(root)
+            legacy = proj / rel
+            if legacy.exists():
+                logger.info(f"Шаблон взят из корня проекта (fallback): {rel}")
+                return legacy
+        except ValueError:
+            pass
+
+        # 2. Прямой поиск в project_root/шаблоны актов без залогов/физ реализация ВКЛ в РТК/
+        realization_subdirs = [
+            proj / "Shablony" / "шаблоны актов без залогов" / "физ реализация ВКЛ в РТК",
+            proj / "шаблоны актов без залогов" / "физ реализация ВКЛ в РТК",
+            proj / "Templates" / "шаблоны актов без залогов" / "физ реализация ВКЛ в РТК",
+            proj / "templates" / "шаблоны актов без залогов" / "физ реализация ВКЛ в РТК",
+            root / "шаблоны актов без залогов" / "физ реализация ВКЛ в РТК",
+            root / "Shablony" / "шаблоны актов без залогов" / "физ реализация ВКЛ в РТК",
+            root / "templates" / "шаблоны актов без залогов" / "физ реализация ВКЛ в РТК",
+        ]
+        target_names = [path.name]
+        # Альтернативные имена для типичных шаблонов
+        if path.name == "Реализация ВКЛ.docx":
+            target_names = ["Реализация ВКЛ.docx", "Реализация ВКЛ несколько договоров.docx", "Реализация принятие РТК.docx"]
+        elif path.name == "Реализация принятие РТК.docx":
+            target_names = ["Реализация принятие РТК.docx", "Реализация ВКЛ.docx", "Реализация ВКЛ несколько договоров.docx"]
+
+        for search_dir in [path.parent] + realization_subdirs:
+            if not search_dir.exists():
+                continue
+            for name in target_names:
+                candidate = search_dir / name
+                if candidate.exists():
+                    logger.info(f"Используем шаблон (fallback): {candidate}")
+                    return candidate
+            # Любой .docx в папке
+            try:
+                for f in sorted(search_dir.glob("*.docx")):
+                    logger.info(f"Используем шаблон из папки {search_dir.name}: {f.name}")
+                    return f
+            except Exception:
+                pass
+
+        return path
 
     def load_templates(self) -> Dict[str, Dict[str, Any]]:
         """
@@ -86,6 +203,112 @@ class DocumentGenerator:
         tokens = [token for token in re.split(r"\s+", full_name.strip()) if token]
         return " ".join(_capitalize_token(token) for token in tokens)
 
+    def _female_surname_to_genitive_dative(self, surname: str) -> tuple:
+        """Женская фамилия: (родительный, дательный). Калугина -> (Калугиной, Калугиной)."""
+        s = surname.strip()
+        if not s:
+            return ("", "")
+        low = s.lower()
+        if low.endswith("ова"):
+            base = s[:-3]
+            return (base + "овой", base + "овой")
+        if low.endswith("ева") or low.endswith("ёва"):
+            base = s[:-3]
+            return (base + "евой", base + "евой")
+        if low.endswith("ина"):
+            base = s[:-3]
+            return (base + "иной", base + "иной")
+        if low.endswith("а"):
+            base = s[:-1]
+            return (base + "ой", base + "ой")
+        if low.endswith("я"):
+            base = s[:-1]
+            return (base + "и", base + "е")
+        return (s, s)
+
+    def _female_name_to_genitive_dative(self, name: str) -> tuple:
+        """Женское имя: (родительный, дательный). Наталья -> (Натальи, Наталье)."""
+        n = name.strip()
+        if not n:
+            return ("", "")
+        low = n.lower()
+        if low.endswith("ья"):
+            base = n[:-2]
+            return (base + "ьи", base + "ье")
+        if low.endswith("ия"):
+            base = n[:-2]
+            return (base + "ии", base + "ии")
+        if low.endswith("я"):
+            base = n[:-1]
+            return (base + "и", base + "е")
+        if low.endswith("а"):
+            base = n[:-1]
+            return (base + "ы", base + "е")
+        return (n, n)
+
+    def _female_patronymic_to_genitive_dative(self, patronymic: str) -> tuple:
+        """Женское отчество: (родительный, дательный). Юрьевна -> (Юрьевны, Юрьевне)."""
+        p = patronymic.strip()
+        if not p:
+            return ("", "")
+        low = p.lower()
+        if low.endswith("овна"):
+            base = p[:-4]
+            return (base + "овны", base + "овне")
+        if low.endswith("евна") or low.endswith("ёвна"):
+            base = p[:-4]
+            return (base + "евны", base + "евне")
+        if low.endswith("ична"):
+            base = p[:-4]
+            return (base + "ичны", base + "ичне")
+        if low.endswith("инична"):
+            base = p[:-6]
+            return (base + "иничны", base + "иничне")
+        if low.endswith("а"):
+            base = p[:-1]
+            return (base + "ы", base + "е")
+        return (p, p)
+
+    def _correct_female_applicant_cases(self, cleaned_data: Dict[str, Any]) -> None:
+        """
+        Для ФЛ-женщин пересчитывает applicantNameDative и applicantNameGenitive из applicantName,
+        исправляет дательный (Калугину -> Калугиной) и восстанавливает обрезанную фамилию в родительном (Лугиной -> Калугиной).
+        """
+        # Для юридических лиц падежи ФИО не применяются.
+        entity_type = (cleaned_data.get("entityType") or "").strip().lower()
+        if entity_type == "legal":
+            return
+
+        applicant_name = (cleaned_data.get("applicantName") or "").strip()
+        if not applicant_name:
+            return
+        parts = [w for w in re.split(r"\s+", applicant_name) if w]
+        if len(parts) < 3:
+            return
+        surname_nom, name_nom, patronymic_nom = parts[0], parts[1], parts[2]
+        name_low = name_nom.lower()
+        # Женские окончания имени
+        if not (name_low.endswith("а") or name_low.endswith("я") or name_low.endswith("ия") or name_low.endswith("ья")):
+            return
+
+        gen_surname, dat_surname = self._female_surname_to_genitive_dative(surname_nom)
+        gen_name, dat_name = self._female_name_to_genitive_dative(name_nom)
+        gen_patr, dat_patr = self._female_patronymic_to_genitive_dative(patronymic_nom)
+
+        new_genitive = f"{gen_surname} {gen_name} {gen_patr}".strip()
+        new_dative = f"{dat_surname} {dat_name} {dat_patr}".strip()
+
+        current_gen = (cleaned_data.get("applicantNameGenitive") or "").strip()
+        current_dat = (cleaned_data.get("applicantNameDative") or "").strip()
+
+        cleaned_data["applicantNameGenitive"] = new_genitive
+        cleaned_data["applicantNameDative"] = new_dative
+
+        if current_gen != new_genitive:
+            logger.info(f"🔧 Исправлен родительный падеж (жен.): '{current_gen}' -> '{new_genitive}'")
+        if current_dat != new_dative:
+            logger.info(f"🔧 Исправлен дательный падеж для женщины: '{current_dat}' -> '{new_dative}'")
+
     def _normalize_name_case(self, name: str) -> str:
         """
         Нормализует регистр имени: первая буква заглавная, остальные строчные.
@@ -118,6 +341,10 @@ class DocumentGenerator:
         def _capitalize_word(word: str) -> str:
             if not word:
                 return word
+            # Аббревиатуры орг-правовых форм должны оставаться заглавными: ПАО, АО, ООО и т.п.
+            upper_abbrs = {"ПАО", "АО", "ООО", "ОАО", "ЗАО"}
+            if word.upper() in upper_abbrs:
+                return word.upper()
             # Обрабатываем дефисы (например, "Иванов-Петров")
             if "-" in word:
                 parts = word.split("-")
@@ -181,22 +408,54 @@ class DocumentGenerator:
         logger.info(f"Очищенные данные: {cleaned_data}")
         logger.info(f"📊 Ключевые поля в cleaned_data: creditorName={cleaned_data.get('creditorName')}, inn={cleaned_data.get('inn')}, creditorAddress={cleaned_data.get('creditorAddress')}")
 
-        # Гарантируем наличие даты публикации ЕФРСБ для плейсхолдера [11]
+        # Для ЮЛ используем короткое наименование в [2]/[2.1]/[2.2], чтобы не тянуть
+        # артефакты вроде "ИП Общества..." и некорректные ФИО-падежи.
+        if (cleaned_data.get("entityType") or "").strip().lower() == "legal":
+            legal_name = (
+                str(cleaned_data.get("legalShortName") or "").strip()
+                or str(cleaned_data.get("debtorName") or "").strip()
+                or str(cleaned_data.get("applicantName") or "").strip()
+            )
+            if legal_name:
+                # Если есть кавычки, берём внутреннее имя (ООО «Азбука» -> Азбука).
+                quote_match = re.search(r'[«"]\s*([^»"]+?)\s*[»"]', legal_name)
+                if quote_match:
+                    legal_name = quote_match.group(1).strip()
+
+                # Срезаем орг-правовую "шапку".
+                legal_name = re.sub(
+                    r'^(?:ИП\s+)?(?:общество|общества)\s+с\s+ограниченн\w+\s+ответственн\w+\s+',
+                    '',
+                    legal_name,
+                    flags=re.IGNORECASE
+                ).strip(" -\t\n\r«»\"'")
+
+                if legal_name:
+                    cleaned_data["applicantName"] = legal_name
+                    cleaned_data["applicantNameGenitive"] = legal_name
+                    cleaned_data["applicantNameDative"] = legal_name
+                    cleaned_data["applicantNameInstrumental"] = legal_name
+                    cleaned_data["applicantNameAccusative"] = legal_name
+                    cleaned_data["legalShortName"] = legal_name
+                    logger.info(f"🏢 Для ЮЛ нормализовано имя должника: {legal_name}")
+
+        # Адрес должника/заявителя не должен совпадать с адресом кредитора (частая ошибка извлечения)
+        applicant_addr = (cleaned_data.get("applicantAddress") or "").strip()
+        creditor_addr = (cleaned_data.get("creditorAddress") or "").strip()
+        if applicant_addr and creditor_addr and applicant_addr == creditor_addr:
+            cleaned_data["applicantAddress"] = ""
+            logger.warning("⚠️ Адрес заявителя совпадал с адресом кредитора — очищен (маркер [6] останется пустым)")
+
+        # [11] — только дата публикации на сайте ЕФРСБ (не подставляем дату Коммерсанта)
+        # Для газеты «Коммерсантъ» используются [67] (номер) и [68] (дата)
         if not cleaned_data.get("efirsbPublicationDate"):
-            fallback_field_name = None
-            fallback_publication_date = None
-            for field in ("messageDate", "publicationDate"):
+            # Fallback только из полей, связанных с ЕФРСБ/сообщением, не из messageDate (может быть Коммерсант)
+            for field in ("publicationDate",):
                 value = cleaned_data.get(field)
                 if value:
-                    fallback_field_name = field
-                    fallback_publication_date = value
+                    cleaned_data["efirsbPublicationDate"] = value
+                    logger.info("ℹ️ Используем %s как efirsbPublicationDate для плейсхолдера [11]", field)
                     break
-            if fallback_publication_date:
-                cleaned_data["efirsbPublicationDate"] = fallback_publication_date
-                logger.info(
-                    "ℹ️ Используем %s как efirsbPublicationDate для плейсхолдера [11]",
-                    fallback_field_name,
-                )
 
         entity_type = (cleaned_data.get("entityType") or "").lower()
         source_doc_type = (cleaned_data.get("sourceDocumentType") or "").lower()
@@ -365,23 +624,43 @@ class DocumentGenerator:
         elif cleaned_data.get("stateDuty16") and not cleaned_data.get("stateDuty"):
             cleaned_data["stateDuty"] = cleaned_data["stateDuty16"]
 
-        # Форматирование сумм: убеждаемся, что суммы в правильном формате (с точкой как разделителем)
+        # Форматирование сумм: приводим все суммы к виду '1 234 567,89'
         amount_fields = ["loanDebt", "principalDebt", "principalDebt13", "interest", "interest14",
-                        "forfeit", "forfeit15", "penalties", "stateDuty", "stateDuty16", "totalDebt", "debtAmount", "bankCommission"]
+                        "forfeit", "forfeit15", "penalties", "stateDuty", "stateDuty16", "loanStateDuty17",
+                        "totalDebt", "debtAmount", "bankCommission"]
         for field in amount_fields:
             if field in cleaned_data and cleaned_data[field]:
-                value = str(cleaned_data[field]).strip()
-                # Заменяем запятую на точку для десятичных чисел
-                value = value.replace(',', '.')
-                # Убираем все кроме цифр и точки
-                value = re.sub(r'[^\d.]', '', value)
-                # Убираем лишние точки, оставляем только одну
-                parts = value.split('.')
+                raw = str(cleaned_data[field]).strip()
+
+                # Приводим к числу: убираем пробелы и нецифровые символы, нормализуем разделители
+                tmp = raw.replace("\u202f", " ").replace("\xa0", " ").replace(" ", "")
+                has_comma = "," in tmp
+                has_dot = "." in tmp
+
+                if has_comma and has_dot:
+                    # Если есть и запятая, и точка, считаем, что запятая — разделитель копеек
+                    if tmp.rfind(",") > tmp.rfind("."):
+                        tmp = tmp.replace(".", "")
+                        tmp = tmp.replace(",", ".")
+                    else:
+                        tmp = tmp.replace(",", "")
+                else:
+                    tmp = tmp.replace(",", ".")
+
+                tmp = re.sub(r"[^0-9.]", "", tmp)
+                parts = tmp.split(".")
                 if len(parts) > 2:
-                    value = parts[0] + '.' + ''.join(parts[1:])
-                if value:
-                    cleaned_data[field] = value
-                    logger.info(f"💰 Форматирована сумма {field}: {value}")
+                    tmp = parts[0] + "." + "".join(parts[1:])
+
+                try:
+                    number = float(tmp) if tmp else None
+                except Exception:
+                    number = None
+
+                if number is not None:
+                    formatted = self._format_amount_value(number)
+                    cleaned_data[field] = formatted
+                    logger.info(f"💰 Форматирована сумма {field}: {formatted}")
 
         placeholders_in_doc = self._collect_placeholders(doc)
 
@@ -392,8 +671,7 @@ class DocumentGenerator:
         if source_document_type in ["ip_enforcement_statement", "ip_enforcement_statement_collateral",
                                     "ip_enforcement_realization", "ip_enforcement_realization_collateral",
                                     "ip_enforcement_restructuring", "ip_enforcement_restructuring_collateral",
-                                    "ip_collection", "ip_collection_collateral", "ip_collection_collateral_auto",
-                                    "legal_collection", "legal_collection_collateral", "legal_collection_collateral_auto"]:
+                                    "ip_collection", "ip_collection_collateral", "ip_collection_collateral_auto"]:
             applicant_name = cleaned_data.get("applicantName")
             if applicant_name and not applicant_name.upper().startswith("ИП"):
                 cleaned_data["applicantNameRaw"] = applicant_name
@@ -446,9 +724,56 @@ class DocumentGenerator:
                             cleaned_data.setdefault("contractNumberList", original_numbers)
                         cleaned_data["contractNumber"] = primary_number
 
+        # Заполняем поля [86] (причина) и [87] (для сторон) для актов "Отложение" и "Возврат"
+        # Проверяем, есть ли данные для этих актов
+        reason = (
+            cleaned_data.get('intermediate_postponement_reason') or
+            cleaned_data.get('intermediate_return_reason') or
+            cleaned_data.get('acceptance_no_motion_other_reason') or
+            ''
+        )
+        for_parties = (
+            cleaned_data.get('intermediate_postponement_forParties') or
+            cleaned_data.get('intermediate_return_forParties') or
+            cleaned_data.get('acceptance_no_motion_other_forParties') or
+            ''
+        )
+
+        if reason:
+            cleaned_data['reason86'] = reason
+            logger.info(f"📝 Установлено поле reason86 (маркер [86]): {reason[:100]}...")
+        if for_parties:
+            cleaned_data['forParties87'] = for_parties
+            logger.info(f"📝 Установлено поле forParties87 (маркер [87]): {for_parties[:100]}...")
+
+        # Заполняем поле [85] (запросы суда) для актов "Отложение", "Определение о принятии", "Принятие после Б/Д"
+        court_requests = (
+            cleaned_data.get('intermediate_postponement_courtRequests') or
+            cleaned_data.get('acceptance_definition_courtRequests') or
+            cleaned_data.get('acceptance_after_no_motion_courtRequests') or
+            ''
+        )
+        if court_requests:
+            cleaned_data['courtRequests85'] = court_requests
+            logger.info(f"📝 Установлено поле courtRequests85 (маркер [85]): {court_requests[:100]}...")
+
+        # Заполняем поле [25] (Название/ФИО третьего лица) из массива thirdParties
+        third_parties = cleaned_data.get('thirdParties', [])
+        if third_parties and isinstance(third_parties, list) and len(third_parties) > 0:
+            # Берем ФИО первого третьего лица для маркера [25]
+            first_third_party_name = third_parties[0].get('name', '') if isinstance(third_parties[0], dict) else ''
+            if first_third_party_name:
+                cleaned_data['thirdPartyName25'] = first_third_party_name
+                logger.info(f"📝 Установлено поле thirdPartyName25 (маркер [25]): {first_third_party_name[:100]}...")
+        # Также проверяем старое поле thirdPartyName для обратной совместимости
+        elif cleaned_data.get('thirdPartyName'):
+            cleaned_data['thirdPartyName25'] = cleaned_data.get('thirdPartyName')
+            logger.info(f"📝 Установлено поле thirdPartyName25 (маркер [25]) из thirdPartyName: {cleaned_data.get('thirdPartyName')[:100]}...")
+
         # Маппинг полей из извлеченных данных на номера в шаблоне
         field_mapping = {
             "caseNumber": "1",           # [1] - Номер дела
+            "courtName": "0",            # [0] - Название суда (арбитражный суд области/края/республики)
             "mortgageCourtAddress001": "001",  # [001] - Адрес суда (ипотека)
             "mortgageCourtName002": "002",     # [002] - Наименование суда (ипотека)
             "applicantName": "2",        # [2] - ФИО должника
@@ -457,15 +782,18 @@ class DocumentGenerator:
             "applicantNameAccusative": "2.4",  # [2.4] - ФИО должника в винительном падеже
             "mortgageRepresentative22": "2.2",  # [2.2] - Представитель истца (ипотека)
             "birthDate": "3",            # [3] - Дата рождения
+            "birthPlace": "3.1",        # [3.1] - Город/место рождения
             "inn": "4",                  # [4] - ИНН
             "ogrnip": "4.1",             # [4.1] - ОГРНИП индивидуального предпринимателя
             "snils": "5",                # [5] - СНИЛС
             "applicantAddress": "6",     # [6] - Адрес регистрации
             "courtDecisionDate": "7",    # [7] - Дата решения суда
             "managerName": "8",          # [8] - ФИО финансового управляющего
-            "messageNumber": "9",        # [9] - Номер сообщения
+            "messageNumber": "9",        # [9] - Номер сообщения ЕФРСБ
             "mortgagePeriodAmount10": "10",  # [10] - Сумма за период (ипотека)
             "efirsbPublicationDate": "11",  # [11] - Дата публикации на сайте ЕФРСБ
+            "kommersantNumber": "67",    # [67] - Номер газеты «Коммерсантъ»
+            "kommersantDate": "68",      # [68] - Дата газеты «Коммерсантъ»
             "mortgagePrincipalAmount11": "11",  # [11] - Просроченный основной долг (ипотека)
             "cpCaseDate": "554",         # [554] - Дата из номера CP-Case
             "debtSnapshotDate88": "88",  # [88] - Дата состояния задолженности (для инициирования ЮЛ)
@@ -489,8 +817,16 @@ class DocumentGenerator:
             "forfeit15": "15",           # [15] - Неустойка из блока "ПРОСИТ СУД"
             "forfeit": "15",             # [15] - Неустойка (общее поле)
             "penalties": "15",           # [15] - Штрафные санкции (синоним неустойки)
-            "stateDuty16": "16",         # [16] - Госпошлина из блока "ПРОСИТ СУД"
-            "stateDuty": "16",           # [16] - Госпошлина (общее поле)
+            "stateDuty16": "16",         # [16] - Банкротная госпошлина
+            "stateDuty": "16",           # [16] - Банкротная госпошлина (общее поле)
+            "loanStateDuty17": "17",     # [17] - Ссудная госпошлина
+            "objectionsDeadline18": "18",  # [18] - Установка срока на предоставление возражений
+            "considerationDeadline19": "19",  # [19] - На рассмотрение заявления в срок
+            "withoutMovementDeadline20": "20",  # [20] - Срок для оставления без движения
+            "separateDisputeNumber22": "22",  # [22] - Номер обособленного спора
+            "applicationReceiptDate23": "23",  # [23] - Дата поступления заявления в суд (согласно штампу)
+            "courtSubmissionDate24": "24",     # [24] - Дата направления в суд
+            "courtHearingDateTime99": "99",    # [99] - Дата и время судебного заседания
             "judge": "415",              # [415] - Судья
             "date": "DATE",              # [DATE] - Дата (пользовательская)
             "mortgageCreditAmount111": "111",  # [111] - Сумма кредита (ипотека)
@@ -523,6 +859,12 @@ class DocumentGenerator:
             "other35": "35",                      # [35] - Иное
             "currentInterest36": "36",            # [36] - Срочные проценты на основной долг
             "currentInterestOverdue37": "37",    # [37] - Срочные проценты на просроченный основной долг
+            "reason86": "86",                     # [86] - Причина (для актов "Отложение", "Возврат", "Определение Б/Д иное")
+            "forParties87": "87",                 # [87] - Для сторон (для актов "Отложение", "Возврат", "Определение Б/Д иное")
+            "courtRequests85": "85",              # [85] - Запросы суда (для актов "Отложение", "Определение о принятии", "Принятие после Б/Д")
+            "ppDepositDate80": "80",              # [80] - Дата ПП депозит
+            "ppStateDutyDate81": "81",            # [81] - Дата ПП ГП
+            "thirdPartyName25": "25",             # [25] - Название/ФИО третьего лица
         }
 
         is_mortgage_document = (cleaned_data.get("sourceDocumentType") or "").lower() == "mortgage_claim"
@@ -675,6 +1017,9 @@ class DocumentGenerator:
             else:
                 logger.warning(f"Не удалось найти правильное ФИО ответчика. mortgageDebtorName: {mortgage_debtor_name}, debtorName: {debtor_name[:100] if debtor_name else 'None'}, applicantName: {current_applicant_name[:100] if current_applicant_name else 'None'}")
 
+        # Коррекция падежей для женщин и восстановление обрезанной фамилии (ФЛ)
+        self._correct_female_applicant_cases(cleaned_data)
+
         # Нормализуем регистр всех имен перед заменой в документе
         name_fields = [
             "applicantName", "debtorName", "creditorName", "legalShortName",
@@ -694,6 +1039,61 @@ class DocumentGenerator:
 
         # Заменяем данные в параграфах
         logger.info("🔍 Начинаем замену данных в документе...")
+
+        # Нормализация номера дела: убираем лишний суффикс после года (А44-1233-4/2025-4 -> А44-1233-4/2025)
+        case_number = cleaned_data.get("caseNumber", "")
+        if case_number:
+            # Убираем дублирование вида номер/год-цифра (например А44-1233-4/2025-4 -> А44-1233-4/2025)
+            trailing_suffix = re.match(r'^(.+/\d{4})-\d+$', case_number.strip())
+            if trailing_suffix:
+                normalized = trailing_suffix.group(1)
+                cleaned_data["caseNumber"] = normalized
+                logger.info(f"📝 Убран лишний суффикс в номере дела: {case_number} -> {normalized}")
+                case_number = normalized
+
+            # Паттерн для поиска дублирования: номер-номер/год-номер/год (А53-2345-4/2025-4/2025 -> А53-2345-4/2025)
+            pattern = r'^([А-ЯЁA-Z0-9-]+)/(\d{4})-([А-ЯЁA-Z0-9-]+)/(\d{4})$'
+            match = re.match(pattern, case_number)
+            if match:
+                prefix = match.group(1)
+                year1 = match.group(2)
+                suffix = match.group(3)
+                year2 = match.group(4)
+                if year1 == year2 and suffix in prefix:
+                    cleaned_data["caseNumber"] = f"{prefix}/{year1}"
+                    logger.info(f"📝 Исправлено дублирование номера дела: {case_number} -> {cleaned_data['caseNumber']}")
+                    case_number = cleaned_data["caseNumber"]
+
+        # Модифицируем номер дела, если есть номер обособленного спора (только если его ещё нет в номере)
+        # Формат: A99-15434/2025 -> A99-15434-4/2025. Не добавляем -4, если уже есть А44-1233-4/2025
+        if cleaned_data.get("separateDisputeNumber22"):
+            separate_dispute_number = str(cleaned_data.get("separateDisputeNumber22")).strip()
+            case_number = cleaned_data.get("caseNumber", "")
+            if case_number and separate_dispute_number:
+                pattern = r'^([А-ЯЁA-Z0-9-]+)/(\d{4})$'
+                match = re.match(pattern, case_number)
+                if match:
+                    prefix = match.group(1)
+                    year = match.group(2)
+                    # Не добавляем суффикс, если он уже есть в префиксе (например А44-1233-4)
+                    if prefix.endswith(f"-{separate_dispute_number}"):
+                        logger.info(f"📝 Номер дела уже содержит обособленный спор: {case_number}")
+                    else:
+                        modified_case_number = f"{prefix}-{separate_dispute_number}/{year}"
+                        cleaned_data["caseNumber"] = modified_case_number
+                        logger.info(f"📝 Номер дела модифицирован с учетом обособленного спора: {case_number} -> {modified_case_number}")
+                else:
+                    # Если формат не совпадает, пытаемся вставить перед последним слэшем
+                    if '/' in case_number:
+                        parts = case_number.rsplit('/', 1)
+                        if len(parts) == 2 and parts[1].isdigit():
+                            modified_case_number = f"{parts[0]}-{separate_dispute_number}/{parts[1]}"
+                            cleaned_data["caseNumber"] = modified_case_number
+                            logger.info(f"📝 Номер дела модифицирован (альтернативный формат): {case_number} -> {modified_case_number}")
+                        else:
+                            logger.warning(f"⚠️ Не удалось модифицировать номер дела: {case_number} (нестандартный формат)")
+                    else:
+                        logger.warning(f"⚠️ Не удалось модифицировать номер дела: {case_number} (нет слэша с годом)")
 
         # Для ипотеки сначала заменяем приоритетные поля, чтобы избежать конфликтов
         if is_mortgage_document:
@@ -766,7 +1166,7 @@ class DocumentGenerator:
                     "ipCollateralClaimAmount": "0007",
                     "mortgageCollateralDescription1221": "1221",  # [1221] - Описание предмета залога
                     "penalty0071": "0071",  # [0071] - Неустойка в обязательстве по залогу
-                    "stateDuty16": "16"  # [16] - Госпошлина
+                    "stateDuty16": "16"  # [16] - Банкротная госпошлина
                 }
                 entity_type_label = "ИП" if is_ip else "ФЛ"
                 for field_key, field_number in priority_fields.items():
@@ -789,7 +1189,23 @@ class DocumentGenerator:
 
                 field_number = field_mapping[field_key]
                 placeholder = f"[{field_number}]"
-                formatted_value = str(field_value)
+
+                # Нормализация дат в формат DD.MM.YYYY (даты поступления, направления и т.д.)
+                if field_key in ("applicationReceiptDate23", "courtSubmissionDate24"):
+                    formatted_value = self._normalize_date_format(str(field_value))
+                elif field_key == "courtHearingDateTime99" and str(field_value).strip():
+                    # Дата и время: 2026-02-19T13:18 -> 19.02.2026 13:18
+                    raw = str(field_value).strip()
+                    if "T" in raw:
+                        date_part = raw.split("T")[0]
+                        time_part = raw.split("T")[1] if "T" in raw else ""
+                        formatted_value = self._normalize_date_format(date_part)
+                        if time_part:
+                            formatted_value = f"{formatted_value} {time_part.replace('-', ':')}"
+                    else:
+                        formatted_value = self._normalize_date_format(raw)
+                else:
+                    formatted_value = str(field_value)
 
                 if self._replace_placeholder_in_doc(doc, placeholder, formatted_value):
                     logger.info(f"🔄 Заменено {placeholder} на {formatted_value} (поле: {field_key})")
@@ -817,6 +1233,11 @@ class DocumentGenerator:
 
         # Удаляем все пустые маркеры, для которых нет значений
         self._remove_empty_placeholders(doc, cleaned_data, field_mapping)
+
+        # Финальный пост-процессинг всего документа:
+        # подчищаем форматы дат, номера дел и оставшиеся маркеры,
+        # чтобы в итоговом акте всё выглядело идеально.
+        self._postprocess_document_formatting(doc, cleaned_data)
 
     def _remove_empty_placeholders(self, doc: Document, cleaned_data: Dict[str, Any], field_mapping: Dict[str, str]):
         """
@@ -853,16 +1274,27 @@ class DocumentGenerator:
             "[415]": cleaned_data.get("judge"),
             "[66]": cleaned_data.get("date"),  # [66] — дата определения о принятии заявления к производству (то же поле "дата")
             "[992]": marker_992_filled,  # Заполнен только если обязательств > 5
+            # [86] и [87] обрабатываются через обычный field_mapping, не нужны в special_markers
         }
+
+        # Специальная логика для госпошлин [16] и [17]:
+        # заранее определяем, для каких маркеров реально есть суммы.
+        has_state_duty_16 = bool(
+            str(cleaned_data.get("stateDuty16") or cleaned_data.get("stateDuty") or "").strip()
+        )
+        has_state_duty_17 = bool(str(cleaned_data.get("loanStateDuty17") or "").strip())
 
         removed_count = 0
         for placeholder in all_placeholders:
-            # Пропускаем маркеры обязательств (100-129) - они обрабатываются отдельно
+            # Маркеры обязательств (100-129) не пропускаем: если они остались после replace_obligations_data,
+            # значит данные не подтянулись — удаляем маркер вместе с контекстом (фраза «кредитный договор от [100] № …» и т.п.)
             match = re.match(r'\[(\d+)\]', placeholder)
-            if match:
-                number = int(match.group(1))
-                if 100 <= number < 130:
-                    continue  # Маркеры обязательств обрабатываются в replace_obligations_data
+            # if match: number = int(match.group(1)); if 100 <= number < 130: continue  — убрано по требованию
+
+            # Госпошлины [16] и [17] обрабатываем отдельно после цикла,
+            # чтобы избежать ситуации, когда из-за неоднозначностей удаляются обе строки.
+            if placeholder in ("[16]", "[17]"):
+                continue
 
             # Проверяем специальные маркеры
             if placeholder in special_markers:
@@ -882,7 +1314,8 @@ class DocumentGenerator:
                 has_value = False
                 for field_name in marker_to_fields[placeholder]:
                     value = cleaned_data.get(field_name)
-                    if value and str(value).strip():
+                    # Проверяем, что значение не пустое и не является пустой строкой или пробелами
+                    if value and str(value).strip() and str(value).strip().lower() not in ['не указано', 'не указана', 'none', 'null', '']:
                         has_value = True
                         break
 
@@ -893,10 +1326,30 @@ class DocumentGenerator:
                     logger.info(f"🗑️ Удален пустой маркер с контекстом: {placeholder} (поля: {', '.join(marker_to_fields[placeholder])})")
             else:
                 # Маркер не найден в маппинге - возможно, это неизвестный маркер
-                # Удаляем его с контекстом, чтобы не было видно в финальном документе
-                self._remove_placeholder_with_context(doc, placeholder)
-                removed_count += 1
-                logger.info(f"🗑️ Удален неизвестный маркер с контекстом: {placeholder}")
+                # Проверяем, есть ли значение в cleaned_data для этого маркера (по номеру маркера)
+                marker_num = placeholder.strip('[]')
+                has_value_in_data = False
+                # Проверяем все поля в cleaned_data, которые могут соответствовать этому маркеру
+                for field_name, field_value in cleaned_data.items():
+                    if field_value and str(field_value).strip() and str(field_value).strip().lower() not in ['не указано', 'не указана', 'none', 'null', '']:
+                        # Если поле маппится на этот маркер, значит значение есть
+                        if field_mapping.get(field_name) == marker_num:
+                            has_value_in_data = True
+                            break
+
+                if not has_value_in_data:
+                    # Удаляем его с контекстом, чтобы не было видно в финальном документе
+                    self._remove_placeholder_with_context(doc, placeholder)
+                    removed_count += 1
+                    logger.info(f"🗑️ Удален неизвестный маркер с контекстом: {placeholder}")
+
+        # После общей очистки отдельно обрабатываем госпошлины:
+        # - если для [16] нет суммы — удаляем только её строку
+        # - если для [17] нет суммы — удаляем только её строку
+        if not has_state_duty_16:
+            self._remove_placeholder_with_context(doc, "[16]")
+        if not has_state_duty_17:
+            self._remove_placeholder_with_context(doc, "[17]")
 
         if removed_count > 0:
             logger.info(f"✅ Удалено {removed_count} пустых маркеров из документа")
@@ -931,9 +1384,205 @@ class DocumentGenerator:
                 removed = True
                 break
 
-        # Если не удалось удалить с контекстом, удаляем только маркер
+        # Если не удалось удалить с контекстом — удаляем маркер и при необходимости весь абзац
         if not removed:
             self._replace_placeholder_in_doc(doc, placeholder, "")
+            # Дополнительно: очищаем абзацы, где после удаления маркера остаётся только подпись/контекст
+            self._clear_paragraphs_containing_only_placeholder(doc, placeholder)
+
+    def _clear_paragraphs_containing_only_placeholder(self, doc: Document, placeholder: str) -> None:
+        """Очищает абзацы, которые состоят только из подписи и пустого маркера (контекст удаляется)."""
+        escaped = re.escape(placeholder)
+        context_patterns = self._get_context_patterns_for_marker(placeholder)
+
+        def clear_in_paragraphs(paragraphs):
+            for p in paragraphs:
+                if not p.text or placeholder not in p.text:
+                    continue
+                text_stripped = p.text.strip()
+                # Абзац целиком совпадает с одним из контекстных паттернов (подпись + маркер) — очищаем
+                for pattern in context_patterns:
+                    regex = pattern.replace("{MARKER}", escaped)
+                    full_para = r"^\s*" + regex + r"\s*[.,;:\s]*$"
+                    if re.match(full_para, text_stripped, re.IGNORECASE):
+                        p.text = ""
+                        logger.debug(f"Очищен абзац (подпись+маркер {placeholder})")
+                        break
+                else:
+                    # Иначе: если после удаления маркера остаётся только мусор/пунктуация — тоже очищаем
+                    after_remove = re.sub(escaped, "", p.text, count=1).strip()
+                    if not after_remove or re.match(r"^[\s.,;:–—\-]+$", after_remove) or len(after_remove) < 3:
+                        p.text = ""
+                        logger.debug(f"Очищен абзац с пустым маркером {placeholder}")
+
+        clear_in_paragraphs(doc.paragraphs)
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    clear_in_paragraphs(cell.paragraphs)
+        for section in doc.sections:
+            clear_in_paragraphs(section.header.paragraphs)
+            clear_in_paragraphs(section.footer.paragraphs)
+            for table in section.header.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        clear_in_paragraphs(cell.paragraphs)
+            for table in section.footer.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        clear_in_paragraphs(cell.paragraphs)
+
+    def _postprocess_document_formatting(self, doc: Document, cleaned_data: Dict[str, Any]) -> None:
+        """
+        Финальный проход по документу:
+        - добавляем ведущий ноль в датах вида «5» месяца (делаем «05»);
+        - убираем дублирование в номере дела вида А53-2345-4/2025-4/2025;
+        - приводим даты формата 2026.04.02 / 2026-04-02 к виду 02.04.2026;
+        - удаляем любые оставшиеся маркеры [XXX], если они вдруг не были очищены.
+        """
+
+        # Глобальные флаги наличия структурированных данных по ЕФРСБ и Коммерсанту.
+        # Используем их совместно с локальным анализом текста каждого абзаца.
+        has_efrsb_data = bool(
+            str(cleaned_data.get("messageNumber") or "").strip()
+            or str(cleaned_data.get("efirsbPublicationDate") or "").strip()
+        )
+        has_kommersant_data = bool(
+            str(cleaned_data.get("kommersantNumber") or "").strip()
+            or str(cleaned_data.get("kommersantDate") or "").strip()
+        )
+
+        def process_text(text: str) -> str:
+            if not text:
+                return text
+
+            # Локальные флаги по фактическому тексту абзаца
+            text_has_efrsb = bool(re.search(r"ЕФРСБ|Единого\s+федерального\s+реестра\s+сведений\s+о\s+банкротстве", text, re.IGNORECASE))
+            text_has_kommersant = bool(re.search(r"Коммерсант", text, re.IGNORECASE))
+
+            has_efrsb = has_efrsb_data or text_has_efrsb
+            has_kommersant = has_kommersant_data or text_has_kommersant
+
+            # 1) «5» февраля 2025 года -> «05» февраля 2025 года
+            def _fix_quoted_day(match: re.Match) -> str:
+                day_str = match.group(1)
+                month_name = match.group(2)
+                year_str = match.group(3)
+                try:
+                    day_int = int(day_str)
+                except ValueError:
+                    return match.group(0)
+                day_formatted = f"{day_int:02d}"
+                return f"«{day_formatted}» {month_name} {year_str} года"
+
+            months_pattern = r"(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)"
+            text = re.sub(r"«(\d{1,2})»\s+" + months_pattern + r"\s+(\d{4})\s+года", _fix_quoted_day, text)
+
+            # 2) Дело №А53-2345-4/2025-4/2025 -> Дело №А53-2345-4/2025
+            def _fix_case_number(match: re.Match) -> str:
+                prefix = match.group(1)   # А53-2345-4
+                year1 = match.group(2)    # 2025
+                suffix = match.group(3)   # 4
+                year2 = match.group(4)    # 2025
+                if year1 == year2 and suffix in prefix:
+                    return f"Дело №{prefix}/{year1}"
+                return match.group(0)
+
+            text = re.sub(
+                r"Дело\s*№\s*([А-ЯЁA-Z0-9-]+)/(\d{4})-([А-ЯЁA-Z0-9-]+)/(\d{4})",
+                _fix_case_number,
+                text
+            )
+            # 2.1) Дело № А44-1233-4/2025-4 -> Дело № А44-1233-4/2025 (лишний суффикс после года)
+            text = re.sub(r"(Дело\s*№\s*[А-ЯЁA-Z0-9-]+/\d{4})-\d+\b", r"\1", text)
+
+            # 3) Даты формата 2026.04.02 / 2026-04-02 -> 02.04.2026
+            def _fix_iso_date(match: re.Match) -> str:
+                year = match.group(1)
+                month = match.group(2).zfill(2)
+                day = match.group(3).zfill(2)
+                return f"{day}.{month}.{year}"
+
+            text = re.sub(r"(\d{4})[.-](\d{1,2})[.-](\d{1,2})", _fix_iso_date, text)
+
+            # 3.5) Подчищаем хвосты вида "от ]" / "от ] -", которые могли остаться
+            # после удаления маркеров ЕФРСБ ([9], [11]) и т.п.
+            text = re.sub(r"\s*от\s*]\s*[–—-]?", "", text)
+
+            # 3.6) Фиксим слипание "опубликованы в" -> "опубликованыв" после удаления блока ЕФРСБ
+            text = re.sub(r"(опубликованы)\s*в", r"\1 в", text, flags=re.IGNORECASE)
+
+            # 3.7) Обработка блока ЕФРСБ:
+            # Варианты поведения:
+            # - если в этом абзаце есть и ЕФРСБ, и Коммерсант -> полностью удаляем блок ЕФРСБ: "[на сайте ЕФРСБ №... от ...]"
+            # - если есть только ЕФРСБ -> убираем только квадратные скобки, сам текст оставляем
+            # - если ЕФРСБ нет -> ничего тут не делаем (блок с [9]/[11] уже удалён раньше по маркерам)
+            if has_efrsb:
+                if has_kommersant:
+                    # Оставляем только Коммерсант, убираем целиком блок "[на сайте ЕФРСБ ...]"
+                    text = re.sub(
+                        r"\s*\[\s*на\s+сайте\s+ЕФРСБ[^\]]*\]\s*",
+                        " ",
+                        text,
+                        flags=re.IGNORECASE,
+                    )
+                    # На случай варианта без скобок "на сайте ЕФРСБ ..." после предыдущих проходов:
+                    text = re.sub(
+                        r"\s*на\s+сайте\s+ЕФРСБ[^,.\n]*[, ]*",
+                        " ",
+                        text,
+                        flags=re.IGNORECASE,
+                    )
+                else:
+                    # ЕФРСБ есть, Коммерсанта нет — оставляем текст без квадратных скобок
+                    text = re.sub(
+                        r"\s*\[\s*(на\s+сайте\s+ЕФРСБ[^\]]*?)\s*\]\s*",
+                        r" \1 ",
+                        text,
+                        flags=re.IGNORECASE,
+                    )
+
+            # 3.8) Хвост "в газете «Коммерсантъ»":
+            # - если в этом абзаце есть только ЕФРСБ (Коммерсанта нет) — убираем "в газете «Коммерсантъ» ..."
+            # - если есть Коммерсант (с ЕФРСБ или без него) — хвост оставляем, чтобы данные Коммерсанта попали в акт
+            if has_efrsb and not has_kommersant:
+                text = re.sub(
+                    r"[, ]*в\s+газет[аы]\s+«?Коммерсант[\"ъ»']?»?[^.\n]*",
+                    "",
+                    text,
+                    flags=re.IGNORECASE,
+                )
+
+            # 4) На всякий случай убираем оставшиеся маркеры вида [123], [2.2] и т.п.
+            text = re.sub(r"\[[0-9\.]+\]", "", text)
+
+            # ВАЖНО: не сжимаем последовательности пробелов/табов до одного,
+            # чтобы не ломать ручное выравнивание (например, номер дела и дата по краям строки).
+            # Если где-то останутся «двойные» пробелы — это лучше, чем съехавшая в одну сторону шапка.
+            return text
+
+        # Применяем ко всем параграфам и таблицам, включая колонтитулы
+        def process_paragraphs(paragraphs):
+            for p in paragraphs:
+                if p.text:
+                    new_text = process_text(p.text)
+                    if new_text != p.text:
+                        p.text = new_text
+
+        def process_tables(tables):
+            for table in tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        process_paragraphs(cell.paragraphs)
+
+        process_paragraphs(doc.paragraphs)
+        process_tables(doc.tables)
+
+        for section in doc.sections:
+            process_paragraphs(section.header.paragraphs)
+            process_tables(section.header.tables)
+            process_paragraphs(section.footer.paragraphs)
+            process_tables(section.footer.tables)
 
     def _get_context_patterns_for_marker(self, placeholder: str) -> List[str]:
         """
@@ -954,8 +1603,9 @@ class DocumentGenerator:
 
         # Паттерны контекста для разных маркеров
         context_patterns_map = {
-            # [1] - Номер дела
+            # [1] - Номер дела (широкий паттерн убирает контекст до маркера)
             "1": [
+                r"(?:(?:Дело|дело|номер\s+дела|по\s+делу)[^\[\]]*)?{MARKER}",
                 r"(?:Дело|дело)[\s№]*{MARKER}",
                 r"(?:Дело|дело)[\s:]*№[\s]*{MARKER}",
                 r"номер\s+дела[\s:]*№?[\s]*{MARKER}",
@@ -970,73 +1620,174 @@ class DocumentGenerator:
             "2.2": [],
             "2.3": [],
             "2.4": [],
-            # [3] - Дата рождения
+            # [3] - Дата рождения (широкий паттерн: любой текст между ключевой фразой и маркером)
             "3": [
+                r"(?:дата\s+рождения|Дата\s+рождения|дата\s+рожд\.|Дата\s+рожд\.)[^\[\]]*{MARKER}",
                 r"(?:дата\s+рождения|Дата\s+рождения)[\s:]*{MARKER}",
                 r"(?:дата\s+рожд\.|Дата\s+рожд\.)[\s:]*{MARKER}",
             ],
+            # [3.1] - Город/место рождения
+            "3.1": [
+                r"(?:город\s*/\s*место\s+рождения|место\s+рождения|город\s+рождения)[^\[\]]*{MARKER}",
+                r"(?:город\s*/\s*место\s+рождения|Город\s*/\s*место\s+рождения)[\s:]*{MARKER}",
+                r"(?:место\s+рождения|Место\s+рождения)[\s:]*{MARKER}",
+                r"(?:город\s+рождения|Город\s+рождения)[\s:]*{MARKER}",
+            ],
             # [4] - ИНН
             "4": [
+                r"(?:ИНН|инн)[^\[\]]*{MARKER}",
                 r"(?:ИНН|инн)[\s:]*{MARKER}",
                 r"(?:ИНН|инн)[\s№]*{MARKER}",
             ],
             # [4.1] - ОГРНИП
             "4.1": [
+                r"(?:ОГРНИП|огрнип)[^\[\]]*{MARKER}",
                 r"(?:ОГРНИП|огрнип)[\s:]*{MARKER}",
                 r"(?:ОГРНИП|огрнип)[\s№]*{MARKER}",
             ],
             # [5] - СНИЛС
             "5": [
+                r"(?:СНИЛС|снилс)[^\[\]]*{MARKER}",
                 r"(?:СНИЛС|снилс)[\s:]*{MARKER}",
                 r"(?:СНИЛС|снилс)[\s№]*{MARKER}",
             ],
             # [6] - Адрес регистрации
             "6": [
+                r"(?:адрес\s+регистрации|адрес|Адрес)[^\[\]]*{MARKER}",
                 r"(?:адрес|Адрес)[\s:]*{MARKER}",
                 r"(?:адрес\s+регистрации|Адрес\s+регистрации)[\s:]*{MARKER}",
             ],
             # [7] - Дата решения суда
             "7": [
+                r"(?:дата\s+решения\s+суда|дата\s+решения|Дата\s+решения)[^\[\]]*{MARKER}",
                 r"(?:дата\s+решения|Дата\s+решения)[\s:]*{MARKER}",
                 r"(?:дата\s+решения\s+суда|Дата\s+решения\s+суда)[\s:]*{MARKER}",
             ],
             # [8] - ФИО финансового управляющего
             "8": [
+                r"(?:финансовый\s+управляющий|ФИО\s+финансового\s+управляющего)[^\[\]]*{MARKER}",
                 r"(?:финансовый\s+управляющий|Финансовый\s+управляющий)[\s:]*{MARKER}",
                 r"(?:ФИО\s+финансового\s+управляющего|ФИО\s+Финансового\s+управляющего)[\s:]*{MARKER}",
             ],
             # [9] - Номер сообщения
             "9": [
+                r"(?:номер\s+сообщения|сообщение|Номер\s+сообщения|Сообщение)[^\[\]]*{MARKER}",
                 r"(?:номер\s+сообщения|Номер\s+сообщения)[\s:]*№?[\s]*{MARKER}",
                 r"(?:сообщение|Сообщение)[\s:]*№?[\s]*{MARKER}",
+                # Полный блок "[на сайте ЕФРСБ №[9] от [11]]" — удаляем целиком, если [9] пустой
+                # Не завязываемся на наличие [11], чтобы не оставался хвост "от ]"
+                r"\[\s*на\s+сайте\s+ЕФРСБ[^\]]*{MARKER}[^\]]*\]",
             ],
             # [11] - Дата публикации ЕФРСБ
             "11": [
+                r"(?:дата\s+публикации|Дата\s+публикации)[^\[\]]*{MARKER}",
                 r"(?:дата\s+публикации|Дата\s+публикации)[\s:]*{MARKER}",
                 r"(?:дата\s+публикации\s+на\s+сайте|Дата\s+публикации\s+на\s+сайте)[\s:]*{MARKER}",
+                # Если даты нет и маркер пустой, убираем хвост вида "от ]"
+                r"(?:от\s*\[{MARKER}\]|от\s*])",
+            ],
+            # [67] - Номер газеты «Коммерсантъ». При пустом номере удаляем весь блок с газетой.
+            "67": [
+                r"№\s*{MARKER}",
+                r"(?:газет[аы]\s+)?«?Коммерсант[ъ\"»']?»?\s*№\s*{MARKER}",
+                # Полный блок "в газете «Коммерсантъ» №[67] от [68]" — удаляем целиком, если [67] пустой
+                r"в\s+газет[аы]\s+«?Коммерсант[ъ\"»']?»?\s*№\s*{MARKER}\s*от\s*\[68\]",
+            ],
+            # [68] - Дата газеты «Коммерсантъ»
+            "68": [
+                r"(?:газет[аы]\s+)?«?Коммерсант[ъ\"»']?»?[^0-9]{0,40}{MARKER}",
+                r"(?:от\s+)?{MARKER}",
+                # Если по какой-то причине остался блок без "в газете", удаляем "от [68]" после номера
+                r"от\s*{MARKER}",
             ],
             # [12] - Общая сумма долга
             "12": [
+                r"(?:общая\s+сумма|сумма\s+долга|Общая\s+сумма|Сумма\s+долга)[^\[\]]*{MARKER}",
                 r"(?:общая\s+сумма|Общая\s+сумма)[\s:]*{MARKER}",
                 r"(?:сумма\s+долга|Сумма\s+долга)[\s:]*{MARKER}",
             ],
             # [13] - Основной долг
             "13": [
+                r"(?:основной\s+долг|Основной\s+долг)[^\[\]]*{MARKER}",
                 r"(?:основной\s+долг|Основной\s+долг)[\s:]*{MARKER}",
             ],
             # [14] - Проценты
             "14": [
+                r"(?:проценты|Проценты)[^\[\]]*{MARKER}",
                 r"(?:проценты|Проценты)[\s:]*{MARKER}",
             ],
             # [15] - Неустойка
             "15": [
+                r"(?:неустойка|штрафные\s+санкции|Неустойка|Штрафные\s+санкции)[^\[\]]*{MARKER}",
                 r"(?:неустойка|Неустойка)[\s:]*{MARKER}",
                 r"(?:штрафные\s+санкции|Штрафные\s+санкции)[\s:]*{MARKER}",
             ],
-            # [16] - Госпошлина
+            # [16] - Банкротная госпошлина
             "16": [
+                r"(?:госпошлина|государственная\s+пошлина|банкротная\s+госпошлина)[^\[\]]*{MARKER}",
                 r"(?:госпошлина|Госпошлина)[\s:]*{MARKER}",
                 r"(?:государственная\s+пошлина|Государственная\s+пошлина)[\s:]*{MARKER}",
+                r"(?:банкротная\s+госпошлина|Банкротная\s+госпошлина)[\s:]*{MARKER}",
+            ],
+            # [17] - Ссудная госпошлина (вторая госпошлина, в шаблонах иногда тоже называется просто "государственная пошлина")
+            "17": [
+                # Частый шаблон из актов:
+                # "[17] – государственная пошлина"
+                r"{MARKER}\s*[–—-]\s*государственная\s+пошлина[^\n]*",
+                r"(?:ссудная\s+госпошлина|Ссудная\s+госпошлина|госпошлина|Госпошлина|государственная\s+пошлина|Государственная\s+пошлина)[^\[\]]*{MARKER}",
+                r"(?:ссудная\s+госпошлина|Ссудная\s+госпошлина|госпошлина|Госпошлина|государственная\s+пошлина|Государственная\s+пошлина)[\s:]*{MARKER}",
+            ],
+            # [18] - Установка срока на предоставление возражений
+            "18": [
+                r"(?:установка\s+срока\s+на\s+предоставление\s+возражений|срок\s+на\s+предоставление\s+возражений)[^\[\]]*{MARKER}",
+                r"(?:установка\s+срока\s+на\s+предоставление\s+возражений|Установка\s+срока\s+на\s+предоставление\s+возражений)[\s:]*{MARKER}",
+                r"(?:срок\s+на\s+предоставление\s+возражений|Срок\s+на\s+предоставление\s+возражений)[\s:]*{MARKER}",
+            ],
+            # [19] - На рассмотрение заявления в срок
+            "19": [
+                r"(?:на\s+рассмотрение\s+заявления\s+в\s+срок|На\s+рассмотрение\s+заявления\s+в\s+срок)[^\[\]]*{MARKER}",
+                r"(?:на\s+рассмотрение\s+заявления\s+в\s+срок|На\s+рассмотрение\s+заявления\s+в\s+срок)[\s:]*{MARKER}",
+            ],
+            # [20] - Срок для оставления без движения
+            "20": [
+                r"(?:срок\s+для\s+оставления\s+без\s+движения|Срок\s+для\s+оставления\s+без\s+движения)[^\[\]]*{MARKER}",
+                r"(?:срок\s+для\s+оставления\s+без\s+движения|Срок\s+для\s+оставления\s+без\s+движения)[\s:]*{MARKER}",
+            ],
+            # [22] - Номер обособленного спора
+            "22": [
+                r"(?:номер\s+обособленного\s+спора|Номер\s+обособленного\s+спора)[^\[\]]*{MARKER}",
+                r"(?:номер\s+обособленного\s+спора|Номер\s+обособленного\s+спора)[\s:]*{MARKER}",
+            ],
+            # [23] - Дата поступления заявления в суд (согласно штампу) — широкий паттерн убирает всю фразу
+            "23": [
+                r"(?:дата\s+поступления\s+заявления\s+в\s+суд|Дата\s+поступления\s+заявления\s+в\s+суд)[^\[\]]*{MARKER}",
+                r"(?:согласно\s+штампу|Согласно\s+штампу)[^\[\]]*{MARKER}",
+                r"(?:дата\s+поступления\s+заявления\s+в\s+суд|Дата\s+поступления\s+заявления\s+в\s+суд)[\s:]*{MARKER}",
+                r"(?:согласно\s+штампу|Согласно\s+штампу)[\s:]*{MARKER}",
+            ],
+            # [24] - Дата направления в суд
+            "24": [
+                r"(?:дата\s+направления\s+в\s+суд|Дата\s+направления\s+в\s+суд)[\s:]*{MARKER}",
+            ],
+            # [99] - Дата и время судебного заседания
+            "99": [
+                r"(?:дата\s+и\s+время\s+судебного\s+заседания|Дата\s+и\s+время\s+судебного\s+заседания)[\s:]*{MARKER}",
+                r"(?:судебное\s+заседание|Судебное\s+заседание)[\s:]*{MARKER}",
+            ],
+            # [80] - Дата ПП депозит
+            "80": [
+                r"(?:дата\s+ПП\s+депозит|Дата\s+ПП\s+депозит|дата\s+пп\s+депозит)[\s:]*{MARKER}",
+                r"(?:ПП\s+депозит|пп\s+депозит)[\s:]*{MARKER}",
+            ],
+            # [81] - Дата ПП ГП
+            "81": [
+                r"(?:дата\s+ПП\s+ГП|Дата\s+ПП\s+ГП|дата\s+пп\s+гп)[\s:]*{MARKER}",
+                r"(?:ПП\s+ГП|пп\s+гп)[\s:]*{MARKER}",
+            ],
+            # [25] - Название/ФИО третьего лица
+            "25": [
+                r"(?:Название\s*/\s*ФИО\s+третьего\s+лица|название\s*/\s*фИО\s+третьего\s+лица|ФИО\s+третьего\s+лица|фИО\s+третьего\s+лица|третье\s+лицо|Третье\s+лицо)[\s:]*{MARKER}",
+                r"(?:поручитель|Поручитель)[\s:]*{MARKER}",
             ],
             # [88] - Дата состояния задолженности
             "88": [
@@ -1103,6 +1854,60 @@ class DocumentGenerator:
                 r"(?:дата\s+определения\s+о\s+принятии\s+заявления\s+к\s+производству|Дата\s+определения\s+о\s+принятии\s+заявления\s+к\s+производству)[\s:]*{MARKER}",
                 r"(?:дата\s+определения|Дата\s+определения)[\s:]*{MARKER}",
             ],
+            # [100]-[104] — даты договоров: удаляем фразу «кредитный договор от [10X] № [11X]» или «договор поручительства от [104] № [114]»
+            # Улучшенные паттерны: удаляют всю фразу, включая номер договора, если дата пустая
+            "100": [
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+{MARKER}\s+№\s+\[110\][^,.\n]*",
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+{MARKER}\s+№\s+[^,.\n]*",
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+{MARKER}[^,.\n]*",
+            ],
+            "101": [
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+{MARKER}\s+№\s+\[111\][^,.\n]*",
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+{MARKER}\s+№\s+[^,.\n]*",
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+{MARKER}[^,.\n]*",
+            ],
+            "102": [
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+{MARKER}\s+№\s+\[112\][^,.\n]*",
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+{MARKER}\s+№\s+[^,.\n]*",
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+{MARKER}[^,.\n]*",
+            ],
+            "103": [
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+{MARKER}\s+№\s+\[113\][^,.\n]*",
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+{MARKER}\s+№\s+[^,.\n]*",
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+{MARKER}[^,.\n]*",
+            ],
+            "104": [
+                r"(?:,\s*)?договор\s+поручительства\s+от\s+{MARKER}\s+№\s+\[114\][^,.\n]*",
+                r"(?:,\s*)?договор\s+поручительства\s+от\s+{MARKER}\s+№\s+[^,.\n]*",
+                r"(?:,\s*)?договор\s+поручительства\s+от\s+{MARKER}[^,.\n]*",
+            ],
+            # [110]-[114] — номера договоров: удаляем фразу «кредитный договор от [10X] № [11X]» или «договор поручительства от [104] № [114]»
+            # Улучшенные паттерны: удаляют всю фразу, включая дату договора, если номер пустой
+            "110": [
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+\[100\]\s+№\s+{MARKER}[^,.\n]*",
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+[^,]+?\s+№\s+{MARKER}[^,.\n]*",
+                r"(?:,\s*)?кредитный\s+договор[^,]*?\s+№\s+{MARKER}[^,.\n]*",
+            ],
+            "111": [
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+\[101\]\s+№\s+{MARKER}[^,.\n]*",
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+[^,]+?\s+№\s+{MARKER}[^,.\n]*",
+                r"(?:,\s*)?кредитный\s+договор[^,]*?\s+№\s+{MARKER}[^,.\n]*",
+            ],
+            "112": [
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+\[102\]\s+№\s+{MARKER}[^,.\n]*",
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+[^,]+?\s+№\s+{MARKER}[^,.\n]*",
+                r"(?:,\s*)?кредитный\s+договор[^,]*?\s+№\s+{MARKER}[^,.\n]*",
+            ],
+            "113": [
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+\[103\]\s+№\s+{MARKER}[^,.\n]*",
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+[^,]+?\s+№\s+{MARKER}[^,.\n]*",
+                r"(?:,\s*)?кредитный\s+договор[^,]*?\s+№\s+{MARKER}[^,.\n]*",
+            ],
+            "114": [
+                r"(?:,\s*)?договор\s+поручительства\s+от\s+\[104\]\s+№\s+{MARKER}[^,.\n]*",
+                r"(?:,\s*)?договор\s+поручительства\s+от\s+[^,]+?\s+№\s+{MARKER}[^,.\n]*",
+                r"(?:,\s*)?договор\s+поручительства[^,]*?\s+№\s+{MARKER}[^,.\n]*",
+            ],
         }
 
         # Получаем паттерны для данного маркера
@@ -1116,38 +1921,52 @@ class DocumentGenerator:
 
     def _collect_placeholders(self, doc: Document) -> Set[str]:
         """
-        Собирает все плейсхолдеры вида [123] из параграфов и таблиц документа, включая колонтитулы.
+        Собирает все плейсхолдеры вида [123], [2.1], [DATE] и т.п. из параграфов
+        и таблиц документа, включая колонтитулы.
+        Игнорирует произвольные блоки в квадратных скобках вроде
+        "[на сайте ЕФРСБ №20899106 от 19.12.2025]", чтобы не удалять уже
+        подставленный текст как "неизвестный маркер".
         """
-        pattern = re.compile(r'\[[^\]]+\]')
+        # Истинный маркер: либо чисто цифровой с точками (2, 2.1, 415 и т.п.),
+        # либо специальные вроде [DATE].
+        marker_pattern = re.compile(r'\[((?:\d+(?:\.\d+)*|DATE))\]')
+        raw_bracket_pattern = re.compile(r'\[[^\]]+\]')
         placeholders: Set[str] = set()
+
+        def collect_from_text(text: str):
+            if not text:
+                return
+            for raw in raw_bracket_pattern.findall(text):
+                if marker_pattern.match(raw):
+                    placeholders.add(raw)
 
         # Собираем из основных параграфов
         for paragraph in doc.paragraphs:
-            placeholders.update(pattern.findall(paragraph.text))
+            collect_from_text(paragraph.text)
 
         # Собираем из таблиц основного документа
         for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
-                    placeholders.update(pattern.findall(cell.text))
+                    collect_from_text(cell.text)
 
         # Собираем из колонтитулов
         for section in doc.sections:
             # Заголовки
             for paragraph in section.header.paragraphs:
-                placeholders.update(pattern.findall(paragraph.text))
+                collect_from_text(paragraph.text)
             for table in section.header.tables:
                 for row in table.rows:
                     for cell in row.cells:
-                        placeholders.update(pattern.findall(cell.text))
+                        collect_from_text(cell.text)
 
             # Подвалы
             for paragraph in section.footer.paragraphs:
-                placeholders.update(pattern.findall(paragraph.text))
+                collect_from_text(paragraph.text)
             for table in section.footer.tables:
                 for row in table.rows:
                     for cell in row.cells:
-                        placeholders.update(pattern.findall(cell.text))
+                        collect_from_text(cell.text)
 
         return placeholders
 
@@ -1188,7 +2007,40 @@ class DocumentGenerator:
         if month < 1 or month > 12:
             return ""
         month_name = months_genitive[month]
-        return f"«{day}» {month_name} {year} года"
+        # Форматируем день с ведущим нулем (05 вместо 5)
+        day_formatted = f"{day:02d}"
+        return f"«{day_formatted}» {month_name} {year} года"
+
+    def _normalize_date_format(self, date_value: str) -> str:
+        """
+        Нормализует формат даты из YYYY.MM.DD или YYYY-MM-DD в DD.MM.YYYY.
+        Пример: 2026.04.02 -> 02.04.2026
+        """
+        if not date_value or not str(date_value).strip():
+            return date_value
+
+        date_str = str(date_value).strip()
+
+        # Проверяем формат YYYY.MM.DD или YYYY-MM-DD
+        pattern1 = r'^(\d{4})[.-](\d{1,2})[.-](\d{1,2})$'
+        match1 = re.match(pattern1, date_str)
+        if match1:
+            year = match1.group(1)
+            month = match1.group(2).zfill(2)  # Добавляем ведущий ноль
+            day = match1.group(3).zfill(2)    # Добавляем ведущий ноль
+            return f"{day}.{month}.{year}"
+
+        # Если формат уже DD.MM.YYYY, просто нормализуем (добавляем ведущие нули)
+        pattern2 = r'^(\d{1,2})[.,](\d{1,2})[.,](\d{4})$'
+        match2 = re.match(pattern2, date_str)
+        if match2:
+            day = match2.group(1).zfill(2)
+            month = match2.group(2).zfill(2)
+            year = match2.group(3)
+            return f"{day}.{month}.{year}"
+
+        # Если формат не распознан, возвращаем как есть
+        return date_str
 
     def _replace_placeholder_in_doc(self, doc: Document, placeholder: str, value: str) -> bool:
         """
@@ -1212,6 +2064,19 @@ class DocumentGenerator:
                     for cell in row.cells:
                         replace_in_paragraphs(cell.paragraphs)
 
+        def replace_in_xml_text_nodes(elements):
+            """
+            Дополнительный проход по XML-текстам (w:t), чтобы заменить маркеры
+            внутри фигур/текстовых блоков (textbox), которые python-docx не
+            всегда отдает через paragraph/table API.
+            """
+            nonlocal replaced
+            for element in elements:
+                for text_node in element.iter(qn("w:t")):
+                    if text_node.text and placeholder in text_node.text:
+                        text_node.text = text_node.text.replace(placeholder, value)
+                        replaced = True
+
         replace_in_paragraphs(doc.paragraphs)
         replace_in_tables(doc.tables)
 
@@ -1220,6 +2085,13 @@ class DocumentGenerator:
             replace_in_tables(section.header.tables)
             replace_in_paragraphs(section.footer.paragraphs)
             replace_in_tables(section.footer.tables)
+
+        # Включаем замену в текстбоксах и других контейнерах, не доступных как paragraphs/tables.
+        xml_elements = [doc.part.element]
+        for section in doc.sections:
+            xml_elements.append(section.header.part.element)
+            xml_elements.append(section.footer.part.element)
+        replace_in_xml_text_nodes(xml_elements)
 
         return replaced
 
@@ -1243,6 +2115,14 @@ class DocumentGenerator:
                     for cell in row.cells:
                         replace_in_paragraphs(cell.paragraphs)
 
+        def replace_in_xml_text_nodes(elements):
+            nonlocal replaced
+            for element in elements:
+                for text_node in element.iter(qn("w:t")):
+                    if text_node.text and regex.search(text_node.text):
+                        text_node.text = regex.sub(replacement, text_node.text)
+                        replaced = True
+
         replace_in_paragraphs(doc.paragraphs)
         replace_in_tables(doc.tables)
 
@@ -1252,14 +2132,27 @@ class DocumentGenerator:
             replace_in_paragraphs(section.footer.paragraphs)
             replace_in_tables(section.footer.tables)
 
+        xml_elements = [doc.part.element]
+        for section in doc.sections:
+            xml_elements.append(section.header.part.element)
+            xml_elements.append(section.footer.part.element)
+        replace_in_xml_text_nodes(xml_elements)
+
         return replaced
 
     def _format_amount_value(self, value: float) -> str:
         """
-        Форматирует число как денежную сумму: 1234567.8 -> '1 234 567,80'
+        Форматирует число как денежную сумму:
+        - 1234567.0  -> '1 234 567'
+        - 1234567.8  -> '1 234 567,80'
         """
         try:
-            return f"{float(value):,.2f}".replace(",", " ").replace(".", ",")
+            num = float(value)
+            # Если нет копеек — показываем только целые рубли без ",00"
+            if abs(num - round(num)) < 1e-9:
+                return f"{num:,.0f}".replace(",", " ")
+            # Иначе показываем две копейки
+            return f"{num:,.2f}".replace(",", " ").replace(".", ",")
         except Exception:
             return str(value)
 
@@ -1308,6 +2201,19 @@ class DocumentGenerator:
             return
 
         logger.info(f"Найдено {len(obligations)} обязательств")
+        # В перечисление обязательств по шаблонным слотам [100]/[110] и [101]/[111]...
+        # включаем только кредитные обязательства. Договоры залога должны отображаться
+        # отдельно и не участвуют в этом перечне.
+        credit_obligations = []
+        for ob in obligations:
+            if not isinstance(ob, dict):
+                continue
+            ob_type = str(ob.get("obligationType") or ob.get("type") or "").lower()
+            if "залог" in ob_type:
+                continue
+            credit_obligations.append(ob)
+        obligations = credit_obligations
+        logger.info(f"Кредитных обязательств для шаблонного перечня: {len(obligations)}")
 
         # Номера полей для обязательств (динамические):
         # [100], [101], [102], [103], [104], [105], ... - даты договоров
@@ -1325,9 +2231,40 @@ class DocumentGenerator:
             except (TypeError, ValueError):
                 continue
 
-        # Суммарная фраза для >5 обязательств
+        # Собираем информацию о плейсхолдерах обязательств, реально присутствующих в шаблоне
+        placeholders_in_doc = self._collect_placeholders(doc)
+        available_slots: Set[int] = set()
+        for placeholder in placeholders_in_doc:
+            match = re.match(r"\[(\d+)\]", placeholder)
+            if not match:
+                continue
+            number = int(match.group(1))
+            slot_index: Optional[int] = None
+            if 100 <= number < 110:
+                slot_index = number - 100
+            elif 110 <= number < 120:
+                slot_index = number - 110
+            elif 120 <= number < 130:
+                slot_index = number - 120
+            if slot_index is not None:
+                available_slots.add(slot_index)
+
+        max_slots = len(available_slots)
+
+        # Суммарная фраза для большого количества обязательств:
+        # используем её ТОЛЬКО если в шаблоне явно предусмотрен сводный маркер [992]
+        # и количество обязательств больше, чем количество доступных "слотов" в шаблоне.
         summary_placeholder = "[992]"
-        if obligations_count > 5:
+        has_summary_placeholder = summary_placeholder in placeholders_in_doc
+
+        use_summary_mode = (
+            has_summary_placeholder
+            and obligations_count > 5
+            and max_slots
+            and obligations_count > max_slots
+        )
+
+        if use_summary_mode:
             # Заменяем длинный список договоров на единый маркер [992]
             intro_phrase = "В обоснование заявленных требований кредитор указал, что"
 
@@ -1335,7 +2272,19 @@ class DocumentGenerator:
                 for paragraph in paragraphs:
                     text = paragraph.text
                     if intro_phrase in text and any(
-                        marker in text for marker in ["[100]", "[101]", "[102]", "[103]", "[104]", "[110]", "[111]", "[112]", "[113]", "[114]"]
+                        marker in text
+                        for marker in [
+                            "[100]",
+                            "[101]",
+                            "[102]",
+                            "[103]",
+                            "[104]",
+                            "[110]",
+                            "[111]",
+                            "[112]",
+                            "[113]",
+                            "[114]",
+                        ]
                     ):
                         paragraph.text = summary_placeholder
 
@@ -1353,8 +2302,9 @@ class DocumentGenerator:
                 or ""
             )
             summary_text = (
-                f"В обоснование заявленных требований кредитор указал, что между ПАО Сбербанк и {genitive_name} "
-                f"(далее – должник) заключено {obligations_count} обязательств на общую сумму "
+                "В обоснование заявленных требований кредитор указал, что между ПАО "
+                f"Сбербанк и {genitive_name} (далее – должник) заключено "
+                f"{obligations_count} обязательств на общую сумму "
                 f"{self._format_amount_value(total_issued)}."
             )
             # Заполняем сводный маркер
@@ -1364,19 +2314,24 @@ class DocumentGenerator:
                 self._replace_placeholder_in_doc(doc, f"[{100 + idx}]", "")
                 self._replace_placeholder_in_doc(doc, f"[{110 + idx}]", "")
         else:
-            # Если обязательств <=5, очищаем сводный маркер
+            # Если сводный режим не используется, всегда очищаем [992], если он вдруг встречается
             self._replace_placeholder_in_doc(doc, summary_placeholder, "")
 
         for i, obligation in enumerate(obligations):
             if not isinstance(obligation, dict):
                 continue
 
-            contract_date = obligation.get('contractDate', '')
-            contract_number = obligation.get('contractNumber', '')
+            contract_date = (obligation.get('contractDate') or '').strip()
+            contract_number = (obligation.get('contractNumber') or '').strip()
+            # Не подставлять мусор вместо номера договора — тогда маркер останется и будет удалён с контекстом
+            if contract_number.lower() in ('путем', 'подписания', 'далее', '') or len(contract_number) < 2:
+                contract_number = ''
             obligation_type = obligation.get('obligationType') or obligation.get('type') or ''
             obligation_type_lower = obligation_type.lower()
             if "поручитель" in obligation_type_lower:
                 type_label = "договор поручительства"
+            elif "залог" in obligation_type_lower:
+                type_label = "договор залога"
             else:
                 type_label = "кредитный договор"
 
@@ -1438,9 +2393,6 @@ class DocumentGenerator:
                 # Удаляем фразу "кредитный договор от [10X] № [11X]" вместе с возможной запятой и пробелами
                 credit_pattern = rf"(?:,\s*)?кредитный\s+договор\s+от\s+\[{date_num}\]\s+№\s+\[{number_num}\]"
                 self._replace_regex_in_doc(doc, credit_pattern, "")
-                # Удаляем фразу "договор поручительства от [10X] № [11X]"
-                surety_pattern = rf"(?:,\s*)?договор\s+поручительства\s+от\s+\[{date_num}\]\s+№\s+\[{number_num}\]"
-                self._replace_regex_in_doc(doc, surety_pattern, "")
 
             # Затем на всякий случай обнуляем сами маркеры
             for idx in range(obligations_count, 5):
@@ -1449,19 +2401,25 @@ class DocumentGenerator:
                 self._replace_placeholder_in_doc(doc, date_placeholder, "")
                 self._replace_placeholder_in_doc(doc, number_placeholder, "")
 
-            # Грубая зачистка испорченных хвостов без маркеров:
-            # "кредитный договор от № ," и "договор поручительства от № .]"
-            # Важно: удаляем только случаи, где после "№" НЕТ цифр (испорченные хвосты).
+            # Безопасная зачистка испорченных хвостов без маркеров:
+            # удаляем только короткие фрагменты "договор ... от №" без чисел,
+            # НЕ заходя в соседние суммы (например, "496 877,32").
             self._replace_regex_in_doc(
                 doc,
-                r"(?:,\s*)?кредитный\s+договор\s+от\s+№\s*(?!\d)[^,\.]*",
+                r"(?:,\s*)?кредитный\s+договор\s+от\s+№\s*(?!\d)(?:(?!основн|процент|неустой|госпошл|руб)[^,\.\n]){0,40}",
                 ""
             )
             self._replace_regex_in_doc(
                 doc,
-                r"(?:,\s*)?договор\s+поручительства\s+от\s+№\s*(?!\d)[^,\.]*",
+                r"(?:,\s*)?договор\s+поручительства\s+от\s+№\s*(?!\d)(?:(?!основн|процент|неустой|госпошл|руб)[^,\.\n]){0,40}",
                 ""
             )
+            # Очистка фраз "по договору № от ," (пустые номера/даты договоров, не заполненные из заявления и интерфейса)
+            for _ in range(10):  # несколько проходов для цепочек "по договору № от , по договору № от , ..."
+                self._replace_regex_in_doc(doc, r",\s*по\s+договору\s+№\s*от\s*\s*,", ",")
+                self._replace_regex_in_doc(doc, r"по\s+договору\s+№\s*от\s*\s*,", "")
+                self._replace_regex_in_doc(doc, r",\s*по\s+договору\s+№\s*\-?\s*", ",")
+                self._replace_regex_in_doc(doc, r"по\s+договору\s+№\s*\-?\s*", "")
 
             # Дополнительная зачистка: запятая перед точкой и лишние пробелы
             self._replace_regex_in_doc(doc, r",\s*\.", ".")
@@ -1494,23 +2452,41 @@ class DocumentGenerator:
             'thirdPartySnils': 'поручитель'
         }
 
+        # Текущий номер дела и номер обособленного спора (для устранения дублирования)
+        case_number = str(data.get("caseNumber", "") or "")
+        separate_dispute_number = str(data.get("separateDisputeNumber22", "") or "").strip()
+
         # Заменяем в параграфах
         for paragraph in doc.paragraphs:
             text = paragraph.text
 
-            # Специальная замена для даты сообщения в контексте "ЕФРСБ сообщение"
-            message_date = data.get('messageDate', '')
-            if message_date and 'ЕФРСБ' in text and 'сообщение' in text:
-                # Ищем паттерн "ЕФРСБ сообщение" и заменяем дату после него
+            # Убираем дублирование номера обособленного спора рядом с номером дела,
+            # если номер обособленного спора уже включён в сам номер дела.
+            # Пример: "Дело№А53-37965-4/2025 4" -> "Дело№А53-37965-4/2025"
+            if case_number and separate_dispute_number:
+                pattern_case_sep = rf"({re.escape(case_number)})\s+{re.escape(separate_dispute_number)}\b"
+                if re.search(pattern_case_sep, text):
+                    new_text = re.sub(pattern_case_sep, r"\1", text)
+                    if new_text != text:
+                        paragraph.text = new_text
+                        text = new_text
+                        logger.info(
+                            "🧹 Удалено дублирование номера обособленного спора рядом с номером дела"
+                        )
+
+            # [9] и [11] — только ЕФРСБ: номер и дата сообщения на сайте
+            efirsb_date = data.get('efirsbPublicationDate', '')
+            if efirsb_date and 'ЕФРСБ' in text and 'сообщение' in text:
                 pattern = r'ЕФРСБ\s+сообщение[^0-9]*?(\d{1,2}[.,]\d{1,2}[.,]\d{4})'
                 if re.search(pattern, text):
-                    paragraph.text = re.sub(pattern, f'ЕФРСБ сообщение {message_date}', text)
-                    logger.info(f"Заменена дата сообщения в контексте ЕФРСБ: {message_date}")
-                else:
-                    # Если нет даты после "ЕФРСБ сообщение", просто добавляем дату
-                    if 'ЕФРСБ сообщение' in text and not re.search(r'ЕФРСБ\s+сообщение\s+\d{1,2}[.,]\d{1,2}[.,]\d{4}', text):
-                        paragraph.text = text.replace('ЕФРСБ сообщение', f'ЕФРСБ сообщение {message_date}')
-                        logger.info(f"Добавлена дата сообщения после ЕФРСБ: {message_date}")
+                    paragraph.text = re.sub(pattern, f'ЕФРСБ сообщение {efirsb_date}', text)
+                    logger.info(f"Заменена дата сообщения в контексте ЕФРСБ [11]: {efirsb_date}")
+                elif 'ЕФРСБ сообщение' in text and not re.search(r'ЕФРСБ\s+сообщение\s+\d{1,2}[.,]\d{1,2}[.,]\d{4}', text):
+                    paragraph.text = text.replace('ЕФРСБ сообщение', f'ЕФРСБ сообщение {efirsb_date}')
+                    logger.info(f"Добавлена дата сообщения после ЕФРСБ [11]: {efirsb_date}")
+
+            # [67] и [68] подставляются только через маркеры в шаблоне (замена в основном цикле).
+            # Контекстную подстановку в абзацы с «Коммерсант» не делаем — дата и номер только в местах [68] и [67].
 
             # Финансовый управляющий
             for field_key, context in manager_fields.items():
@@ -1668,7 +2644,7 @@ class DocumentGenerator:
     def _get_templates_for_procedure(self, procedure_type: str) -> Dict[str, Dict[str, Any]]:
         """Возвращает набор шаблонов для указанного типа процедуры (ВКЛ в РТК без залога)."""
         templates_dir = Path(__file__).parent.parent / "templates"
-        root_dir = Path(__file__).resolve().parents[2]
+        root_dir = self._templates_root()
         # Новая база для шаблонов без залогов
         base_dir = root_dir / "шаблоны актов без залогов"
 
@@ -1831,7 +2807,7 @@ class DocumentGenerator:
             has_collateral: Наличие залога
             procedure_type: Тип процедуры - "realization" (реализация) или "restructuring" (реструктуризация)
         """
-        root_dir = Path(__file__).resolve().parents[2]
+        root_dir = self._templates_root()
 
         def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
             return {"name": name, "path": path, "order": order}
@@ -1906,7 +2882,7 @@ class DocumentGenerator:
         Возвращает шаблоны для искового заявления о взыскании с ИП.
         Генерирует 2 акта: "Принятие иска о взыскании с ИП" и "Решение взыскание с ИП".
         """
-        root_dir = Path(__file__).resolve().parents[2]
+        root_dir = self._templates_root()
         collection_dir = root_dir / "Взыскания ИП + Залог"
 
         def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
@@ -1934,7 +2910,7 @@ class DocumentGenerator:
         Возвращает шаблоны для искового заявления о взыскании с ИП с залогом.
         Генерирует 2 акта: "Принятие иска о взыскании с ИП Залог" и "Решение о взысканнии с ИП залог".
         """
-        root_dir = Path(__file__).resolve().parents[2]
+        root_dir = self._templates_root()
         collection_dir = root_dir / "Взыскания ИП + Залог" / "Взыскаие ИП залог"
 
         def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
@@ -1962,7 +2938,7 @@ class DocumentGenerator:
         Возвращает шаблоны для искового заявления о взыскании с ИП залог авто.
         Маркер [1221] — описание авто (марка, модель, год, VIN и т.д.).
         """
-        root_dir = Path(__file__).resolve().parents[2]
+        root_dir = self._templates_root()
         collection_dir = root_dir / "Взыскание ИП залог авто"
 
         def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
@@ -1990,7 +2966,7 @@ class DocumentGenerator:
         Возвращает шаблоны для искового заявления о взыскании с ЮЛ.
         Генерирует 2 акта: "Принятие иска о взыскании с ЮЛ" и "Решение о взыскании с ЮЛ".
         """
-        root_dir = Path(__file__).resolve().parents[2]
+        root_dir = self._templates_root()
         collection_dir = root_dir / "Взыскание ЮЛ"
 
         def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
@@ -2018,7 +2994,7 @@ class DocumentGenerator:
         Возвращает шаблоны для искового заявления о взыскании с ЮЛ с залогом.
         Генерирует 2 акта: "Принятие иска о взыскании с ЮЛ Залог" и "Решение о взыскании с ЮЛ Залог".
         """
-        root_dir = Path(__file__).resolve().parents[2]
+        root_dir = self._templates_root()
         collection_dir = root_dir / "ЮЛ взыскание залог"
 
         def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
@@ -2047,7 +3023,7 @@ class DocumentGenerator:
         Генерирует 2 акта: "Принятие иска о взыскании с ЮЛ Залог авто" и "Решение о взыскании с ЮЛ Залог авто".
         Маркер [1221] — описание авто (марка, модель, год, VIN и т.д.).
         """
-        root_dir = Path(__file__).resolve().parents[2]
+        root_dir = self._templates_root()
         collection_dir = root_dir / "взыскание ЮЛ залог авто"
 
         def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
@@ -2075,7 +3051,7 @@ class DocumentGenerator:
         Возвращает шаблоны для ФЛ с залогом в реализации.
         Использует те же шаблоны, что и для ИП с залогом.
         """
-        root_dir = Path(__file__).resolve().parents[2]
+        root_dir = self._templates_root()
 
         def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
             return {"name": name, "path": path, "order": order}
@@ -2110,7 +3086,7 @@ class DocumentGenerator:
         """
         Возвращает шаблоны для ФЛ с залогом в реструктуризации.
         """
-        root_dir = Path(__file__).resolve().parents[2]
+        root_dir = self._templates_root()
 
         def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
             return {"name": name, "path": path, "order": order}
@@ -2145,7 +3121,7 @@ class DocumentGenerator:
         """
         Возвращает шаблоны для инициирования банкротства физического лица.
         """
-        root_dir = Path(__file__).resolve().parents[2]
+        root_dir = self._templates_root()
         # Новое расположение шаблонов инициирования ФЛ (без залогов)
         base_dir = root_dir / "шаблоны актов без залогов" / "физ иниц рестр + реал"
 
@@ -2176,7 +3152,7 @@ class DocumentGenerator:
         """
         Возвращает шаблоны для инициирования банкротства юридического лица.
         """
-        root_dir = Path(__file__).resolve().parents[2]
+        root_dir = self._templates_root()
         # Новое расположение шаблонов инициирования ЮЛ (без залогов)
         base_dir = root_dir / "шаблоны актов без залогов" / "юр инициир набл + конкурс"
 
@@ -2222,7 +3198,7 @@ class DocumentGenerator:
         """
         Возвращает шаблоны для КФХ (наблюдение / ВКЛ в РТК), с залогом или без.
         """
-        root_dir = Path(__file__).resolve().parents[2]
+        root_dir = self._templates_root()
         kfh_dir = root_dir / "КФХ"
 
         def entry(name: str, filename: str, order: int) -> Dict[str, Any]:
@@ -2263,7 +3239,7 @@ class DocumentGenerator:
         """
         Возвращает шаблон решения суда по ипотечному иску.
         """
-        root_dir = Path(__file__).resolve().parents[2]
+        root_dir = self._templates_root()
         base_dir = root_dir / "Проект Никите" / "ипотека"
 
         def entry(name: str, filename: str, order: int) -> Dict[str, Any]:
@@ -2279,6 +3255,416 @@ class DocumentGenerator:
             )
         }
 
+    def _map_selected_acts_to_templates(self, selected_acts_ids: str, entity_type: str, collateral_option: str, data: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+        """
+        Маппит выбранные пользователем акты на реальные шаблоны документов.
+
+        Args:
+            selected_acts_ids: Строка с ID выбранных актов через запятую
+            entity_type: Тип лица (individual, legal, ip, kfh)
+            collateral_option: Тип залога (collateral, collateral_auto, no_collateral)
+            data: Данные для генерации
+
+        Returns:
+            Словарь с шаблонами для генерации
+        """
+        if not selected_acts_ids:
+            return {}
+
+        root_dir = self._templates_root()
+        base_dir = root_dir / "шаблоны актов без залогов"
+        # Папка с новыми судебными актами (на 19.02)
+        new_acts_dir = root_dir / "на 19.02"
+        # Залог: обычный залог — папка "Залог"; залог авто — папка "Залог авто" (если есть)
+        has_collateral = collateral_option in ('collateral', 'collateral_auto')
+        is_auto_collateral = collateral_option == 'collateral_auto'
+        collateral_dir = root_dir / ("Залог авто" if is_auto_collateral else "Залог")
+        # Для залога авто может не быть подпапок Реализация/Наблюдение — тогда используем "Залог"
+        if is_auto_collateral and not (collateral_dir / "Реализация").exists():
+            collateral_dir = root_dir / "Залог"
+
+        def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
+            return {"name": name, "path": path, "order": order}
+
+        def _docx_xml_upper(path: Path) -> str:
+            try:
+                with zipfile.ZipFile(path) as z:
+                    return z.read("word/document.xml").decode("utf-8", "ignore").upper()
+            except Exception:
+                return ""
+
+        def _pick_docx_by_keywords(dir_path: Path, must_have: List[str]) -> Optional[Path]:
+            """Подбор DOCX по содержимому (если имя файла отличается от ожидаемого)."""
+            try:
+                candidates = sorted(dir_path.glob("*.docx"))
+            except Exception:
+                return None
+
+            for candidate in candidates:
+                xml_up = _docx_xml_upper(candidate)
+                if xml_up and all(k in xml_up for k in must_have):
+                    return candidate
+            return None
+
+        def _pick_docx_by_keywords_multi(dir_path: Path, keyword_lists: List[List[str]]) -> Optional[Path]:
+            """Пробует по очереди несколько наборов ключевых слов; возвращает первый найденный DOCX."""
+            if not dir_path.exists():
+                return None
+            for must_have in keyword_lists:
+                found = _pick_docx_by_keywords(dir_path, must_have)
+                if found is not None:
+                    return found
+            return None
+
+        def _resolve_competition_dir() -> Path:
+            """Папка для конкурсных актов ЮЛ без залога. Ищет по имени, если стандартная не найдена."""
+            default = base_dir / "юр конкурсное ВКЛ в РТК"
+            if default.exists():
+                return default
+            try:
+                for sub in base_dir.iterdir():
+                    if sub.is_dir() and "конкурс" in sub.name.lower():
+                        # Проверяем, что в папке есть хотя бы один .docx
+                        if any(sub.glob("*.docx")):
+                            return sub
+            except Exception:
+                pass
+            return default
+
+        # Базовые папки без залога по типу лица: ФЛ, ЮЛ, ИП, КФХ
+        def _no_collateral_dir(subpath: str, for_entity: str) -> Path:
+            """Папка для актов без залога в зависимости от типа лица."""
+            if "конкурсное" in subpath or "Конкурсное" in subpath:
+                return base_dir / "юр конкурсное ВКЛ в РТК"
+            if "наблюдение" in subpath or "Наблюдение" in subpath:
+                if for_entity == "kfh":
+                    return root_dir / "КФХ"
+                return base_dir / "юр ВКЛ в РТК наблюдение"
+            # КФХ по умолчанию использует только наблюдение; для реализации/реструктуризации — физ
+            if for_entity == "kfh":
+                return base_dir / "физ реализация ВКЛ в РТК"
+            if for_entity == "legal":
+                return base_dir / "юр ВКЛ в РТК наблюдение"
+            # individual, ip — ФЛ / ИП
+            if "реструк" in subpath or "Реструктуризация" in subpath:
+                return base_dir / "физ реструк ВКЛ в РТК"
+            return base_dir / "физ реализация ВКЛ в РТК"
+
+        act_ids = [act_id.strip() for act_id in selected_acts_ids.split(',')]
+        templates = {}
+        order = 1
+
+        for act_id in act_ids:
+            # Финальные СА (строго по выбранному залогу и типу лица)
+            if act_id == 'final_realization':
+                if has_collateral:
+                    templates[act_id] = entry(
+                        "Реализация ВКЛ Залог" + (" (авто)" if is_auto_collateral else ""),
+                        collateral_dir / "Реализация" / "Реализация ВКЛ Залог.docx",
+                        order
+                    )
+                else:
+                    # Без залога: реализация — для ФЛ и ИП.
+                    # Для физлиц по РТК используем отдельный единый шаблон rtk.docx, если он есть.
+                    root_dir = self._templates_root()
+                    rtk_template = root_dir / "ртк.docx"
+                    if entity_type == "individual" and rtk_template.exists():
+                        templates[act_id] = entry(
+                            "Реализация ВКЛ (РТК)",
+                            rtk_template,
+                            order
+                        )
+                    else:
+                        d = _no_collateral_dir("реализация", entity_type)
+                        templates[act_id] = entry(
+                            "Реализация ВКЛ",
+                            d / "Реализация ВКЛ.docx",
+                            order
+                        )
+                order += 1
+            elif act_id == 'final_competition':
+                if has_collateral:
+                    templates[act_id] = entry(
+                        "Конкурсное ВКЛ в РТК Залог" + (" (авто)" if is_auto_collateral else ""),
+                        collateral_dir / "Конкурсное" / "Конкурсное ВКЛ в РТК Залог.docx",
+                        order
+                    )
+                else:
+                    d = _resolve_competition_dir()
+                    preferred = d / "Решение конкурсное.docx"
+                    if preferred.exists():
+                        template_path = preferred
+                    else:
+                        template_path = _pick_docx_by_keywords_multi(d, [
+                            ["РЕШЕНИЕ", "КОНКУРС", "ПРОИЗВОДСТВА"],
+                            ["РЕШЕНИЕ", "КОНКУРС", "ЗАВЕРШЕНИИ"],
+                            ["РЕШЕНИЕ", "КОНКУРС"]
+                        ])
+                    if template_path is None and (base_dir / "юр инициир набл + конкурс").exists():
+                        alt_d = base_dir / "юр инициир набл + конкурс"
+                        template_path = _pick_docx_by_keywords_multi(alt_d, [
+                            ["РЕШЕНИЕ", "КОНКУРС", "ПРОИЗВОДСТВА"],
+                            ["РЕШЕНИЕ", "КОНКУРС"]
+                        ])
+                    if template_path is None:
+                        template_path = preferred if preferred.exists() else (d / "Решение конкурсное.docx")
+
+                    templates[act_id] = entry("Решение конкурсное", template_path, order)
+                order += 1
+            elif act_id == 'final_restructuring':
+                if has_collateral:
+                    templates[act_id] = entry(
+                        "Реструктуризация ВКЛ Залог" + (" (авто)" if is_auto_collateral else ""),
+                        collateral_dir / "Реструктуризация" / "Реструктуризация ВКЛ Залог.docx",
+                        order
+                    )
+                else:
+                    d = _no_collateral_dir("реструк", entity_type)
+                    templates[act_id] = entry(
+                        "Реструктуризация ВКЛ",
+                        d / "Реструктуризация ВКЛ.docx",
+                        order
+                    )
+                order += 1
+            elif act_id == 'final_observation':
+                if has_collateral:
+                    templates[act_id] = entry(
+                        "Наблюдение ВКЛ в РТК Залог" + (" (авто)" if is_auto_collateral else ""),
+                        collateral_dir / "Наблюдение" / "Наблюдение ВКЛ в РТК  Залог.docx",
+                        order
+                    )
+                else:
+                    if entity_type == "kfh":
+                        templates[act_id] = entry(
+                            "Наблюдение КФХ",
+                            root_dir / "КФХ" / "Наблюдение КФХ.docx",
+                            order
+                        )
+                    else:
+                        templates[act_id] = entry(
+                            "Наблюдение ВКЛ в РТК",
+                            base_dir / "юр ВКЛ в РТК наблюдение" / "Наблюдение ВКЛ в РТК.docx",
+                            order
+                        )
+                order += 1
+            elif act_id == 'final_rtk_inclusion':
+                # Определение ВКЛ в РТК
+                # Проверяем, есть ли выбранный вариант (реализация / реструктуризация / конкурсное / наблюдение / зареестр)
+                rtk_variant = data.get("final_rtk_inclusion_variant")
+
+                if rtk_variant == 'registry':
+                    templates['rtk_registry'] = entry(
+                        "Определение ВКЛ в РТК зареестр",
+                        new_acts_dir / "внести зареестр.docx",
+                        order
+                    )
+                elif rtk_variant == 'realization':
+                    if has_collateral:
+                        templates['rtk_inclusion'] = entry(
+                            "Определение ВКЛ в РТК (реализация с залогом)",
+                            collateral_dir / "Реализация" / "Реализация ВКЛ Залог.docx",
+                            order
+                        )
+                    else:
+                        # Используем шаблон из "шаблоны актов без залогов\ртк.docx"
+                        path = base_dir / "ртк.docx"
+                        templates['rtk_inclusion'] = entry(
+                            "Определение ВКЛ в РТК (реализация)",
+                            path,
+                            order
+                        )
+                elif rtk_variant == 'restructuring':
+                    if has_collateral:
+                        templates['rtk_inclusion'] = entry(
+                            "Определение ВКЛ в РТК (реструктуризация с залогом)",
+                            collateral_dir / "Реструктуризация" / "Реструктуризация ВКЛ Залог.docx",
+                            order
+                        )
+                    else:
+                        # Используем шаблон из "шаблоны актов без залогов\ртк.docx"
+                        path = base_dir / "ртк.docx"
+                        templates['rtk_inclusion'] = entry(
+                            "Определение ВКЛ в РТК (реструктуризация)",
+                            path,
+                            order
+                        )
+                elif rtk_variant == 'competition':
+                    if has_collateral:
+                        templates['rtk_inclusion'] = entry(
+                            "Определение ВКЛ в РТК (конкурсное с залогом)",
+                            collateral_dir / "Конкурсное" / "Конкурсное ВКЛ в РТК Залог.docx",
+                            order
+                        )
+                    else:
+                        d = _resolve_competition_dir()
+                        preferred = d / "Конкурсное ВКЛ в РТК.docx"
+                        if preferred.exists():
+                            template_path = preferred
+                        else:
+                            template_path = _pick_docx_by_keywords_multi(d, [
+                                ["ОПРЕДЕЛЕНИЕ", "ВКЛЮЧЕНИИ", "ТРЕБОВАНИЙ", "РЕЕСТР"],
+                                ["ОПРЕДЕЛЕНИЕ", "ВКЛ", "РЕЕСТР", "КРЕДИТОР"],
+                                ["ОПРЕДЕЛЕНИЕ", "КОНКУРС", "ВКЛ"],
+                                ["ОПРЕДЕЛЕНИЕ", "ВКЛ", "ТРЕБОВАНИЙ"],
+                                ["ОПРЕДЕЛЕНИЕ", "ВКЛ"]
+                            ])
+                        if template_path is None:
+                            template_path = preferred if preferred.exists() else (d / "Конкурсное ВКЛ в РТК.docx")
+
+                        templates['rtk_inclusion'] = entry("Определение ВКЛ в РТК (конкурсное)", template_path, order)
+                elif rtk_variant == 'observation':
+                    if has_collateral:
+                        templates['rtk_inclusion'] = entry(
+                            "Определение ВКЛ в РТК (наблюдение с залогом)",
+                            collateral_dir / "Наблюдение" / "Наблюдение ВКЛ в РТК  Залог.docx",
+                            order
+                        )
+                    else:
+                        if entity_type == "kfh":
+                            templates['rtk_inclusion'] = entry(
+                                "Определение ВКЛ в РТК (наблюдение КФХ)",
+                                root_dir / "КФХ" / "Наблюдение КФХ.docx",
+                                order
+                            )
+                        else:
+                            templates['rtk_inclusion'] = entry(
+                                "Определение ВКЛ в РТК (наблюдение)",
+                                base_dir / "юр ВКЛ в РТК наблюдение" / "Наблюдение ВКЛ в РТК.docx",
+                                order
+                            )
+                else:
+                    # Вариант не указан: по типу лица — ЮЛ/КФХ наблюдение, ФЛ/ИП реализация
+                    if entity_type in ('legal', 'kfh'):
+                        if has_collateral:
+                            templates['rtk_inclusion'] = entry(
+                                "Определение ВКЛ в РТК (наблюдение с залогом)",
+                                collateral_dir / "Наблюдение" / "Наблюдение ВКЛ в РТК  Залог.docx",
+                                order
+                            )
+                        else:
+                            if entity_type == "kfh":
+                                templates['rtk_inclusion'] = entry(
+                                    "Определение ВКЛ в РТК (наблюдение КФХ)",
+                                    root_dir / "КФХ" / "Наблюдение КФХ.docx",
+                                    order
+                                )
+                            else:
+                                templates['rtk_inclusion'] = entry(
+                                    "Определение ВКЛ в РТК (наблюдение)",
+                                    base_dir / "юр ВКЛ в РТК наблюдение" / "Наблюдение ВКЛ в РТК.docx",
+                                    order
+                                )
+                    else:
+                        if has_collateral:
+                            templates['rtk_inclusion'] = entry(
+                                "Определение ВКЛ в РТК (реализация с залогом)",
+                                collateral_dir / "Реализация" / "Реализация ВКЛ Залог.docx",
+                                order
+                            )
+                        else:
+                            # Используем шаблон из "шаблоны актов без залогов\ртк.docx"
+                            path = base_dir / "ртк.docx"
+                            templates['rtk_inclusion'] = entry(
+                                "Определение ВКЛ в РТК (реализация)",
+                                path,
+                                order
+                            )
+                order += 1
+
+            # Принятие (по типу лица: ФЛ/ЮЛ/ИП — принятие РТК, КФХ — инициирование КФХ)
+            elif act_id == 'acceptance_definition':
+                if entity_type == "kfh":
+                    path = root_dir / "КФХ" / "Принятие иницирование КФХ.docx"
+                else:
+                    # Используем шаблон из "на 19.02\заменить Принятие\принятие ртк.docx"
+                    path = new_acts_dir / "заменить Принятие" / "принятие ртк.docx"
+                    # Если файл не найден, используем старый путь как fallback
+                    if not path.exists():
+                        if entity_type == "legal":
+                            path = base_dir / "юр ВКЛ в РТК наблюдение" / "Принятие РТК наблюдение.docx" if (base_dir / "юр ВКЛ в РТК наблюдение" / "Принятие РТК наблюдение.docx").exists() else (base_dir / "физ реализация ВКЛ в РТК" / "Реализация принятие РТК.docx")
+                        else:
+                            path = base_dir / "физ реализация ВКЛ в РТК" / "Реализация принятие РТК.docx"
+                templates['acceptance'] = entry(
+                    "Определение о принятии",
+                    path,
+                    order
+                )
+                order += 1
+            elif act_id == 'acceptance_no_motion_no_duty':
+                templates['acceptance_no_motion'] = entry(
+                    "Определение Б/Д нет ГП",
+                    new_acts_dir / "внести Обездвижка" / "бд ртк.docx",
+                    order
+                )
+                order += 1
+            elif act_id == 'acceptance_no_motion_no_duty_collateral':
+                templates['acceptance_no_motion_collateral'] = entry(
+                    "Определение Б/Д нет ГП залог",
+                    new_acts_dir / "внести Обездвижка" / "бд ртк ГП залог недвижка.docx",
+                    order
+                )
+                order += 1
+            elif act_id == 'acceptance_no_motion_other':
+                reason = data.get('acceptance_no_motion_other_reason', '')
+                for_parties = data.get('acceptance_no_motion_other_forParties', '')
+                templates['acceptance_no_motion_other'] = entry(
+                    "Определение Б/Д иное",
+                    new_acts_dir / "внести Обездвижка" / "бд ртк правопреемство.docx",
+                    order
+                )
+                order += 1
+            elif act_id == 'acceptance_after_no_motion':
+                templates['acceptance_after_no_motion'] = entry(
+                    "Принятие после Б/Д",
+                    new_acts_dir / "принятие ртк после БД.docx",
+                    order
+                )
+                order += 1
+
+            # Промежуточные
+            elif act_id == 'intermediate_postponement':
+                reason = data.get('intermediate_postponement_reason', '')
+                for_parties = data.get('intermediate_postponement_forParties', '')
+                postponement_path = (new_acts_dir / "внести отложка" / "отложение залог+предл мир.docx") if has_collateral else (new_acts_dir / "внести отложка" / "отлож документар+мировое.docx")
+                templates['postponement'] = entry(
+                    "Отложение",
+                    postponement_path,
+                    order
+                )
+                order += 1
+            elif act_id == 'intermediate_return':
+                reason = data.get('intermediate_return_reason', '')
+                for_parties = data.get('intermediate_return_forParties', '')
+                templates['return'] = entry(
+                    "Возврат (РТК ГП)",
+                    new_acts_dir / "внести Возврат" / "возврат ртк ГП.docx",
+                    order
+                )
+                order += 1
+            elif act_id == 'intermediate_extend_no_motion':
+                templates['extend_no_motion'] = entry(
+                    "Продление Б/Д",
+                    base_dir / "Промежуточные" / "Продление Б/Д.docx",
+                    order
+                )
+                order += 1
+            elif act_id == 'intermediate_extend_simplified':
+                templates['extend_simplified'] = entry(
+                    "Продление упрощёнка",
+                    base_dir / "Промежуточные" / "Продление упрощёнка.docx",
+                    order
+                )
+                order += 1
+            elif act_id == 'intermediate_simplified_to_main':
+                templates['simplified_to_main'] = entry(
+                    "Переход из упрощёнки в основное производство",
+                    new_acts_dir / "внести Назначение после упрощенки" / "Назачение после упрощенки.docx",
+                    order
+                )
+                order += 1
+
+        return templates
+
     def generate(self, template_type: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Генерирует комплект документов (реализация или реструктуризация) на основе извлеченных данных.
@@ -2291,196 +3677,288 @@ class DocumentGenerator:
             Словарь с результатом генерации
         """
         try:
+            # Проверяем, есть ли выбранные пользователем акты (могут быть в data или в data.fields)
+            fields = data.get("fields") or {}
+            selected_acts_ids = data.get("selectedActsIds") or fields.get("selectedActsIds")
+            selected_acts_data_str = data.get("selectedActsData") or fields.get("selectedActsData")
+            selected_entity_type = data.get("selectedEntityType") or fields.get("selectedEntityType")
+            selected_collateral_option = data.get("selectedCollateralOption") or fields.get("selectedCollateralOption")
+
+            # Базовые признаки документа и шаблона
             normalized_template = (template_type or "").lower()
-            source_document_type = (data.get("sourceDocumentType") or "").lower()
-            is_kfh = bool(data.get("isKfh"))
+            source_document_type = (data.get("sourceDocumentType") or fields.get("sourceDocumentType") or "").lower()
+            is_kfh = bool(data.get("isKfh") or fields.get("isKfh"))
 
-            if normalized_template in {"observation_single", "observation_multiple"}:
-                normalized_template = "observation"
+            # ВАЖНО: если пользователь ЯВНО выбрал тип акта в окне "Выбор типа судебного акта"
+            # (template_type непустой: mortgage, rtk_single_obligation и т.п.),
+            # мы должны уважать этот выбор и НЕ подменять его списком selectedActsIds,
+            # который относится к автоматическим рекомендациям/РТК-комплектам.
+            #
+            # Поэтому используем selectedActs только когда template_type пустой.
+            can_use_selected_acts = bool(selected_acts_ids) and not normalized_template
 
-            # ПРИОРИТЕТ: Проверяем на процедуру "умерший" в первую очередь
-            if normalized_template == "deceased" or source_document_type == "deceased" or (data.get('procedureType') or '').lower() == "deceased" or any(keyword in (data.get('procedureTypeRaw') or '').lower() for keyword in ["умер", "умерший", "смерть", "смерти"]):
-                # Шаблоны для процедуры "умерший" - ПРИОРИТЕТ перед всеми остальными
-                templates = self._get_templates_for_procedure("deceased")
-                procedure_type = "deceased"
-                logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для процедуры: умерший")
-            elif normalized_template == "physical_restructuring_collateral" or source_document_type == "physical_restructuring_collateral":
-                # Шаблоны для ФЛ с залогом в реструктуризации
-                templates = self._get_physical_restructuring_collateral_templates()
-                procedure_type = "physical_restructuring_collateral"
-                logger.info(
-                    f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для заявления ФЛ с залогом в реструктуризации"
-                )
-            elif normalized_template == "physical_realization_collateral" or source_document_type == "physical_realization_collateral":
-                # Шаблоны для ФЛ с залогом в реализации
-                templates = self._get_physical_collateral_templates()
-                procedure_type = "physical_realization_collateral"
-                logger.info(
-                    f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для заявления ФЛ с залогом в реализации"
-                )
-            elif normalized_template in ["kfh_observation", "kfh_observation_collateral"] or \
-                 (is_kfh and (normalized_template in ["observation", "observation_single", "observation_multiple"] or
-                              source_document_type == "observation_collateral" or
-                              source_document_type in ["ip_enforcement_statement", "ip_enforcement_statement_collateral",
-                                                       "ip_enforcement_realization", "ip_enforcement_realization_collateral",
-                                                       "ip_enforcement_restructuring", "ip_enforcement_restructuring_collateral"])):
-                # ПРИОРИТЕТ: КФХ шаблоны должны обрабатываться ПЕРЕД ИП шаблонами
-                # ПРИОРИТЕТ: выбранный шаблон имеет приоритет над данными документа
-                if normalized_template == "kfh_observation_collateral":
-                    # Пользователь явно выбрал шаблон с залогом
-                    has_collateral = True
-                elif normalized_template == "kfh_observation":
-                    # Пользователь явно выбрал шаблон без залога
-                    has_collateral = False
-                elif source_document_type == "observation_collateral":
-                    # Тип документа указывает на залог
-                    has_collateral = True
-                else:
-                    # Определяем по данным документа только если шаблон не был явно выбран
-                    has_collateral = (
-                        bool(data.get("ipCollateralContractNumber")) or
-                        bool(data.get("mortgageCollateralDescription1221"))
-                    )
-                templates = self._get_kfh_observation_templates(has_collateral=has_collateral)
-                procedure_type = "kfh_observation_collateral" if has_collateral else "kfh_observation"
-                logger.info(
-                    f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для КФХ "
-                    f"({'наблюдение с залогом' if has_collateral else 'наблюдение, без залога'})"
-                )
-            elif normalized_template == "ip_collection_collateral" or source_document_type == "ip_collection_collateral":
-                # Шаблоны для искового заявления о взыскании с ИП с залогом
-                templates = self._get_ip_collection_collateral_templates()
-                procedure_type = "ip_collection_collateral"
-                logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП с залогом")
-            elif normalized_template == "ip_collection_collateral_auto" or source_document_type == "ip_collection_collateral_auto":
-                # Шаблоны для искового заявления о взыскании с ИП залог авто ([1221] — описание авто)
-                templates = self._get_ip_collection_collateral_auto_templates()
-                procedure_type = "ip_collection_collateral_auto"
-                logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП залог авто")
-            elif normalized_template == "legal_collection" or source_document_type == "legal_collection":
-                # Шаблоны для искового заявления о взыскании с ЮЛ
-                templates = self._get_legal_collection_templates()
-                procedure_type = "legal_collection"
-                logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ")
-            elif normalized_template == "legal_collection_collateral" or source_document_type == "legal_collection_collateral":
-                # Шаблоны для искового заявления о взыскании с ЮЛ с залогом
-                templates = self._get_legal_collection_collateral_templates()
-                procedure_type = "legal_collection_collateral"
-                logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ с залогом")
-            elif normalized_template == "legal_collection_collateral_auto" or source_document_type == "legal_collection_collateral_auto":
-                # Шаблоны для искового заявления о взыскании с ЮЛ залог авто ([1221] — описание авто)
-                templates = self._get_legal_collection_collateral_auto_templates()
-                procedure_type = "legal_collection_collateral_auto"
-                logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ залог авто")
-            elif normalized_template == "ip_collection" or source_document_type == "ip_collection":
-                # Шаблоны для искового заявления о взыскании с ИП
-                templates = self._get_ip_collection_templates()
-                procedure_type = "ip_collection"
-                logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП")
-            elif normalized_template in ["ip_enforcement", "ip_enforcement_realization", "ip_enforcement_realization_collateral",
-                                         "ip_enforcement_restructuring", "ip_enforcement_restructuring_collateral"] or \
-                 source_document_type in ["ip_enforcement_statement", "ip_enforcement_statement_collateral",
-                                         "ip_enforcement_realization", "ip_enforcement_realization_collateral",
-                                         "ip_enforcement_restructuring", "ip_enforcement_restructuring_collateral"]:
-                # Определяем наличие залога
-                if source_document_type in ["ip_enforcement_statement_collateral", "ip_enforcement_realization_collateral",
-                                            "ip_enforcement_restructuring_collateral"]:
-                    has_collateral_flag = True
-                else:
-                    has_collateral_flag = str(data.get("ipHasCollateral", "")).strip().lower() in {"true", "1", "yes", "да"}
+            # Если пользователь выбрал акты в интерфейсе (старый режим "выбор актов"),
+            # и при этом нет явного template_type — используем их.
+            if can_use_selected_acts:
+                logger.info(f"🎯 Используем выбранные пользователем акты: {selected_acts_ids}")
+                logger.info(f"📋 Тип лица: {selected_entity_type}, Залог: {selected_collateral_option}")
 
-                # Определяем тип процедуры
-                if "restructuring" in source_document_type or normalized_template == "ip_enforcement_restructuring":
-                    ip_procedure_type = "restructuring"
-                else:
-                    ip_procedure_type = "realization"  # По умолчанию реализация
+                # Извлекаем дополнительные поля из selectedActsData (JSON строка)
+                if selected_acts_data_str:
+                    try:
+                        import json
+                        selected_acts_list = json.loads(selected_acts_data_str)
+                        for act in selected_acts_list:
+                            act_id = act.get("id")
+                            additional_fields = act.get("additionalFields", {})
+                            rtk_variant = act.get("rtkVariant")
 
-                templates = self._get_ip_enforcement_templates(has_collateral_flag, ip_procedure_type)
-                procedure_type = source_document_type or normalized_template or "ip_enforcement"
-                logger.info(
-                    f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для заявления ИП "
-                    f"({ip_procedure_type}, залог: {'есть' if has_collateral_flag else 'нет'})"
+                            # Сохраняем rtkVariant для акта final_rtk_inclusion
+                            if act_id == "final_rtk_inclusion" and rtk_variant:
+                                data["final_rtk_inclusion_variant"] = rtk_variant
+                                logger.info(f"📝 Вариант для final_rtk_inclusion: {rtk_variant}")
+
+                            if additional_fields:
+                                # Добавляем дополнительные поля в data для использования в шаблонах
+                                reason = additional_fields.get("reason", "")
+                                for_parties = additional_fields.get("forParties", "")
+                                court_requests = additional_fields.get("courtRequests", "")
+                                if act_id == "acceptance_no_motion_other":
+                                    data["acceptance_no_motion_other_reason"] = reason
+                                    data["acceptance_no_motion_other_forParties"] = for_parties
+                                elif act_id == "intermediate_return":
+                                    data["intermediate_return_reason"] = reason
+                                    data["intermediate_return_forParties"] = for_parties
+                                elif act_id == "intermediate_postponement":
+                                    data["intermediate_postponement_reason"] = reason
+                                    data["intermediate_postponement_forParties"] = for_parties
+                                    data["intermediate_postponement_courtRequests"] = court_requests
+                                    logger.info(f"📝 Дополнительные поля для {act_id}: reason={reason[:50]}..., forParties={for_parties[:50]}..., courtRequests={court_requests[:50]}...")
+                                elif act_id == "acceptance_definition":
+                                    data["acceptance_definition_courtRequests"] = court_requests
+                                    logger.info(f"📝 Дополнительные поля для {act_id}: courtRequests={court_requests[:50]}...")
+                                elif act_id == "acceptance_after_no_motion":
+                                    data["acceptance_after_no_motion_courtRequests"] = court_requests
+                                    logger.info(f"📝 Дополнительные поля для {act_id}: courtRequests={court_requests[:50]}...")
+                                else:
+                                    logger.info(f"📝 Дополнительные поля для {act_id}: reason={reason[:50]}..., forParties={for_parties[:50]}...")
+                    except Exception as e:
+                        logger.warning(f"⚠️ Не удалось распарсить selectedActsData: {e}")
+
+                templates = self._map_selected_acts_to_templates(
+                    selected_acts_ids,
+                    selected_entity_type or data.get("entityType") or fields.get("entityType", "individual"),
+                    selected_collateral_option or "no_collateral",
+                    data
                 )
-            elif normalized_template == "initiation_physical" or source_document_type == "initiation_physical":
-                templates = self._get_initiation_physical_templates()
-                procedure_type = "initiation_physical"
-                data["_skip_obligation_blocks"] = True
-                logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 3 ДОКУМЕНТОВ для инициирования банкротства физического лица")
-            elif normalized_template == "initiation_legal" or source_document_type == "initiation_legal":
-                templates = self._get_initiation_legal_templates()
-                procedure_type = "initiation_legal"
-                logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 2 ДОКУМЕНТОВ для инициирования банкротства юридического лица")
-            elif normalized_template == "initiation_legal_competition_absent":
-                templates = self._get_initiation_legal_templates(contest_type="absent")
-                procedure_type = "initiation_legal_competition_absent"
-                logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 2 ДОКУМЕНТОВ для инициирования ЮЛ (конкурсное, отсутствующий должник)")
-            elif normalized_template == "initiation_legal_competition_liquidation":
-                templates = self._get_initiation_legal_templates(contest_type="liquidation")
-                procedure_type = "initiation_legal_competition_liquidation"
-                logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 2 ДОКУМЕНТОВ для инициирования ЮЛ (конкурсное, ликвидируемый должник)")
-            elif normalized_template == "mortgage" or source_document_type == "mortgage_claim":
-                templates = self._get_mortgage_templates()
-                procedure_type = "mortgage"
-                data["_skip_obligation_blocks"] = True
-                logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 1 ДОКУМЕНТА для ипотечного иска")
-            elif normalized_template == "observation_collateral" or source_document_type == "observation_collateral":
-                # Шаблоны для наблюдения с залогом
-                if is_kfh:
-                    templates = self._get_kfh_observation_templates(has_collateral=True)
-                    procedure_type = "kfh_observation_collateral"
-                    logger.info(
-                        f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для КФХ (наблюдение с залогом)"
-                    )
+
+                if templates:
+                    logger.info(f"✅ Найдено {len(templates)} шаблонов для выбранных актов")
+                    procedure_type = "custom_selected_acts"
                 else:
-                    templates = self._get_templates_for_procedure("observation_collateral")
-                    procedure_type = "observation_collateral"
-                    logger.info(
-                        f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для наблюдения с залогом"
-                    )
-            elif normalized_template == "competition_collateral" or source_document_type == "competition_collateral":
-                # Шаблоны для конкурсного производства с залогом
-                templates = self._get_templates_for_procedure("competition_collateral")
-                procedure_type = "competition_collateral"
-                logger.info(
-                    f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для конкурсного производства с залогом"
-                )
-            else:
-                procedure_type = (data.get('procedureType') or '').lower()
-                entity_type = str(data.get("entityType") or "").lower()
-                raw = (data.get('procedureTypeRaw') or '').lower()
+                    logger.warning("⚠️ Не найдено шаблонов для выбранных актов, используем стандартную логику")
+                    templates = None
+
+            # Если templates не был установлен выше (стандартная логика), устанавливаем его здесь
+            use_standard_logic = 'templates' not in locals() or templates is None or len(templates) == 0
+
+            if use_standard_logic:
+                # Стандартная логика (для обратной совместимости и для явного выбора template_type)
+                if normalized_template in {"observation_single", "observation_multiple"}:
+                    normalized_template = "observation"
 
                 # ПРИОРИТЕТ: Проверяем на процедуру "умерший" в первую очередь
-                if procedure_type == "deceased" or any(keyword in raw for keyword in ["умер", "умерший", "смерть", "смерти"]):
-                    procedure_type = 'deceased'
+                if normalized_template == "deceased" or source_document_type == "deceased" or (data.get('procedureType') or '').lower() == "deceased" or any(keyword in (data.get('procedureTypeRaw') or '').lower() for keyword in ["умер", "умерший", "смерть", "смерти"]):
+                    # Шаблоны для процедуры "умерший" - ПРИОРИТЕТ перед всеми остальными
                     templates = self._get_templates_for_procedure("deceased")
+                    procedure_type = "deceased"
                     logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для процедуры: умерший")
-                else:
-                    if entity_type in {"legal", "юридическое лицо", "юрлицо"} or is_kfh:
-                        # Для КФХ процедуры такие же, как у юрлица (наблюдение),
-                        # но сам должник остаётся физлицом.
-                        procedure_type = "observation"
-
-                    if procedure_type not in {"restructuring", "realization", "observation"}:
-                        # Пытаемся определить по необработанному тексту, если доступен
-                        if 'реструктур' in raw:
-                            procedure_type = 'restructuring'
-                        elif 'реализац' in raw:
-                            procedure_type = 'realization'
-                        elif 'наблюден' in raw or entity_type in {"legal", "юридическое лицо", "юрлицо"} or is_kfh:
-                            procedure_type = 'observation'
-                        else:
-                            procedure_type = 'realization' if entity_type not in {"legal", "юридическое лицо", "юрлицо"} else 'observation'
-
-                    if is_kfh and procedure_type == "observation":
-                        templates = self._get_kfh_observation_templates(has_collateral=False)
-                        logger.info(
-                            f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для КФХ (наблюдение, без залога)"
-                        )
-                        procedure_type = "kfh_observation"
+                elif normalized_template == "physical_restructuring_collateral" or source_document_type == "physical_restructuring_collateral":
+                    # Шаблоны для ФЛ с залогом в реструктуризации
+                    templates = self._get_physical_restructuring_collateral_templates()
+                    procedure_type = "physical_restructuring_collateral"
+                    logger.info(
+                        f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для заявления ФЛ с залогом в реструктуризации"
+                    )
+                elif normalized_template == "physical_realization_collateral" or source_document_type == "physical_realization_collateral":
+                    # Шаблоны для ФЛ с залогом в реализации
+                    templates = self._get_physical_collateral_templates()
+                    procedure_type = "physical_realization_collateral"
+                    logger.info(
+                        f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для заявления ФЛ с залогом в реализации"
+                    )
+                elif normalized_template in ["kfh_observation", "kfh_observation_collateral"] or \
+                     (is_kfh and (normalized_template in ["observation", "observation_single", "observation_multiple"] or
+                                  source_document_type == "observation_collateral" or
+                                  source_document_type in ["ip_enforcement_statement", "ip_enforcement_statement_collateral",
+                                                           "ip_enforcement_realization", "ip_enforcement_realization_collateral",
+                                                           "ip_enforcement_restructuring", "ip_enforcement_restructuring_collateral"])):
+                    # ПРИОРИТЕТ: КФХ шаблоны должны обрабатываться ПЕРЕД ИП шаблонами
+                    # ПРИОРИТЕТ: выбранный шаблон имеет приоритет над данными документа
+                    if normalized_template == "kfh_observation_collateral":
+                        # Пользователь явно выбрал шаблон с залогом
+                        has_collateral = True
+                    elif normalized_template == "kfh_observation":
+                        # Пользователь явно выбрал шаблон без залога
+                        has_collateral = False
+                    elif source_document_type == "observation_collateral":
+                        # Тип документа указывает на залог
+                        has_collateral = True
                     else:
-                        templates = self._get_templates_for_procedure(procedure_type)
-                        logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для процедуры: {procedure_type}")
+                        # Определяем по данным документа только если шаблон не был явно выбран
+                        has_collateral = (
+                            bool(data.get("ipCollateralContractNumber")) or
+                            bool(data.get("mortgageCollateralDescription1221"))
+                        )
+                    templates = self._get_kfh_observation_templates(has_collateral=has_collateral)
+                    procedure_type = "kfh_observation_collateral" if has_collateral else "kfh_observation"
+                    logger.info(
+                        f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для КФХ "
+                        f"({'наблюдение с залогом' if has_collateral else 'наблюдение, без залога'})"
+                    )
+                elif normalized_template == "ip_collection_collateral" or source_document_type == "ip_collection_collateral":
+                    # Шаблоны для искового заявления о взыскании с ИП с залогом
+                    templates = self._get_ip_collection_collateral_templates()
+                    procedure_type = "ip_collection_collateral"
+                    logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП с залогом")
+                elif normalized_template == "ip_collection_collateral_auto" or source_document_type == "ip_collection_collateral_auto":
+                    # Шаблоны для искового заявления о взыскании с ИП залог авто ([1221] — описание авто)
+                    templates = self._get_ip_collection_collateral_auto_templates()
+                    procedure_type = "ip_collection_collateral_auto"
+                    logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП залог авто")
+                elif normalized_template == "legal_collection" or source_document_type == "legal_collection":
+                    # Шаблоны для искового заявления о взыскании с ЮЛ
+                    templates = self._get_legal_collection_templates()
+                    procedure_type = "legal_collection"
+                    logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ")
+                elif normalized_template == "legal_collection_collateral" or source_document_type == "legal_collection_collateral":
+                    # Шаблоны для искового заявления о взыскании с ЮЛ с залогом
+                    templates = self._get_legal_collection_collateral_templates()
+                    procedure_type = "legal_collection_collateral"
+                    logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ с залогом")
+                elif normalized_template == "legal_collection_collateral_auto" or source_document_type == "legal_collection_collateral_auto":
+                    # Шаблоны для искового заявления о взыскании с ЮЛ залог авто ([1221] — описание авто)
+                    templates = self._get_legal_collection_collateral_auto_templates()
+                    procedure_type = "legal_collection_collateral_auto"
+                    logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ залог авто")
+                elif normalized_template == "ip_collection" or source_document_type == "ip_collection":
+                    # Шаблоны для искового заявления о взыскании с ИП
+                    templates = self._get_ip_collection_templates()
+                    procedure_type = "ip_collection"
+                    logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП")
+                elif normalized_template in ["ip_enforcement", "ip_enforcement_realization", "ip_enforcement_realization_collateral",
+                                             "ip_enforcement_restructuring", "ip_enforcement_restructuring_collateral"] or \
+                     source_document_type in ["ip_enforcement_statement", "ip_enforcement_statement_collateral",
+                                             "ip_enforcement_realization", "ip_enforcement_realization_collateral",
+                                             "ip_enforcement_restructuring", "ip_enforcement_restructuring_collateral"]:
+                    # Определяем наличие залога
+                    if source_document_type in ["ip_enforcement_statement_collateral", "ip_enforcement_realization_collateral",
+                                                "ip_enforcement_restructuring_collateral"]:
+                        has_collateral_flag = True
+                    else:
+                        has_collateral_flag = str(data.get("ipHasCollateral", "")).strip().lower() in {"true", "1", "yes", "да"}
+
+                    # Определяем тип процедуры
+                    if "restructuring" in source_document_type or normalized_template == "ip_enforcement_restructuring":
+                        ip_procedure_type = "restructuring"
+                    else:
+                        ip_procedure_type = "realization"  # По умолчанию реализация
+
+                    templates = self._get_ip_enforcement_templates(has_collateral_flag, ip_procedure_type)
+                    procedure_type = source_document_type or normalized_template or "ip_enforcement"
+                    logger.info(
+                        f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для заявления ИП "
+                        f"({ip_procedure_type}, залог: {'есть' if has_collateral_flag else 'нет'})"
+                    )
+                elif normalized_template == "initiation_physical" or source_document_type == "initiation_physical":
+                    templates = self._get_initiation_physical_templates()
+                    procedure_type = "initiation_physical"
+                    data["_skip_obligation_blocks"] = True
+                    logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 3 ДОКУМЕНТОВ для инициирования банкротства физического лица")
+                elif normalized_template == "initiation_legal" or source_document_type == "initiation_legal":
+                    templates = self._get_initiation_legal_templates()
+                    procedure_type = "initiation_legal"
+                    logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 2 ДОКУМЕНТОВ для инициирования банкротства юридического лица")
+                elif normalized_template == "initiation_legal_competition_absent":
+                    templates = self._get_initiation_legal_templates(contest_type="absent")
+                    procedure_type = "initiation_legal_competition_absent"
+                    logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 2 ДОКУМЕНТОВ для инициирования ЮЛ (конкурсное, отсутствующий должник)")
+                elif normalized_template == "initiation_legal_competition_liquidation":
+                    templates = self._get_initiation_legal_templates(contest_type="liquidation")
+                    procedure_type = "initiation_legal_competition_liquidation"
+                    logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 2 ДОКУМЕНТОВ для инициирования ЮЛ (конкурсное, ликвидируемый должник)")
+                elif normalized_template == "mortgage" or source_document_type == "mortgage_claim":
+                    templates = self._get_mortgage_templates()
+                    procedure_type = "mortgage"
+                    data["_skip_obligation_blocks"] = True
+                    logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 1 ДОКУМЕНТА для ипотечного иска")
+                elif normalized_template == "observation_collateral" or source_document_type == "observation_collateral":
+                    # Шаблоны для наблюдения с залогом
+                    if is_kfh:
+                        templates = self._get_kfh_observation_templates(has_collateral=True)
+                        procedure_type = "kfh_observation_collateral"
+                        logger.info(
+                            f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для КФХ (наблюдение с залогом)"
+                        )
+                    else:
+                        templates = self._get_templates_for_procedure("observation_collateral")
+                        procedure_type = "observation_collateral"
+                        logger.info(
+                            f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для наблюдения с залогом"
+                        )
+                elif normalized_template == "competition_collateral" or source_document_type == "competition_collateral":
+                    # Шаблоны для конкурсного производства с залогом
+                    templates = self._get_templates_for_procedure("competition_collateral")
+                    procedure_type = "competition_collateral"
+                    logger.info(
+                        f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для конкурсного производства с залогом"
+                    )
+                else:
+                    procedure_type = (data.get('procedureType') or '').lower()
+                    entity_type = str(data.get("entityType") or "").lower()
+                    raw = (data.get('procedureTypeRaw') or '').lower()
+
+                    # ПРИОРИТЕТ: Проверяем на процедуру "умерший" в первую очередь
+                    if procedure_type == "deceased" or any(keyword in raw for keyword in ["умер", "умерший", "смерть", "смерти"]):
+                        procedure_type = 'deceased'
+                        templates = self._get_templates_for_procedure("deceased")
+                        logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для процедуры: умерший")
+                    else:
+                        if entity_type in {"legal", "юридическое лицо", "юрлицо"} or is_kfh:
+                            # Для КФХ процедуры такие же, как у юрлица (наблюдение),
+                            # но сам должник остаётся физлицом.
+                            procedure_type = "observation"
+
+                        if procedure_type not in {"restructuring", "realization", "observation"}:
+                            # Пытаемся определить по необработанному тексту, если доступен
+                            if 'реструктур' in raw:
+                                procedure_type = 'restructuring'
+                            elif 'реализац' in raw:
+                                procedure_type = 'realization'
+                            elif 'наблюден' in raw or entity_type in {"legal", "юридическое лицо", "юрлицо"} or is_kfh:
+                                procedure_type = 'observation'
+                            else:
+                                procedure_type = 'realization' if entity_type not in {"legal", "юридическое лицо", "юрлицо"} else 'observation'
+
+                        if is_kfh and procedure_type == "observation":
+                            templates = self._get_kfh_observation_templates(has_collateral=False)
+                            logger.info(
+                                f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для КФХ (наблюдение, без залога)"
+                            )
+                            procedure_type = "kfh_observation"
+                        else:
+                            templates = self._get_templates_for_procedure(procedure_type)
+                            logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для процедуры: {procedure_type}")
+            # Если templates не был установлен выше (стандартная логика), он должен быть установлен в блоке else
+            if 'templates' not in locals() or templates is None:
+                logger.error("❌ Не удалось определить шаблоны для генерации")
+                return {
+                    "success": False,
+                    "error": "Не удалось определить шаблоны для генерации документов"
+                }
+
             logger.info(f"📊 Полученные данные: {data}")
+            logger.info(f"📋 Будет сгенерировано {len(templates)} документов")
 
             generated_documents = {}
             document_ids = []
@@ -2489,7 +3967,7 @@ class DocumentGenerator:
             for doc_type, template_info in templates.items():
                 logger.info(f"📄 Генерируем документ: {template_info['name']}")
 
-                template_path = template_info['path']
+                template_path = self._resolve_template_path(template_info['path'])
                 logger.info(f"Путь к шаблону: {template_path.absolute()}")
                 logger.info(f"Шаблон существует: {template_path.exists()}")
 

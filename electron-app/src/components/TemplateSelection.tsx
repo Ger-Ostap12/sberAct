@@ -34,11 +34,29 @@ const TemplateSelection: React.FC<TemplateSelectionProps> = ({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isDisabled = false;
 
-  const getSourceDocumentType = () =>
-    (extractedData.fields && (extractedData.fields as any).sourceDocumentType) ||
-    extractedData.documentType ||
-    '';
+  const getSourceDocumentType = useCallback(
+    () =>
+      (extractedData.fields && (extractedData.fields as any).sourceDocumentType) ||
+      extractedData.documentType ||
+      '',
+    [extractedData]
+  );
+
+  const hasFilledCollaterals = useCallback((): boolean => {
+    const list = extractedData.collaterals;
+    if (!list?.length) return false;
+    return list.some(
+      (c) =>
+        (c.objectName && c.objectName.trim() !== '') ||
+        (c.collateralValue && c.collateralValue.trim() !== '') ||
+        (c.cadastralNumber && c.cadastralNumber.trim() !== '') ||
+        (c.address && c.address.trim() !== '') ||
+        (c.vin && c.vin.trim() !== '') ||
+        (c.brandModel && c.brandModel.trim() !== '')
+    );
+  }, [extractedData.collaterals]);
 
   const loadTemplates = useCallback(async () => {
     try {
@@ -426,7 +444,21 @@ const TemplateSelection: React.FC<TemplateSelectionProps> = ({
       setTemplates(mockTemplates);
 
       // Автоматически выбираем подходящий шаблон на основе анализа
-      const sourceDocumentType = getSourceDocumentType();
+      let sourceDocumentType = getSourceDocumentType();
+      // Если приложение не определило залог, но пользователь заполнил блок залога — считаем акты с залогом
+      if (hasFilledCollaterals()) {
+        const toCollateral: Record<string, string> = {
+          competition: 'competition_collateral',
+          ip_collection: 'ip_collection_collateral',
+          legal_collection: 'legal_collection_collateral',
+          ip_enforcement_realization: 'ip_enforcement_realization_collateral',
+          ip_enforcement_restructuring: 'ip_enforcement_restructuring_collateral',
+          physical_realization: 'physical_realization_collateral',
+          physical_restructuring: 'physical_restructuring_collateral',
+          ip_enforcement_statement: 'ip_enforcement_statement_collateral'
+        };
+        sourceDocumentType = toCollateral[sourceDocumentType] || sourceDocumentType;
+      }
 
       if (sourceDocumentType === 'mortgage_claim') {
         setSelectedTemplateId('mortgage');
@@ -474,10 +506,11 @@ const TemplateSelection: React.FC<TemplateSelectionProps> = ({
         // Процедура "умерший" - автоматически выбираем шаблон
         setSelectedTemplateId('deceased');
       } else if (extractedData.fields?.isKfh || (extractedData.fields as any)?.isKfh) {
-        // КФХ - проверяем наличие залога
+        // КФХ - проверяем наличие залога (в т.ч. заполненный пользователем блок залога)
         const hasCollateral = extractedData.fields?.ipCollateralContractNumber ||
                              extractedData.fields?.mortgageCollateralDescription1221 ||
-                             sourceDocumentType === 'observation_collateral';
+                             sourceDocumentType === 'observation_collateral' ||
+                             hasFilledCollaterals();
         if (hasCollateral) {
           setSelectedTemplateId('kfh_observation_collateral');
         } else {
@@ -485,7 +518,11 @@ const TemplateSelection: React.FC<TemplateSelectionProps> = ({
         }
       } else if (extractedData.entityType === 'legal' || extractedData.fields?.entityType === 'legal') {
         const obligationsCount = extractedData.obligations?.length || 0;
-        setSelectedTemplateId(obligationsCount > 1 ? 'observation_multiple' : 'observation_single');
+        if (hasFilledCollaterals()) {
+          setSelectedTemplateId('observation_collateral');
+        } else {
+          setSelectedTemplateId(obligationsCount > 1 ? 'observation_multiple' : 'observation_single');
+        }
       } else if (sourceDocumentType === 'rtk_application' || extractedData.documentType === 'rtk_application') {
         // Определяем количество обязательств по реальным данным
         const obligationsCount = extractedData.obligations?.length || 0;
@@ -506,7 +543,7 @@ const TemplateSelection: React.FC<TemplateSelectionProps> = ({
       setError('Ошибка при загрузке шаблонов');
       setIsLoading(false);
     }
-  }, [extractedData]);
+  }, [extractedData, getSourceDocumentType, hasFilledCollaterals]);
 
   useEffect(() => {
     loadTemplates();
@@ -624,13 +661,20 @@ const TemplateSelection: React.FC<TemplateSelectionProps> = ({
         </Typography>
       </Box>
 
+      {isDisabled && (
+        <Alert severity="info" sx={{ mb: 4 }}>
+          Выбор типа судебного акта теперь происходит на странице анализа документа.
+          Пожалуйста, вернитесь на предыдущую страницу и выберите акты там.
+        </Alert>
+      )}
+
       <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
         На основе анализа вашего заявления мы подобрали подходящие типы судебных актов.
         Выберите наиболее подходящий вариант или оставьте автоматически выбранный.
       </Typography>
 
       {/* Автоматический выбор */}
-      <Card sx={{ mb: 3, backgroundColor: 'primary.50', border: '1px solid', borderColor: 'primary.200' }}>
+      <Card sx={{ mb: 3, backgroundColor: 'primary.50', border: '1px solid', borderColor: 'primary.200', opacity: isDisabled ? 0.5 : 1, pointerEvents: isDisabled ? 'none' : 'auto' }}>
         <CardContent>
           <Typography variant="h6" gutterBottom color="primary.main">
             🎯 Автоматически подобранный шаблон
@@ -653,7 +697,7 @@ const TemplateSelection: React.FC<TemplateSelectionProps> = ({
       </Card>
 
       {/* Выбор шаблона */}
-      <Card>
+      <Card sx={{ opacity: isDisabled ? 0.5 : 1, pointerEvents: isDisabled ? 'none' : 'auto' }}>
         <CardContent>
           <Typography variant="h6" gutterBottom>
             Выберите тип судебного акта

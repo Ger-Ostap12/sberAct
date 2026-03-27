@@ -29,7 +29,9 @@ async function fetchBackend(pathname, options) {
   throw lastError || new Error('All backend hosts failed');
 }
 
-contextBridge.exposeInMainWorld('electronAPI', {
+console.log('[preload] Exposing electronAPI to renderer...');
+try {
+  contextBridge.exposeInMainWorld('electronAPI', {
   isReady: () => true,
   // Файловые операции
   selectFile: () => ipcRenderer.invoke('select-file'),
@@ -50,25 +52,32 @@ contextBridge.exposeInMainWorld('electronAPI', {
   analyzeDocument: async (input) => {
     try {
       let blob;
-      const mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      let fileName = 'document.docx';
 
       if (typeof input === 'string') {
         console.log('[preload] analyzeDocument(): reading file from path', input);
+        const path = require('path');
+        fileName = path.basename(input) || fileName;
+        const ext = path.extname(fileName).toLowerCase();
+        const mime = ext === '.pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
         const fileContent = fs.readFileSync(input);
         blob = new Blob([fileContent], { type: mime });
       } else if (input && typeof input.arrayBuffer === 'function') {
         console.log('[preload] analyzeDocument(): got File/Blob from renderer');
+        fileName = input.name || fileName;
+        const ext = fileName.toLowerCase().endsWith('.pdf') ? '.pdf' : '.docx';
+        const mime = ext === '.pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
         const buffer = await input.arrayBuffer();
         blob = new Blob([new Uint8Array(buffer)], { type: mime });
       } else if (input instanceof Uint8Array) {
         console.log('[preload] analyzeDocument(): got Uint8Array');
-        blob = new Blob([input], { type: mime });
+        blob = new Blob([input], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
       } else {
         throw new Error('Unsupported input for analyzeDocument');
       }
 
       const formData = new FormData();
-      formData.append('document', blob, 'document.docx');
+      formData.append('document', blob, fileName);
 
       console.log('[preload] POST /analyze-document');
       const response = await fetchBackend('/analyze-document', {
@@ -153,10 +162,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   downloadAllDocuments: async (data) => {
     try {
-      console.log('[preload] downloadAllDocuments(): downloading documents with data:', data);
-      return await ipcRenderer.invoke('download-all-documents', data);
+      console.log('[preload] ========== downloadAllDocuments() CALLED ==========');
+      console.log('[preload] downloadAllDocuments(): called with data:', data);
+      console.log('[preload] downloadAllDocuments(): invoking IPC download-all-documents...');
+      const result = await ipcRenderer.invoke('download-all-documents', data);
+      console.log('[preload] downloadAllDocuments(): IPC result:', result);
+      return result;
     } catch (error) {
-      console.error('Error downloading all documents:', error);
+      console.error('[preload] ERROR in downloadAllDocuments:', error);
       return { success: false, error: error.message };
     }
   },
@@ -171,5 +184,34 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   },
 
-  getExtractedData: () => ipcRenderer.invoke('get-extracted-data')
+  getExtractedData: () => ipcRenderer.invoke('get-extracted-data'),
+
+  // Метод для открытия DevTools из рендерера
+  toggleDevTools: () => ipcRenderer.invoke('toggle-devtools')
 });
+
+// Добавляем глобальную функцию для открытия DevTools через консоль
+// Можно вызвать в консоли браузера: openDevTools()
+contextBridge.exposeInMainWorld('openDevTools', () => {
+  console.log('[preload] Opening DevTools via console command');
+  ipcRenderer.invoke('toggle-devtools');
+});
+
+  console.log('[preload] electronAPI exposed successfully');
+  console.log('[preload] electronAPI exposed with methods:', Object.keys({
+    fetch: true,
+    selectFile: true,
+    saveFile: true,
+    analyzeDocument: true,
+    generateDocument: true,
+    getTemplates: true,
+    downloadDocument: true,
+    downloadAllDocuments: true,
+    getDownloadPaths: true,
+    getExtractedData: true,
+    toggleDevTools: true
+  }));
+  console.log('[preload] Global function available: openDevTools() - call this in console to open DevTools');
+} catch (error) {
+  console.error('[preload] ERROR exposing electronAPI:', error);
+}

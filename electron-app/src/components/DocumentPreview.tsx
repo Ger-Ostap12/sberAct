@@ -41,6 +41,8 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   onNewDocument
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadMessage, setDownloadMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [generationResult, setGenerationResult] = useState<{
     success: boolean;
     documentId?: string;
@@ -128,41 +130,99 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   };
 
   const handleDownloadDocument = async () => {
-    if (generationResult?.documentIds && generationResult.documentIds.length > 0) {
-      try {
-        console.log('Downloading documents with IDs:', generationResult.documentIds);
+    setIsDownloading(true);
+    setDownloadMessage(null);
+
+    try {
+      // Проверяем доступность Electron API
+      console.log('[DocumentPreview] Checking Electron API availability...');
+      console.log('[DocumentPreview] window.electronAPI exists:', !!(window as any).electronAPI);
+
+      if (!(window as any).electronAPI) {
+        console.error('[DocumentPreview] Electron API is not available!');
+        throw new Error('Electron API не доступен. Убедитесь, что приложение запущено в Electron.');
+      }
+
+      console.log('[DocumentPreview] Electron API methods:', Object.keys((window as any).electronAPI));
+      console.log('[DocumentPreview] downloadAllDocuments exists:', !!(window as any).electronAPI.downloadAllDocuments);
+      console.log('[DocumentPreview] downloadAllDocuments type:', typeof (window as any).electronAPI.downloadAllDocuments);
+
+      if (!(window as any).electronAPI.downloadAllDocuments) {
+        console.error('[DocumentPreview] downloadAllDocuments method is missing!');
+        throw new Error('Метод downloadAllDocuments не доступен в Electron API.');
+      }
+
+      if (generationResult?.documentIds && generationResult.documentIds.length > 0) {
+        console.log('[DocumentPreview] ========== STARTING DOWNLOAD ==========');
+        console.log('[DocumentPreview] Downloading documents with IDs:', generationResult.documentIds);
+        console.log('[DocumentPreview] Electron API object:', (window as any).electronAPI);
+        console.log('[DocumentPreview] downloadAllDocuments function:', (window as any).electronAPI.downloadAllDocuments);
+        console.log('[DocumentPreview] downloadAllDocuments type:', typeof (window as any).electronAPI.downloadAllDocuments);
+        console.log('[DocumentPreview] Calling Electron API downloadAllDocuments...');
+
+        // Проверяем, что метод действительно функция перед вызовом
+        if (typeof (window as any).electronAPI.downloadAllDocuments !== 'function') {
+          console.error('[DocumentPreview] ERROR: downloadAllDocuments is not a function!');
+          console.error('[DocumentPreview] Available methods:', Object.keys((window as any).electronAPI));
+          throw new Error('Метод downloadAllDocuments не является функцией. Возможно, используется fallback web-api.js');
+        }
+
         // Скачиваем все документы через Electron API
         const downloadResult = await (window as any).electronAPI.downloadAllDocuments({
           document_ids: generationResult.documentIds.join(','),
-          download_path: '' // Пустой путь для скачивания в браузер
+          download_path: '' // Пустой путь - будет показан диалог выбора места сохранения
         });
 
+        console.log('[DocumentPreview] ========== DOWNLOAD COMPLETE ==========');
+
+        console.log('[DocumentPreview] Download result:', downloadResult);
+
         if (downloadResult.success) {
-          console.log('Documents downloaded successfully');
+          const filePath = downloadResult.filePath;
+          console.log('[DocumentPreview] Documents downloaded successfully to:', filePath);
+
+          // Показываем сообщение об успехе
+          setDownloadMessage({
+            type: 'success',
+            text: filePath
+              ? `Документы успешно сохранены в: ${filePath}`
+              : 'Документы успешно скачаны в папку загрузок'
+          });
         } else {
           throw new Error(downloadResult.error || 'Ошибка скачивания документов');
         }
-      } catch (err) {
-        console.error('Error downloading documents:', err);
-      }
-    } else if (generationResult?.documentId) {
-      try {
+      } else if (generationResult?.documentId) {
         console.log('Downloading single document with ID:', generationResult.documentId);
+        console.log('Using Electron API:', typeof (window as any).electronAPI.downloadDocument);
         // Скачиваем один документ через Electron API
         const downloadResult = await (window as any).electronAPI.downloadDocument(
           generationResult.documentId
         );
 
         if (downloadResult.success) {
-          console.log('Document downloaded successfully');
+          console.log('Document downloaded successfully to:', downloadResult.filePath);
+          setDownloadMessage({
+            type: 'success',
+            text: `Документ успешно сохранен в: ${downloadResult.filePath || 'выбранную папку'}`
+          });
         } else {
           throw new Error(downloadResult.error || 'Ошибка скачивания документа');
         }
-      } catch (err) {
-        console.error('Error downloading document:', err);
+      } else {
+        throw new Error('Нет доступных документов для скачивания');
       }
-    } else {
-      console.error('No document ID available for download');
+    } catch (err: any) {
+      console.error('Error downloading document:', err);
+      setDownloadMessage({
+        type: 'error',
+        text: err?.message || 'Ошибка при скачивании документа'
+      });
+    } finally {
+      setIsDownloading(false);
+      // Автоматически скрываем сообщение через 5 секунд
+      setTimeout(() => {
+        setDownloadMessage(null);
+      }, 5000);
     }
   };
 
@@ -1084,15 +1144,30 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
                   </Box>
                 )}
 
+                {downloadMessage && (
+                  <Alert
+                    severity={downloadMessage.type}
+                    sx={{ mb: 2 }}
+                    onClose={() => setDownloadMessage(null)}
+                  >
+                    {downloadMessage.text}
+                  </Alert>
+                )}
+
                 <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
                   <Button
                     variant="contained"
                     size="large"
                     onClick={handleDownloadDocument}
-                    startIcon={<DownloadIcon />}
+                    disabled={isDownloading}
+                    startIcon={isDownloading ? <CircularProgress size={20} /> : <DownloadIcon />}
                     sx={{ px: 4 }}
                   >
-                    {generationResult.count ? 'Скачать все документы' : 'Скачать документ'}
+                    {isDownloading
+                      ? 'Скачивание...'
+                      : generationResult.count
+                        ? 'Скачать все документы'
+                        : 'Скачать документ'}
                   </Button>
 
                   <Button

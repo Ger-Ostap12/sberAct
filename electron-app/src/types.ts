@@ -12,10 +12,43 @@ export interface Obligation {
   obligationType: string;
 }
 
+export interface ThirdParty {
+  id: string;
+  name: string;
+  birthDate?: string;
+  address?: string;
+  inn?: string;
+  snils?: string;
+}
+
+export type CollateralType = 'real_estate' | 'auto' | 'other';
+
+export interface Collateral {
+  id: string;
+  collateralType: CollateralType;
+  objectName: string;
+  collateralValue: string;
+  /** Для недвижимости */
+  cadastralNumber?: string;
+  address?: string;
+  /** Для авто */
+  vin?: string;
+  brandModel?: string;
+  /** Для иного */
+  otherDescription?: string;
+}
+
+export interface RecommendedActs {
+  entityType?: EntityType;
+  collateralOption?: CollateralOption;
+  recommendedActIds?: string[];
+}
+
 export interface ExtractedData {
   documentType: string;
   confidence: number;
   entityType?: 'individual' | 'legal';
+  recommendedActs?: RecommendedActs;
   fields: {
     applicantName?: string;
     applicantAddress?: string;
@@ -61,6 +94,8 @@ export interface ExtractedData {
     [key: string]: string | undefined;
   };
   obligations?: Obligation[];
+  collaterals?: Collateral[];
+  thirdParties?: ThirdParty[];
   rawText: string;
   metadata: {
     pageCount: number;
@@ -179,4 +214,32 @@ export interface RTKDecision {
   currency: string;
   inclusionDate: string;
   registryNumber: string;
+}
+
+// Типы для выбора судебных актов
+export type EntityType = 'individual' | 'legal' | 'ip' | 'kfh';
+export type CollateralOption = 'collateral' | 'collateral_auto' | 'no_collateral';
+
+export interface SelectedAct {
+  id: string;
+  name: string;
+  category: 'final' | 'acceptance' | 'intermediate';
+  selected: boolean;
+  /**
+   * Дополнительный выбор варианта для актов "Определение ВКЛ в РТК"
+   * (реализация / реструктуризация / конкурсное / наблюдение / зареестр).
+   * Используется только на UI, но целиком передаётся в backend в selectedActsData.
+   */
+  rtkVariant?: 'realization' | 'restructuring' | 'competition' | 'observation' | 'registry';
+  additionalFields?: {
+    reason?: string;
+    forParties?: string;
+    courtRequests?: string;  // Запросы суда (для актов "Отложение", "Определение о принятии", "Принятие после Б/Д")
+  };
+}
+
+export interface ActSelection {
+  entityType: EntityType | null;
+  collateralOption: CollateralOption | null;
+  selectedActs: SelectedAct[];
 }
