@@ -1,4 +1,4 @@
-.\build.bat@echo off
+.\build.ba@echo off
 cd /d "%~dp0"
 
 echo === SberAct build for Windows (EXE only) ===

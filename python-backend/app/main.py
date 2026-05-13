@@ -52,6 +52,32 @@ app = FastAPI(
     version="1.0.0"
 )
 
+def _mount_frontend_static(app: FastAPI, frontend_dir: Path) -> None:
+    """
+    Монтирует статику фронтенда, не падая если структура сборки отличается.
+    - CRA обычно кладет файлы в `static/` и ссылается на `/static/...`
+    - Vite обычно кладет файлы в `assets/` и ссылается на `/assets/...`
+    """
+    static_dir = frontend_dir / "static"
+    assets_dir = frontend_dir / "assets"
+
+    mounted_any = False
+    if static_dir.exists() and static_dir.is_dir():
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+        mounted_any = True
+    else:
+        logger.warning("Frontend 'static' dir not found at %s", static_dir)
+
+    if assets_dir.exists() and assets_dir.is_dir():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+        mounted_any = True
+    else:
+        logger.info("Frontend 'assets' dir not found at %s", assets_dir)
+
+    if not mounted_any:
+        logger.warning("No frontend static assets mounted (static/assets not found)")
+
+
 # Настройка CORS
 app.add_middleware(
     CORSMiddleware,
@@ -120,7 +146,7 @@ async def root():
     return {"message": "SberAct Document Generator API", "status": "running"}
 
 if frontend_dir:
-    app.mount("/static", StaticFiles(directory=str(frontend_dir / "static")), name="static")
+    _mount_frontend_static(app, frontend_dir)
 
     def _web_api_path():
         if getattr(sys, "frozen", False):

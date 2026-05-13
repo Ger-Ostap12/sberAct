@@ -75,7 +75,8 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
 
       const generationData = {
         ...extractedData.fields,
-        sourceDocumentType: extractedData.documentType,
+        // sourceDocumentType из полей анализа (если есть) приоритетнее, чтобы не терять корректную классификацию
+        sourceDocumentType: (extractedData.fields as any)?.sourceDocumentType || extractedData.documentType,
         obligations: extractedData.obligations || []
       };
 

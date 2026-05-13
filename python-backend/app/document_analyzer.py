@@ -4695,6 +4695,63 @@ class DocumentAnalyzer:
             elif extracted_fields.get("stateDuty"):
                 extracted_fields["loanStateDuty17"] = extracted_fields["stateDuty"]
 
+        def _extract_multiline_address_from_block(block_text: str) -> Optional[str]:
+            """
+            Извлекает многострочный адрес после "адрес регистрации/место жительства/адрес прописки"
+            с продолжением на следующих строках до служебных маркеров.
+            """
+            if not block_text:
+                return None
+
+            lines = [ln.strip() for ln in re.split(r"[\r\n]+", block_text) if ln.strip()]
+            if not lines:
+                return None
+
+            start_idx = -1
+            for i, line in enumerate(lines):
+                lower_line = line.lower()
+                if any(k in lower_line for k in ["место жительства", "адрес регистрации", "адрес прописки"]):
+                    start_idx = i
+                    break
+
+            if start_idx == -1:
+                return None
+
+            stop_tokens = [
+                "инн", "огрн", "огрнип", "кпп", "телефон", "e-mail", "email",
+                "дата рождения", "место рождения", "представитель", "заявление",
+                "исковое", "просит суд"
+            ]
+
+            addr_parts: List[str] = []
+
+            # 1) берем хвост текущей строки после двоеточия
+            first_line = lines[start_idx]
+            first_part = re.sub(
+                r"^(?:место\s+жительства|адрес\s+регистрации|адрес\s+прописки)\s*:?\s*",
+                "",
+                first_line,
+                flags=re.IGNORECASE
+            ).strip(" ,.;:-")
+            if first_part:
+                addr_parts.append(first_part)
+
+            # 2) добавляем следующие строки, пока не встретили служебные маркеры
+            for next_line in lines[start_idx + 1:start_idx + 8]:
+                lower_next = next_line.lower()
+                if any(token in lower_next for token in stop_tokens):
+                    break
+                cleaned = next_line.strip(" ,.;:-")
+                if cleaned:
+                    addr_parts.append(cleaned)
+
+            if not addr_parts:
+                return None
+
+            normalized = ", ".join(addr_parts)
+            normalized = re.sub(r"\s+", " ", normalized).strip(" ,.;:-")
+            return normalized or None
+
         debtor_block_match = re.search(
             r"Должник[:\s]*(.*?)(?=\n\s*\n|Временн(?:ый|ым)\s+управляющ|Сумма\s+требований|ЗАЯВЛЕНИЕ|Дело\s*№|$)",
             text,
@@ -4753,6 +4810,13 @@ class DocumentAnalyzer:
                         if idx != -1:
                             addr_clean = addr_clean[:idx].strip()
                     extracted_fields["applicantAddress"] = addr_clean
+
+                # Универсальный фолбэк: пытаемся собрать многострочный адрес (в т.ч. для ипотеки)
+                if not extracted_fields.get("applicantAddress"):
+                    multi_addr = _extract_multiline_address_from_block(debtor_block)
+                    if multi_addr:
+                        extracted_fields["applicantAddress"] = multi_addr
+                        logger.info(f"✅ Extracted applicantAddress (multiline fallback): {multi_addr}")
 
             # Извлекаем ОГРН (только если еще не извлечен в основном цикле)
             if "ogrn" not in extracted_fields or not extracted_fields.get("ogrn"):
