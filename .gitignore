@@ -7,6 +7,8 @@ yarn-error.log*
 # Production builds
 dist/
 build/
+release/
+realise/
 *.AppImage
 *.deb
 *.rpm

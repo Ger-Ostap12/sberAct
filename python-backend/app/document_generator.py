@@ -48,24 +48,29 @@ class DocumentGenerator:
 
         if getattr(sys, "frozen", False):
             exe_dir = Path(sys.executable).parent
-            # Папка должна содержать "шаблоны актов без залогов" как подпапку
+            # Сначала шаблоны рядом с exe (можно менять без пересборки), затем встроенные в бинарник
             candidates = [
-                exe_dir / "Shablony",  # Основная папка шаблонов
-                exe_dir / "Templates",  # Fallback для совместимости
-                exe_dir / "templates",  # lowercase (Windows)
+                exe_dir / "Shablony",
+                exe_dir / "Templates",
+                exe_dir / "templates",
+            ]
+            if hasattr(sys, "_MEIPASS"):
+                me = Path(sys._MEIPASS)
+                candidates.extend([
+                    me / "Shablony",
+                    me / "Templates",
+                    me,
+                ])
+            candidates.extend([
                 exe_dir / "_internal" / "Shablony",
                 exe_dir / "_internal" / "Templates",
                 exe_dir / "_internal" / "templates",
                 project_root / "Shablony",
                 project_root / "Templates",
                 project_root / "templates",
-                exe_dir,  # exe_dir/шаблоны актов без залогов (из spec datas)
+                exe_dir,
                 project_root,
-            ]
-            if hasattr(sys, "_MEIPASS"):
-                candidates.insert(1, Path(sys._MEIPASS) / "Shablony")
-                candidates.insert(2, Path(sys._MEIPASS) / "Templates")
-                candidates.insert(3, Path(sys._MEIPASS))
+            ])
         else:
             candidates = [
                 project_root / "Shablony",  # Основная папка шаблонов

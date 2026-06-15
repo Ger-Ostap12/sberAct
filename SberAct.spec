@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 # Сборка: из корня проекта выполнить: pyinstaller SberAct.spec
-# Результат: папка dist/SberAct с exe и библиотеками. Рядом положите папку Shablony.
+# Результат (one-file): dist/SberAct (Linux) или dist/SberAct.exe (Windows)
 
 import sys
 from pathlib import Path
@@ -29,17 +29,15 @@ if (build_path / "index.html").exists():
 static_path = app_dir / "static"
 if static_path.exists():
     datas.append((str(static_path), "static"))
-# Шаблоны: Shablony (основная папка), Templates (fallback для совместимости) и/или исходная папка
-shablony_path = project_root / "Shablony"
-if shablony_path.exists():
-    datas.append((str(shablony_path), "Shablony"))
-templates_path = project_root / "Templates"
-if templates_path.exists():
-    datas.append((str(templates_path), "Templates"))
-# Исходные шаблоны в корне проекта (fallback если Shablony/Templates пустые)
-shablon_root = project_root / "шаблоны актов без залогов"
-if shablon_root.exists():
-    datas.append((str(shablon_root), "шаблоны актов без залогов"))
+# Шаблоны
+for src, dest in (
+    (project_root / "emplates", "Templates"),
+    (project_root / "Shablony", "Shablony"),
+    (project_root / "Templates", "Templates"),
+    (project_root / "шаблоны актов без залогов", "шаблоны актов без залогов"),
+):
+    if src.exists():
+        datas.append((str(src), dest))
 
 a = Analysis(
     [str(app_dir / 'main.py')],
@@ -76,7 +74,18 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=[
+        'torch',
+        'transformers',
+        'tensorflow',
+        'tensorboard',
+        'sklearn',
+        'scikit-learn',
+        'nltk',
+        'pandas',
+        'triton',
+        'cupy',
+    ],
     noarchive=False,
     optimize=0,
 )
@@ -86,25 +95,20 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
+    a.binaries,
+    a.datas,
     [],
-    exclude_binaries=True,
     name='SberAct',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
     console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-)
-
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.datas,
-    strip=False,
-    copy_metadata=False,
-    name='SberAct',
 )
