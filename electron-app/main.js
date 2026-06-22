@@ -1,4 +1,14 @@
 const { app, BrowserWindow, ipcMain, dialog, globalShortcut, Menu } = require('electron');
+
+// Отключаем аппаратное ускорение: на некоторых Windows-конфигурациях
+// GPU-процесс падает ("GPU process isn't usable. Goodbye.") и окно не открывается.
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch('disable-gpu');
+app.commandLine.appendSwitch('disable-software-rasterizer');
+app.commandLine.appendSwitch('in-process-gpu');
+app.commandLine.appendSwitch('disable-gpu-compositing');
+app.commandLine.appendSwitch('no-sandbox');
+
 const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');

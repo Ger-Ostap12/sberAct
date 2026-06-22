@@ -21,6 +21,17 @@ export interface ThirdParty {
   snils?: string;
 }
 
+export interface Debtor {
+  id: string;
+  name: string;
+  address?: string;
+  inn?: string;
+  ogrnip?: string;
+  birthDate?: string;
+  birthPlace?: string;
+  snils?: string;
+}
+
 export type CollateralType = 'real_estate' | 'auto' | 'other';
 
 export interface Collateral {
@@ -96,6 +107,7 @@ export interface ExtractedData {
   obligations?: Obligation[];
   collaterals?: Collateral[];
   thirdParties?: ThirdParty[];
+  debtors?: Debtor[];
   rawText: string;
   metadata: {
     pageCount: number;

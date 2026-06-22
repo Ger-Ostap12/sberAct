@@ -2,6 +2,14 @@ import re
 import sys
 import spacy
 from docx import Document
+from requisites_validation import is_valid_inn
+from fio_detector import (
+    extract_debtor_name,
+    is_person_name,
+    extract_debtor_details,
+    extract_third_party_details,
+    extract_debtors,
+)
 from typing import Dict, Any, List, Tuple, Optional, Union
 import logging
 from pathlib import Path
@@ -1831,6 +1839,76 @@ class DocumentAnalyzer:
                         collaterals_list.append(collateral_obj)
                     logger.info(f"✅ Создано {len(collaterals_list)} предметов залога")
 
+            # Корректировка ФИО должника: если извлечённое имя не похоже на ФИО
+            # физлица (например, regex подхватил «Обязательства По Своевременному»
+            # или «ПАО Сбербанк Место»), берём детерминированный позиционный разбор
+            # блока «Ответчик(и):/Должник:» и пересчитываем падежи.
+            self._fix_debtor_name(text, extracted_fields)
+
+            # Реквизиты должника-физлица из его блока: дата/место рождения, СНИЛС.
+            # birthDate берём авторитетно (существующий фолбэк иногда кладёт сюда ОГРН);
+            # birthPlace/snils — только если поле ещё не заполнено.
+            details = extract_debtor_details(text)
+            # birthDate авторитетно из записи должника: если валидной даты там нет,
+            # очищаем мусор существующего фолбэка (невозможные/фабрикованные даты).
+            if details.get("birthDate"):
+                extracted_fields["birthDate"] = details["birthDate"]
+            else:
+                extracted_fields.pop("birthDate", None)
+            if details.get("birthPlace"):
+                extracted_fields["birthPlace"] = details["birthPlace"]
+            # ИНН должника — авторитетно из его записи (исправляет подстановку ИНН банка).
+            if details.get("inn"):
+                extracted_fields["inn"] = details["inn"]
+                extracted_fields["companyInn"] = details["inn"]
+            # СНИЛС берём строго из записи основного должника. Если там его нет —
+            # очищаем значение, утёкшее от представителя/со-ответчика.
+            if details.get("snils"):
+                extracted_fields["snils"] = details["snils"]
+            else:
+                extracted_fields.pop("snils", None)
+
+            # Срезаем ведущую метку из адреса должника («Адрес регистрации: 867624…» →
+            # «867624…»), если она попала в значение при извлечении.
+            addr_val = extracted_fields.get("applicantAddress")
+            if addr_val:
+                cleaned_addr = re.sub(
+                    r"^\s*(?:Адрес(?:\s+регистрации|\s+проживания|\s+места\s+жительства)?|"
+                    r"Место\s+(?:жительства|регистрации|нахождения)|"
+                    r"Зарегистрирован\w*(?:\s+по\s+адресу)?)\s*[:\-]?\s*",
+                    "", addr_val, flags=re.IGNORECASE,
+                ).strip()
+                if cleaned_addr:
+                    extracted_fields["applicantAddress"] = cleaned_addr
+
+            # Валидация имени третьего лица: должно быть ФИО или организацией.
+            # Иначе это мусор из тела (например, «и должник отвечают перед») — чистим блок.
+            tp_name = extracted_fields.get("thirdPartyName")
+            if tp_name:
+                is_org = re.match(r"^(?:ИП|ООО|АО|ПАО|ЗАО|ОАО|Общество|Публичное)\b", tp_name, re.IGNORECASE)
+                if not (is_person_name(tp_name) or is_org):
+                    for key in ("thirdPartyName", "thirdPartyAddress", "thirdPartyInn",
+                                "thirdPartyBirthDate", "thirdPartySnils"):
+                        extracted_fields.pop(key, None)
+                    tp_name = None
+
+            # Реквизиты первого третьего лица (ИНН/дата рождения/СНИЛС), если блок валиден.
+            if tp_name:
+                tp = extract_third_party_details(text)
+                for key in ("thirdPartyInn", "thirdPartyBirthDate", "thirdPartySnils"):
+                    if tp.get(key) and not extracted_fields.get(key):
+                        extracted_fields[key] = tp[key]
+
+            # Несколько должников (со-ответчиков). При 2+ — склеиваем плоские поля и
+            # падежи через запятую (шаблоны не меняем). При 0/1 — одиночный должник
+            # из текущих плоских полей (поведение прежнее, без регрессий).
+            parsed_debtors = extract_debtors(text)
+            if len(parsed_debtors) >= 2:
+                extracted_fields.update(self._combine_debtors(parsed_debtors))
+                debtors_result = parsed_debtors
+            else:
+                debtors_result = [self._single_debtor_from_fields(extracted_fields)]
+
             # Формируем результат
             result = {
                 "documentType": document_type,
@@ -1844,7 +1922,8 @@ class DocumentAnalyzer:
                     "wordCount": len(text.split()),
                     "language": "ru"
                 },
-                "recommendedActs": recommended_acts
+                "recommendedActs": recommended_acts,
+                "debtors": debtors_result
             }
 
             entity_type = extracted_fields.get("entityType")
@@ -1858,6 +1937,107 @@ class DocumentAnalyzer:
         except Exception as e:
             logger.error(f"Ошибка при анализе документа: {str(e)}")
             raise
+
+    # Префиксы перед ФИО, которые убираем перед склонением.
+    _NAME_PREFIX_RE = r'^(ИП\s+|ГЛАВА\s+КФХ\s+ИП\s+|ГЛАВА\s+КФХ\s+|КФХ\s+ИП\s+)'
+
+    def _single_debtor_from_fields(self, fields: Dict[str, Any]) -> Dict[str, Any]:
+        """Собирает запись одного должника из плоских полей (для формы)."""
+        return {
+            "name": fields.get("applicantName") or fields.get("debtorName") or "",
+            "address": fields.get("applicantAddress") or "",
+            "inn": fields.get("inn") or fields.get("companyInn") or "",
+            "ogrnip": fields.get("ogrnip") or "",
+            "birthDate": fields.get("birthDate") or "",
+            "birthPlace": fields.get("birthPlace") or "",
+            "snils": fields.get("snils") or "",
+        }
+
+    def _combine_debtors(self, debtors: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Склеивает реквизиты нескольких должников в плоские поля через запятую.
+
+        Имя/адрес/ИНН/ОГРНИП/дата-место рождения/СНИЛС — join значений через ", ".
+        Падежные формы — каждое имя склоняется через _convert_name_to_*, затем join.
+        Для одного должника результат эквивалентен исходным плоским полям.
+        """
+        out: Dict[str, Any] = {}
+        names = [d["name"] for d in debtors if d.get("name")]
+        if names:
+            out["applicantName"] = ", ".join(names)
+            out["debtorName"] = out["applicantName"]
+
+            def join_cases(converter) -> str:
+                vals = []
+                for n in names:
+                    base = re.sub(self._NAME_PREFIX_RE, "", n, flags=re.IGNORECASE).strip()
+                    inflected = None
+                    if base:
+                        try:
+                            inflected = converter(base)
+                        except Exception:
+                            inflected = None
+                    vals.append(inflected or n)
+                return ", ".join(vals)
+
+            out["applicantNameGenitive"] = join_cases(self._convert_name_to_genitive)
+            out["applicantNameDative"] = join_cases(self._convert_name_to_dative)
+            out["applicantNameAccusative"] = join_cases(self._convert_name_to_accusative)
+            out["applicantNameInstrumental"] = join_cases(self._convert_name_to_instrumental)
+
+        for src_key, flat_key in (
+            ("address", "applicantAddress"),
+            ("inn", "inn"),
+            ("ogrnip", "ogrnip"),
+            ("birthDate", "birthDate"),
+            ("birthPlace", "birthPlace"),
+            ("snils", "snils"),
+        ):
+            vals = [d[src_key] for d in debtors if d.get(src_key)]
+            if vals:
+                out[flat_key] = ", ".join(vals)
+        if out.get("inn"):
+            out["companyInn"] = out["inn"]
+        return out
+
+    def _fix_debtor_name(self, text: str, fields: Dict[str, Any]) -> None:
+        """Заменяет некорректное ФИО должника на позиционно извлечённое и пересчитывает падежи.
+
+        Срабатывает ТОЛЬКО если текущее applicantName/debtorName не похоже на ФИО
+        физлица (организации и валидные имена не трогаем). Падежные формы
+        пересчитываются лишь для тех ключей, что уже присутствовали.
+        """
+        current = fields.get("applicantName") or fields.get("debtorName")
+        # Если уже валидное ФИО или это организация (детектор вернёт None) — выходим.
+        if current and is_person_name(current):
+            return
+
+        candidate = extract_debtor_name(text)
+        if not candidate or not is_person_name(candidate):
+            return
+
+        logger.info(f"ФИО должника скорректировано: {current!r} -> {candidate!r}")
+        fields["applicantName"] = candidate
+        fields["debtorName"] = candidate
+
+        # Для склонения убираем девичью фамилию в скобках — иначе она искажает
+        # падежные формы (в самом ФИО скобки сохраняются).
+        name_for_inflection = re.sub(r"\s*\([^)]*\)\s*", " ", candidate).strip()
+
+        # Пересчитываем уже имеющиеся падежные формы по новому имени.
+        converters = {
+            "applicantNameGenitive": self._convert_name_to_genitive,
+            "applicantNameDative": self._convert_name_to_dative,
+            "applicantNameAccusative": self._convert_name_to_accusative,
+            "applicantNameInstrumental": self._convert_name_to_instrumental,
+        }
+        for key, convert in converters.items():
+            if key in fields:
+                try:
+                    inflected = convert(name_for_inflection)
+                    if inflected:
+                        fields[key] = inflected
+                except Exception as exc:
+                    logger.warning(f"Не удалось пересчитать {key}: {exc}")
 
     def extract_text(self, file_path: str) -> str:
         """
@@ -1892,11 +2072,22 @@ class DocumentAnalyzer:
             raise ValueError("Не удалось извлечь текст из PDF (возможно, файл поврежден или скан без OCR)") from e
 
     def _extract_text_from_docx(self, file_path: str) -> str:
-        """Извлекает текст из Word документа (.docx)."""
+        """Извлекает ВЕСЬ текст из Word документа (.docx).
+
+        Полный обход (надмножество старой логики «параграфы + таблицы»):
+          1. тело: параграфы и таблицы — в порядке документа (важно для
+             контекстных паттернов классификации вида «Должник:\\nИП ...»);
+          2. колонтитулы всех секций (6 контейнеров) — с дедупликацией;
+          3. надписи / текстовые поля (w:txbxContent);
+          4. сноски и концевые сноски.
+        Реквизиты (наименование, ИНН, КПП, адрес, банк) в юр-заявлениях часто
+        лежат именно в колонтитуле или надписи на бланке — старый способ их терял.
+        """
         try:
             doc = Document(file_path)
-            text_parts = []
+            text_parts: List[str] = []
 
+            # 1. Тело документа: параграфы, затем таблицы
             for paragraph in doc.paragraphs:
                 if paragraph.text.strip():
                     text_parts.append(paragraph.text.strip())
@@ -1907,6 +2098,38 @@ class DocumentAnalyzer:
                         if cell.text.strip():
                             text_parts.append(cell.text.strip())
 
+            # 2. Колонтитулы всех секций: header/footer + first_page + even_page.
+            # Секции часто ссылаются на один и тот же колонтитул — дедуплицируем.
+            seen_headers = set()
+            for section in doc.sections:
+                for container in (
+                    section.header, section.footer,
+                    section.first_page_header, section.first_page_footer,
+                    section.even_page_header, section.even_page_footer,
+                ):
+                    if container is None:
+                        continue
+                    try:
+                        chunk_parts = []
+                        for paragraph in container.paragraphs:
+                            if paragraph.text.strip():
+                                chunk_parts.append(paragraph.text.strip())
+                        for table in container.tables:
+                            for row in table.rows:
+                                for cell in row.cells:
+                                    if cell.text.strip():
+                                        chunk_parts.append(cell.text.strip())
+                        chunk = "\n".join(chunk_parts)
+                        if chunk and chunk not in seen_headers:
+                            seen_headers.add(chunk)
+                            text_parts.append(chunk)
+                    except Exception as exc:
+                        logger.warning(f"Не удалось обработать колонтитул: {exc}")
+
+            # 3 + 4. Надписи (w:txbxContent) и сноски/концевые сноски —
+            # части DOCX, недоступные через объектную модель python-docx.
+            text_parts.extend(self._extract_docx_raw_xml_text(file_path))
+
             if not text_parts:
                 raise ValueError("Документ пуст или не содержит извлекаемого текста")
             return "\n".join(text_parts)
@@ -1915,6 +2138,65 @@ class DocumentAnalyzer:
         except Exception as e:
             logger.error(f"Ошибка при извлечении текста из Word: {str(e)}")
             raise ValueError("Не удалось извлечь текст из документа (возможно, файл поврежден или пустой)") from e
+
+    def _extract_docx_raw_xml_text(self, file_path: str) -> List[str]:
+        """Собирает текст из частей DOCX, не покрытых моделью python-docx.
+
+        Открывает .docx как zip и через lxml извлекает:
+          - надписи / текстовые поля (w:txbxContent) из document.xml и всех
+            header*/footer* — модель python-docx их не отдаёт;
+          - сноски и концевые сноски (footnotes.xml / endnotes.xml).
+        Полностью оффлайн (zipfile + lxml, lxml уже идёт зависимостью python-docx).
+        """
+        from zipfile import ZipFile
+        from lxml import etree
+
+        W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        ns = {"w": W}
+        results: List[str] = []
+        seen = set()
+
+        def paragraph_lines(node) -> List[str]:
+            """Текст узла по абзацам: каждый w:p → одна строка (склейка w:t)."""
+            lines = []
+            for p in node.findall(".//w:p", ns):
+                line = "".join(t.text or "" for t in p.findall(".//w:t", ns)).strip()
+                if line:
+                    lines.append(line)
+            return lines
+
+        def add(chunk: str) -> None:
+            if chunk and chunk not in seen:
+                seen.add(chunk)
+                results.append(chunk)
+
+        try:
+            with ZipFile(file_path) as zf:
+                names = set(zf.namelist())
+
+                # 3. Надписи: document.xml + все header*/footer*.
+                # Берём ТОЛЬКО w:txbxContent, иначе продублируем тело документа.
+                txbx_parts = [
+                    n for n in names
+                    if n == "word/document.xml"
+                    or (n.startswith(("word/header", "word/footer")) and n.endswith(".xml"))
+                ]
+                for part in txbx_parts:
+                    root = etree.fromstring(zf.read(part))
+                    for tb in root.findall(".//w:txbxContent", ns):
+                        add("\n".join(paragraph_lines(tb)))
+
+                # 4. Сноски и концевые сноски — целиком.
+                for part in ("word/footnotes.xml", "word/endnotes.xml"):
+                    if part not in names:
+                        continue
+                    root = etree.fromstring(zf.read(part))
+                    for line in paragraph_lines(root):
+                        add(line)
+        except Exception as exc:
+            logger.warning(f"Не удалось извлечь сырой XML-текст из DOCX: {exc}")
+
+        return results
 
 
     def classify_document(self, text: str) -> str:
@@ -2670,27 +2952,45 @@ class DocumentAnalyzer:
         if not creditor_name or len(creditor_name) > 200:
             return
         matched = _match_creditor_registry(creditor_name)
-        if matched:
-            fields["creditorInn"] = matched["inn"]
-            fields["creditorOgrn"] = matched["ogrn"]
-            fields["creditorAddress"] = matched["address"]
-            logger.info(f"Реквизиты кредитора подставлены из реестра: {creditor_name[:50]}...")
-            return
+
+        # Приоритет — данные из документа; реестр известных банков только как фолбэк,
+        # когда в документе соответствующего реквизита нет.
+        block = self._extract_creditor_block(text)
+        doc_inn = doc_ogrn = None
+        if block:
+            inn_m = re.search(r"ИНН[:\s]*([0-9\s]{9,12})", block, re.IGNORECASE)
+            if inn_m:
+                inn_clean = re.sub(r"\D", "", inn_m.group(1))
+                if len(inn_clean) in (9, 10, 12):
+                    doc_inn = inn_clean
+            ogrn_m = re.search(r"ОГРН[:\s]*([0-9\s]{10,15})", block, re.IGNORECASE)
+            if ogrn_m:
+                ogrn_clean = re.sub(r"\D", "", ogrn_m.group(1))
+                if 10 <= len(ogrn_clean) <= 15:
+                    doc_ogrn = ogrn_clean
+        doc_addr = self._extract_creditor_address(text)
+
+        inn = doc_inn or (matched["inn"] if matched else None)
+        ogrn = doc_ogrn or (matched["ogrn"] if matched else None)
+        addr = doc_addr or (matched["address"] if matched else None)
+        if inn:
+            fields["creditorInn"] = inn
+        if ogrn:
+            fields["creditorOgrn"] = ogrn
+        if addr:
+            fields["creditorAddress"] = addr
+        logger.info(
+            f"Реквизиты кредитора '{creditor_name[:40]}': "
+            f"ИНН {'док' if doc_inn else 'реестр'}, "
+            f"ОГРН {'док' if doc_ogrn else 'реестр'}, "
+            f"адрес {'док' if doc_addr else 'реестр'}"
+        )
+
+    def _extract_creditor_address(self, text: str) -> Optional[str]:
+        """Извлекает юр-адрес кредитора из его блока в тексте (или None)."""
         block = self._extract_creditor_block(text)
         if not block:
-            return
-        inn_m = re.search(r"ИНН[:\s]*([0-9\s]{9,12})", block, re.IGNORECASE)
-        if inn_m:
-            inn_clean = re.sub(r"\D", "", inn_m.group(1))
-            if len(inn_clean) in (9, 10, 12):
-                fields["creditorInn"] = inn_clean
-                logger.info(f"Извлечён ИНН кредитора из текста: {inn_clean}")
-        ogrn_m = re.search(r"ОГРН[:\s]*([0-9\s]{10,15})", block, re.IGNORECASE)
-        if ogrn_m:
-            ogrn_clean = re.sub(r"\D", "", ogrn_m.group(1))
-            if 10 <= len(ogrn_clean) <= 15:
-                fields["creditorOgrn"] = ogrn_clean
-                logger.info(f"Извлечён ОГРН кредитора из текста: {ogrn_clean}")
+            return None
         for addr_pattern in [
             r"(?:место\s+нахождения|юридический\s+адрес|адрес)[:\s]*([0-9]{6}[,\s]+[^\n]+?)(?=\n\n|ИНН|ОГРН|телефон|$)",
             r"(?:место\s+нахождения|юридический\s+адрес|адрес)[:\s]*([^\n]+)",
@@ -2698,10 +2998,9 @@ class DocumentAnalyzer:
             addr_m = re.search(addr_pattern, block, re.IGNORECASE)
             if addr_m:
                 addr = self.clean_extracted_value(addr_m.group(1).strip())
-                if addr and len(addr) >= 10 and len(addr) <= 300:
-                    fields["creditorAddress"] = addr
-                    logger.info(f"Извлечён адрес кредитора из текста: {addr[:60]}...")
-                    break
+                if addr and 10 <= len(addr) <= 300:
+                    return addr
+        return None
 
     def _extend_address_from_text(self, text: str, address: Optional[str]) -> Optional[str]:
         if not text or not address:
@@ -3420,10 +3719,10 @@ class DocumentAnalyzer:
 
                             debtor_block = text[start_pos:end_pos]
                             logger.info(f"Найден блок Ответчик: позиция {start_pos}-{end_pos}, длина {len(debtor_block)}")
-                            logger.info(f"Первые 200 символов блока: {debtor_block[:200]}")
+                            logger.debug(f"Первые 200 символов блока: {debtor_block[:200]}")
                             # Для отладки ogrnip выводим весь блок, если он не слишком длинный
                             if field_name == "ogrnip" and len(debtor_block) < 1000:
-                                logger.info(f"🔍 Полный блок Ответчик для ogrnip: {debtor_block}")
+                                logger.debug(f"🔍 Полный блок Ответчик для ogrnip: {debtor_block}")
 
                     # Извлекаем ИНН или ОГРН из найденного блока должника/ответчика
                     if debtor_block:
@@ -3493,24 +3792,27 @@ class DocumentAnalyzer:
                         elif field_name == "inn" or field_name == "companyInn":
                             # Извлекаем ИНН (как в реструктуризации)
                             logger.info(f"Ищем {field_name} в блоке должника/ответчика...")
-                            inn_match = re.search(r"ИНН[:\s]*([0-9\s]{9,12})", debtor_block, re.IGNORECASE)
-                            if inn_match:
-                                logger.info(f"Найден ИНН паттерн 1: {inn_match.group(1)}")
-                            if not inn_match:
-                                inn_match = re.search(r"([0-9\s]{9,12})\s*\[4\]", debtor_block)
-                                if inn_match:
-                                    logger.info(f"Найден ИНН паттерн [4]: {inn_match.group(1)}")
-                            if inn_match:
-                                inn_value = re.sub(r"\D", "", inn_match.group(1))
-                                logger.info(f"Очищенное значение ИНН: '{inn_value}', длина: {len(inn_value) if inn_value else 0}")
-                                # Проверяем длину ИНН: 9-12 цифр (для ЮЛ может быть 9 или 10 цифр, для ИП - 12)
-                                if inn_value and len(inn_value) >= 9 and len(inn_value) <= 12:
-                                    extracted_fields["inn"] = inn_value
-                                    extracted_fields["companyInn"] = inn_value
-                                    logger.info(f"✅ Extracted {field_name} из блока должника/ответчика: {inn_value}")
-                                    found_value = True
-                                else:
-                                    logger.warning(f"⚠️ ИНН не прошел проверку длины: '{inn_value}' (длина: {len(inn_value) if inn_value else 0})")
+                            # Собираем ВСЕХ кандидатов ИНН в блоке и предпочитаем
+                            # того, кто проходит контрольную сумму (иначе жадный поиск
+                            # мог бы подхватить ИНН банка/иного лица, стоящий раньше).
+                            inn_candidates = re.findall(r"ИНН[:\s]*([0-9\s]{9,12})", debtor_block, re.IGNORECASE)
+                            inn_candidates += re.findall(r"([0-9\s]{9,12})\s*\[4\]", debtor_block)
+                            inn_clean = []
+                            for raw in inn_candidates:
+                                digits = re.sub(r"\D", "", raw)
+                                if 9 <= len(digits) <= 12:
+                                    inn_clean.append(digits)
+                            inn_value = None
+                            if inn_clean:
+                                # Первый валидный по контрольной сумме, иначе — первый найденный.
+                                inn_value = next((c for c in inn_clean if is_valid_inn(c)), inn_clean[0])
+                                if not is_valid_inn(inn_value):
+                                    logger.debug(f"ИНН '{inn_value}' не прошёл контрольную сумму, оставлен как есть")
+                            if inn_value:
+                                extracted_fields["inn"] = inn_value
+                                extracted_fields["companyInn"] = inn_value
+                                logger.info(f"✅ Extracted {field_name} из блока должника/ответчика: {inn_value}")
+                                found_value = True
                             else:
                                 logger.warning(f"⚠️ ИНН не найден в блоке должника/ответчика")
 
@@ -4825,22 +5127,22 @@ class DocumentAnalyzer:
                     ogrn_match = re.search(r"ОГРНИП[:\s]*([0-9\s]{15})", debtor_block, re.IGNORECASE)
                 if not ogrn_match:
                     ogrn_match = re.search(r"([0-9\s]{12,15})\s*\[3\]", debtor_block)
-            if ogrn_match:
-                ogrn_value = re.sub(r"\D", "", ogrn_match.group(1))
-                # Проверяем длину ОГРН: 12-15 цифр (для ЮЛ может быть 12 или 13 цифр, для ИП - 15)
-                if ogrn_value and len(ogrn_value) >= 12 and len(ogrn_value) <= 15:
-                    extracted_fields["ogrn"] = ogrn_value
-                    logger.info(f"✅ Extracted ogrn из блока Должник (после цикла): {ogrn_value}")
+                if ogrn_match:
+                    ogrn_value = re.sub(r"\D", "", ogrn_match.group(1))
+                    # Проверяем длину ОГРН: 12-15 цифр (для ЮЛ может быть 12 или 13 цифр, для ИП - 15)
+                    if ogrn_value and len(ogrn_value) >= 12 and len(ogrn_value) <= 15:
+                        extracted_fields["ogrn"] = ogrn_value
+                        logger.info(f"✅ Extracted ogrn из блока Должник (после цикла): {ogrn_value}")
 
-            # Извлекаем ИНН (только если еще не извлечен в основном цикле)
+            # Извлекаем ИНН (только если еще не извлечен в основном цикле).
+            # Среди кандидатов предпочитаем валидного по контрольной сумме.
             if "inn" not in extracted_fields or not extracted_fields.get("inn"):
-                inn_match = re.search(r"ИНН[:\s]*([0-9\s]{10,12})", debtor_block, re.IGNORECASE)
-                if not inn_match:
-                    inn_match = re.search(r"([0-9\s]{10,12})\s*\[4\]", debtor_block)
-            if inn_match:
-                inn_value = re.sub(r"\D", "", inn_match.group(1))
-                # Проверяем длину ИНН: 10-12 цифр
-                if inn_value and len(inn_value) >= 10 and len(inn_value) <= 12:
+                inn_candidates = re.findall(r"ИНН[:\s]*([0-9\s]{10,12})", debtor_block, re.IGNORECASE)
+                inn_candidates += re.findall(r"([0-9\s]{10,12})\s*\[4\]", debtor_block)
+                inn_clean = [re.sub(r"\D", "", c) for c in inn_candidates]
+                inn_clean = [c for c in inn_clean if 10 <= len(c) <= 12]
+                if inn_clean:
+                    inn_value = next((c for c in inn_clean if is_valid_inn(c)), inn_clean[0])
                     extracted_fields["inn"] = inn_value
                     extracted_fields["companyInn"] = inn_value
                     logger.info(f"✅ Extracted inn из блока Должник (после цикла): {inn_value}")
@@ -4896,8 +5198,13 @@ class DocumentAnalyzer:
         manager_inn = extracted_fields.get("managerInn")
         if manager_inn:
             normalized_inn = re.sub(r"\D", "", manager_inn)
-            if normalized_inn:
+            # Отсеиваем мусор, не проходящий контрольную сумму (например, 689768767676),
+            # чтобы в поле не подставлялся заведомо ложный ИНН.
+            if normalized_inn and is_valid_inn(normalized_inn):
                 extracted_fields["managerInn"] = normalized_inn
+            else:
+                logger.debug(f"managerInn '{manager_inn}' отброшен: не прошёл контрольную сумму")
+                extracted_fields.pop("managerInn", None)
 
         debtor_name_raw = extracted_fields.get("debtorName")
         applicant_name_raw = extracted_fields.get("applicantName")
@@ -5235,12 +5542,15 @@ class DocumentAnalyzer:
             term_value = int(term_digits) if term_digits else None
             # Реалистичный срок кредита в месяцах.
             if not term_value or term_value < 1 or term_value > 600:
+                # В шаблонных документах между числом и единицей встречается
+                # маркер вида [1001] ("на срок 36[1001] мес") — допускаем его,
+                # иначе реальное значение терялось бы при перезахвате.
                 term_match = re.search(
-                    r"на\s+срок\s+([0-9]{1,3})\s*(?:месяц(?:ев)?|мес\.?)",
+                    r"на\s+срок\s+([0-9]{1,3})\s*(?:\[[0-9.]+\]\s*)?(?:месяц(?:ев)?|мес\.?)",
                     text,
                     re.IGNORECASE,
                 ) or re.search(
-                    r"срок\s+кредита[:\s]+([0-9]{1,3})\s*(?:месяц(?:ев)?|мес\.?)",
+                    r"срок\s+кредита[:\s]+([0-9]{1,3})\s*(?:\[[0-9.]+\]\s*)?(?:месяц(?:ев)?|мес\.?)",
                     text,
                     re.IGNORECASE,
                 )
@@ -5271,7 +5581,7 @@ class DocumentAnalyzer:
             # и обычно находится в диапазоне 0..100.
             if rate_value is None or rate_value <= 0 or rate_value > 100:
                 strict_rate_match = re.search(
-                    r"под\s+([0-9]{1,3}(?:[.,][0-9]{1,2})?)\s*%",
+                    r"под\s+([0-9]{1,3}(?:[.,][0-9]{1,2})?)\s*(?:\[[0-9.]+\]\s*)?%",
                     text,
                     re.IGNORECASE,
                 )
@@ -5583,13 +5893,15 @@ class DocumentAnalyzer:
             ],
             postprocess=clean_numeric
         )
+        # Опциональный (?:\[[0-9.]+\]\s*)? допускает маркер между числом и
+        # единицей измерения ("на срок 36[1001] мес"), не ломая маркерные паттерны.
         set_field(
             "creditTermMonths",
             [
-                r"на\s+срок\s+([0-9]+)\s*(?:месяц(?:ев)?|мес\.?)",
-                r"срок\s+кредита[:\s]+([0-9]+)\s*(?:месяц(?:ев)?|мес\.?)",
-                r"срок[:\s]+([0-9]+)\s*(?:месяц(?:ев)?|мес\.?)",
-                r"по\s+истечении\s+([0-9]+)\s*(?:месяц(?:ев)?|мес\.?)",
+                r"на\s+срок\s+([0-9]+)\s*(?:\[[0-9.]+\]\s*)?(?:месяц(?:ев)?|мес\.?)",
+                r"срок\s+кредита[:\s]+([0-9]+)\s*(?:\[[0-9.]+\]\s*)?(?:месяц(?:ев)?|мес\.?)",
+                r"срок[:\s]+([0-9]+)\s*(?:\[[0-9.]+\]\s*)?(?:месяц(?:ев)?|мес\.?)",
+                r"по\s+истечении\s+([0-9]+)\s*(?:\[[0-9.]+\]\s*)?(?:месяц(?:ев)?|мес\.?)",
                 r"\[1001\]\s*([0-9]+)",
                 r"([0-9]+)\s*\[1001\]"
             ]
@@ -5597,16 +5909,16 @@ class DocumentAnalyzer:
         set_field(
             "creditInterestRate",
             [
-                r"под\s+([0-9]+(?:[.,][0-9]+)?)\s*%",
-                r"процентн\w*\s+ставк\w*[^0-9]{0,30}([0-9]+(?:[.,][0-9]+)?)\s*%",
+                r"под\s+([0-9]+(?:[.,][0-9]+)?)\s*(?:\[[0-9.]+\]\s*)?%",
+                r"процентн\w*\s+ставк\w*[^0-9]{0,30}([0-9]+(?:[.,][0-9]+)?)\s*(?:\[[0-9.]+\]\s*)?%",
             ]
         )
         set_field(
             "creditPenaltyRate",
             [
-                r"неустойк[ауы]\s+в\s+размере\s+([0-9]+(?:[.,][0-9]+)?)\s*%",
-                r"штраф[а-яё\s]+([0-9]+(?:[.,][0-9]+)?)\s*%",
-                r"неустойк[ауы][^0-9]{0,40}([0-9]+(?:[.,][0-9]+)?)\s*%"
+                r"неустойк[ауы]\s+в\s+размере\s+([0-9]+(?:[.,][0-9]+)?)\s*(?:\[[0-9.]+\]\s*)?%",
+                r"штраф[а-яё\s]+([0-9]+(?:[.,][0-9]+)?)\s*(?:\[[0-9.]+\]\s*)?%",
+                r"неустойк[ауы][^0-9]{0,40}([0-9]+(?:[.,][0-9]+)?)\s*(?:\[[0-9.]+\]\s*)?%"
             ]
         )
 
@@ -5996,7 +6308,10 @@ class DocumentAnalyzer:
         # Извлекаем описание предмета залога [1221] для ИП с залогом
         # После "что подтверждается договором залога №НОМЕР от ДАТА :"
         # Извлекаем до "Наличие заложенного имущества подтверждается выпиской из ЕГРН" или до конца предложения/абзаца
-        if "mortgageCollateralDescription1221" not in fields:
+        # Запускаем поиск ТОЛЬКО если документ вообще содержит признаки залога —
+        # иначе для обычного взыскания без залога писался ложный warning.
+        has_collateral_markers = bool(re.search(r"договор\w*\s+залога|ипотек|предмет\s+залога|\[1221\]", text, re.IGNORECASE))
+        if has_collateral_markers and "mortgageCollateralDescription1221" not in fields:
             logger.info(f"🔍 Ищем mortgageCollateralDescription1221 для ИП с залогом...")
             collateral_patterns = [
                 # Приоритетный паттерн: после "что подтверждается договором залога №НОМЕР от ДАТА :"
@@ -6180,8 +6495,10 @@ class DocumentAnalyzer:
             postprocess=clean_numeric
         )
 
-        # Извлекаем описание предмета залога [1221] для ФЛ с залогом
-        if "mortgageCollateralDescription1221" not in fields:
+        # Извлекаем описание предмета залога [1221] для ФЛ с залогом.
+        # Только при наличии признаков залога — иначе ложный warning.
+        has_collateral_markers = bool(re.search(r"договор\w*\s+залога|ипотек|предмет\s+залога|\[1221\]", text, re.IGNORECASE))
+        if has_collateral_markers and "mortgageCollateralDescription1221" not in fields:
             logger.info(f"🔍 Ищем mortgageCollateralDescription1221 для ФЛ с залогом...")
             collateral_patterns = [
                 r"что\s+подтверждается\s+договором\s+залога\s+№\s*[А-ЯЁ0-9/-]+(?:\s+от|от)\s+\d{1,2}[.,]\d{1,2}[.,]\d{4}\s*:\s*([\s\S]+?)(?=Наличие\s+заложенного\s+имущества\s+подтверждается\s+выпиской\s+из\s+ЕГРН|Наличие\s+заложенного|\[1221\]|\.\s+[А-ЯЁ]|\n\s*\n|ПРОСИТ|По\s+состоянию|Сумма\s+к|В\s+результате|$)",

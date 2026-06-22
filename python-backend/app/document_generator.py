@@ -287,6 +287,10 @@ class DocumentGenerator:
         applicant_name = (cleaned_data.get("applicantName") or "").strip()
         if not applicant_name:
             return
+        # Несколько должников склеены через запятую — единичное склонение неприменимо
+        # (падежи уже посчитаны и склеены в _combine_debtors).
+        if "," in applicant_name:
+            return
         parts = [w for w in re.split(r"\s+", applicant_name) if w]
         if len(parts) < 3:
             return
@@ -936,7 +940,10 @@ class DocumentGenerator:
                 field_mapping.pop("applicantNameGenitive", None)
                 logger.warning(f"applicantNameGenitive содержит 'суд' ({applicant_name_genitive}), не используем для [2.1]")
 
-            if mortgage_debtor_name and "суд" not in mortgage_debtor_name.lower():
+            if mortgage_debtor_name and "," in mortgage_debtor_name:
+                # Несколько должников: имя и падежи уже склеены, пословное склонение не делаем.
+                logger.info("Несколько должников (mortgage) — пропускаем пословное склонение")
+            elif mortgage_debtor_name and "суд" not in mortgage_debtor_name.lower():
                 logger.info(f"Используем mortgageDebtorName для [2]: {mortgage_debtor_name}")
                 # Используем pymorphy для преобразования в разные падежи
                 try:
@@ -976,6 +983,10 @@ class DocumentGenerator:
                     logger.info(f"Преобразовано mortgageDebtorName в дательный падеж для [2.2]: {dative_name}")
                 except Exception as e:
                     logger.warning(f"Не удалось преобразовать mortgageDebtorName в падежи: {e}")
+            elif debtor_name and "," in debtor_name:
+                # Несколько должников: имя и падежи уже склеены, пословное склонение не делаем.
+                cleaned_data["mortgageDebtorName"] = debtor_name
+                logger.info("Несколько должников (debtorName) — пропускаем пословное склонение")
             elif debtor_name and "суд" not in debtor_name.lower() and len(debtor_name) < 100:
                 # Если mortgageDebtorName не найден, но есть подходящий debtorName, используем его
                 cleaned_data["mortgageDebtorName"] = debtor_name
@@ -3684,6 +3695,22 @@ class DocumentGenerator:
         try:
             # Проверяем, есть ли выбранные пользователем акты (могут быть в data или в data.fields)
             fields = data.get("fields") or {}
+
+            # Несколько должников: при 2+ авторитетно пересобираем плоские поля и падежи
+            # из массива debtors (учёт правок пользователя в форме). Склейка через запятую,
+            # шаблоны не меняем. Одиночный должник — поведение прежнее.
+            debtors_in = data.get("debtors") or fields.get("debtors") or []
+            valid_debtors = [d for d in debtors_in if isinstance(d, dict) and (d.get("name") or "").strip()]
+            if len(valid_debtors) >= 2:
+                try:
+                    combined = DocumentAnalyzer()._combine_debtors(valid_debtors)
+                    fields.update(combined)
+                    data["fields"] = fields
+                    for k, v in combined.items():
+                        data[k] = v
+                    logger.info(f"Склеено {len(valid_debtors)} должников: {combined.get('applicantName')}")
+                except Exception as exc:
+                    logger.warning(f"Не удалось склеить должников при генерации: {exc}")
             selected_acts_ids = data.get("selectedActsIds") or fields.get("selectedActsIds")
             selected_acts_data_str = data.get("selectedActsData") or fields.get("selectedActsData")
             selected_entity_type = data.get("selectedEntityType") or fields.get("selectedEntityType")

@@ -26,7 +26,7 @@ import {
   AccordionDetails
 } from '@mui/material';
 import { ArrowBack as BackIcon, CheckCircle as CheckIcon, Add as AddIcon, Close as CloseIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
-import { DocumentData, ExtractedData, Obligation, Collateral, CollateralType, EntityType, CollateralOption, SelectedAct, ThirdParty } from '../types';
+import { DocumentData, ExtractedData, Obligation, Collateral, CollateralType, EntityType, CollateralOption, SelectedAct, ThirdParty, Debtor } from '../types';
 
 // Данные банков для автозаполнения
 const BANK_DATA: Record<string, { address: string; ogrn: string; inn: string }> = {
@@ -495,11 +495,33 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           initialThirdParties = [];
         }
 
+        // Инициализируем должников из массива debtors или из плоских полей (один должник)
+        let initialDebtors: Debtor[] = [];
+        if (propExtractedData.debtors && propExtractedData.debtors.length > 0) {
+          initialDebtors = propExtractedData.debtors.map((d, i) => ({
+            ...d,
+            id: d.id || `debtor-${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`
+          }));
+        } else {
+          const pf = propExtractedData.fields || {};
+          initialDebtors = [{
+            id: `debtor-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            name: pf.applicantName || pf.debtorName || '',
+            address: pf.applicantAddress || '',
+            inn: pf.inn || pf.companyInn || '',
+            ogrnip: pf.ogrnip || pf.ogrn || '',
+            birthDate: pf.birthDate || '',
+            birthPlace: pf.birthPlace || '',
+            snils: pf.snils || ''
+          }];
+        }
+
         const fullAnalysisResult = {
           ...propExtractedData,
           obligations: propExtractedData.obligations || [],
           collaterals: initialCollaterals,
-          thirdParties: initialThirdParties
+          thirdParties: initialThirdParties,
+          debtors: initialDebtors
         };
         console.log('DocumentAnalysis: setting full analysisResult:', fullAnalysisResult);
         console.log('DocumentAnalysis: obligations in fullAnalysisResult:', fullAnalysisResult.obligations);
@@ -728,6 +750,43 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     setAnalysisResult({ ...analysisResult, thirdParties: updated });
   };
 
+  // --- Должники (со-ответчики): динамический список ---
+  const DEBTOR_FLAT_MAP: Record<string, string> = {
+    name: 'applicantName', address: 'applicantAddress', inn: 'inn',
+    ogrnip: 'ogrnip', birthDate: 'birthDate', birthPlace: 'birthPlace', snils: 'snils'
+  };
+
+  const addDebtor = () => {
+    if (!analysisResult) return;
+    const newDebtor: Debtor = {
+      id: `debtor-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name: '', address: '', inn: '', ogrnip: '', birthDate: '', birthPlace: '', snils: ''
+    };
+    const debtors = [...(analysisResult.debtors || []), newDebtor];
+    setAnalysisResult({ ...analysisResult, debtors });
+  };
+
+  const updateDebtor = (index: number, field: keyof Debtor, value: string) => {
+    if (!analysisResult?.debtors) return;
+    const updated = [...analysisResult.debtors];
+    updated[index] = { ...updated[index], [field]: value };
+    setAnalysisResult({ ...analysisResult, debtors: updated });
+    // Зеркалим первого должника в плоские поля (одно-должниковые потоки и падежи)
+    if (index === 0) {
+      const flatKey = DEBTOR_FLAT_MAP[field as string];
+      if (flatKey) {
+        handleFieldChange(flatKey, value);
+        if (field === 'inn') handleFieldChange('companyInn', value);
+      }
+    }
+  };
+
+  const removeDebtor = (index: number) => {
+    if (!analysisResult?.debtors) return;
+    const updated = analysisResult.debtors.filter((_, i) => i !== index);
+    setAnalysisResult({ ...analysisResult, debtors: updated });
+  };
+
   const toggleActSelection = (actId: string) => {
     setSelectedActs(prevActs =>
       prevActs.map(act =>
@@ -787,7 +846,8 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           selectedActsData: JSON.stringify(selectedActs.filter(a => a.selected)) || undefined
         },
         collaterals: analysisResult.collaterals || [],
-        thirdParties: analysisResult.thirdParties || []
+        thirdParties: analysisResult.thirdParties || [],
+        debtors: analysisResult.debtors || []
       };
 
       // Преобразуем ФИО судьи в формат "Фамилия И.О."
@@ -1515,104 +1575,111 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
                   Данные должника
                 </Typography>
-                <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                    <Box sx={LABEL_OVERLAP_BOX}>
-                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО/название должника:</Typography>
-                  <TextField
-                    fullWidth
-                        value={editedFields.debtorName || editedFields.applicantName || ''}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          handleFieldChange('debtorName', value);
-                          handleFieldChange('applicantName', value);
-                        }}
-                    size="small"
-                    margin="dense"
-                  />
-                    </Box>
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                    <Box sx={LABEL_OVERLAP_BOX}>
-                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес должника:</Typography>
-                  <TextField
-                    fullWidth
-                        value={editedFields.applicantAddress || ''}
-                        onChange={(e) => handleFieldChange('applicantAddress', e.target.value)}
-                    size="small"
-                    margin="dense"
-                  />
-                    </Box>
-                </Grid>
-
-                  <Grid item xs={12} sm={6}>
-                    <Box sx={LABEL_OVERLAP_BOX}>
-                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ИНН:</Typography>
-                      <TextField
-                        fullWidth
-                        value={editedFields.inn || editedFields.companyInn || ''}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          handleFieldChange('inn', value);
-                          handleFieldChange('companyInn', value);
-                        }}
-                        size="small"
-                        margin="dense"
-                      />
-                    </Box>
-              </Grid>
-
-                  <Grid item xs={12} sm={6}>
-                    <Box sx={LABEL_OVERLAP_BOX}>
-                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ОГРНИП:</Typography>
-                      <TextField
-                        fullWidth
-                        value={editedFields.ogrnip || editedFields.ogrn || ''}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          handleFieldChange('ogrnip', value);
-                          if (!editedFields.ogrn) {
-                            handleFieldChange('ogrn', value);
-                          }
-                        }}
-                        size="small"
-                        margin="dense"
-                      />
-                    </Box>
-                  </Grid>
-
-                  <Grid item xs={12} sm={6}>
-                    <Box sx={LABEL_OVERLAP_BOX}>
-                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Город/место рождения:</Typography>
-                      <TextField
-                        fullWidth
-                        value={editedFields.birthPlace ?? ''}
-                        onChange={(e) => handleFieldChange('birthPlace', e.target.value)}
-                        size="small"
-                        margin="dense"
-                        placeholder="например: г. Москва"
-                      />
-                    </Box>
-                  </Grid>
-
-                  <Grid item xs={12} sm={6}>
-                    <Box sx={LABEL_OVERLAP_BOX}>
-                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата рождения:</Typography>
-                      <TextField
-                        fullWidth
-                        type="date"
-                        value={toInputDate(editedFields.birthDate)}
-                        onChange={(e) => handleFieldChange('birthDate', fromInputDate(e.target.value))}
-                        size="small"
-                        margin="dense"
-                        InputLabelProps={{
-                          shrink: true,
-                        }}
-                      />
-                    </Box>
-                  </Grid>
-                </Grid>
+                {(analysisResult?.debtors || []).map((debtor: Debtor, index: number) => (
+                  <Card key={debtor.id} sx={{ mb: 2, p: 2, border: '1px solid #e0e0e0' }}>
+                    {(analysisResult?.debtors?.length || 0) > 1 && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                          Должник {index + 1}
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          onClick={() => removeDebtor(index)}
+                          aria-label="Удалить должника"
+                          sx={{ color: 'text.secondary' }}
+                        >
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    )}
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <Box sx={LABEL_OVERLAP_BOX}>
+                          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО/название должника:</Typography>
+                          <TextField
+                            fullWidth
+                            value={debtor.name || ''}
+                            onChange={(e) => updateDebtor(index, 'name', e.target.value)}
+                            size="small"
+                            margin="dense"
+                          />
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Box sx={LABEL_OVERLAP_BOX}>
+                          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес должника:</Typography>
+                          <TextField
+                            fullWidth
+                            value={debtor.address || ''}
+                            onChange={(e) => updateDebtor(index, 'address', e.target.value)}
+                            size="small"
+                            margin="dense"
+                          />
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Box sx={LABEL_OVERLAP_BOX}>
+                          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ИНН:</Typography>
+                          <TextField
+                            fullWidth
+                            value={debtor.inn || ''}
+                            onChange={(e) => updateDebtor(index, 'inn', e.target.value)}
+                            size="small"
+                            margin="dense"
+                          />
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Box sx={LABEL_OVERLAP_BOX}>
+                          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ОГРНИП:</Typography>
+                          <TextField
+                            fullWidth
+                            value={debtor.ogrnip || ''}
+                            onChange={(e) => updateDebtor(index, 'ogrnip', e.target.value)}
+                            size="small"
+                            margin="dense"
+                          />
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Box sx={LABEL_OVERLAP_BOX}>
+                          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Город/место рождения:</Typography>
+                          <TextField
+                            fullWidth
+                            value={debtor.birthPlace ?? ''}
+                            onChange={(e) => updateDebtor(index, 'birthPlace', e.target.value)}
+                            size="small"
+                            margin="dense"
+                            placeholder="например: г. Москва"
+                          />
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Box sx={LABEL_OVERLAP_BOX}>
+                          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата рождения:</Typography>
+                          <TextField
+                            fullWidth
+                            type="date"
+                            value={toInputDate(debtor.birthDate)}
+                            onChange={(e) => updateDebtor(index, 'birthDate', fromInputDate(e.target.value))}
+                            size="small"
+                            margin="dense"
+                            InputLabelProps={{ shrink: true }}
+                          />
+                        </Box>
+                      </Grid>
+                    </Grid>
+                  </Card>
+                ))}
+                <Button
+                  startIcon={<AddIcon />}
+                  onClick={addDebtor}
+                  variant="outlined"
+                  size="small"
+                  sx={{ mt: 1 }}
+                >
+                  Добавить должника
+                </Button>
               </Box>
                 </Grid>
 
