@@ -1820,6 +1820,25 @@ class DocumentAnalyzer:
                 if manager_name_cc and manager_inn_cc and "инн" not in manager_name_cc.lower():
                     extracted_fields["managerName"] = f"{manager_name_cc.strip()} (ИНН {manager_inn_cc})"
 
+            # Тип лица: текстовый фолбэк для определений суда без блока «Должник:»
+            # (например, «…банкротом индивидуального предпринимателя Главы КФХ …»),
+            # где имя должника — плейсхолдер. Делаем ДО рекомендаций, чтобы они
+            # использовали уже скорректированный тип лица.
+            if extracted_fields.get("entityType") not in ("kfh", "ip", "legal"):
+                text_entity = self._entity_from_text(text)
+                if text_entity:
+                    extracted_fields["entityType"] = text_entity
+                    if text_entity == "kfh":
+                        extracted_fields["isKfh"] = True
+
+            # Номер дела: оставляем только если это реальный номер судебного дела
+            # («/ГОД» в конце). Отсекаем доверенности (№ЮЗБ/415-Д), договоры и пр.,
+            # которые могли попасть жадными паттернами. В ипотечных исках на момент
+            # подачи дела ещё нет — поле должно остаться пустым.
+            _cn = extracted_fields.get("caseNumber")
+            if _cn and not self._is_valid_case_number(_cn):
+                extracted_fields.pop("caseNumber", None)
+
             # Определяем рекомендуемые акты на основе типа документа, типа лица и залога
             recommended_acts = self._get_recommended_acts(document_type, extracted_fields, text)
 
@@ -1838,6 +1857,8 @@ class DocumentAnalyzer:
             collaterals_list = self._dedupe_collaterals(
                 [self._make_collateral_obj(idx, d) for idx, d in enumerate(collateral_descs)]
             )
+            # Отбрасываем нереальные «иное» (шаблонные «Предметом залога является …»).
+            collaterals_list = [c for c in collaterals_list if self._collateral_has_substance(c)]
             if collaterals_list:
                 logger.info(f"✅ Создано {len(collaterals_list)} предметов залога: {[c['collateralType'] for c in collaterals_list]}")
 
@@ -1956,7 +1977,8 @@ class DocumentAnalyzer:
             _raw_cols = collaterals_list if collaterals_list else extracted_fields.get('collaterals', [])
             collaterals_final = [
                 c for c in _raw_cols
-                if c.get("collateralType") in ("auto", "real_estate") or _opt != "no_collateral"
+                if self._collateral_has_substance(c)
+                and (c.get("collateralType") in ("auto", "real_estate") or _opt != "no_collateral")
             ]
             if not collaterals_final:
                 extracted_fields.pop("mortgageCollateralDescription1221", None)
@@ -3651,6 +3673,47 @@ class DocumentAnalyzer:
         logger.info(f"Не удалось нормализовать тип процедуры по тексту: {raw_procedure}")
         return None, raw_procedure
 
+    def _entity_from_text(self, text: str) -> Optional[str]:
+        """Тип должника КФХ/ИП из ТЕКСТА (для определений суда без блока «Должник:»).
+
+        Смотрит описание должника СРАЗУ после «несостоятельным (банкротом) …» —
+        там тип указан словами («индивидуального предпринимателя Главы КФХ …»).
+        Возвращает только kfh/ip (legal не определяем по тексту — рядом часто
+        стоит ЮЛ-кредитор, можно ошибиться).
+        """
+        if not text:
+            return None
+        m = re.search(
+            r"несостоятельн\w*\s*\(?\s*банкрот\w*\s*\)?\s*([^\n.]{0,70})",
+            text, re.IGNORECASE,
+        )
+        if not m:
+            return None
+        ctx = m.group(1).lower()
+        if ("глав" in ctx and "кфх" in ctx) or "крестьянск" in ctx or "к(ф)х" in ctx:
+            return "kfh"
+        if "индивидуальн" in ctx and "предпринимател" in ctx:
+            return "ip"
+        return None
+
+    # Канонический формат номера судебного дела: опц. 1-2 буквы + цифры,
+    # необяз. «-цифры», и ОБЯЗАТЕЛЬНО «/ГОД» в конце (19xx/20xx).
+    # Примеры: А40-12345/2025, А53-22222/2024, 2-1234/2025.
+    # Отсекает доверенности (ЮЗБ/415-Д), договоры и прочие №…, у которых нет «/ГОД».
+    _CASE_NUMBER_RE = re.compile(
+        r"^[А-ЯЁ]{0,2}\d{1,4}(?:[-–]\d{1,15})?/(?:19|20)\d{2}$"
+    )
+
+    def _is_valid_case_number(self, value: Optional[str]) -> bool:
+        """True, если строка похожа на реальный номер судебного дела (с «/ГОД»)."""
+        if not value:
+            return False
+        v = re.sub(r"\s+", "", str(value)).strip().upper().replace("Ё", "Е")
+        # Сравниваем без учёта Ё/буквенного регистра
+        return bool(re.match(
+            r"^[А-ЯA-Z]{0,2}\d{1,4}(?:[-–]\d{1,15})?/(?:19|20)\d{2}$", v
+        ))
+
     def detect_entity_type(self, fields: Dict[str, Any]) -> Optional[str]:
         """
         Определяет тип должника: КФХ, ЮЛ, ИП или ФЛ по извлечённым данным.
@@ -3663,14 +3726,19 @@ class DocumentAnalyzer:
         # Имя для определения типа — приоритет у должника, иначе заявитель (в РТК заявитель = кредитор, должник = физлицо/юрлицо)
         name_for_entity = debtor_name_raw or applicant_name_raw
         name_lower = name_for_entity.lower()
+        # Маркер «ИП»/«КФХ» может быть в одном имени, а ФИО — в другом
+        # (debtorName = «КУКУСИК…», applicantName = «ИП Кукусик…»). Поэтому ищем в обоих.
+        both_names_lower = (debtor_name_raw + " " + applicant_name_raw).lower()
         inn_value = re.sub(r"\D", "", str(fields.get("inn") or ""))
         ogrn_value = re.sub(r"\D", "", str(fields.get("ogrn") or ""))
         company_inn_value = re.sub(r"\D", "", str(fields.get("companyInn") or ""))
         snils_value = re.sub(r"\D", "", str(fields.get("snils") or ""))
 
-        # ФИО: три слова (поддержка "Иван Иванов Иванович" и "ХЛИЯН ЕЛЕНА ОГАНОВНА")
+        # ФИО: три слова (поддержка "Иван Иванов Иванович" и "ХЛИЯН ЕЛЕНА ОГАНОВНА").
+        # Скобочную девичью фамилию убираем («Атанасян (Кулемзина) Валерия Сергеевна»).
+        name_no_paren = re.sub(r"\([^)]*\)", " ", name_for_entity)
         fio_pattern = r"[А-ЯЁа-яё]{2,}\s+[А-ЯЁа-яё]{2,}\s+[А-ЯЁа-яё]{2,}"
-        has_fio_in_name = bool(re.search(fio_pattern, name_for_entity))
+        has_fio_in_name = bool(re.search(fio_pattern, name_no_paren))
 
         legal_indicators = [
             "ооо", "оао", "пао", "зао", " ao", "ao ",
@@ -3683,10 +3751,10 @@ class DocumentAnalyzer:
         has_fio = has_fio_in_name and not has_legal_tokens_in_names
         has_individual_inn_or_snils = (inn_value and len(inn_value) == 12) or (snils_value and len(snils_value) == 11)
 
-        # 1. КФХ
+        # 1. КФХ (маркер в любом из имён должника)
         if fields.get("isKfh"):
             return "kfh"
-        if "глава кфх" in name_lower or "кфх ип" in name_lower or name_lower.startswith("глава кфх"):
+        if "глава кфх" in both_names_lower or "кфх ип" in both_names_lower or re.search(r"\bкфх\b", both_names_lower):
             return "kfh"
 
         # 2. ЮЛ — только при явных признаках в названии должника (ООО, ПАО и т.д.)
@@ -3695,10 +3763,8 @@ class DocumentAnalyzer:
         if fields.get("legalShortName") and not has_fio:
             return "legal"
 
-        # 3. ИП — только если явно «ИП ФИО» в имени должника
-        if name_lower.startswith("ип "):
-            return "ip"
-        if "индивидуальный предприниматель" in name_lower:
+        # 3. ИП — маркер «ИП» / «индивидуальный предприниматель» в любом из имён должника
+        if re.search(r"\bип\b", both_names_lower) or "индивидуальн" in both_names_lower:
             return "ip"
 
         # 4. ФЛ — ФИО или ИНН 12 / СНИЛС; приоритет над 10-значным ИНН (который может быть от кредитора)
@@ -6576,6 +6642,34 @@ class DocumentAnalyzer:
             return num
         return None
 
+    # Фраза залоговой стоимости (для вырезания из описания «иного» залога).
+    _VALUE_PHRASE_RE = (
+        r"[,;.]?\s*(?:залогов\w+\s+стоимост\w+|оценочн\w+\s+стоимост\w+|рыночн\w+\s+стоимост\w+|"
+        r"стоимост\w+\s+(?:предмета\s+)?залога|начальн\w+\s+(?:продажн\w+\s+)?цен\w+|стоимост\w+)"
+        r"\s*(?:залога|объекта)?\s*[:：]?\s*(?:в\s+размере\s+)?[0-9][0-9\s.,]*[0-9]?\s*(?:руб\w*|₽|р\.)"
+    )
+
+    def _strip_value_phrase(self, text: str) -> str:
+        """Убирает фразу залоговой стоимости из текста (чтобы не дублировать в описании)."""
+        return re.sub(self._VALUE_PHRASE_RE, "", text, flags=re.IGNORECASE).strip(" ,;.-—–")
+
+    def _extract_other_object_name(self, desc: str) -> Optional[str]:
+        """Наименование «иного» предмета залога: до «:» либо по ключевому слову вида."""
+        m = re.match(r"\s*([^:：\n]{2,50}?)\s*[:：]", desc)
+        if m:
+            name = m.group(1)
+        else:
+            km = re.search(
+                r"(ценн\w+\s+бумаг\w*|акци\w+|облигаци\w+|вексел\w+|"
+                r"дол[яюи]\s+в\s+уставн\w+\s+капитал\w*|дол[яюи]\s+в\s+праве\w*|"
+                r"оборудовани\w*|товар\w*\s+в\s+оборот\w*|имуществ\w+\s+прав\w*\s+требовани\w*|"
+                r"имуществ\w+\s+прав\w*|прав\w*\s+требовани\w*|\bпа[йи]\b)",
+                desc, re.IGNORECASE,
+            )
+            name = km.group(1) if km else desc.split(",")[0][:40]
+        name = self._strip_value_phrase(name).strip(" -—–,;.")
+        return (name[0].upper() + name[1:]) if name else None
+
     def _extract_collateral_object_name(self, desc: str) -> Optional[str]:
         """Извлекает вид объекта недвижимости (дом / земельный участок / квартира …)."""
         m = re.search(
@@ -6604,7 +6698,11 @@ class DocumentAnalyzer:
         bullet_re = re.compile(
             r"[-–—•]\s*((?:Автомобил\w*|марк[аи]\s*[:：]|жил\w*\s*дом|\bдом\b|квартир\w*|"
             r"земельн\w+\s+участ\w*|нежил\w*|помещени\w*|здани\w*|гараж\w*|машино-?мест\w*|"
-            r"комнат\w*|строени\w*|сооружени\w*)[^\n]*)",
+            r"комнат\w*|строени\w*|сооружени\w*|"
+            # «иное»: ценные бумаги, доли, оборудование, товары, имущественные права и т.п.
+            r"ценн\w+\s+бумаг\w*|акци\w+|облигаци\w+|вексел\w+|дол[яюи]\s+в\s+(?:уставн|праве)|"
+            r"оборудовани\w*|товар\w*\s+в\s+оборот\w*|имуществ\w+\s+прав\w*|прав\w*\s+требовани\w*|"
+            r"\bпа[йи]\b)[^\n]*)",
             re.IGNORECASE,
         )
         for m in bullet_re.finditer(norm):
@@ -6644,6 +6742,23 @@ class DocumentAnalyzer:
         for i, o in enumerate(result):
             o["id"] = f"collateral-{i}"
         return result
+
+    def _collateral_has_substance(self, obj: Dict[str, Any]) -> bool:
+        """Проверяет, что предмет залога реальный (а не шаблонный «Предметом залога является …»).
+
+        Недвижимость/транспорт — всегда реальны (по ключевым словам классификации).
+        «Иное» — только если содержит реальный предмет: ценные бумаги, долю, оборудование,
+        товары в обороте, имущественные права и т.п.
+        """
+        if obj.get("collateralType") in ("auto", "real_estate"):
+            return True
+        desc = (obj.get("description") or "").lower()
+        return bool(re.search(
+            r"ценн\w+\s+бумаг|акци\w|облигаци|вексел|дол[яюи]\s+в\s+(?:уставн|праве)|"
+            r"оборудовани|товар\w*\s+в\s+оборот|имуществ\w+\s+прав|прав\w*\s+требовани|"
+            r"\bпа[йи]\b|спецтехник|самоходн\w+\s+машин",
+            desc,
+        ))
 
     def _make_collateral_obj(self, idx: int, desc: str) -> Dict[str, Any]:
         """Создаёт объект залога с определённым типом и извлечёнными полями."""
@@ -6704,7 +6819,18 @@ class DocumentAnalyzer:
                 parts.append(f"{fm.group(1)}-этажный")
             obj["objectName"] = ", ".join(parts)
         else:
-            obj["otherDescription"] = desc
+            # «Иное»: наименование и стоимость — отдельными полями; в описание кладём
+            # остаток (без дублирования наименования и стоимости).
+            name = self._extract_other_object_name(desc)
+            obj["objectName"] = name or "Иное"
+            rest = re.sub(r"^\s*[-–—•]\s*", "", desc)  # срезаем ведущий маркер
+            # Убираем ведущее наименование с двоеточием («Ценные бумаги: …» → «…»).
+            mcolon = re.match(r"\s*[^:：\n]{2,60}[:：]\s*", rest)
+            if mcolon:
+                rest = rest[mcolon.end():]
+            elif name and rest.lower().startswith(name.lower()):
+                rest = rest[len(name):].lstrip(" :,-—–")
+            obj["otherDescription"] = self._strip_value_phrase(rest)
         return obj
 
     def _is_car_collateral_document(self, text: str) -> bool:
