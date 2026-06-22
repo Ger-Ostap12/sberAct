@@ -36,7 +36,7 @@ const BANK_DATA: Record<string, { address: string; ogrn: string; inn: string }> 
     inn: '7702070139'
   },
   'Т-банк': {
-    address: 'г. Москва, вн. тер. г. Муниципальный округ Савеловский, ул. Хуторская 2-Я, д. 38а, стр. 26',
+    address: '127287, г. Москва, вн. тер. г. Муниципальный округ Савеловский, ул. Хуторская 2-Я, д. 38а, стр. 26',
     ogrn: '1027739642281',
     inn: '7710140679'
   },
@@ -66,7 +66,7 @@ const BANK_DATA: Record<string, { address: string; ogrn: string; inn: string }> 
     inn: '7744001497'
   },
   'СберБанк': {
-    address: 'г. Москва, вн. тер. г. муниципальный округ Академический, ул. Вавилова, д. 19',
+    address: '117997, г. Москва, вн. тер. г. муниципальный округ Академический, ул. Вавилова, д. 19',
     ogrn: '1027700132195',
     inn: '7707083893'
   }
@@ -96,6 +96,31 @@ const fromInputDate = (value: string): string => {
 };
 
 const BANK_NAMES = Object.keys(BANK_DATA);
+
+// Распознавание банка по вариантам названия из документа («ПАО Сбербанк»,
+// «Сбербанк России», «в лице филиала …») → ключ в BANK_DATA, чтобы банк
+// автоматически выделялся в выпадающем списке. Данные (ИНН/ОГРН/адрес) при этом
+// остаются document-first и не перезаписываются.
+const BANK_ALIASES: Array<{ key: string; keywords: string[] }> = [
+  { key: 'СберБанк', keywords: ['сбербанк', 'сбер банк'] },
+  { key: 'ПАО ВТБ Банк', keywords: ['втб'] },
+  { key: 'Т-банк', keywords: ['тинькофф', 'т-банк', 'тбанк'] },
+  { key: 'Альфа банк', keywords: ['альфа'] },
+  { key: 'МТС банк', keywords: ['мтс'] },
+  { key: 'банк Центр-инвест', keywords: ['центр-инвест', 'центр инвест'] },
+  { key: 'ПСБ банк', keywords: ['промсвязь', 'псб'] },
+  { key: 'Газпромбанк', keywords: ['газпромбанк', 'газпром банк'] },
+];
+
+const matchBankKey = (name?: string): string | null => {
+  if (!name) return null;
+  if (BANK_DATA[name]) return name; // точное совпадение с ключом
+  const low = name.toLowerCase();
+  for (const { key, keywords } of BANK_ALIASES) {
+    if (keywords.some(k => low.includes(k))) return key;
+  }
+  return null;
+};
 
 // Функция для преобразования полного ФИО в формат "Фамилия И.О."
 const formatJudgeName = (fullName: string): string => {
@@ -479,7 +504,10 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         // Инициализируем третьих лиц из полей или создаем пустой массив
         let initialThirdParties: ThirdParty[] = [];
         if (propExtractedData.thirdParties && propExtractedData.thirdParties.length > 0) {
-          initialThirdParties = propExtractedData.thirdParties;
+          initialThirdParties = propExtractedData.thirdParties.map((tp, i) => ({
+            ...tp,
+            id: tp.id || `thirdParty-${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`
+          }));
         } else if (propExtractedData.fields?.thirdPartyName) {
           // Если есть данные в старом формате (поля), создаем один объект третьего лица
           initialThirdParties = [{
@@ -1695,7 +1723,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Кредитор:</Typography>
                       <FormControl fullWidth size="small" margin="dense">
                         <Select
-                          value={editedFields.creditorName && BANK_DATA[editedFields.creditorName] ? editedFields.creditorName : (editedFields.creditorName && !BANK_DATA[editedFields.creditorName] ? 'OTHER' : '')}
+                          value={matchBankKey(editedFields.creditorName) || (editedFields.creditorName ? 'OTHER' : '')}
                           onChange={(e) => handleCreditorChange(e.target.value)}
                           displayEmpty
                         >
@@ -1712,7 +1740,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                           </MenuItem>
                         </Select>
                       </FormControl>
-                      {(!editedFields.creditorName || (editedFields.creditorName && !BANK_DATA[editedFields.creditorName])) ? (
+                      {!matchBankKey(editedFields.creditorName) ? (
                         <Box sx={{ mt: 1, ...LABEL_OVERLAP_BOX }}>
                           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Название кредитора:</Typography>
                           <TextField

@@ -262,8 +262,12 @@ def _parse_debtor_record(rec_text: str):
     )
     if addr_m:
         addr = re.sub(r"\s*\n\s*", " ", addr_m.group(1)).strip()
-        # Обрезаем хвост, если в адрес попали последующие метки (телефон и т.п.).
-        addr = re.split(r"\s*(?:Контактный\s+телефон|Телефон|E-?mail|СНИЛС|ИНН)[:\s]", addr, 1, re.IGNORECASE)[0]
+        # Обрезаем хвост, если в адрес попали последующие метки (телефон/почта/реквизиты).
+        addr = re.split(
+            r"\s*(?:Контактн\w*\s+тел\w*\.?|Телефон|Тел\.?|E-?mail|Эл\.?\s*почт\w*|"
+            r"СНИЛС|ИНН|ОГРН\w*|Паспорт|Дата\s+рождения)[:\s.]",
+            addr, maxsplit=1, flags=re.IGNORECASE,
+        )[0]
         addr = _strip_address_label(addr).strip().rstrip(",;")
         if addr and len(addr) >= 8:
             d["address"] = addr
@@ -320,6 +324,90 @@ def extract_debtors(text: str) -> list:
         if parsed:
             debtors.append(parsed)
     return debtors
+
+
+_ORG_PREFIX_RE = re.compile(r"^(?:ИП|ООО|АО|ПАО|ЗАО|ОАО|Общество|Публичное)\b", re.IGNORECASE)
+
+
+def _third_parties_block(text: str) -> str:
+    """Весь блок третьих лиц — до управляющего/тела документа."""
+    m = re.search(r"Треть[ие]\s+лиц\w*\s*:|Третье\s+лицо\s*:", text, re.IGNORECASE)
+    if not m:
+        return ""
+    rest = text[m.end():]
+    stop = re.search(
+        r"\n\s*(?:Финансов\w+\s+управляющ|Временн\w+\s+управляющ|Дело\s*№|ПРОШУ|ПРОСИТ|"
+        r"Кредитор|Истец|Согласно|Публичное\s+акционерное\s+общество\s+«|$)",
+        rest, re.IGNORECASE,
+    )
+    return rest[: stop.start()] if stop else rest[:800]
+
+
+def _is_party_start(line: str) -> bool:
+    """Строка начинает запись третьего лица: ФИО физлица или организация (ИП/ООО/…)."""
+    s = line.strip()
+    if not s:
+        return False
+    return bool(_ORG_PREFIX_RE.match(s)) or _looks_like_fio(s)
+
+
+def _parse_party_record(rec_text: str):
+    """Разбирает запись третьего лица: name, birthDate, address, inn, snils."""
+    lines = [l.strip() for l in rec_text.split("\n") if l.strip()]
+    if not lines or not _is_party_start(lines[0]):
+        return None
+    d = {"name": lines[0].rstrip(",;")}
+
+    bd = _find_birthdate(rec_text)
+    if bd:
+        d["birthDate"] = bd
+
+    m = re.search(r"СНИЛС[:\s]*(\d{3}[-\s]?\d{3}[-\s]?\d{3}[-\s]?\d{2})", rec_text, re.IGNORECASE)
+    if m:
+        d["snils"] = m.group(1).strip()
+
+    inn_cands = [re.sub(r"\D", "", c) for c in re.findall(r"ИНН[:\s]*([0-9\s]{10,12})", rec_text, re.IGNORECASE)]
+    inn_cands = [c for c in inn_cands if 10 <= len(c) <= 12]
+    if inn_cands:
+        from requisites_validation import is_valid_inn
+        d["inn"] = next((c for c in inn_cands if is_valid_inn(c)), inn_cands[0])
+
+    addr_m = re.search(
+        r"(?:Адрес\s+регистрации|Адрес\s+проживания|Адрес\s+места\s+жительства|"
+        r"Место\s+жительства|Адрес)[:\s]*([\s\S]+)$",
+        rec_text, re.IGNORECASE,
+    )
+    if addr_m:
+        addr = re.sub(r"\s*\n\s*", " ", addr_m.group(1)).strip()
+        addr = re.split(
+            r"\s*(?:Контактн\w*\s+тел\w*\.?|Телефон|Тел\.?|E-?mail|СНИЛС|ИНН|ОГРН\w*|Паспорт|Дата\s+рождения)[:\s.]",
+            addr, maxsplit=1, flags=re.IGNORECASE,
+        )[0]
+        addr = _strip_address_label(addr).strip().rstrip(",;")
+        if addr and len(addr) >= 8:
+            d["address"] = addr
+
+    return d
+
+
+def extract_third_parties(text: str) -> list:
+    """Извлекает список третьих лиц (физлица и организации) из блока «Третьи лица:».
+
+    Запись начинается со строки-ФИО или организации (ИП/ООО/АО/ПАО/…) и идёт до
+    следующей такой строки. Возвращает список словарей с реквизитами каждого лица.
+    """
+    block = _third_parties_block(text)
+    if not block:
+        return []
+    lines = block.split("\n")
+    starts = [i for i, l in enumerate(lines) if _is_party_start(l)]
+    out = []
+    for k, idx in enumerate(starts):
+        end = starts[k + 1] if k + 1 < len(starts) else len(lines)
+        parsed = _parse_party_record("\n".join(lines[idx:end]))
+        if parsed:
+            out.append(parsed)
+    return out
 
 
 def extract_third_party_details(text: str) -> dict:

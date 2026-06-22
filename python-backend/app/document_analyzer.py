@@ -9,6 +9,7 @@ from fio_detector import (
     extract_debtor_details,
     extract_third_party_details,
     extract_debtors,
+    extract_third_parties,
 )
 from typing import Dict, Any, List, Tuple, Optional, Union
 import logging
@@ -1127,13 +1128,18 @@ class DocumentAnalyzer:
                     "patterns": [
                         r"временный\s+управляющий[:\s]*(?:\n)?[А-ЯЁ][^\n]*?\(ИНН[:\s]*([0-9]{10,12})\)",
                         r"финансовый\s+управляющий[:\s]*(?:\n)?[А-ЯЁ][^\n]*?\(ИНН[:\s]*([0-9]{10,12})\)",
-                        r"ИНН[:\s]*([0-9]{10,12})"
+                        # ИНН строго в контексте управляющего (а не первый ИНН в документе = банк)
+                        r"(?:финансовый|временный)\s+управляющий[:\s\S]{0,120}?ИНН[:\s]*([0-9]{10,12})"
                     ],
                     "type": "inn"
                 },
                 {
                     "name": "managerAddress",
                     "patterns": [
+                        # Адрес без метки на строке сразу после ФИО управляющего
+                        # («Финансовый управляющий:\nФИО (ИНН …)\n344000, …»). Хвостовой
+                        # длинный номер (а/я/счёт) в адрес не включаем.
+                        r"(?:финансовый|временный)\s+управляющий[:\s]*\n[^\n]+\n\s*([0-9]{6}[^\n]+?)(?:,\s*\d{10,})?\s*(?:\n|$)",
                         r"финансовый\s+управляющий[:\s]*(?:\n)?[А-ЯЁ][^\n]+?\n(?:Адрес|адрес)[^:\n]*:\s*([0-9]{6}[^\n]+)",
                         r"финансовый\s+управляющий[:\s]*(?:\n)?[А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){1,2}[,\s]+([0-9]{6}[^\n]{0,200})",
                         # Специфичные паттерны для адреса финансового управляющего (приоритет)
@@ -1909,6 +1915,22 @@ class DocumentAnalyzer:
             else:
                 debtors_result = [self._single_debtor_from_fields(extracted_fields)]
 
+            # Несколько третьих лиц: извлекаем массив (физлица и организации). Если
+            # извлеклось — отдаём как есть; иначе одно лицо из плоских полей (если есть).
+            parsed_tp = extract_third_parties(text)
+            if parsed_tp:
+                third_parties_result = parsed_tp
+            elif extracted_fields.get("thirdPartyName"):
+                third_parties_result = [{
+                    "name": extracted_fields.get("thirdPartyName") or "",
+                    "address": extracted_fields.get("thirdPartyAddress") or "",
+                    "inn": extracted_fields.get("thirdPartyInn") or "",
+                    "birthDate": extracted_fields.get("thirdPartyBirthDate") or "",
+                    "snils": extracted_fields.get("thirdPartySnils") or "",
+                }]
+            else:
+                third_parties_result = []
+
             # Формируем результат
             result = {
                 "documentType": document_type,
@@ -1923,7 +1945,8 @@ class DocumentAnalyzer:
                     "language": "ru"
                 },
                 "recommendedActs": recommended_acts,
-                "debtors": debtors_result
+                "debtors": debtors_result,
+                "thirdParties": third_parties_result
             }
 
             entity_type = extracted_fields.get("entityType")
@@ -6910,42 +6933,47 @@ class DocumentAnalyzer:
                 r'дата[:\s]*(\d{1,2}[.,]\d{1,2}[.,]\d{4})'
             ]
 
-            contract_numbers = []
-            contract_dates = []
-
+            # Дату берём из ЛОКАЛЬНОГО контекста номера («№NUM от ДАТА» /
+            # «№NUM, заключённому ДАТА»), а не из общего списка дат — иначе номеру
+            # могла привязаться чужая дата (например, дата платёжного поручения).
+            num_to_date = {}
+            num_order = []
             for pattern in contract_number_patterns:
-                matches = re.finditer(pattern, text, re.IGNORECASE)
-                for match in matches:
+                for match in re.finditer(pattern, text, re.IGNORECASE):
                     num = match.group(1).strip()
                     if not num or len(num) < 3:
                         continue
                     # Отфильтровываем номера судебных приказов: "судебный приказ № ..."
-                    start, _ = match.span(1)
-                    context_start = max(0, start - 40)
-                    context = text[context_start:start].lower()
+                    start = match.start(1)
+                    context = text[max(0, start - 40):start].lower()
                     if "судебный" in context and "приказ" in context:
                         continue
-                    contract_numbers.append(num)
-
-            for pattern in contract_date_patterns:
-                matches = re.findall(pattern, text, re.IGNORECASE)
-                contract_dates.extend([m.strip() for m in matches if m.strip()])
+                    # Исключаем платёжные поручения и госпошлину — это не договоры.
+                    if any(w in context for w in ("поручение", "пошлин", "платёжн", "платежн", "квитанц")):
+                        continue
+                    local = text[match.end(1): match.end(1) + 90]
+                    dm = re.search(r'(?:от|заключ\w+)\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})', local, re.IGNORECASE)
+                    date = dm.group(1).strip() if dm else None
+                    if num not in num_to_date:
+                        num_order.append(num)
+                        num_to_date[num] = date
+                    elif date and not num_to_date[num]:
+                        num_to_date[num] = date
 
             # Создаем обязательства из найденных данных - фильтруем мусор
             valid_contracts = []
-            for i, num in enumerate(contract_numbers):
+            for num in num_order:
                 num_clean = (num or '').strip()
                 # Отбрасываем явно мусорные и технические номера (счета, корр.счета и т.п.)
                 if not _is_valid_contract_number(num_clean):
                     continue
-                lower = num_clean.lower()
-                # Игнорируем очень длинные чисто цифровые номера (как правило, расчетные/корр. счета)
+                # Игнорируем очень длинные чисто цифровые номера (расчетные/корр. счета)
                 if num_clean.isdigit() and len(num_clean.replace(' ', '')) >= 15:
                     continue
                 if num_clean.isdigit():
-                    date = contract_dates[i] if i < len(contract_dates) else 'Не указана'
+                    date = num_to_date.get(num) or 'Не указана'
                     valid_contracts.append((num_clean, date))
-                    logger.info(f"Валидный номер договора: {num_clean}")
+                    logger.info(f"Валидный номер договора: {num_clean} (дата: {date})")
 
             # Ограничиваем до 5 обязательств
             for i, (num, date) in enumerate(valid_contracts[:5]):
@@ -7335,13 +7363,15 @@ class DocumentAnalyzer:
 
         if context_match:
             context = context_match.group(0).lower()
+            # Сравниваем по основам слов, т.к. в тексте склонённые формы
+            # («кредитному договору», «договора залога», «займа»).
             if 'залог' in context:
                 return 'Договор залога'
-            elif 'кредитный' in context:
+            elif 'кредитн' in context:
                 return 'Кредитный договор'
             elif 'займ' in context:
                 return 'Договор займа'
-            elif 'ссуда' in context:
+            elif 'ссуд' in context:
                 return 'Договор ссуды'
             else:
                 return 'Договор'
