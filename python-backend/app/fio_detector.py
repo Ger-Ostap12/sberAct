@@ -192,6 +192,13 @@ def extract_debtor_details(text: str) -> dict:
         from requisites_validation import is_valid_inn
         details["inn"] = next((c for c in inn_cands if is_valid_inn(c)), inn_cands[0])
 
+    # ОГРН/ОГРНИП должника — тоже строго из его записи.
+    ogrn_m = re.search(r"ОГРНИП[:\s]*([0-9\s]{15})|ОГРН[:\s]*([0-9\s]{13})", block, re.IGNORECASE)
+    if ogrn_m:
+        ogrn_val = re.sub(r"\D", "", ogrn_m.group(1) or ogrn_m.group(2) or "")
+        if len(ogrn_val) in (13, 15):
+            details["ogrn"] = ogrn_val
+
     return details
 
 
@@ -371,6 +378,12 @@ def _parse_party_record(rec_text: str):
     if inn_cands:
         from requisites_validation import is_valid_inn
         d["inn"] = next((c for c in inn_cands if is_valid_inn(c)), inn_cands[0])
+
+    ogrn_m = re.search(r"ОГРНИП[:\s]*([0-9\s]{15})|ОГРН[:\s]*([0-9\s]{13})", rec_text, re.IGNORECASE)
+    if ogrn_m:
+        ogrn_val = re.sub(r"\D", "", ogrn_m.group(1) or ogrn_m.group(2) or "")
+        if len(ogrn_val) in (13, 15):
+            d["ogrn"] = ogrn_val
 
     addr_m = re.search(
         r"(?:Адрес\s+регистрации|Адрес\s+проживания|Адрес\s+места\s+жительства|"

@@ -323,8 +323,21 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   // Состояние для выбора актов
   const [entityType, setEntityType] = useState<EntityType | null>(null);
   const [collateralOption, setCollateralOption] = useState<CollateralOption | null>(null);
+  // Виды залога для блока «Выбор залога» (можно несколько: недвижка, транспорт, иное).
+  const [collateralKinds, setCollateralKinds] = useState<{ realEstate: boolean; auto: boolean; other: boolean }>({ realEstate: false, auto: false, other: false });
   const [selectedActs, setSelectedActs] = useState<SelectedAct[]>([]);
   const [recommendationsApplied, setRecommendationsApplied] = useState(false);
+
+  // Сводим выбранные виды залога к одному значению collateralOption (для генерации):
+  // ничего → no_collateral; только транспорт → collateral_auto; иначе → collateral.
+  useEffect(() => {
+    const { realEstate, auto, other } = collateralKinds;
+    let opt: CollateralOption;
+    if (!realEstate && !auto && !other) opt = 'no_collateral';
+    else if (auto && !realEstate && !other) opt = 'collateral_auto';
+    else opt = 'collateral';
+    setCollateralOption(opt);
+  }, [collateralKinds]);
 
   // Инициализация списка актов
   useEffect(() => {
@@ -449,15 +462,19 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
               const extractedData = extractCollateralData(itemDescription);
               console.log(`DocumentAnalysis: извлеченные данные из описания залога ${idx + 1}:`, extractedData);
 
+              const finalType = (collateral.collateralType || detectedType) as CollateralType;
+              const isOther = finalType === 'other';
               return {
                 ...collateral,
                 id: collateral.id || `collateral-${idx}`,
-                collateralType: collateral.collateralType || detectedType,
-                objectName: collateral.objectName || (detectedType !== 'other' ? (itemDescription.length < 200 ? itemDescription : itemDescription.substring(0, 200)) : ''),
-                otherDescription: collateral.otherDescription || itemDescription,
-                // Заполняем адрес и кадастровый номер, если они извлечены, иначе оставляем существующие значения
-                address: extractedData.address || collateral.address || '',
-                cadastralNumber: extractedData.cadastralNumber || collateral.cadastralNumber || ''
+                collateralType: finalType,
+                // Наименование — из бэкенда (вид объекта). Для «иное» оставляем пустым.
+                objectName: collateral.objectName || '',
+                // Описание показываем только для «иное»; для недвижимости/авто его нет.
+                otherDescription: isOther ? (collateral.otherDescription || itemDescription) : '',
+                // Адрес/кадастр — приоритет данным бэкенда (полные), затем фронт-извлечение.
+                address: collateral.address || extractedData.address || '',
+                cadastralNumber: collateral.cadastralNumber || extractedData.cadastralNumber || ''
               };
             }
 
@@ -497,9 +514,17 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           initialCollaterals = [collateral];
           console.log('DocumentAnalysis: создан залог из mortgageCollateralDescription1221:', collateral);
         } else {
-          // Если нет данных о залоге, создаем пустой залог
-          initialCollaterals = [defaultCollateral()];
+          // Залога нет — блок остаётся пустым (без записей).
+          // Пользователь может добавить залог вручную кнопкой «Добавить залог».
+          initialCollaterals = [];
         }
+
+        // Виды залога для блока «Выбор залога» — из реальных типов предметов залога.
+        // Может быть выбрано несколько (например, недвижимость И транспорт одновременно).
+        const hasRealEstate = initialCollaterals.some(c => c.collateralType === 'real_estate');
+        const hasAuto = initialCollaterals.some(c => c.collateralType === 'auto');
+        const hasOther = initialCollaterals.some(c => c.collateralType === 'other');
+        setCollateralKinds({ realEstate: hasRealEstate, auto: hasAuto, other: hasOther });
 
         // Инициализируем третьих лиц из полей или создаем пустой массив
         let initialThirdParties: ThirdParty[] = [];
@@ -566,10 +591,8 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
             console.log(`DocumentAnalysis: setting field ${key} = ${cleanFields[key]}`);
           }
         });
-        // Устанавливаем значения по умолчанию, если их нет
-        if (!cleanFields.courtName) {
-        cleanFields.courtName = "Арбитражный суд Ростовской области";
-        }
+        // Название суда берётся из документа (courtName), без хардкода — суд
+        // зависит от типа дела (арбитражный / районный / городской / мировой).
         if (!cleanFields.creditorName) {
           cleanFields.creditorName = "ПАО Сбербанк";
         }
@@ -615,7 +638,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
               cleanFields[key] = String(fields[key]);
             }
           });
-          cleanFields.courtName = "Арбитражный суд Ростовской области";
+          // courtName берётся из извлечённых данных (без хардкода)
           // creditorName берется из извлеченных данных (маркер [987])
           setEditedFields(cleanFields);
         } else {
@@ -1092,15 +1115,29 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                   />
                 )}
               </Box>
-              <RadioGroup
-                row
-                value={collateralOption || ''}
-                onChange={(e) => setCollateralOption(e.target.value as CollateralOption)}
-              >
-                <FormControlLabel value="collateral" control={<Radio />} label="Залог" />
-                <FormControlLabel value="collateral_auto" control={<Radio />} label="Залог авто" />
-                <FormControlLabel value="no_collateral" control={<Radio />} label="Без залога" />
-              </RadioGroup>
+              {/* Можно выбрать несколько видов залога одновременно. */}
+              <Box sx={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 2 }}>
+                <FormControlLabel
+                  control={<Checkbox checked={collateralKinds.realEstate}
+                    onChange={(e) => setCollateralKinds(prev => ({ ...prev, realEstate: e.target.checked }))} />}
+                  label="Залог недвижимость"
+                />
+                <FormControlLabel
+                  control={<Checkbox checked={collateralKinds.auto}
+                    onChange={(e) => setCollateralKinds(prev => ({ ...prev, auto: e.target.checked }))} />}
+                  label="Залог Транспортное средство"
+                />
+                <FormControlLabel
+                  control={<Checkbox checked={collateralKinds.other}
+                    onChange={(e) => setCollateralKinds(prev => ({ ...prev, other: e.target.checked }))} />}
+                  label="Залог иное"
+                />
+                <FormControlLabel
+                  control={<Checkbox checked={!collateralKinds.realEstate && !collateralKinds.auto && !collateralKinds.other}
+                    onChange={(e) => { if (e.target.checked) setCollateralKinds({ realEstate: false, auto: false, other: false }); }} />}
+                  label="Без залога"
+                />
+              </Box>
             </Box>
 
             {/* Три окна с актами */}
@@ -2237,8 +2274,9 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                           </IconButton>
                         </Box>
                         <Grid container spacing={2}>
-                          {/* Показываем полное описание предмета залога, если оно есть в otherDescription */}
-                          {collateral.otherDescription && collateral.otherDescription.trim() && (
+                          {/* Описание предмета залога — только для типа «Иное».
+                              Для недвижимости/авто описание не показываем. */}
+                          {collateral.collateralType === 'other' && collateral.otherDescription && collateral.otherDescription.trim() && (
                 <Grid item xs={12}>
                               <Box sx={LABEL_OVERLAP_BOX}>
                                 <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Описание предмета залога:</Typography>
@@ -2289,7 +2327,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                                   onChange={(e) => updateCollateral(index, 'collateralType', e.target.value as CollateralType)}
                                 >
                                   <MenuItem value="real_estate">Недвижимость</MenuItem>
-                                  <MenuItem value="auto">Автомобиль</MenuItem>
+                                  <MenuItem value="auto">Транспортное средство</MenuItem>
                                   <MenuItem value="other">Иное</MenuItem>
                                 </Select>
                               </FormControl>

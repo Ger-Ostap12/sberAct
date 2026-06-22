@@ -392,7 +392,12 @@ class DocumentAnalyzer:
                         r"в\s+([А-ЯЁ][^,\n]*?суд[^,\n]*?(?:области|края|республики|города|автономного\s+округа|автономной\s+области))",
                         r"арбитражный\s+суд[:\s]+([А-ЯЁ][^,\n]*?(?:области|края|республики|города|автономного\s+округа|автономной\s+области)[^,\n]*?)(?=\s+[0-9]{5,6}|$|\n|,|\.)",  # арбитражный суд: ... до адреса
                         r"в\s+([А-ЯЁ][^,\n]*?суд[^,\n]*?)(?=\s+[0-9]{5,6}|$|\n|,|\.)",
-                        r"([А-ЯЁ][^,\n]*?арбитражный\s+суд[^,\n]*?)(?=\s+[0-9]{5,6}|$|\n|,|\.)"
+                        r"([А-ЯЁ][^,\n]*?арбитражный\s+суд[^,\n]*?)(?=\s+[0-9]{5,6}|$|\n|,|\.)",
+                        # Суды общей юрисдикции (районный/городской/мировой, судебный участок) —
+                        # для ипотеки/взыскания, где дело не в арбитраже.
+                        r"((?:[А-ЯЁ][а-яё]+(?:ий|ой|ый)\s+)?(?:районный|городской|областной|краевой|верховный)\s+суд(?:\s+[А-ЯЁ][а-яё]+\s+(?:области|края|республики))?)",
+                        r"(Судебн\w+\s+участок\s+№\s*\d+[^\n.,]{0,50})",
+                        r"(Мирово\w+\s+судь\w+[^\n.,]{0,60})"
                     ],
                     "type": "court"
                 },
@@ -1824,26 +1829,17 @@ class DocumentAnalyzer:
                 collateral_description = None
                 if "mortgageCollateralDescription1221" in extracted_fields:
                     del extracted_fields["mortgageCollateralDescription1221"]
-            collaterals_list = []
-            if collateral_description:
-                collateral_items = self._split_collateral_items(collateral_description)
-                if collateral_items:
-                    # Создаем массив объектов залога для frontend
-                    for idx, item_desc in enumerate(collateral_items):
-                        collateral_obj = {
-                            "id": f"collateral-{idx}",
-                            "description": item_desc,
-                            "collateralType": "other",  # По умолчанию "other", frontend определит тип
-                            "objectName": "",
-                            "collateralValue": "",
-                            "cadastralNumber": "",
-                            "address": "",
-                            "vin": "",
-                            "brandModel": "",
-                            "otherDescription": item_desc
-                        }
-                        collaterals_list.append(collateral_obj)
-                    logger.info(f"✅ Создано {len(collaterals_list)} предметов залога")
+            # Собираем ВСЕ предметы залога по всему документу (по всем обязательствам):
+            # недвижимость и авто, каждый своей карточкой. Дубли (один и тот же объект,
+            # упомянутый в нескольких местах) схлопываем, оставляя самый заполненный.
+            collateral_descs = self._extract_all_collateral_items(text)
+            if not collateral_descs and collateral_description:
+                collateral_descs = self._split_collateral_items(collateral_description)
+            collaterals_list = self._dedupe_collaterals(
+                [self._make_collateral_obj(idx, d) for idx, d in enumerate(collateral_descs)]
+            )
+            if collaterals_list:
+                logger.info(f"✅ Создано {len(collaterals_list)} предметов залога: {[c['collateralType'] for c in collaterals_list]}")
 
             # Корректировка ФИО должника: если извлечённое имя не похоже на ФИО
             # физлица (например, regex подхватил «Обязательства По Своевременному»
@@ -1867,6 +1863,12 @@ class DocumentAnalyzer:
             if details.get("inn"):
                 extracted_fields["inn"] = details["inn"]
                 extracted_fields["companyInn"] = details["inn"]
+            # ОГРН/ОГРНИП должника — авторитетно из его записи.
+            if details.get("ogrn"):
+                if len(details["ogrn"]) == 15:
+                    extracted_fields["ogrnip"] = details["ogrn"]
+                else:
+                    extracted_fields["ogrn"] = details["ogrn"]
             # СНИЛС берём строго из записи основного должника. Если там его нет —
             # очищаем значение, утёкшее от представителя/со-ответчика.
             if details.get("snils"):
@@ -1905,6 +1907,16 @@ class DocumentAnalyzer:
                     if tp.get(key) and not extracted_fields.get(key):
                         extracted_fields[key] = tp[key]
 
+            # Название суда: универсальный фолбэк, если не извлеклось основным путём
+            # (ипотека/взыскание — суд общей юрисдикции, а не арбитраж).
+            if not extracted_fields.get("courtName"):
+                court = self._extract_court_name(text)
+                if court:
+                    extracted_fields["courtName"] = court
+            # Нормализуем регистр названия суда («…Суд… Области» → «…суд… области»).
+            if extracted_fields.get("courtName"):
+                extracted_fields["courtName"] = self._normalize_court_name(extracted_fields["courtName"])
+
             # Несколько должников (со-ответчиков). При 2+ — склеиваем плоские поля и
             # падежи через запятую (шаблоны не меняем). При 0/1 — одиночный должник
             # из текущих плоских полей (поведение прежнее, без регрессий).
@@ -1931,13 +1943,32 @@ class DocumentAnalyzer:
             else:
                 third_parties_result = []
 
+            # Кросс-блочный дедуп индивидуальных реквизитов: один ИНН/ОГРН/СНИЛС не
+            # может принадлежать сразу должнику и третьему лицу/кредитору/управляющему.
+            self._dedup_cross_block_ids(extracted_fields, details, third_parties_result)
+
+            # Залоги. Оставляем предметы, классифицированные как авто/недвижимость —
+            # это реальный залог. Предметы типа «иное» сохраняем ТОЛЬКО если документ
+            # действительно про залог (collateralOption != no_collateral); иначе это
+            # мусор от переизвлечения («Поттер Г.Д.», «по доверенности №…») — убираем,
+            # и блок залога остаётся чистым.
+            _opt = (recommended_acts or {}).get("collateralOption")
+            _raw_cols = collaterals_list if collaterals_list else extracted_fields.get('collaterals', [])
+            collaterals_final = [
+                c for c in _raw_cols
+                if c.get("collateralType") in ("auto", "real_estate") or _opt != "no_collateral"
+            ]
+            if not collaterals_final:
+                extracted_fields.pop("mortgageCollateralDescription1221", None)
+                extracted_fields.pop("collaterals", None)
+
             # Формируем результат
             result = {
                 "documentType": document_type,
                 "confidence": confidence,
                 "fields": extracted_fields,
                 "obligations": extracted_fields.get('obligations', []),
-                "collaterals": collaterals_list if collaterals_list else extracted_fields.get('collaterals', []),
+                "collaterals": collaterals_final,
                 "rawText": text,
                 "metadata": {
                     "pageCount": self.get_page_count(file_path),
@@ -1963,6 +1994,101 @@ class DocumentAnalyzer:
 
     # Префиксы перед ФИО, которые убираем перед склонением.
     _NAME_PREFIX_RE = r'^(ИП\s+|ГЛАВА\s+КФХ\s+ИП\s+|ГЛАВА\s+КФХ\s+|КФХ\s+ИП\s+)'
+
+    # Типы судов РФ (основы прилагательных перед словом «суд»).
+    _COURT_KIND_RE = (
+        r"(?:городск|районн|межрайонн|областн|краев|окружн|верховн|гарнизонн|военн|"
+        r"арбитражн|конституционн|уставн|апелляционн|кассационн|третейск|мирск)\w*"
+    )
+
+    # Общие слова в названии суда, которые пишутся со строчной буквы.
+    _COURT_LOWER_WORDS = {
+        "суд", "суда", "суде", "суду", "судом", "арбитражный", "районный", "городской",
+        "межрайонный", "областной", "краевой", "окружной", "верховный", "военный",
+        "гарнизонный", "апелляционный", "кассационный", "конституционный", "уставный",
+        "мировой", "мировому", "судье", "судьи", "судебного", "судебный", "участка",
+        "участок", "области", "область", "край", "края", "краю", "республики",
+        "республика", "республике", "округа", "округ", "округе", "города", "город",
+        "автономного", "автономной", "общей", "юрисдикции", "района", "район", "и", "по",
+    }
+
+    def _normalize_court_name(self, name: str) -> str:
+        """Приводит регистр названия суда: общие слова — строчными, имена собственные — как есть.
+
+        Пример: «Арбитражный Суд Ростовской Области» → «Арбитражный суд Ростовской области».
+        """
+        if not name:
+            return name
+        out = []
+        for w in name.split():
+            out.append(w.lower() if w.lower() in self._COURT_LOWER_WORDS else w)
+        res = " ".join(out)
+        return (res[0].upper() + res[1:]) if res else res
+
+    def _clean_court_line(self, s: str) -> Optional[str]:
+        """Очищает строку с названием суда: убирает приставку «В …» и хвост-адрес."""
+        s = re.sub(r"\s+", " ", s).strip()
+        s = re.sub(r"^(?:В|Во)\s+(?=[А-ЯЁ])", "", s)          # адресная приставка «В …»
+        s = re.sub(r"^(?:от\s+истца|истец|заявитель)[\s:,-]*", "", s, flags=re.IGNORECASE)
+        s = re.split(r",?\s*\d{5,6}\b", s)[0]                  # обрезаем по почтовому индексу
+        s = re.split(r"\s+(?:от\s+истца|от\s+заявител)", s, flags=re.IGNORECASE)[0]
+        # обрезаем адресный хвост без индекса («…, ул. Ленина», «…, г. Москва»)
+        s = re.split(r",\s*(?:ул\.|улиц|г\.|город|пр-?кт|проспект|пер\.|переул|пл\.|площад|наб\.|бул|шоссе|д\.\s*\d)",
+                     s, flags=re.IGNORECASE)[0]
+        s = s.strip(" ,.;")
+        if 6 <= len(s) <= 140 and re.search(r"(?:суд|участ|судь)", s, re.IGNORECASE):
+            return s
+        return None
+
+    def _extract_court_name(self, text: str) -> Optional[str]:
+        """Извлекает название ЛЮБОГО суда из текста (универсально, многословное).
+
+        Построчный разбор: берёт целиком строку с упоминанием суда — так название
+        из нескольких слов (город/регион, «города Санкт-Петербурга и Ленинградской
+        области» и т.п.) сохраняется полностью. Поддерживает все типы судов РФ
+        (районный/городской/межрайонный/областной/краевой/окружной/верховный/военный/
+        гарнизонный/арбитражный/апелляционный/кассационный/конституционный), а также
+        мирового судью и судебный участок.
+        """
+        court_line_re = re.compile(
+            rf"(?:{self._COURT_KIND_RE}\s+суд(?:а|у|ом|е)?\b|"
+            r"Судебн\w+\s+участ\w+\s+№|Мирово\w+\s+судь)",
+            re.IGNORECASE,
+        )
+        lines = [l.strip() for l in text.split("\n") if l.strip()]
+        # Сначала верхние строки (там адресуется суд), затем весь документ.
+        for scope in (lines[:12], lines):
+            for s in scope:
+                if court_line_re.search(s):
+                    name = self._clean_court_line(s)
+                    if name:
+                        return name
+        return None
+
+    def _dedup_cross_block_ids(self, fields: Dict[str, Any], debtor_details: Dict[str, Any],
+                               third_parties: List[Dict[str, Any]]) -> None:
+        """Гарантирует, что один ИНН/ОГРН/СНИЛС не принадлежит сразу нескольким блокам.
+
+        Если у должника проставлен ИНН/ОГРН/СНИЛС, которого НЕТ в его собственной
+        записи (значит, он утёк), но он есть у третьего лица / кредитора / управляющего,
+        то поле должника очищается. Так у должника с одним ФИО не появятся чужие реквизиты.
+        """
+        debtor_own = {str(debtor_details.get(k)) for k in ("inn", "ogrn", "snils") if debtor_details.get(k)}
+
+        others = set()
+        for tp in third_parties or []:
+            for k in ("inn", "ogrn", "snils"):
+                if tp.get(k):
+                    others.add(str(tp[k]))
+        for k in ("creditorInn", "creditorOgrn", "managerInn", "managerSnils"):
+            if fields.get(k):
+                others.add(str(fields[k]))
+
+        for fld in ("inn", "companyInn", "ogrnip", "ogrn", "snils"):
+            val = fields.get(fld)
+            if val and str(val) not in debtor_own and str(val) in others:
+                logger.info(f"Кросс-блочный дедуп: поле должника {fld}={val} принадлежит другому блоку — очищено")
+                fields.pop(fld, None)
 
     def _single_debtor_from_fields(self, fields: Dict[str, Any]) -> Dict[str, Any]:
         """Собирает запись одного должника из плоских полей (для формы)."""
@@ -3009,19 +3135,33 @@ class DocumentAnalyzer:
             f"адрес {'док' if doc_addr else 'реестр'}"
         )
 
+    def _clean_creditor_address(self, addr: str) -> str:
+        """Очищает юр-адрес кредитора от постороннего: скобочных пометок и хвостов."""
+        addr = re.sub(r"\s*\([^)]*\)", "", addr)  # «(не для направления …)» и пр.
+        # Обрезаем всё после адреса: почтовый/фактический адрес, телефон, реквизиты.
+        addr = re.split(
+            r"\s*(?:Почтов\w+\s+адрес|Фактическ\w+\s+адрес|Адрес\s+для|[Тт]елефон|[Тт]ел\.|"
+            r"e-?mail|эл\.?\s*почт|ОГРН|ИНН|КПП|БИК|Дата\s+гос|р/с|к/с|корр)",
+            addr, flags=re.IGNORECASE,
+        )[0]
+        addr = re.sub(r"\s+", " ", addr).strip().strip(",;. ")
+        return addr
+
     def _extract_creditor_address(self, text: str) -> Optional[str]:
-        """Извлекает юр-адрес кредитора из его блока в тексте (или None)."""
+        """Извлекает ТОЛЬКО юридический адрес кредитора (без почтового и мусора)."""
         block = self._extract_creditor_block(text)
         if not block:
             return None
+        # Приоритет — явные метки юр-адреса; «почтовый/фактический адрес» исключаем.
         for addr_pattern in [
-            r"(?:место\s+нахождения|юридический\s+адрес|адрес)[:\s]*([0-9]{6}[,\s]+[^\n]+?)(?=\n\n|ИНН|ОГРН|телефон|$)",
-            r"(?:место\s+нахождения|юридический\s+адрес|адрес)[:\s]*([^\n]+)",
+            r"(?:место\s+нахождения|юридическ\w+\s+адрес)[:\s]*([0-9]{6}[,\s]+[^\n]+)",
+            r"(?:место\s+нахождения|юридическ\w+\s+адрес)[:\s]*([^\n]+)",
         ]:
             addr_m = re.search(addr_pattern, block, re.IGNORECASE)
             if addr_m:
-                addr = self.clean_extracted_value(addr_m.group(1).strip())
-                if addr and 10 <= len(addr) <= 300:
+                addr = self._clean_creditor_address(self.clean_extracted_value(addr_m.group(1).strip()))
+                # Должно быть похоже на адрес (индекс/город/улица), без почтовых меток.
+                if addr and 10 <= len(addr) <= 200 and re.search(r"\d{6}|город|\bг\.|ул\.|улиц|пр-?кт|проспект", addr, re.IGNORECASE):
                     return addr
         return None
 
@@ -4143,23 +4283,8 @@ class DocumentAnalyzer:
         if collateral_description:
             collateral_items = self._split_collateral_items(collateral_description)
             if collateral_items:
-                # Создаем массив объектов залога для frontend
-                collaterals_list = []
-                for idx, item_desc in enumerate(collateral_items):
-                    collateral_obj = {
-                        "id": f"collateral-{idx}",
-                        "description": item_desc,
-                        "collateralType": "other",  # По умолчанию "other", frontend определит тип
-                        "objectName": "",
-                        "collateralValue": "",
-                        "cadastralNumber": "",
-                        "address": "",
-                        "vin": "",
-                        "brandModel": "",
-                        "otherDescription": item_desc
-                    }
-                    collaterals_list.append(collateral_obj)
-
+                collaterals_list = [self._make_collateral_obj(idx, item_desc)
+                                    for idx, item_desc in enumerate(collateral_items)]
                 # Сохраняем массив в extracted_fields для передачи во frontend
                 extracted_fields["collaterals"] = collaterals_list
                 logger.info(f"✅ Создано {len(collaterals_list)} предметов залога")
@@ -6366,25 +6491,231 @@ class DocumentAnalyzer:
 
         return fields
 
-    def _is_car_collateral_document(self, text: str) -> bool:
+    def _classify_collateral(self, desc: str) -> str:
+        """Определяет тип предмета залога: 'auto' / 'real_estate' / 'other'."""
+        d = (desc or "").lower()
+        if re.search(r"\bvin\b|идентификационн\w+\s+номер|\bмарка\b|\bмодель\b|кузов|"
+                     r"\bптс\b|год\s+выпуска|транспортн\w+\s+средств|автомобил|автомаш|"
+                     r"гос\.?\s*номер|госномер", d):
+            return "auto"
+        if re.search(r"кадастр|квартир|жил\w*\s*дом|\bдом\b|нежил|земельн\w+\s+участ|"
+                     r"помещени|здани|строени|недвижим|ипотек|комнат|гараж|"
+                     r"машино-?мест|сооружени", d):
+            return "real_estate"
+        return "other"
+
+    def _extract_collateral_brand_model(self, desc: str) -> Optional[str]:
+        """Извлекает марку и модель авто из описания залога."""
+        mk = re.search(r"марк[аиуе]\s*[:：]?\s*([A-Za-zА-Яа-яЁё0-9\- ]{1,30}?)\s*(?=[,;.]|модель|год|vin|кузов|$)", desc, re.IGNORECASE)
+        md = re.search(r"модел[ьи]\s*[:：]?\s*([A-Za-zА-Яа-яЁё0-9\- ]{1,30}?)\s*(?=[,;.]|год|vin|кузов|рама|$)", desc, re.IGNORECASE)
+        parts = []
+        if mk and mk.group(1).strip():
+            parts.append(mk.group(1).strip())
+        if md and md.group(1).strip():
+            parts.append(md.group(1).strip())
+        return " ".join(parts) or None
+
+    def _extract_collateral_address(self, desc: str) -> Optional[str]:
+        """Извлекает ПОЛНЫЙ адрес объекта недвижимости из описания залога.
+
+        Берёт всё после метки адреса и обрезает хвост (кадастр, стоимость,
+        год постройки, площадь и пр.), чтобы в адресе не было постороннего.
         """
-        Определяет, является ли залог залогом авто: предложение начинается с «марка»
-        и содержит слова: модель, год, VIN, кузов, рама.
+        m = re.search(
+            r"(?:по\s+адресу|адрес[уе]?|расположен\w*(?:\s+по\s+адресу)?|местонахожд\w*)\s*[:：,]?\s*([^\n]+)",
+            desc, re.IGNORECASE,
+        )
+        if not m:
+            return None
+        addr = re.sub(r"\s+", " ", m.group(1)).strip()
+        # Обрезаем хвост: кадастр, стоимость, год постройки, площадь, этажность, VIN.
+        addr = re.split(
+            r"\s*,?\s*(?:\d{2}:\d{2}:\d{6,7}:\d+|кадастров\w+|залогов\w+\s+стоим|оценочн\w+\s+стоим|"
+            r"рыночн\w+\s+стоим|начальн\w+\s+(?:продажн\w+\s+)?цен|стоимост\w+|год\s+постройки|"
+            r"площад\w+|\d+[\s-]*этажн|\bVIN\b)",
+            addr, flags=re.IGNORECASE,
+        )[0]
+        addr = addr.strip().rstrip(",;. ")
+        return addr if len(addr) >= 6 else None
+
+    def _extract_car_year(self, desc: str) -> Optional[str]:
+        """Год выпуска авто: «год выпуска: 2011» или «2011 г.в.» / «2011 года выпуска»."""
+        m = re.search(r"год\w*\s+выпуска\s*[:：]?\s*(\d{4})", desc, re.IGNORECASE)
+        if m:
+            return m.group(1)
+        m = re.search(r"\b(\d{4})\s*(?:г\.?\s*в\.?|года?\s+выпуска)", desc, re.IGNORECASE)
+        if m:
+            return m.group(1)
+        return None
+
+    def _extract_plate(self, desc: str) -> Optional[str]:
+        """Гос. рег. знак авто. Метка в любом виде: грз / гсз / г/н / гос (рег.) знак /
+        государственный (регистрационный) знак / гос. номер / рег. знак."""
+        m = re.search(
+            r"(?:\bгрз\b|\bгсз\b|\bг\.?\s*/?\s*н\.?|"
+            r"гос(?:ударственн\w+)?\.?\s*(?:рег(?:истрационн\w+)?\.?\s*)?(?:знак|номер)|"
+            r"рег(?:истрационн\w+)?\.?\s*знак)"
+            r"\s*[:：№]?\s*([А-ЯЁA-Z]{1,3}\s?\d{2,4}\s?[А-ЯЁA-Z]{0,3}\s?\d{0,3})",
+            desc, re.IGNORECASE,
+        )
+        if m and re.search(r"\d", m.group(1)) and re.search(r"[А-ЯЁA-Z]", m.group(1)):
+            return re.sub(r"\s+", "", m.group(1)).upper()
+        return None
+
+    def _extract_collateral_value(self, desc: str) -> Optional[str]:
+        """Извлекает залоговую стоимость предмета залога (число)."""
+        m = re.search(
+            r"(?:залогов\w+\s+стоимост\w+|оценочн\w+\s+стоимост\w+|рыночн\w+\s+стоимост\w+|"
+            r"стоимост\w+\s+(?:предмета\s+)?залога|начальн\w+\s+(?:продажн\w+\s+)?цен\w+|стоимост\w+)"
+            r"\s*(?:залога|объекта)?\s*[:：]?\s*(?:в\s+размере\s+)?"
+            r"([0-9][0-9\s  .,]*[0-9]|[0-9])\s*(?:руб|₽|р\.)",
+            desc, re.IGNORECASE,
+        )
+        if m:
+            num = re.sub(r"[\s  ]", "", m.group(1))
+            return num
+        return None
+
+    def _extract_collateral_object_name(self, desc: str) -> Optional[str]:
+        """Извлекает вид объекта недвижимости (дом / земельный участок / квартира …)."""
+        m = re.search(
+            r"(жил\w+\s+дом|нежил\w+\s+(?:помещени\w+|здани\w+)|земельн\w+\s+участ\w+|"
+            r"квартир\w+|комнат\w+|машино-?мест\w*|гараж\w*|нежил\w+\s+здани\w+|"
+            r"здани\w+|строени\w+|сооружени\w+|помещени\w+|\bдом\b)",
+            desc, re.IGNORECASE,
+        )
+        if m:
+            name = m.group(1).strip()
+            return name[0].upper() + name[1:]
+        return None
+
+    def _extract_all_collateral_items(self, text: str) -> List[str]:
+        """Сканирует ВЕСЬ документ и собирает описания всех предметов залога.
+
+        Залоги бывают у нескольких обязательств. Берём:
+          - маркированные строки «- <дом/квартира/земельный участок/Автомобиль/марка …>»;
+          - инлайн «…автотранспортное средство: <описание>».
+        Каждое описание — до конца строки (со всеми атрибутами: VIN, год, грз, стоимость).
         """
         if not text:
+            return []
+        norm = text.replace("\xa0", " ").replace(" ", " ")
+        items: List[str] = []
+        bullet_re = re.compile(
+            r"[-–—•]\s*((?:Автомобил\w*|марк[аи]\s*[:：]|жил\w*\s*дом|\bдом\b|квартир\w*|"
+            r"земельн\w+\s+участ\w*|нежил\w*|помещени\w*|здани\w*|гараж\w*|машино-?мест\w*|"
+            r"комнат\w*|строени\w*|сооружени\w*)[^\n]*)",
+            re.IGNORECASE,
+        )
+        for m in bullet_re.finditer(norm):
+            s = m.group(1).strip().rstrip(" .,;")
+            if len(s) >= 8:
+                items.append(s)
+        for m in re.finditer(r"(?:авто)?транспортн\w+\s+средств\w*\s*[:：]\s*([^\n]+)", norm, re.IGNORECASE):
+            s = m.group(1).strip().rstrip(" .,;")
+            if len(s) >= 8:
+                items.append(s)
+        return items
+
+    def _collateral_dedupe_key(self, obj: Dict[str, Any]):
+        """Ключ уникальности предмета залога (VIN для авто, кадастр/адрес для недвижимости)."""
+        t = obj.get("collateralType")
+        if t == "auto":
+            return ("auto", (obj.get("vin") or obj.get("brandModel") or obj.get("description", "")[:60]).upper())
+        if t == "real_estate":
+            return ("re", (obj.get("cadastralNumber") or obj.get("address") or obj.get("description", "")[:60]).lower())
+        return ("other", obj.get("description", "")[:80].lower())
+
+    def _dedupe_collaterals(self, objs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Убирает дубли предметов залога, оставляя наиболее заполненный."""
+        def filled(o):
+            return sum(1 for k in ("objectName", "collateralValue", "cadastralNumber",
+                                   "address", "vin", "brandModel") if o.get(k))
+        by_key: Dict[Any, Dict[str, Any]] = {}
+        order: List[Any] = []
+        for o in objs:
+            key = self._collateral_dedupe_key(o)
+            if key not in by_key:
+                by_key[key] = o
+                order.append(key)
+            elif filled(o) > filled(by_key[key]):
+                by_key[key] = o
+        result = [by_key[k] for k in order]
+        for i, o in enumerate(result):
+            o["id"] = f"collateral-{i}"
+        return result
+
+    def _make_collateral_obj(self, idx: int, desc: str) -> Dict[str, Any]:
+        """Создаёт объект залога с определённым типом и извлечёнными полями."""
+        ctype = self._classify_collateral(desc)
+        clip = desc if len(desc) < 200 else desc[:200]
+        obj = {
+            "id": f"collateral-{idx}", "description": desc, "collateralType": ctype,
+            "objectName": "", "collateralValue": "", "cadastralNumber": "", "address": "",
+            "vin": "", "brandModel": "", "otherDescription": "",
+        }
+        # Залоговая стоимость (для любого типа).
+        val = self._extract_collateral_value(desc)
+        if val:
+            obj["collateralValue"] = val
+
+        if ctype == "auto":
+            vin = re.search(r"(?:VIN\s*[:：]?\s*)?\b([A-HJ-NPR-Z0-9]{17})\b", desc, re.IGNORECASE)
+            if vin:
+                obj["vin"] = vin.group(1).upper()
+            bm = self._extract_collateral_brand_model(desc)
+            if bm:
+                obj["brandModel"] = bm
+            # Наименование авто — все доступные данные: марка/модель, год выпуска,
+            # гос. знак (грз/гсз/госзнак), цвет, кузов (что нашлось в описании).
+            parts = []
+            if bm:
+                parts.append(bm)
+            year = self._extract_car_year(desc)
+            if year:
+                parts.append(f"{year} г.в.")
+            plate = self._extract_plate(desc)
+            if plate:
+                parts.append(f"гос. знак {plate}")
+            cm = re.search(r"цвет\s*[:：]?\s*([А-ЯЁа-яё\-]+)", desc, re.IGNORECASE)
+            if cm:
+                parts.append(f"цвет {cm.group(1).lower()}")
+            km = re.search(r"кузов\s*[№:：]?\s*([A-ZА-ЯЁ0-9\-]{4,})", desc, re.IGNORECASE)
+            if km:
+                parts.append(f"кузов {km.group(1)}")
+            obj["objectName"] = ", ".join(parts) or "Автомобиль"
+        elif ctype == "real_estate":
+            cad = re.search(r"(\d{2}:\d{2}:\d{6,7}:\d{1,6})", desc)
+            if cad:
+                obj["cadastralNumber"] = cad.group(1)
+            addr = self._extract_collateral_address(desc)
+            if addr:
+                obj["address"] = addr
+            # Наименование — вид объекта + доступные атрибуты (год постройки, площадь).
+            parts = [self._extract_collateral_object_name(desc) or "Недвижимость"]
+            yb = re.search(r"год\s+(?:постройки|возведения|строительства)\s*[:：]?\s*(\d{4})", desc, re.IGNORECASE)
+            if yb:
+                parts.append(f"год постройки {yb.group(1)}")
+            am = re.search(r"площад\w*\s*[:：]?\s*([\d.,]+)\s*(?:кв\.?\s*м|м2|м²|кв\.?\s*метр\w*)", desc, re.IGNORECASE)
+            if am:
+                parts.append(f"площадь {am.group(1)} кв.м")
+            fm = re.search(r"(\d+)[\s-]*этажн\w+", desc, re.IGNORECASE)
+            if fm:
+                parts.append(f"{fm.group(1)}-этажный")
+            obj["objectName"] = ", ".join(parts)
+        else:
+            obj["otherDescription"] = desc
+        return obj
+
+    def _is_car_collateral_document(self, text: str) -> bool:
+        """Определяет наличие залога авто: связка «марка … (модель/VIN/год/кузов)»
+        в любом месте текста (в т.ч. инлайн «…автотранспортное средство: Автомобиль, марка: …»)."""
+        if not text:
             return False
-        text_lower = text.lower()
-        # Ищем предложения, начинающиеся с "марка" (начало строки или после точки/перевода строки)
-        for chunk in re.split(r'(?<=[.\n])\s*', text):
-            chunk_stripped = chunk.strip()
-            if not chunk_stripped:
-                continue
-            if not re.match(r'^\s*[Мм]арка\s*[:：]', chunk_stripped):
-                continue
-            chunk_lower = chunk_stripped.lower()
-            if any(w in chunk_lower for w in ['модель', 'год', 'vin', 'кузов', 'рама']):
-                return True
-        return False
+        return bool(re.search(
+            r"марк[аи]\s*[:：][^\n]{0,150}?(?:модель|vin|год\s+выпуска|кузов|рама)",
+            text, re.IGNORECASE,
+        ))
 
     def _extract_car_collateral_1221(self, text: str) -> Optional[str]:
         """
@@ -6395,21 +6726,20 @@ class DocumentAnalyzer:
         if not text:
             return None
         normalized = text.replace('\u202f', ' ').replace('\xa0', ' ')
-        # Ищем блок: начинается с "марка" и содержит ключевые слова
-        for chunk in re.split(r'(?<=[.\n])\s*', normalized):
-            chunk_stripped = chunk.strip()
-            if not chunk_stripped or len(chunk_stripped) < 20:
-                continue
-            if not re.match(r'^\s*[Мм]арка\s*[:：]', chunk_stripped):
-                continue
-            chunk_lower = chunk_stripped.lower()
-            if not any(w in chunk_lower for w in ['модель', 'год', 'vin', 'кузов', 'рама']):
-                continue
-            # Берём до конца предложения/абзаца (до двойного перевода строки или следующего заглавного предложения)
-            block = re.sub(r'\n\s*\n.*', '', chunk_stripped)
-            block = re.sub(r'\s+', ' ', block).strip()
-            if len(block) >= 15:
-                return block
+        # Связка «(автотранспортное средство:) (Автомобиль,) марка: …» до конца строки —
+        # чтобы захватить и год выпуска, и VIN, и залоговую стоимость.
+        prefix = r"(?:(?:авто)?транспортн\w+\s+средств\w*\s*[:：]?\s*)?(?:Автомобил\w*[,:\s]*)?"
+        candidates = []
+        for m in re.finditer(prefix + r"марк[аи]\s*[:：][^\n]+", normalized, re.IGNORECASE):
+            block = re.sub(r'\s+', ' ', m.group(0)).strip().rstrip('.,; ')
+            if len(block) >= 12 and re.search(r"модель|vin|год\s+выпуска|кузов|рама", block, re.IGNORECASE):
+                candidates.append(block)
+        if candidates:
+            # Предпочитаем описание, где есть залоговая стоимость.
+            for c in candidates:
+                if re.search(r"стоимост", c, re.IGNORECASE):
+                    return c
+            return candidates[0]
         return None
 
     def detect_ip_collateral(self, text: str) -> bool:
