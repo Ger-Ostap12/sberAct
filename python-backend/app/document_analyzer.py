@@ -1990,6 +1990,23 @@ class DocumentAnalyzer:
                 extracted_fields.pop("mortgageCollateralDescription1221", None)
                 extracted_fields.pop("collaterals", None)
 
+            # Финальная нормализация блока «Финансовые данные» — последней, ПОСЛЕ
+            # всех слияний (ip_specific_fields и пр.), чтобы её результат был
+            # окончательным для неустойки/штрафов/госпошлин/дат ПП/итога.
+            self._normalize_financial_block(extracted_fields, text)
+
+            # Ранее вынесенное решение другого суда (взыскание до банкротства).
+            prior_decision = self._extract_prior_court_decision(text)
+            if prior_decision:
+                for k, v in prior_decision.items():
+                    if v:
+                        extracted_fields[k] = v
+                # Если основной номер дела совпал с «ранее вынесенным» — это его
+                # контекст («…по делу №… взыскана…»), а не дело текущего заявления.
+                pc = prior_decision.get("priorCaseNumber")
+                if pc and extracted_fields.get("caseNumber") == pc:
+                    extracted_fields.pop("caseNumber", None)
+
             # Формируем результат
             result = {
                 "documentType": document_type,
@@ -3750,6 +3767,59 @@ class DocumentAnalyzer:
         # Без учёта пробелов, регистра и Ё (буквы дел приводим к верхнему регистру)
         v = re.sub(r"\s+", "", str(value)).strip().upper().replace("Ё", "Е")
         return bool(self._CASE_NUMBER_RE.match(v))
+
+    def _extract_prior_court_decision(self, text: str) -> Dict[str, Any]:
+        """Распознаёт РАНЕЕ вынесенное решение ДРУГОГО суда (взыскание до банкротства).
+
+        Пример: «…23.06.2025 Ворошиловским районным судом г.Ростова-на-Дону по делу
+        №2-2523/2025 с должника взыскана сумма задолженности в размере ___» либо
+        «Вступившим в законную силу решением … по делу №… взыскана …». Возвращает
+        priorCourtName / priorCaseNumber / priorAmount / priorDecisionDate (что нашлось).
+        Формулировка может отличаться — опираемся на якорь «по делу №<дело>» рядом со
+        словами вступивш/вынесен/взыскан/решени.
+        """
+        if not text:
+            return {}
+        flat = re.sub(r"[ \t]+", " ", text)
+        for m in re.finditer(r"по\s+делу\s*№\s*([А-ЯЁA-Z0-9/–\-]{3,30})", flat, re.IGNORECASE):
+            case_raw = m.group(1).strip(" .,;")
+            if not self._is_valid_case_number(case_raw):
+                continue
+            win = flat[max(0, m.start() - 220): min(len(flat), m.end() + 220)]
+            win_low = win.lower()
+            # Контекст должен говорить о ранее вынесенном/вступившем решении/взыскании.
+            if not re.search(r"взыскан|вступивш|вынесен\w*\s+решени|решени\w+\s+суд", win_low):
+                continue
+            result: Dict[str, Any] = {"priorCaseNumber": case_raw}
+            # Суд — фраза «[прилагательные] суд[падеж] [город/область]» БЛИЖАЙШАЯ
+            # перед «по делу» (после «суд» может идти локация: «судом г.Ростова-на-Дону»,
+            # «суда Ростовской области»).
+            before = flat[max(0, m.start() - 160): m.start()]
+            court_matches = list(re.finditer(
+                r"((?:[А-ЯЁ][а-яё]+(?:им|ым|ого|ой|ом|ому|ыми)\s+){1,3}"
+                r"суд(?:ом|а|е|у)?"
+                r"(?:\s+(?:г\.?\s*[А-ЯЁ][А-Яа-яё\-]+|[А-ЯЁ][а-яё]+\s+(?:области|края|республики|округа|город\w*)))?)",
+                before, re.IGNORECASE,
+            ))
+            if court_matches:
+                court = re.sub(r"\s+", " ", court_matches[-1].group(1)).strip(" ,.;")
+                if 5 <= len(court) <= 120:
+                    result["priorCourtName"] = court
+            # Сумма — «взыскан… в размере <сумма>» (может отсутствовать: «___»).
+            am = re.search(
+                r"взыскан\w*[^\n]{0,140}?в\s+размере\s*([0-9][0-9   .,]*)",
+                win, re.IGNORECASE,
+            )
+            if am:
+                v = self._fin_amount(am.group(1))
+                if v > 0:
+                    result["priorAmount"] = self._fin_fmt(v)
+            # Дата решения — рядом (приоритет «решением … от <дата>» или дата перед судом).
+            dm = re.search(r"(\d{1,2}[.,]\d{1,2}[.,]\d{4})", win)
+            if dm:
+                result["priorDecisionDate"] = dm.group(1).replace(",", ".")
+            return result
+        return {}
 
     def detect_entity_type(self, fields: Dict[str, Any]) -> Optional[str]:
         """
@@ -5929,8 +5999,229 @@ class DocumentAnalyzer:
             if extracted_fields.get("ogrn") and not extracted_fields.get("birthDate"):
                 extracted_fields["birthDate"] = extracted_fields["ogrn"]
 
+        # Финальная нормализация блока «Финансовые данные»: неустойка/штраф,
+        # даты платёжных поручений (депозит/госпошлина), банкротная/ссудная
+        # госпошлина, общая сумма долга. Запускается последней — перекрывает
+        # ошибки ранних путей извлечения высоконадёжными формулировками.
+        self._normalize_financial_block(extracted_fields, text)
+
         logger.info(f"Итоговые извлеченные поля: {extracted_fields}")
         return extracted_fields
+
+    def _fin_amount(self, s) -> float:
+        """Парсит денежную строку в float (учёт пробелов/неразрывных пробелов/запятой)."""
+        if not s:
+            return 0.0
+        n = (str(s).replace(" ", "").replace(" ", "")
+             .replace(" ", "").replace(",", "."))
+        n = re.sub(r"[^\d.]", "", n)
+        if not n or n == ".":
+            return 0.0
+        try:
+            return float(n)
+        except ValueError:
+            return 0.0
+
+    def _fin_fmt(self, v: float) -> str:
+        """Форматирует float в «1 234 567,89»."""
+        return f"{v:,.2f}".replace(",", " ").replace(".", ",").replace(" ", " ")
+
+    def _normalize_financial_block(self, fields: Dict[str, Any], text: str) -> None:
+        """Нормализует поля блока «Финансовые данные» по явным формулировкам.
+
+        Исправляет известные баги: неустойка тянула основной долг/мусор; даты ПП
+        (депозит/госпошлина) не извлекались; одна госпошлина дублировалась в
+        банкротную и ссудную; госпошлина = итог/мусор; итог < основного долга.
+        """
+        if not text:
+            return
+        money = r"(\d[\d   ]*(?:[.,]\s?\d{1,2})?)"
+        amt = self._fin_amount
+        fmt = self._fin_fmt
+
+        total = amt(fields.get("totalDebt"))
+        principal = amt(fields.get("principalDebt") or fields.get("loanDebt") or fields.get("principalDebt13"))
+        interest = amt(fields.get("interest") or fields.get("interest14"))
+
+        # Текст в одну строку — суммы ищем рядом с ключевым словом.
+        flat = re.sub(r"\s+", " ", text)
+        # Сумма ОБЯЗАТЕЛЬНО со словом «руб» (опц. маркер вида [15]); это отсекает
+        # проценты ставок («0,1 % за день») и номера статей/пунктов.
+        amount_kw = money + r"\s*(?:\[\d+\])?\s*руб"
+
+        # --- Неустойка (forfeit / [15]) ---
+        # Сумма привязана к слову «неустойка», метка между словом и числом
+        # (≤55 симв.) задаёт тип: за осн. долг / за проценты / общая.
+        neu = {"principal": {}, "interest": {}, "single": {}}
+        for m in re.finditer(r"неустойк\w*([^\d]{0,55}?)" + amount_kw, flat, re.IGNORECASE):
+            label = m.group(1).lower()
+            val = amt(m.group(2))
+            if val <= 0:
+                continue
+            if "основн" in label and "долг" in label:
+                bucket = "principal"
+            elif "процент" in label:
+                bucket = "interest"
+            else:
+                bucket = "single"
+            neu[bucket][round(val, 2)] = val  # дедуп по значению (строки повторяются)
+        forfeit_val = None
+        if neu["principal"] or neu["interest"]:
+            forfeit_val = sum(neu["principal"].values()) + sum(neu["interest"].values())
+        elif neu["single"]:
+            # Берём максимум, чтобы случайный мелкий «остаток» из шаблонной оговорки
+            # не суммировался с реальной неустойкой.
+            forfeit_val = max(neu["single"].values())
+        if forfeit_val and forfeit_val > 0 and (total <= 0 or forfeit_val <= total + 0.01):
+            fields["forfeit"] = fmt(forfeit_val)
+            fields["forfeit15"] = fmt(forfeit_val)
+
+        # --- Штрафные санкции (penalties) — только явные «штраф»/«пени» ---
+        pen = {}
+        for m in re.finditer(r"(?:штраф\w*|пени|пеня|пеней)([^\d]{0,40}?)" + amount_kw, flat, re.IGNORECASE):
+            label = m.group(1).lower()
+            if "неустойк" in label or "госпошл" in label or "пошлин" in label:
+                continue
+            val = amt(m.group(2))
+            if val > 0:
+                pen[round(val, 2)] = val
+        if pen:
+            pen_val = sum(pen.values())
+            if total <= 0 or pen_val <= total:
+                fields["penalties"] = fmt(pen_val)
+
+        # --- Даты платёжных поручений: депозит [80] и госпошлина [81] ---
+        for raw in text.splitlines():
+            low = raw.lower()
+            if "поручени" not in low:
+                continue
+            dm = re.search(r"от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})", raw)
+            if not dm:
+                continue
+            date_val = dm.group(1).replace(",", ".")
+            if "депозит" in low:
+                if not fields.get("ppDepositDate80"):
+                    fields["ppDepositDate80"] = date_val
+            elif "госпошл" in low or "государственной пошл" in low or "государственную пошл" in low:
+                if not fields.get("ppStateDutyDate81"):
+                    fields["ppStateDutyDate81"] = date_val
+
+        # --- Госпошлина: банкротная [16] / ссудная [17] — СЕМАНТИЧЕСКИ ---
+        sd16 = amt(fields.get("stateDuty16") or fields.get("stateDuty"))
+        sd17 = amt(fields.get("loanStateDuty17"))
+
+        def duty_is_garbage(v: float) -> bool:
+            # Госпошлина-мусор: совпадает с итогом/осн.долгом или это крупная доля
+            # долга. Проверки «по доле» применяем только к КРУПНЫМ суммам (>100k):
+            # реальная пошлина мала, а совпадение мелкой пошлины с (возможно неверным)
+            # итогом — не повод её удалять (иначе теряем верные 4 000 / 2 000).
+            if v <= 0:
+                return False
+            if total > 0 and v > 100000 and (abs(v - total) < 0.01 or v >= total * 0.4):
+                return True
+            if principal > 0 and v > 100000 and abs(v - principal) < 0.01:
+                return True
+            return False
+
+        def plausible_duty(v: float) -> bool:
+            return v >= 100 and not duty_is_garbage(v)
+
+        def classify_duty(ctx: str):
+            """Тип госпошлины по формулировке: (банкротная, ссудная)."""
+            bank = (
+                ("за подачу" in ctx and "заявлен" in ctx)
+                or "о банкротстве" in ctx
+                or "о несостоятельн" in ctx
+                or ("о признании" in ctx and ("банкрот" in ctx or "несостоятельн" in ctx))
+                or ("за рассмотрение заявлен" in ctx and ("банкрот" in ctx or "несостоятельн" in ctx))
+            )
+            loan = (
+                # Основы слов — устойчивы к падежам («судебных расходов по уплате»).
+                ("судебн" in ctx and "расход" in ctx)
+                or ("расход" in ctx and "уплат" in ctx)
+                or ("уплаченн" in ctx and "пошлин" in ctx)
+                or "по иску" in ctx
+                or "за рассмотрение исков" in ctx
+                or "за рассмотрение требован" in ctx
+            )
+            return bank, loan
+
+        # Сканируем суммы рядом со словом «госпошлина/пошлина/судебные расходы»
+        # в ОБОИХ порядках (ключ→сумма и сумма→ключ) и классифицируем по контексту.
+        sem_bankrupt = 0.0
+        sem_loan = 0.0
+        duty_patterns = (
+            r"(?:госпошлин\w*|государственн\w+\s+пошлин\w*)[^\d]{0,40}?" + amount_kw,
+            amount_kw + r"[^\d]{0,40}?(?:госпошлин\w*|пошлин\w*|судебн\w+\s+расход\w*)",
+        )
+        for pat in duty_patterns:
+            for m in re.finditer(pat, flat, re.IGNORECASE):
+                val = amt(m.group(1))
+                if not plausible_duty(val):
+                    continue
+                ctx = flat[max(0, m.start() - 80): m.end() + 60].lower()
+                is_bank, is_loan = classify_duty(ctx)
+                if is_bank and not is_loan:
+                    sem_bankrupt = max(sem_bankrupt, val)
+                elif is_loan and not is_bank:
+                    sem_loan = max(sem_loan, val)
+
+        if sem_bankrupt > 0 or sem_loan > 0:
+            # Есть явные формулировки → раскладываем типо-эксклюзивно.
+            if sem_bankrupt > 0:
+                fields["stateDuty16"] = fmt(sem_bankrupt)
+                fields["stateDuty"] = fmt(sem_bankrupt)
+                sd16 = sem_bankrupt
+            else:
+                fields.pop("stateDuty16", None)
+                fields.pop("stateDuty", None)
+                sd16 = 0.0
+            if sem_loan > 0:
+                fields["loanStateDuty17"] = fmt(sem_loan)
+                sd17 = sem_loan
+            else:
+                fields.pop("loanStateDuty17", None)
+                sd17 = 0.0
+        elif duty_is_garbage(sd16):
+            # Меток нет, но текущее значение — мусор: переизвлекаем правдоподобное.
+            cap = total * 0.3 if total > 0 else float("inf")
+            cands = [
+                amt(m.group(1))
+                for m in re.finditer(
+                    r"(?:госпошлин\w*|государственн\w+\s+пошлин\w*)[^\d]{0,40}?" + amount_kw,
+                    flat, re.IGNORECASE,
+                )
+                if 0 < amt(m.group(1)) < cap
+            ]
+            if cands:
+                best = max(cands)
+                fields["stateDuty16"] = fmt(best)
+                fields["stateDuty"] = fmt(best)
+                sd16 = best
+            else:
+                fields.pop("stateDuty16", None)
+                fields.pop("stateDuty", None)
+                sd16 = 0.0
+
+        # Микро-значения (< 100 руб) — это не госпошлина (реальная всегда сотни+).
+        if 0 < sd16 < 100:
+            fields.pop("stateDuty16", None)
+            fields.pop("stateDuty", None)
+            sd16 = 0.0
+        if 0 < sd17 < 100:
+            fields.pop("loanStateDuty17", None)
+            sd17 = 0.0
+        # Одна и та же госпошлина не может быть и банкротной, и ссудной.
+        if sd17 > 0 and sd16 > 0 and abs(sd16 - sd17) < 0.01:
+            fields.pop("loanStateDuty17", None)
+            sd17 = 0.0
+
+        # --- Общая сумма долга: если итог явно меньше основного долга — пересобираем ---
+        if total > 0 and principal > 0 and total < principal:
+            forfeit_now = amt(fields.get("forfeit"))
+            composite = principal + interest + forfeit_now
+            if composite > 0:
+                fields["totalDebt"] = fmt(composite)
 
     def extract_ip_enforcement_fields(self, text: str) -> Dict[str, str]:
         """

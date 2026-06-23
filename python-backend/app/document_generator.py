@@ -633,10 +633,23 @@ class DocumentGenerator:
         elif cleaned_data.get("stateDuty16") and not cleaned_data.get("stateDuty"):
             cleaned_data["stateDuty"] = cleaned_data["stateDuty16"]
 
+        # Фолбэк-маппинг госпошлины для ГЕНЕРАЦИИ (не для формы): анализатор
+        # раскладывает пошлину типо-эксклюзивно (банкротная [16] ИЛИ ссудная [17]),
+        # но шаблон может содержать любой из маркеров. Чтобы сумма не потерялась,
+        # заполняем ПУСТОЙ маркер из доступной пошлины. Две разные пошлины (обе
+        # заполнены) не трогаем.
+        _sd16 = cleaned_data.get("stateDuty16") or cleaned_data.get("stateDuty")
+        _sd17 = cleaned_data.get("loanStateDuty17")
+        if _sd17 and not _sd16:
+            cleaned_data["stateDuty16"] = _sd17
+            cleaned_data["stateDuty"] = _sd17
+        elif _sd16 and not _sd17:
+            cleaned_data["loanStateDuty17"] = _sd16
+
         # Форматирование сумм: приводим все суммы к виду '1 234 567,89'
         amount_fields = ["loanDebt", "principalDebt", "principalDebt13", "interest", "interest14",
                         "forfeit", "forfeit15", "penalties", "stateDuty", "stateDuty16", "loanStateDuty17",
-                        "totalDebt", "debtAmount", "bankCommission"]
+                        "totalDebt", "debtAmount", "bankCommission", "priorAmount"]
         for field in amount_fields:
             if field in cleaned_data and cleaned_data[field]:
                 raw = str(cleaned_data[field]).strip()
@@ -874,6 +887,12 @@ class DocumentGenerator:
             "ppDepositDate80": "80",              # [80] - Дата ПП депозит
             "ppStateDutyDate81": "81",            # [81] - Дата ПП ГП
             "thirdPartyName25": "25",             # [25] - Название/ФИО третьего лица
+            # Ранее вынесенное решение другого суда (вставляется только в те акты,
+            # где эти маркеры физически есть в шаблоне → «не во все»).
+            "priorCourtName": "90",               # [90] - Суд ранее вынесенного решения
+            "priorCaseNumber": "91",              # [91] - Номер дела ранее вынесенного решения
+            "priorAmount": "92",                  # [92] - Взысканная сумма по ранее вынесенному решению
+            "priorDecisionDate": "93",            # [93] - Дата ранее вынесенного решения
         }
 
         is_mortgage_document = (cleaned_data.get("sourceDocumentType") or "").lower() == "mortgage_claim"

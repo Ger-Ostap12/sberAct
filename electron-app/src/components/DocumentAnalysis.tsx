@@ -26,7 +26,7 @@ import {
   AccordionDetails
 } from '@mui/material';
 import { ArrowBack as BackIcon, CheckCircle as CheckIcon, Add as AddIcon, Close as CloseIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
-import { DocumentData, ExtractedData, Obligation, Collateral, CollateralType, EntityType, CollateralOption, SelectedAct, ThirdParty, Debtor } from '../types';
+import { DocumentData, ExtractedData, Obligation, Collateral, CollateralType, EntityType, CollateralOption, DebtorStatus, SelectedAct, ThirdParty, Debtor } from '../types';
 
 // Данные банков для автозаполнения
 const BANK_DATA: Record<string, { address: string; ogrn: string; inn: string }> = {
@@ -327,6 +327,38 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   const [collateralKinds, setCollateralKinds] = useState<{ realEstate: boolean; auto: boolean; other: boolean }>({ realEstate: false, auto: false, other: false });
   const [selectedActs, setSelectedActs] = useState<SelectedAct[]>([]);
   const [recommendationsApplied, setRecommendationsApplied] = useState(false);
+  // Статус должника (банкротство): отсутствующий / ликвидируемый / умерший.
+  // Взаимоисключающие: выбор одного снимает остальные.
+  const [debtorStatus, setDebtorStatus] = useState<DebtorStatus | null>(null);
+
+  const toggleDebtorStatus = (status: DebtorStatus) => {
+    setDebtorStatus(prev => (prev === status ? null : status));
+  };
+
+  // Статус должника влияет на рекомендацию финального СА:
+  // отсутствующий/ликвидируемый ЮЛ → «Решение конкурсное»; умерший ФЛ → «Решение реализация».
+  useEffect(() => {
+    if (!debtorStatus) return;
+    const finalByStatus: Record<DebtorStatus, string> = {
+      absent: 'final_competition',
+      liquidation: 'final_competition',
+      deceased: 'final_realization',
+    };
+    const targetFinal = finalByStatus[debtorStatus];
+    setSelectedActs(prev => prev.map(act =>
+      act.category === 'final' ? { ...act, selected: act.id === targetFinal } : act
+    ));
+    // Статус подразумевает тип лица: отсутствующий/ликвидируемый — ЮЛ, умерший — ФЛ.
+    setEntityType(debtorStatus === 'deceased' ? 'individual' : 'legal');
+  }, [debtorStatus]);
+
+  // Если тип лица сменили на несовместимый со статусом — сбрасываем статус
+  // (умерший только у ФЛ; отсутствующий/ликвидируемый только у ЮЛ).
+  useEffect(() => {
+    if (!debtorStatus) return;
+    if (debtorStatus === 'deceased' && entityType !== 'individual') setDebtorStatus(null);
+    if ((debtorStatus === 'absent' || debtorStatus === 'liquidation') && entityType !== 'legal') setDebtorStatus(null);
+  }, [entityType]);
 
   // Сводим выбранные виды залога к одному значению collateralOption (для генерации):
   // ничего → no_collateral; только транспорт → collateral_auto; иначе → collateral.
@@ -379,6 +411,14 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         // Устанавливаем рекомендуемый тип залога
         if (recommendedActs.collateralOption) {
           setCollateralOption(recommendedActs.collateralOption as CollateralOption);
+        }
+
+        // Авто-статус должника: умерший — по процедуре; конкурсное (отсутствующий/
+        // ликвидируемый) оставляем на ручной выбор (по тексту не различить).
+        const procType = (analysisResult.fields as any)?.procedureType
+          || (analysisResult.fields as any)?.procedureTypeRaw || '';
+        if (String(procType).toLowerCase().includes('умер') || String(procType).toLowerCase() === 'deceased') {
+          setDebtorStatus('deceased');
         }
 
         // Устанавливаем рекомендуемые акты
@@ -893,6 +933,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           // Сохраняем выбранные параметры в полях для передачи (оригинальный выбор пользователя)
           selectedEntityType: entityType || undefined,
           selectedCollateralOption: collateralOption || undefined,
+          selectedDebtorStatus: debtorStatus || undefined,
           selectedActsIds: selectedActs.filter(a => a.selected).map(a => a.id).join(',') || undefined,
           selectedActsData: JSON.stringify(selectedActs.filter(a => a.selected)) || undefined
         },
@@ -1099,6 +1140,41 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 <FormControlLabel value="kfh" control={<Radio />} label="Глава КФХ" />
               </RadioGroup>
               </Box>
+
+            {/* Статус должника (банкротство) — влияет на финальный СА.
+                «Умерший» доступен только для Физ.лица, «Отсутствующий»/«Ликвидируемый» —
+                только для Юр.лица. Выбор взаимоисключающий → круглые radio;
+                повторный клик снимает выбор. */}
+            {(entityType === 'individual' || entityType === 'legal') && (
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 1 }}>
+                Статус должника
+              </Typography>
+              <RadioGroup row value={debtorStatus || ''}>
+                {entityType === 'legal' && (
+                  <FormControlLabel
+                    value="absent"
+                    control={<Radio onClick={() => toggleDebtorStatus('absent')} />}
+                    label="Отсутствующий"
+                  />
+                )}
+                {entityType === 'legal' && (
+                  <FormControlLabel
+                    value="liquidation"
+                    control={<Radio onClick={() => toggleDebtorStatus('liquidation')} />}
+                    label="Ликвидируемый"
+                  />
+                )}
+                {entityType === 'individual' && (
+                  <FormControlLabel
+                    value="deceased"
+                    control={<Radio onClick={() => toggleDebtorStatus('deceased')} />}
+                    label="Умерший"
+                  />
+                )}
+              </RadioGroup>
+            </Box>
+            )}
 
             {/* Выбор залога */}
             <Box sx={{ mb: 4 }}>
@@ -2156,6 +2232,73 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                         InputLabelProps={{
                           shrink: true,
                         }}
+                      />
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Box>
+                </Grid>
+
+                <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
+              {/* Ранее вынесенное решение суда */}
+              <Box sx={{ ...BLOCK_BOX_SX, mt: 3, width: '100%' }}>
+                <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
+                  Сведения о взыскании
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={LABEL_OVERLAP_BOX}>
+                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Кем взыскано:</Typography>
+                      <TextField
+                        fullWidth
+                        value={editedFields.priorCourtName || ''}
+                        onChange={(e) => handleFieldChange('priorCourtName', e.target.value)}
+                        size="small"
+                        margin="dense"
+                        placeholder="Ворошиловский районный суд г. Ростова-на-Дону"
+                      />
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={LABEL_OVERLAP_BOX}>
+                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Номер дела:</Typography>
+                      <TextField
+                        fullWidth
+                        value={editedFields.priorCaseNumber || ''}
+                        onChange={(e) => handleFieldChange('priorCaseNumber', e.target.value)}
+                        size="small"
+                        margin="dense"
+                        placeholder="2-2523/2025"
+                      />
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={LABEL_OVERLAP_BOX}>
+                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Взысканная сумма:</Typography>
+                      <TextField
+                        fullWidth
+                        value={editedFields.priorAmount || ''}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^\d.,]/g, '').replace(',', '.');
+                          handleFieldChange('priorAmount', value);
+                        }}
+                        size="small"
+                        margin="dense"
+                        placeholder="0.00"
+                      />
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={LABEL_OVERLAP_BOX}>
+                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата решения:</Typography>
+                      <TextField
+                        fullWidth
+                        type="date"
+                        value={toInputDate(editedFields.priorDecisionDate)}
+                        onChange={(e) => handleFieldChange('priorDecisionDate', fromInputDate(e.target.value))}
+                        size="small"
+                        margin="dense"
+                        InputLabelProps={{ shrink: true }}
                       />
                     </Box>
                   </Grid>

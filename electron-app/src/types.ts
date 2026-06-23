@@ -66,6 +66,11 @@ export interface ExtractedData {
     applicationDate?: string;
     courtName?: string;
     caseNumber?: string;
+    // Ранее вынесенное решение другого суда (взыскание по делу до банкротства)
+    priorCourtName?: string;
+    priorCaseNumber?: string;
+    priorAmount?: string;
+    priorDecisionDate?: string;
     debtAmount?: string;
     creditorName?: string;
     debtorName?: string;
@@ -231,6 +236,9 @@ export interface RTKDecision {
 // Типы для выбора судебных актов
 export type EntityType = 'individual' | 'legal' | 'ip' | 'kfh';
 export type CollateralOption = 'collateral' | 'collateral_auto' | 'no_collateral';
+// Статус должника (банкротство): отсутствующий / ликвидируемый ЮЛ, либо умерший ФЛ.
+// Влияет на рекомендацию финального СА.
+export type DebtorStatus = 'absent' | 'liquidation' | 'deceased';
 
 export interface SelectedAct {
   id: string;
