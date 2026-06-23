@@ -23,7 +23,7 @@ import {
   Add as AddIcon,
   Description as DocumentIcon
 } from '@mui/icons-material';
-import { ExtractedData, TemplateType } from '../types';
+import { ExtractedData, SelectedAct, TemplateType } from '../types';
 
 interface DocumentPreviewProps {
   extractedData: ExtractedData;
@@ -229,6 +229,68 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
 
   const getFieldValue = (fieldName: string) => {
     return extractedData.fields[fieldName] || 'Не указано';
+  };
+
+  const getSelectedActs = (): SelectedAct[] => {
+    const raw = (extractedData.fields as any)?.selectedActsData;
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(String(raw));
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter(Boolean) as SelectedAct[];
+    } catch {
+      return [];
+    }
+  };
+
+  type DateFieldKey =
+    | 'date'
+    | 'courtSubmissionDate24'
+    | 'applicationReceiptDate23'
+    | 'objectionsDeadline18'
+    | 'considerationDeadline19'
+    | 'withoutMovementDeadline20'
+    | 'courtHearingDateTime99';
+
+  const DATE_FIELD_LABELS: Record<DateFieldKey, string> = {
+    date: 'Дата принятия определения',
+    courtSubmissionDate24: 'Дата направления в суд',
+    applicationReceiptDate23: 'Дата поступления заявления в суд (согласно штампу)',
+    objectionsDeadline18: 'Установка срока на предоставление возражений',
+    considerationDeadline19: 'На рассмотрение заявления в срок',
+    withoutMovementDeadline20: 'Срок для оставления без движения',
+    courtHearingDateTime99: 'Дата и время судебного заседания',
+  };
+
+  const formatMaybeDateTime = (value: string) => {
+    // datetime-local обычно "YYYY-MM-DDTHH:mm"
+    if (!value || value === 'Не указано') return value;
+    return value.replace('T', ' ');
+  };
+
+  const getDateFieldsForAct = (act: SelectedAct): DateFieldKey[] => {
+    const keys: DateFieldKey[] = ['date'];
+
+    const isIntermediate = act.category === 'intermediate';
+    const containsNoMotion = act.name?.includes('Б/Д') || act.id?.includes('no_motion');
+
+    // Дата направления/поступления: все, кроме Б/Д и всех промежуточных
+    if (!isIntermediate && !containsNoMotion) {
+      keys.push('courtSubmissionDate24', 'applicationReceiptDate23');
+    }
+
+    // Возражения / Рассмотрение / Заседание: Определение о принятии, Принятие после Б/Д
+    if (act.id === 'acceptance_definition' || act.id === 'acceptance_after_no_motion') {
+      keys.push('objectionsDeadline18', 'considerationDeadline19', 'courtHearingDateTime99');
+    }
+
+    // Срок для оставления без движения: все, что содержит Б/Д
+    if (containsNoMotion) {
+      keys.push('withoutMovementDeadline20');
+    }
+
+    // Убираем повторы (на всякий)
+    return Array.from(new Set(keys));
   };
 
   const getTemplatePreview = () => {
@@ -1013,7 +1075,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   };
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
+    <Box sx={{ width: '100%', maxWidth: 1600, mx: 'auto', px: 1 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
         <Button
           variant="outlined"
@@ -1030,7 +1092,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
 
       <Grid container spacing={3}>
         {/* Информация о шаблоне */}
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -1078,7 +1140,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
         </Grid>
 
         {/* Предварительный просмотр */}
-        <Grid item xs={12} md={8}>
+        <Grid item xs={12} md={9}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -1086,7 +1148,45 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
               </Typography>
 
               <Paper sx={{ p: 3, backgroundColor: 'grey.50', border: '1px solid', borderColor: 'grey.300' }}>
-                {getTemplatePreview()}
+                <Grid container spacing={2}>
+                  {/* Окна по каждому акту */}
+                  {getSelectedActs().filter((a) => a?.selected).map((act) => {
+                    const fields = getDateFieldsForAct(act);
+                    return (
+                      <Grid key={act.id} item xs={12}>
+                        <Card
+                          variant="outlined"
+                          sx={{
+                            backgroundColor: 'common.white',
+                            width: '100%',
+                          }}
+                        >
+                          <CardContent sx={{ pb: 2 }}>
+                            <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                              {act.name}
+                            </Typography>
+                            <Grid container spacing={2}>
+                              {fields.map((key) => (
+                                <Grid key={key} item xs={12} sm={6} lg={4}>
+                                  <Typography variant="body2">
+                                    <strong>{DATE_FIELD_LABELS[key]}:</strong>{' '}
+                                    {formatMaybeDateTime(getFieldValue(key))}
+                                  </Typography>
+                                </Grid>
+                              ))}
+                            </Grid>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    );
+                  })}
+
+                  {/* Старый превью-блок (общий контент) */}
+                  <Grid item xs={12}>
+                    <Divider sx={{ my: 1 }} />
+                    {getTemplatePreview()}
+                  </Grid>
+                </Grid>
               </Paper>
             </CardContent>
           </Card>
