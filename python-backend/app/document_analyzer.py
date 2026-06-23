@@ -4603,198 +4603,11 @@ class DocumentAnalyzer:
             # Суммы/госпошлина/публикация из блока «ПРОСИТ СУД»
             self._extract_claim_block_amounts(extracted_fields, text)
 
-        # Заменяем старые поля долгов на правильные суммы из блока "ПРОСИТ СУД"
-        if 'principalDebt13' in extracted_fields:
-            extracted_fields['principalDebt'] = extracted_fields['principalDebt13']
-            logger.info(f"Заменено поле principalDebt на {extracted_fields['principalDebt13']}")
+        # Согласование сумм долга (principal/interest/forfeit/total/loanDebt)
+        self._reconcile_debt_amounts(extracted_fields, text, document_type)
 
-        if 'interest14' in extracted_fields:
-            extracted_fields['interest'] = extracted_fields['interest14']
-            logger.info(f"Заменено поле interest на {extracted_fields['interest14']}")
-
-        if 'forfeit15' in extracted_fields:
-            extracted_fields['forfeit'] = extracted_fields['forfeit15']
-            logger.info(f"Заменено поле forfeit на {extracted_fields['forfeit15']}")
-
-        # Если общая сумма долга похожа на сумму выдачи (значительно больше основной+проценты+неустойка),
-        # подменяем на сумму principal+interest+forfeit
-        try:
-            principal_f = float(self.normalize_amount_value(str(extracted_fields.get("principalDebt") or "0")).replace(" ", "").replace(",", "."))
-            interest_f = float(self.normalize_amount_value(str(extracted_fields.get("interest") or "0")).replace(" ", "").replace(",", "."))
-            forfeit_f = float(self.normalize_amount_value(str(extracted_fields.get("forfeit") or "0")).replace(" ", "").replace(",", "."))
-            sum_pif = principal_f + interest_f + forfeit_f
-            if sum_pif > 0:
-                total_str = (extracted_fields.get("totalDebt") or "").strip()
-                if total_str:
-                    total_f = float(self.normalize_amount_value(total_str).replace(" ", "").replace(",", "."))
-                    if total_f > sum_pif * 1.15:
-                        formatted_sum = f"{sum_pif:,.2f}".replace(",", " ").replace(".", ",")
-                        extracted_fields["totalDebt"] = formatted_sum
-                        if extracted_fields.get("debtAmount") == extracted_fields.get("totalDebt") or not extracted_fields.get("debtAmount"):
-                            extracted_fields["debtAmount"] = formatted_sum
-                        logger.info(f"Общая сумма долга скорректирована на сумму основного долга+проценты+неустойка: {formatted_sum}")
-        except (ValueError, TypeError) as e:
-            logger.debug(f"Проверка суммы долга: {e}")
-
-        # Для rtk_application с развернутым описанием сумм:
-        # если в тексте есть "ИТОГО ... руб." и упоминание госпошлины,
-        # пробуем выделить госпошлину как разницу между ИТОГО и (основной долг + проценты + просроченные проценты).
-        try:
-            if document_type == "rtk_application" and not extracted_fields.get("stateDuty"):
-                lower_text = text.lower()
-                if "госпошл" in lower_text or "государственной пошл" in lower_text:
-                    principal = self._safe_amount_field(extracted_fields.get("principalDebt"))
-                    interest = self._safe_amount_field(extracted_fields.get("interest"))
-                    forfeit_val = self._safe_amount_field(extracted_fields.get("forfeit"))
-                    composite = principal + interest + forfeit_val
-                    if composite > 0:
-                        itogo_match = re.search(
-                            r"ИТОГО\s*[–—-]?\s*([0-9\s,]+)\s*(?:руб|рублей|₽|р\.?)",
-                            text,
-                            re.IGNORECASE,
-                        )
-                        if itogo_match:
-                            itogo_val = self._safe_amount_field(itogo_match.group(1))
-                            if itogo_val > composite:
-                                duty = round(itogo_val - composite, 2)
-                                formatted_duty = f"{duty:,.2f}".replace(",", " ").replace(".", ",")
-                                extracted_fields["stateDuty"] = formatted_duty
-                                formatted_total = f"{itogo_val:,.2f}".replace(",", " ").replace(".", ",")
-                                extracted_fields["totalDebt"] = formatted_total
-                                logger.info(
-                                    f"Определена госпошлина из блока 'ИТОГО': {formatted_duty}, totalDebt={formatted_total}"
-                                )
-        except Exception as e:
-            logger.debug(f"Ошибка при попытке выделить госпошлину из 'ИТОГО': {e}")
-
-        # Если ссудная задолженность (loanDebt) не найдена явно — используем общую сумму долга/требований.
-        if not extracted_fields.get("loanDebt"):
-            if extracted_fields.get("debtAmount"):
-                extracted_fields["loanDebt"] = extracted_fields["debtAmount"]
-                logger.info(f"loanDebt не найден явно, используем debtAmount как loanDebt: {extracted_fields['loanDebt']}")
-            elif extracted_fields.get("totalDebt"):
-                extracted_fields["loanDebt"] = extracted_fields["totalDebt"]
-                logger.info(f"loanDebt не найден явно, используем totalDebt как loanDebt: {extracted_fields['loanDebt']}")
-
-        if 'stateDuty16' in extracted_fields:
-            state_duty_value = str(extracted_fields['stateDuty16']).strip()
-            # Проверяем, что это не неустойка (forfeit15 обычно имеет такое же значение)
-            if 'forfeit15' in extracted_fields and str(extracted_fields['forfeit15']).strip() == state_duty_value:
-                # Если stateDuty16 совпадает с forfeit15, это скорее всего ошибка извлечения
-                logger.warning(f"stateDuty16 совпадает с forfeit15 ({state_duty_value}), возможно неправильное извлечение")
-                # Удаляем неправильное значение
-                del extracted_fields['stateDuty16']
-            else:
-                existing_state_duty = self._safe_amount_field(extracted_fields.get("stateDuty"))
-                incoming_state_duty16 = self._safe_amount_field(extracted_fields.get("stateDuty16"))
-
-                # Синхронизация stateDuty/stateDuty16:
-                # - если stateDuty16 ненулевая → она приоритетнее
-                # - если stateDuty16 нулевая → НЕ перезатираем уже найденную ненулевую stateDuty
-                if incoming_state_duty16 > 0:
-                    extracted_fields["stateDuty"] = extracted_fields["stateDuty16"]
-                    logger.info(f"Заменено поле stateDuty на {extracted_fields['stateDuty16']}")
-                elif existing_state_duty > 0 and incoming_state_duty16 <= 0:
-                    # Держим корректное ненулевое значение; подхватываем его в [16] для генератора.
-                    extracted_fields["stateDuty16"] = extracted_fields.get("stateDuty")
-                    logger.info(
-                        f"stateDuty16=0,00, но stateDuty ненулевая ({extracted_fields.get('stateDuty')}); сохраняем ненулевую госпошлину"
-                    )
-                else:
-                    extracted_fields["stateDuty"] = extracted_fields["stateDuty16"]
-                    logger.info(f"Заменено поле stateDuty на {extracted_fields['stateDuty16']}")
-
-        # Если есть totalDebt и debtAmount, но нет stateDuty, а в тексте явно упоминаются
-        # расходы по оплате государственной пошлины, пробуем вычислить госпошлину как разницу.
-        try:
-            if not extracted_fields.get("stateDuty") and extracted_fields.get("totalDebt") and extracted_fields.get("debtAmount"):
-                lower_text = text.lower()
-                if "госпошл" in lower_text or "государственной пошл" in lower_text:
-                    total_f = self._safe_amount_field(extracted_fields.get("totalDebt"))
-                    debt_f = self._safe_amount_field(extracted_fields.get("debtAmount"))
-                    diff = round(total_f - debt_f, 2)
-                    if diff > 0:
-                        formatted = f"{diff:,.2f}".replace(",", " ").replace(".", ",")
-                        extracted_fields["stateDuty"] = formatted
-                        logger.info(f"Рассчитана государственная пошлина как разница totalDebt - debtAmount: {formatted}")
-        except Exception as e:
-            logger.debug(f"Ошибка при попытке вывести госпошлину из разницы сумм: {e}")
-
-        # Прямой поиск фразы "расходы по оплате госпошлины ..." если stateDuty всё ещё не найден
-        if not extracted_fields.get("stateDuty"):
-            try:
-                m = re.search(
-                    r"расход[аов]*\s+по\s+оплате\s+госпошл[иы][нны]*[^\d]{0,40}([0-9\s,]+)\s*(?:руб|рублей|₽|р\.?)",
-                    text,
-                    re.IGNORECASE | re.DOTALL,
-                )
-                if not m:
-                    m = re.search(
-                        r"([0-9\s,]+)\s*(?:руб|рублей|₽|р\.?)[^\n]{0,80}расход[аов]*\s+по\s+оплате\s+госпошл[иы][нны]*",
-                        text,
-                        re.IGNORECASE | re.DOTALL,
-                    )
-                if m:
-                    extracted_fields["stateDuty"] = self.normalize_amount_value(m.group(1))
-                    logger.info(f"Извлечена государственная пошлина из прямой фразы: {extracted_fields['stateDuty']}")
-            except Exception as e:
-                logger.debug(f"Ошибка при прямом поиске госпошлины: {e}")
-
-        # Удаляем поле penalties, так как в заявлении нет штрафных санкций
-        if 'penalties' in extracted_fields:
-            del extracted_fields['penalties']
-            logger.info("Удалено поле penalties - в заявлении нет штрафных санкций")
-
-        amount_keys = [
-            "debtAmount",
-            "requirementsSum",
-            "totalDebt",
-            "principalDebt13",
-            "interest14",
-            "forfeit15",
-            "stateDuty16",
-            "loanStateDuty17",
-            "principalDebt",
-            "interest",
-            "forfeit",
-            "stateDuty",
-            "bankCommission",
-        ]
-        for key in amount_keys:
-            if key in extracted_fields and isinstance(extracted_fields[key], str):
-                extracted_fields[key] = self.normalize_amount_value(extracted_fields[key])
-
-        # Для rtk_application приоритетной является сумма требований (requirementsSum), а не общая фраза "в размере ...",
-        # которая часто относится к госпошлине.
-        # Если totalDebt совпадает с госпошлиной или заметно меньше суммы требований, подменяем totalDebt и debtAmount.
-        if document_type == "rtk_application":
-            try:
-                req_sum_val = self._safe_amount_field(extracted_fields.get("requirementsSum"))
-                total_val = self._safe_amount_field(extracted_fields.get("totalDebt"))
-                state_duty_val = self._safe_amount_field(
-                    extracted_fields.get("stateDuty16") or extracted_fields.get("stateDuty")
-                )
-
-                if req_sum_val > 0:
-                    should_override_total = False
-                    if total_val == 0:
-                        should_override_total = True
-                    elif state_duty_val > 0 and abs(total_val - state_duty_val) < 0.01:
-                        # totalDebt совпал с госпошлиной — это почти наверняка ошибка извлечения
-                        should_override_total = True
-                    elif total_val < req_sum_val * 0.5:
-                        # totalDebt значительно меньше суммы требований — тоже подозрительно
-                        should_override_total = True
-
-                    if should_override_total:
-                        formatted_req = f"{req_sum_val:,.2f}".replace(",", " ").replace(".", ",")
-                        extracted_fields["totalDebt"] = formatted_req
-                        extracted_fields["debtAmount"] = formatted_req
-                        logger.info(
-                            f"Для rtk_application totalDebt/debtAmount скорректированы по сумме требований: {formatted_req}"
-                        )
-            except Exception as e:
-                logger.debug(f"Ошибка при коррекции totalDebt для rtk_application: {e}")
+        # Согласование госпошлины/requirementsSum
+        self._reconcile_state_duty(extracted_fields, text, document_type)
 
         # Если ссудная госпошлина явно не указана, но есть общая госпошлина,
         # используем её как ссудную (чтобы в шаблонах [17] не оставался пустым).
@@ -5853,6 +5666,203 @@ class DocumentAnalyzer:
                     extracted_fields["creditInterestRate"] = str(int(rate_value))
                 else:
                     extracted_fields["creditInterestRate"] = str(rate_value).replace(".", ",")
+
+    def _reconcile_debt_amounts(self, extracted_fields, text, document_type):
+        """Согласование сумм долга: подстановка principalDebt/interest/forfeit из [13]/[14]/[15], коррекция totalDebt, госпошлина из ИТОГО, фолбэк loanDebt. Вынесено из extract_fields."""
+        # Заменяем старые поля долгов на правильные суммы из блока "ПРОСИТ СУД"
+        if 'principalDebt13' in extracted_fields:
+            extracted_fields['principalDebt'] = extracted_fields['principalDebt13']
+            logger.info(f"Заменено поле principalDebt на {extracted_fields['principalDebt13']}")
+
+        if 'interest14' in extracted_fields:
+            extracted_fields['interest'] = extracted_fields['interest14']
+            logger.info(f"Заменено поле interest на {extracted_fields['interest14']}")
+
+        if 'forfeit15' in extracted_fields:
+            extracted_fields['forfeit'] = extracted_fields['forfeit15']
+            logger.info(f"Заменено поле forfeit на {extracted_fields['forfeit15']}")
+
+        # Если общая сумма долга похожа на сумму выдачи (значительно больше основной+проценты+неустойка),
+        # подменяем на сумму principal+interest+forfeit
+        try:
+            principal_f = float(self.normalize_amount_value(str(extracted_fields.get("principalDebt") or "0")).replace(" ", "").replace(",", "."))
+            interest_f = float(self.normalize_amount_value(str(extracted_fields.get("interest") or "0")).replace(" ", "").replace(",", "."))
+            forfeit_f = float(self.normalize_amount_value(str(extracted_fields.get("forfeit") or "0")).replace(" ", "").replace(",", "."))
+            sum_pif = principal_f + interest_f + forfeit_f
+            if sum_pif > 0:
+                total_str = (extracted_fields.get("totalDebt") or "").strip()
+                if total_str:
+                    total_f = float(self.normalize_amount_value(total_str).replace(" ", "").replace(",", "."))
+                    if total_f > sum_pif * 1.15:
+                        formatted_sum = f"{sum_pif:,.2f}".replace(",", " ").replace(".", ",")
+                        extracted_fields["totalDebt"] = formatted_sum
+                        if extracted_fields.get("debtAmount") == extracted_fields.get("totalDebt") or not extracted_fields.get("debtAmount"):
+                            extracted_fields["debtAmount"] = formatted_sum
+                        logger.info(f"Общая сумма долга скорректирована на сумму основного долга+проценты+неустойка: {formatted_sum}")
+        except (ValueError, TypeError) as e:
+            logger.debug(f"Проверка суммы долга: {e}")
+
+        # Для rtk_application с развернутым описанием сумм:
+        # если в тексте есть "ИТОГО ... руб." и упоминание госпошлины,
+        # пробуем выделить госпошлину как разницу между ИТОГО и (основной долг + проценты + просроченные проценты).
+        try:
+            if document_type == "rtk_application" and not extracted_fields.get("stateDuty"):
+                lower_text = text.lower()
+                if "госпошл" in lower_text or "государственной пошл" in lower_text:
+                    principal = self._safe_amount_field(extracted_fields.get("principalDebt"))
+                    interest = self._safe_amount_field(extracted_fields.get("interest"))
+                    forfeit_val = self._safe_amount_field(extracted_fields.get("forfeit"))
+                    composite = principal + interest + forfeit_val
+                    if composite > 0:
+                        itogo_match = re.search(
+                            r"ИТОГО\s*[–—-]?\s*([0-9\s,]+)\s*(?:руб|рублей|₽|р\.?)",
+                            text,
+                            re.IGNORECASE,
+                        )
+                        if itogo_match:
+                            itogo_val = self._safe_amount_field(itogo_match.group(1))
+                            if itogo_val > composite:
+                                duty = round(itogo_val - composite, 2)
+                                formatted_duty = f"{duty:,.2f}".replace(",", " ").replace(".", ",")
+                                extracted_fields["stateDuty"] = formatted_duty
+                                formatted_total = f"{itogo_val:,.2f}".replace(",", " ").replace(".", ",")
+                                extracted_fields["totalDebt"] = formatted_total
+                                logger.info(
+                                    f"Определена госпошлина из блока 'ИТОГО': {formatted_duty}, totalDebt={formatted_total}"
+                                )
+        except Exception as e:
+            logger.debug(f"Ошибка при попытке выделить госпошлину из 'ИТОГО': {e}")
+
+        # Если ссудная задолженность (loanDebt) не найдена явно — используем общую сумму долга/требований.
+        if not extracted_fields.get("loanDebt"):
+            if extracted_fields.get("debtAmount"):
+                extracted_fields["loanDebt"] = extracted_fields["debtAmount"]
+                logger.info(f"loanDebt не найден явно, используем debtAmount как loanDebt: {extracted_fields['loanDebt']}")
+            elif extracted_fields.get("totalDebt"):
+                extracted_fields["loanDebt"] = extracted_fields["totalDebt"]
+                logger.info(f"loanDebt не найден явно, используем totalDebt как loanDebt: {extracted_fields['loanDebt']}")
+
+    def _reconcile_state_duty(self, extracted_fields, text, document_type):
+        """Согласование госпошлины и сумм: синхронизация stateDuty/[16], выделение из ИТОГО, удаление penalties, приоритет requirementsSum для rtk. Вынесено из extract_fields."""
+        if 'stateDuty16' in extracted_fields:
+            state_duty_value = str(extracted_fields['stateDuty16']).strip()
+            # Проверяем, что это не неустойка (forfeit15 обычно имеет такое же значение)
+            if 'forfeit15' in extracted_fields and str(extracted_fields['forfeit15']).strip() == state_duty_value:
+                # Если stateDuty16 совпадает с forfeit15, это скорее всего ошибка извлечения
+                logger.warning(f"stateDuty16 совпадает с forfeit15 ({state_duty_value}), возможно неправильное извлечение")
+                # Удаляем неправильное значение
+                del extracted_fields['stateDuty16']
+            else:
+                existing_state_duty = self._safe_amount_field(extracted_fields.get("stateDuty"))
+                incoming_state_duty16 = self._safe_amount_field(extracted_fields.get("stateDuty16"))
+
+                # Синхронизация stateDuty/stateDuty16:
+                # - если stateDuty16 ненулевая → она приоритетнее
+                # - если stateDuty16 нулевая → НЕ перезатираем уже найденную ненулевую stateDuty
+                if incoming_state_duty16 > 0:
+                    extracted_fields["stateDuty"] = extracted_fields["stateDuty16"]
+                    logger.info(f"Заменено поле stateDuty на {extracted_fields['stateDuty16']}")
+                elif existing_state_duty > 0 and incoming_state_duty16 <= 0:
+                    # Держим корректное ненулевое значение; подхватываем его в [16] для генератора.
+                    extracted_fields["stateDuty16"] = extracted_fields.get("stateDuty")
+                    logger.info(
+                        f"stateDuty16=0,00, но stateDuty ненулевая ({extracted_fields.get('stateDuty')}); сохраняем ненулевую госпошлину"
+                    )
+                else:
+                    extracted_fields["stateDuty"] = extracted_fields["stateDuty16"]
+                    logger.info(f"Заменено поле stateDuty на {extracted_fields['stateDuty16']}")
+
+        # Если есть totalDebt и debtAmount, но нет stateDuty, а в тексте явно упоминаются
+        # расходы по оплате государственной пошлины, пробуем вычислить госпошлину как разницу.
+        try:
+            if not extracted_fields.get("stateDuty") and extracted_fields.get("totalDebt") and extracted_fields.get("debtAmount"):
+                lower_text = text.lower()
+                if "госпошл" in lower_text or "государственной пошл" in lower_text:
+                    total_f = self._safe_amount_field(extracted_fields.get("totalDebt"))
+                    debt_f = self._safe_amount_field(extracted_fields.get("debtAmount"))
+                    diff = round(total_f - debt_f, 2)
+                    if diff > 0:
+                        formatted = f"{diff:,.2f}".replace(",", " ").replace(".", ",")
+                        extracted_fields["stateDuty"] = formatted
+                        logger.info(f"Рассчитана государственная пошлина как разница totalDebt - debtAmount: {formatted}")
+        except Exception as e:
+            logger.debug(f"Ошибка при попытке вывести госпошлину из разницы сумм: {e}")
+
+        # Прямой поиск фразы "расходы по оплате госпошлины ..." если stateDuty всё ещё не найден
+        if not extracted_fields.get("stateDuty"):
+            try:
+                m = re.search(
+                    r"расход[аов]*\s+по\s+оплате\s+госпошл[иы][нны]*[^\d]{0,40}([0-9\s,]+)\s*(?:руб|рублей|₽|р\.?)",
+                    text,
+                    re.IGNORECASE | re.DOTALL,
+                )
+                if not m:
+                    m = re.search(
+                        r"([0-9\s,]+)\s*(?:руб|рублей|₽|р\.?)[^\n]{0,80}расход[аов]*\s+по\s+оплате\s+госпошл[иы][нны]*",
+                        text,
+                        re.IGNORECASE | re.DOTALL,
+                    )
+                if m:
+                    extracted_fields["stateDuty"] = self.normalize_amount_value(m.group(1))
+                    logger.info(f"Извлечена государственная пошлина из прямой фразы: {extracted_fields['stateDuty']}")
+            except Exception as e:
+                logger.debug(f"Ошибка при прямом поиске госпошлины: {e}")
+
+        # Удаляем поле penalties, так как в заявлении нет штрафных санкций
+        if 'penalties' in extracted_fields:
+            del extracted_fields['penalties']
+            logger.info("Удалено поле penalties - в заявлении нет штрафных санкций")
+
+        amount_keys = [
+            "debtAmount",
+            "requirementsSum",
+            "totalDebt",
+            "principalDebt13",
+            "interest14",
+            "forfeit15",
+            "stateDuty16",
+            "loanStateDuty17",
+            "principalDebt",
+            "interest",
+            "forfeit",
+            "stateDuty",
+            "bankCommission",
+        ]
+        for key in amount_keys:
+            if key in extracted_fields and isinstance(extracted_fields[key], str):
+                extracted_fields[key] = self.normalize_amount_value(extracted_fields[key])
+
+        # Для rtk_application приоритетной является сумма требований (requirementsSum), а не общая фраза "в размере ...",
+        # которая часто относится к госпошлине.
+        # Если totalDebt совпадает с госпошлиной или заметно меньше суммы требований, подменяем totalDebt и debtAmount.
+        if document_type == "rtk_application":
+            try:
+                req_sum_val = self._safe_amount_field(extracted_fields.get("requirementsSum"))
+                total_val = self._safe_amount_field(extracted_fields.get("totalDebt"))
+                state_duty_val = self._safe_amount_field(
+                    extracted_fields.get("stateDuty16") or extracted_fields.get("stateDuty")
+                )
+
+                if req_sum_val > 0:
+                    should_override_total = False
+                    if total_val == 0:
+                        should_override_total = True
+                    elif state_duty_val > 0 and abs(total_val - state_duty_val) < 0.01:
+                        # totalDebt совпал с госпошлиной — это почти наверняка ошибка извлечения
+                        should_override_total = True
+                    elif total_val < req_sum_val * 0.5:
+                        # totalDebt значительно меньше суммы требований — тоже подозрительно
+                        should_override_total = True
+
+                    if should_override_total:
+                        formatted_req = f"{req_sum_val:,.2f}".replace(",", " ").replace(".", ",")
+                        extracted_fields["totalDebt"] = formatted_req
+                        extracted_fields["debtAmount"] = formatted_req
+                        logger.info(
+                            f"Для rtk_application totalDebt/debtAmount скорректированы по сумме требований: {formatted_req}"
+                        )
+            except Exception as e:
+                logger.debug(f"Ошибка при коррекции totalDebt для rtk_application: {e}")
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
         """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
