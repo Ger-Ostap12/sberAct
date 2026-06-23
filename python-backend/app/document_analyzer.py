@@ -11,6 +11,13 @@ from fio_detector import (
     extract_debtors,
     extract_third_parties,
 )
+from org_normalizer import (
+    base_org_name,
+    norm_org_key,
+    looks_like_law_ref,
+    date_in_law_context,
+)
+from morph_utils import detect_gender, inflect_surname
 from typing import Dict, Any, List, Tuple, Optional, Union
 import logging
 from pathlib import Path
@@ -102,14 +109,28 @@ def _normalize_creditor_name_for_match(name: str) -> str:
 
 
 def _match_creditor_registry(creditor_name: str) -> Optional[Dict[str, str]]:
-    """Ищет кредитора в реестре по названию. Возвращает dict с inn, ogrn, address или None."""
+    """Ищет кредитора в реестре по названию. Возвращает dict с inn, ogrn, address или None.
+
+    Матчит по двум нормализациям (аддитивно, без потери прежних совпадений):
+      1) прежняя _normalize_creditor_name_for_match (lower + снятие кавычек/дефисов);
+      2) base_org_name из org_normalizer — раскрывает полные правовые формы
+         («Публичное акционерное общество «Сбербанк России»» -> «сбербанк»),
+         поэтому полные/кавычечные варианты тоже попадают в реестр.
+    """
+    candidates = []
     norm = _normalize_creditor_name_for_match(creditor_name)
-    if not norm or len(norm) < 3:
+    if norm and len(norm) >= 3:
+        candidates.append(norm)
+    base = base_org_name(creditor_name)
+    if base and len(base) >= 3 and base not in candidates:
+        candidates.append(base)
+    if not candidates:
         return None
     for bank in CREDITOR_BANKS:
         for alias in bank["names"]:
-            if alias in norm or norm in alias:
-                return {"inn": bank["inn"], "ogrn": bank["ogrn"], "address": bank["address"]}
+            for cand in candidates:
+                if alias in cand or cand in alias:
+                    return {"inn": bank["inn"], "ogrn": bank["ogrn"], "address": bank["address"]}
     return None
 
 
@@ -2768,280 +2789,69 @@ class DocumentAnalyzer:
         new_value = inflected.word if inflected else word
         return self._match_original_case(word, new_value)
 
-    def _convert_name_to_genitive(self, full_name: str) -> Optional[str]:
-        """
-        Преобразует ФИО в родительный падеж (кого? чего?).
-        Используется для маркера [2.1].
-        Для фамилий использует ручные правила, так как pymorphy3 может неправильно определять одушевленность.
+    def _inflect_full_name(self, full_name: str, case: str) -> Optional[str]:
+        """Просклонять ФИО в падеж `case` (gent/datv/ablt/accs).
+
+        Единый путь для всех падежей (маркеры [2.1]–[2.4]):
+        фамилия (первый токен) — через morph_utils.inflect_surname (учёт рода +
+        предпочтение Surn-разбора + ручной суффиксный fallback); имя/отчество —
+        через существующий _inflect_word (для винительного — одушевлённая форма).
         """
         if not full_name:
             return None
-
         morph = self._ensure_morph()
         if not morph:
             return None
-
         tokens = [token for token in re.split(r"\s+", full_name.strip()) if token]
         if not tokens:
             return None
 
+        gender = detect_gender(tokens)
         inflected_tokens = []
         for idx, token in enumerate(tokens):
             try:
-                is_surname = (idx == 0)
-
-                if is_surname:
-                    # Для фамилий используем специальную обработку
-                    parsed = morph.parse(token)[0]
-                    inflected = parsed.inflect({'gent'})
-
-                    if inflected:
-                        inflected_word = inflected.word
-                        # Проверяем, изменилась ли форма (если нет - применяем ручные правила)
-                        if inflected_word.lower() == token.lower():
-                            # Ручные правила для фамилий в родительном падеже
-                            token_lower = token.lower()
-                            if token_lower.endswith(('ов', 'ев', 'ёв')):
-                                inflected_word = token[:-2] + 'ова' if token[-2:].lower() == 'ов' else token[:-2] + 'ева' if token[-2:].lower() == 'ев' else token[:-2] + 'ёва'
-                            elif token_lower.endswith(('ин', 'ын')):
-                                inflected_word = token[:-2] + 'ина' if token[-2:].lower() == 'ин' else token[:-2] + 'ына'
-                            elif token_lower.endswith(('ий', 'ый')):
-                                inflected_word = token[:-2] + 'ого' if token[-2:].lower() == 'ий' else token[:-2] + 'ого'
-                            elif token_lower.endswith('ский'):
-                                inflected_word = token[:-4] + 'ского'
-                            elif token_lower.endswith('цкий'):
-                                inflected_word = token[:-4] + 'цкого'
-                            else:
-                                inflected_word = token
-
-                            # Сохраняем регистр исходного слова
-                            if token.isupper():
-                                inflected_word = inflected_word.upper()
-                            elif token[0].isupper():
-                                inflected_word = inflected_word.capitalize()
-
-                            inflected_token = inflected_word
-                        else:
-                            inflected_token = self._match_original_case(token, inflected_word)
-                    else:
-                        # Если pymorphy3 не смог склонить, применяем ручные правила
-                        token_lower = token.lower()
-                        if token_lower.endswith(('ов', 'ев', 'ёв')):
-                            inflected_word = token[:-2] + 'ова' if token[-2:].lower() == 'ов' else token[:-2] + 'ева' if token[-2:].lower() == 'ев' else token[:-2] + 'ёва'
-                        elif token_lower.endswith(('ин', 'ын')):
-                            inflected_word = token[:-2] + 'ина' if token[-2:].lower() == 'ин' else token[:-2] + 'ына'
-                        elif token_lower.endswith(('ий', 'ый')):
-                            inflected_word = token[:-2] + 'ого' if token[-2:].lower() == 'ий' else token[:-2] + 'ого'
-                        elif token_lower.endswith('ский'):
-                            inflected_word = token[:-4] + 'ского'
-                        elif token_lower.endswith('цкий'):
-                            inflected_word = token[:-4] + 'цкого'
-                        else:
-                            inflected_word = token
-
-                        # Сохраняем регистр исходного слова
-                        if token.isupper():
-                            inflected_word = inflected_word.upper()
-                        elif token[0].isupper():
-                            inflected_word = inflected_word.capitalize()
-
-                        inflected_token = inflected_word
+                if idx == 0:
+                    inflected_tokens.append(inflect_surname(morph, token, case, gender))
                 else:
-                    # Для имени и отчества используем стандартное склонение
-                    inflected_token = self._inflect_word(token, "gent")
-
-                inflected_tokens.append(inflected_token)
+                    inflected_tokens.append(self._inflect_name_token(token, case))
             except Exception as e:
-                logger.warning(f"Ошибка при склонении слова '{token}' в родительный падеж: {e}")
+                logger.warning(f"Ошибка при склонении слова '{token}' в падеж {case}: {e}")
                 inflected_tokens.append(token)
 
         result = " ".join(inflected_tokens).strip()
         return result or None
+
+    def _inflect_name_token(self, token: str, case: str) -> str:
+        """Склонение имени/отчества. Для винительного — одушевлённая форма (кого?)."""
+        if case == "accs":
+            morph = self._ensure_morph()
+            if morph and token:
+                parsed = morph.parse(token)[0]
+                inflected = parsed.inflect({'accs', 'anim'}) or parsed.inflect({'accs'})
+                if inflected:
+                    return self._match_original_case(token, inflected.word)
+            return token
+        return self._inflect_word(token, case)
+
+    def _convert_name_to_genitive(self, full_name: str) -> Optional[str]:
+        """ФИО в родительный падеж (кого? чего?). Маркер [2.1]."""
+        return self._inflect_full_name(full_name, "gent")
 
     def _convert_name_to_instrumental(self, full_name: str) -> Optional[str]:
-        """
-        Преобразует ФИО в творительный падеж (кем? чем?).
-        Используется для маркера [2.3].
-        """
-        if not full_name:
-            return None
-
-        morph = self._ensure_morph()
-        if not morph:
-            return None
-
-        tokens = [token for token in re.split(r"\s+", full_name.strip()) if token]
-        if not tokens:
-            return None
-
-        inflected_tokens = [self._inflect_word(token, "ablt") for token in tokens]
-        result = " ".join(inflected_tokens).strip()
-        return result or None
+        """ФИО в творительный падеж (кем? чем?). Маркер [2.3]."""
+        return self._inflect_full_name(full_name, "ablt")
 
     def _convert_name_to_accusative(self, full_name: str) -> Optional[str]:
-        """
-        Преобразует ФИО в винительный падеж (кого? - одушевленное).
-        Используется для маркера [2.4].
-        Важно: для фамилий используется одушевленная форма (кого?), а не неодушевленная (что?).
-        """
-        if not full_name:
-            return None
-
-        morph = self._ensure_morph()
-        if not morph:
-            return None
-
-        tokens = [token for token in re.split(r"\s+", full_name.strip()) if token]
-        if not tokens:
-            return None
-
-        # Для винительного падежа используем одушевленную форму (кого?)
-        inflected_tokens = []
-        for idx, token in enumerate(tokens):
-            try:
-                # Для первой части (фамилии) используем родительный падеж
-                # который совпадает с винительным для одушевленных мужского рода
-                is_surname = (idx == 0)
-
-                parsed = morph.parse(token)[0]
-
-                if is_surname:
-                    # Для фамилий используем родительный падеж (совпадает с винительным для одушевленных)
-                    # Это гарантирует правильное склонение типа "Арбузов" -> "Арбузова"
-                    inflected = parsed.inflect({'gent'})
-                    if inflected:
-                        candidate = inflected.word
-                    else:
-                        candidate = token
-
-                    # Если pymorphy3 не изменил форму (часто бывает с фамилиями типа "АРБУЗОВ"),
-                    # применяем простые эвристики по окончаниям
-                    if candidate.lower() == token.lower():
-                        lower = token.lower()
-                        manual = None
-                        if lower.endswith(("ов", "ев", "ёв")):
-                            manual = lower + "а"  # Арбузов -> Арбузова
-                        elif lower.endswith(("ин", "ын")):
-                            manual = lower + "а"  # Пушкин -> Пушкина
-                        elif lower.endswith(("ий", "ый")):
-                            manual = lower[:-2] + "ого"  # Толстой -> Толстого
-                        elif lower.endswith(("ский", "цкий")):
-                            manual = lower[:-2] + "ого"  # Морозовский -> Морозовского
-
-                        if manual:
-                            candidate = manual
-
-                    inflected_token = self._match_original_case(token, candidate)
-                else:
-                    # Для имени и отчества используем винительный падеж с одушевленностью
-                    inflected = parsed.inflect({'accs', 'anim'})
-                    if inflected:
-                        inflected_token = self._match_original_case(token, inflected.word)
-                    else:
-                        # Если не получилось с anim, пробуем без anim
-                        inflected = parsed.inflect({'accs'})
-                        if inflected:
-                            inflected_token = self._match_original_case(token, inflected.word)
-                        else:
-                            inflected_token = token
-
-                inflected_tokens.append(inflected_token)
-            except Exception as e:
-                logger.warning(f"Ошибка при склонении слова '{token}' в винительный падеж: {e}")
-                inflected_tokens.append(token)
-
-        result = " ".join(inflected_tokens).strip()
-        return result or None
+        """ФИО в винительный падеж одушевлённый (кого?). Маркер [2.4]."""
+        return self._inflect_full_name(full_name, "accs")
 
     def _convert_name_to_dative(self, full_name: str) -> Optional[str]:
+        """ФИО в дательный падеж (кому? чему?). Маркер [2.2].
+
+        Для женщин фамилия — в женском роде (Мартыновой, а не Мартынову): род
+        определяется в detect_gender, передаётся в inflect_surname.
         """
-        Преобразует ФИО в дательный падеж (кому? чему?).
-        Используется для маркера [2.2] - имя должника в дательном падеже (кроме ипотеки, где это представитель истца).
-        ВАЖНО: Для женщин фамилия должна быть в женском роде (Мартыновой, а не Мартынову).
-        """
-        if not full_name:
-            return None
-
-        morph = self._ensure_morph()
-        if not morph:
-            return None
-
-        tokens = [token for token in re.split(r"\s+", full_name.strip()) if token]
-        if not tokens:
-            return None
-
-        inflected_tokens = []
-        for idx, token in enumerate(tokens):
-            is_surname = (idx == 0)
-
-            if is_surname:
-                # Для фамилий используем специальную обработку с учетом рода
-                parsed = morph.parse(token)[0]
-                # Пробуем склонять как одушевленное существительное (женский род для женщин)
-                # Сначала пробуем женский род
-                inflected_female = parsed.inflect({'datv', 'femn'})
-                if inflected_female:
-                    inflected_word = inflected_female.word
-                else:
-                    # Если не получилось, пробуем обычное склонение
-                    inflected = parsed.inflect({'datv'})
-                    inflected_word = inflected.word if inflected else token
-
-                # Ручные правила для женских фамилий в дательном падеже
-                token_lower = token.lower()
-                # Если фамилия заканчивается на -ов, -ев, -ёв, -ин, -ын - это мужская фамилия
-                # Для женского рода нужно -овой, -евой, -ёвой, -иной, -ыной
-                if token_lower.endswith(('ов', 'ев', 'ёв')):
-                    # Проверяем, есть ли в имени/отчестве женские окончания (для определения пола)
-                    has_female_name = False
-                    if len(tokens) > 1:
-                        # Проверяем имя (второй токен)
-                        name_token = tokens[1].lower()
-                        # Женские имена обычно заканчиваются на -а, -я, -яна, -ина и т.д.
-                        if name_token.endswith(('а', 'я', 'яна', 'ина', 'ия', 'ея')):
-                            has_female_name = True
-
-                    if has_female_name:
-                        # Для женщин: Мартынова -> Мартыновой
-                        if token_lower.endswith('ов'):
-                            inflected_word = token[:-2] + 'овой'
-                        elif token_lower.endswith('ев'):
-                            inflected_word = token[:-2] + 'евой'
-                        elif token_lower.endswith('ёв'):
-                            inflected_word = token[:-2] + 'ёвой'
-                    else:
-                        # Для мужчин: Мартынов -> Мартынову
-                        inflected = parsed.inflect({'datv'})
-                        inflected_word = inflected.word if inflected else token
-                elif token_lower.endswith(('ин', 'ын')):
-                    # Проверяем пол по имени
-                    has_female_name = False
-                    if len(tokens) > 1:
-                        name_token = tokens[1].lower()
-                        if name_token.endswith(('а', 'я', 'яна', 'ина', 'ия', 'ея')):
-                            has_female_name = True
-
-                    if has_female_name:
-                        # Для женщин: Петрова -> Петровой
-                        if token_lower.endswith('ин'):
-                            inflected_word = token[:-2] + 'иной'
-                        elif token_lower.endswith('ын'):
-                            inflected_word = token[:-2] + 'ыной'
-                    else:
-                        inflected = parsed.inflect({'datv'})
-                        inflected_word = inflected.word if inflected else token
-                else:
-                    # Для остальных фамилий используем обычное склонение
-                    inflected = parsed.inflect({'datv'})
-                    inflected_word = inflected.word if inflected else token
-
-                inflected_tokens.append(self._match_original_case(token, inflected_word))
-            else:
-                # Для имени и отчества используем обычное склонение
-                inflected_tokens.append(self._inflect_word(token, "datv"))
-
-        result = " ".join(inflected_tokens).strip()
-        return result or None
+        return self._inflect_full_name(full_name, "datv")
 
     def _capitalize_word(self, word: str) -> str:
         if not word:
@@ -3814,8 +3624,20 @@ class DocumentAnalyzer:
                 v = self._fin_amount(am.group(1))
                 if v > 0:
                     result["priorAmount"] = self._fin_fmt(v)
-            # Дата решения — рядом (приоритет «решением … от <дата>» или дата перед судом).
-            dm = re.search(r"(\d{1,2}[.,]\d{1,2}[.,]\d{4})", win)
+            # Госпошлина по ПРОШЛОМУ делу (если упомянута рядом с прежним решением).
+            _gmoney = r"([0-9][0-9   .,]*)"
+            gm = re.search(r"(?:госпошлин\w*|государственн\w+\s+пошлин\w*)[^\d]{0,40}?" + _gmoney + r"\s*(?:\[\d+\])?\s*руб", win, re.IGNORECASE)
+            if not gm:
+                gm = re.search(_gmoney + r"\s*(?:\[\d+\])?\s*руб[^\d]{0,40}?(?:госпошлин\w*|государственн\w+\s+пошлин\w*)", win, re.IGNORECASE)
+            if gm:
+                gv = self._fin_amount(gm.group(1))
+                if gv > 0:
+                    result["priorStateDuty"] = self._fin_fmt(gv)
+            # Дата решения: приоритет дате ПЕРЕД судом/«по делу» (это дата решения,
+            # а не дата кредитного договора, идущая дальше по тексту).
+            dm = re.search(r"(\d{1,2}[.,]\d{1,2}[.,]\d{4})", before)
+            if not dm:
+                dm = re.search(r"(\d{1,2}[.,]\d{1,2}[.,]\d{4})", win)
             if dm:
                 result["priorDecisionDate"] = dm.group(1).replace(",", ".")
             return result
@@ -3977,7 +3799,10 @@ class DocumentAnalyzer:
 
                             # Фильтруем мусорные значения
                             if field_name == 'contractNumber':
-                                if not any(word in cleaned_value.lower() for word in ['считается', 'поручительства', 'возникшим', 'которые', 'согласно', 'установленную', 'принятые', 'договор', 'кредитный', 'путем', 'подписания', 'далее']) and len(cleaned_value.strip()) >= 2:
+                                # Защита C: «№ 353-ФЗ» — ссылка на закон, не номер договора.
+                                if looks_like_law_ref(cleaned_value):
+                                    logger.info(f"Пропуск contractNumber (ссылка на закон): {cleaned_value}")
+                                elif not any(word in cleaned_value.lower() for word in ['считается', 'поручительства', 'возникшим', 'которые', 'согласно', 'установленную', 'принятые', 'договор', 'кредитный', 'путем', 'подписания', 'далее']) and len(cleaned_value.strip()) >= 2:
                                     found_values.append(cleaned_value)
                                     logger.info(f"Found {field_name}: {cleaned_value}")
                             elif field_name == 'obligationType':
@@ -6005,8 +5830,41 @@ class DocumentAnalyzer:
         # ошибки ранних путей извлечения высоконадёжными формулировками.
         self._normalize_financial_block(extracted_fields, text)
 
+        # Защита D: убрать даты договоров/решений, которые в тексте встречаются
+        # только в ссылках на закон/постановление Пленума (дата ФЗ != дата договора).
+        self._drop_law_context_dates(extracted_fields, text)
+
         logger.info(f"Итоговые извлеченные поля: {extracted_fields}")
         return extracted_fields
+
+    _LAW_DATE_FIELDS = ("contractDate", "courtDecisionDate", "priorDecisionDate")
+
+    def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
+        """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
+
+        Дата рождения и иные поля не затрагиваются. Если у даты есть хотя бы одно
+        вхождение вне законного контекста — она сохраняется.
+        """
+        if not text:
+            return
+        for fname in self._LAW_DATE_FIELDS:
+            val = fields.get(fname)
+            if not val or not isinstance(val, str):
+                continue
+            dates = [d.strip() for d in val.split(",") if d.strip()]
+            if not dates:
+                continue
+            kept = []
+            for d in dates:
+                occ = [m.start() for m in re.finditer(re.escape(d), text)]
+                if occ and all(date_in_law_context(text, s, s + len(d)) for s in occ):
+                    logger.info(f"Пропуск {fname} (дата в ссылке на закон): {d}")
+                    continue
+                kept.append(d)
+            if kept:
+                fields[fname] = ", ".join(kept)
+            else:
+                fields.pop(fname, None)
 
     def _fin_amount(self, s) -> float:
         """Парсит денежную строку в float (учёт пробелов/неразрывных пробелов/запятой)."""

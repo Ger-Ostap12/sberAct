@@ -71,6 +71,7 @@ export interface ExtractedData {
     priorCaseNumber?: string;
     priorAmount?: string;
     priorDecisionDate?: string;
+    priorStateDuty?: string;
     debtAmount?: string;
     creditorName?: string;
     debtorName?: string;

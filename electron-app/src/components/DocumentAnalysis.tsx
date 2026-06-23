@@ -2302,6 +2302,22 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                       />
                     </Box>
                   </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={LABEL_OVERLAP_BOX}>
+                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Госпошлина:</Typography>
+                      <TextField
+                        fullWidth
+                        value={editedFields.priorStateDuty || ''}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^\d.,]/g, '').replace(',', '.');
+                          handleFieldChange('priorStateDuty', value);
+                        }}
+                        size="small"
+                        margin="dense"
+                        placeholder="0.00"
+                      />
+                    </Box>
+                  </Grid>
                 </Grid>
               </Box>
                 </Grid>

@@ -649,7 +649,7 @@ class DocumentGenerator:
         # Форматирование сумм: приводим все суммы к виду '1 234 567,89'
         amount_fields = ["loanDebt", "principalDebt", "principalDebt13", "interest", "interest14",
                         "forfeit", "forfeit15", "penalties", "stateDuty", "stateDuty16", "loanStateDuty17",
-                        "totalDebt", "debtAmount", "bankCommission", "priorAmount"]
+                        "totalDebt", "debtAmount", "bankCommission", "priorAmount", "priorStateDuty"]
         for field in amount_fields:
             if field in cleaned_data and cleaned_data[field]:
                 raw = str(cleaned_data[field]).strip()
@@ -893,6 +893,7 @@ class DocumentGenerator:
             "priorCaseNumber": "91",              # [91] - Номер дела ранее вынесенного решения
             "priorAmount": "92",                  # [92] - Взысканная сумма по ранее вынесенному решению
             "priorDecisionDate": "93",            # [93] - Дата ранее вынесенного решения
+            "priorStateDuty": "94",               # [94] - Госпошлина по ранее вынесенному (прошлому) делу
         }
 
         is_mortgage_document = (cleaned_data.get("sourceDocumentType") or "").lower() == "mortgage_claim"
