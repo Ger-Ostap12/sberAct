@@ -4600,345 +4600,8 @@ class DocumentAnalyzer:
 
         # Для rtk_application: суммы берём ИЗ БЛОКА "ПРОСИТ СУД"
         if document_type == "rtk_application":
-            # --- Неустойки ([15]) из блока "ПРОСИТ СУД" ---
-            forfeit15_sum_values = []
-            claim_start = re.search(r"ПРОСИТ\s+СУД", text, re.IGNORECASE)
-            claim_block = ""
-            if claim_start:
-                start_pos = claim_start.start()
-                claim_block = text[start_pos : start_pos + 5000]
-            search_text = claim_block if claim_block else text
-
-            money_pattern = r"\d[\d\u00a0\u202f\s]*[.,]\d{2}"
-
-            # --- Основной долг [13] и проценты [14] по строкам из блока "ПРОСИТ СУД" ---
-            # Линейный разбор надежнее широких regex по всему блоку и снижает риск,
-            # когда проценты подменяются суммой основного долга.
-            principal_candidate = None
-            interest_candidate = None
-            principal_candidate_val = -1.0
-            interest_candidate_val = -1.0
-            if search_text:
-                for raw_line in search_text.splitlines():
-                    line = raw_line.strip()
-                    if not line:
-                        continue
-                    lower_line = line.lower()
-                    # Денежные суммы берем только из строк, где явно есть рубли/₽,
-                    # чтобы даты вида "09.09.2025" не превращались в "9,09".
-                    if "руб" not in lower_line and "₽" not in line:
-                        continue
-                    money_matches = re.findall(money_pattern, line)
-                    if not money_matches:
-                        continue
-                    # В строке может быть несколько чисел — берем максимальную денежную сумму
-                    # (например, чтобы "53 349,00" не превращалось в "4,03" из-за частичного совпадения).
-                    best_amount = None
-                    best_amount_val = -1.0
-                    for m in money_matches:
-                        normalized = self.normalize_amount_value(m)
-                        val = self._safe_amount_field(normalized)
-                        if val > best_amount_val:
-                            best_amount_val = val
-                            best_amount = normalized
-                    amount = best_amount
-                    if not amount:
-                        continue
-
-                    is_principal_line = ("основн" in lower_line and "долг" in lower_line)
-                    is_interest_line = ("процент" in lower_line)
-
-                    # Берём МАКСИМАЛЬНУЮ сумму среди подходящих строк (а не первую),
-                    # чтобы мелкие значения/шум не побеждали реальные суммы.
-                    if is_principal_line and not is_interest_line:
-                        v = self._safe_amount_field(amount)
-                        if v > principal_candidate_val:
-                            principal_candidate_val = v
-                            principal_candidate = amount
-
-                    # Для процентов исключаем строки основного долга, чтобы не было подмены.
-                    if is_interest_line and "основн" not in lower_line:
-                        v = self._safe_amount_field(amount)
-                        if v > interest_candidate_val:
-                            interest_candidate_val = v
-                            interest_candidate = amount
-
-            if principal_candidate:
-                logger.info(f"Найден основной долг [13] по строке: {principal_candidate}")
-            if interest_candidate:
-                logger.info(f"Найдены проценты [14] по строке: {interest_candidate}")
-
-            if principal_candidate:
-                extracted_fields["principalDebt13"] = principal_candidate
-                extracted_fields["principalDebt"] = principal_candidate
-            if interest_candidate:
-                extracted_fields["interest14"] = interest_candidate
-                extracted_fields["interest"] = interest_candidate
-
-            if search_text:
-                seen_amounts = set()
-                for raw_line in search_text.splitlines():
-                    line = raw_line.strip()
-                    if not line:
-                        continue
-                    lower_line = line.lower()
-                    if "неустойк" not in lower_line:
-                        continue
-                    # Игнорируем сводные формулировки вида
-                    # "3. Задолженность по неустойке в размере 35,89 рублей учесть ..."
-                    if re.match(r"\d+\.", line):
-                        continue
-                    if "задолженность по неустойке" in lower_line and "учесть" in lower_line:
-                        continue
-
-                    # Берём именно денежные суммы целиком (с пробелами внутри: "8 226,00")
-                    number_matches = re.findall(money_pattern, line)
-                    if not number_matches:
-                        continue
-
-                    for num_str in number_matches:
-                        normalized = (
-                            num_str.replace("\u00a0", "")
-                            .replace("\u202f", "")
-                            .replace(" ", "")
-                            .replace(",", ".")
-                        )
-                        if not normalized or normalized in seen_amounts:
-                            continue
-                        try:
-                            value = float(normalized)
-                        except ValueError:
-                            continue
-                        seen_amounts.add(normalized)
-                        forfeit15_sum_values.append(value)
-                        logger.info(
-                            f"Найдена неустойка в блоке ПРОСИТ СУД по строке: '{line[:80]}...' -> {num_str} ({value})"
-                        )
-
-            if forfeit15_sum_values:
-                total_forfeit = sum(forfeit15_sum_values)
-                formatted_forfeit = f"{total_forfeit:,.2f}".replace(",", " ").replace(".", ",")
-                extracted_fields["forfeit15"] = formatted_forfeit
-                extracted_fields["forfeit"] = formatted_forfeit
-                logger.info(
-                    f"Сумма всех неустоек [15]: {formatted_forfeit} руб. (найдено {len(forfeit15_sum_values)} значений)"
-                )
-
-            # --- Госпошлины/нотариальные тарифы из блока "ПРОСИТ СУД"/"ПРОШУ" ---
-            # В заявлениях может быть две разные госпошлины (ссудная и банкротная),
-            # поэтому мы их НЕ суммируем, а подставляем по отдельности в маркеры.
-            state_duty_values: List[str] = []
-            existing_state_duty_nonzero = self._safe_amount_field(
-                extracted_fields.get("stateDuty16") or extracted_fields.get("stateDuty")
-            )
-            if search_text:
-                seen_state_duty_raw: set[str] = set()
-                for raw_line in search_text.splitlines():
-                    line = raw_line.strip()
-                    if not line:
-                        continue
-                    lower_line = line.lower()
-                    if (
-                        "госпошл" not in lower_line
-                        and "государственной пошл" not in lower_line
-                        and "нотариальн" not in lower_line
-                    ):
-                        continue
-
-                    money_matches = re.findall(money_pattern, line)
-                    if not money_matches:
-                        continue
-
-                    # В одной строке может быть несколько чисел (или частичные совпадения).
-                    # Берем ОДНО — максимальное — чтобы не выбрать "4,03" вместо "53 349,00".
-                    best_value = None
-                    best_raw_norm = None
-                    for num_str in money_matches:
-                        normalized = (
-                            num_str.replace("\u00a0", "")
-                            .replace("\u202f", "")
-                            .replace(" ", "")
-                            .replace(",", ".")
-                        )
-                        if not normalized:
-                            continue
-                        try:
-                            value = float(normalized)
-                        except ValueError:
-                            continue
-                        if best_value is None or value > best_value:
-                            best_value = value
-                            best_raw_norm = normalized
-
-                    if best_value is None or best_raw_norm is None:
-                        continue
-                    if best_raw_norm in seen_state_duty_raw:
-                        continue
-
-                    formatted_state_duty = f"{best_value:,.2f}".replace(",", " ").replace(".", ",")
-                    state_duty_values.append(formatted_state_duty)
-                    seen_state_duty_raw.add(best_raw_norm)
-                    logger.info(
-                        f"Госпошлина из блока ПРОСИТ СУД: {formatted_state_duty} (строка: '{line[:80]}...')"
-                    )
-
-            # Убираем дубликаты, но сохраняем порядок
-            unique_state_duty_values: List[str] = []
-            for v in state_duty_values:
-                if v not in unique_state_duty_values:
-                    unique_state_duty_values.append(v)
-            state_duty_values = unique_state_duty_values
-
-            # Если в блоке ПРОСИТ СУД нашли только нули, но ранее уже была
-            # извлечена ненулевая госпошлина (например, из шапки "Госпошлина: ..."),
-            # не перезаписываем корректное значение нулём.
-            has_nonzero_from_claim = any(self._safe_amount_field(v) > 0 for v in state_duty_values)
-            if existing_state_duty_nonzero > 0 and not has_nonzero_from_claim:
-                logger.info(
-                    "Госпошлина из блока ПРОСИТ СУД равна 0,00; сохраняем ранее извлеченную ненулевую госпошлину"
-                )
-                state_duty_values = []
-
-            if state_duty_values:
-                # Ненулевая госпошлина всегда приоритетнее 0,00.
-                nonzero_duties = [v for v in state_duty_values if self._safe_amount_field(v) > 0]
-                if nonzero_duties:
-                    # Если ранее уже была извлечена крупная госпошлина (например 53 349),
-                    # а из блока "ПРОСИТ СУД" пришло подозрительно маленькое число (например 4,03),
-                    # не даём маленькому числу перезатереть корректное.
-                    existing_nonzero_any = max(
-                        self._safe_amount_field(extracted_fields.get("stateDuty16")),
-                        self._safe_amount_field(extracted_fields.get("stateDuty")),
-                    )
-                    best_nonzero = max(nonzero_duties, key=lambda x: self._safe_amount_field(x))
-                    best_val = self._safe_amount_field(best_nonzero)
-                    if existing_nonzero_any > 0 and best_val > 0 and best_val < existing_nonzero_any / 5:
-                        logger.info(
-                            f"Госпошлина из блока ПРОСИТ СУД ({best_nonzero}) слишком мала относительно ранее найденной ({extracted_fields.get('stateDuty16') or extracted_fields.get('stateDuty')}); игнорируем"
-                        )
-                        nonzero_duties = []
-                        state_duty_values = []
-                    else:
-                        # Сортируем по убыванию — чтобы первой была наиболее вероятная
-                        nonzero_duties = sorted(nonzero_duties, key=lambda x: self._safe_amount_field(x), reverse=True)
-                    if len(nonzero_duties) == 1:
-                        duty = nonzero_duties[0]
-                        extracted_fields["stateDuty16"] = duty
-                        extracted_fields["stateDuty"] = duty
-                        logger.info(f"Установлена госпошлина (ненулевой приоритет): {duty}")
-                    elif len(nonzero_duties) >= 2:
-                        bankruptcy_duty = nonzero_duties[0]
-                        loan_duty = nonzero_duties[1]
-                        extracted_fields["stateDuty16"] = bankruptcy_duty
-                        extracted_fields["stateDuty"] = bankruptcy_duty
-                        extracted_fields["loanStateDuty17"] = loan_duty
-                        logger.info(f"Госпошлина (банкротная) [16]: {bankruptcy_duty}")
-                        logger.info(f"Госпошлина (ссудная) [17]: {loan_duty}")
-                    else:
-                        # После защитных фильтров список мог стать пустым — ничего не перезаписываем.
-                        logger.info("После фильтрации госпошлины в блоке ПРОСИТ СУД значений не осталось")
-                elif len(state_duty_values) == 1:
-                    # Все найденные значения нулевые: используем 0,00 только когда ненулевых вариантов нет.
-                    duty = state_duty_values[0]
-                    existing_nonzero_any = max(
-                        self._safe_amount_field(extracted_fields.get("stateDuty16")),
-                        self._safe_amount_field(extracted_fields.get("stateDuty")),
-                    )
-                    # Никогда не даём 0,00 перезатереть ранее найденную ненулевую госпошлину.
-                    if existing_nonzero_any > 0 and self._safe_amount_field(duty) <= 0:
-                        logger.info(
-                            "Госпошлина из блока ПРОСИТ СУД равна 0,00; сохраняем ранее извлеченную ненулевую госпошлину"
-                        )
-                    else:
-                        extracted_fields["stateDuty16"] = duty
-                        extracted_fields["stateDuty"] = duty
-                        logger.info(f"Установлена банкротная госпошлина (единственная в заявлении): {duty}")
-                else:
-                    bankruptcy_duty = state_duty_values[0]
-                    loan_duty = state_duty_values[1]
-                    extracted_fields["stateDuty16"] = bankruptcy_duty
-                    extracted_fields["stateDuty"] = bankruptcy_duty
-                    extracted_fields["loanStateDuty17"] = loan_duty
-                    logger.info(f"Госпошлина (банкротная) [16]: {bankruptcy_duty}")
-                    logger.info(f"Госпошлина (ссудная) [17]: {loan_duty}")
-
-            # [68] — дата газеты «Коммерсантъ» (не путать с [11] ЕФРСБ)
-            # Приоритет: типичная формулировка "в газете «Коммерсантъ» № 123 от 27.12.2025"
-            kommersant_date_match = re.search(
-                r"(?:газет[аы]\s+)?[«\"]?Коммерсант[ъ\"»']?[»\"]?\s*№\s*[0-9\-\/]+\s*от\s*(\d{1,2}[.,]\d{1,2}[.,]\d{4})",
-                text,
-                re.IGNORECASE,
-            )
-            if not kommersant_date_match:
-                # Вариант "в газете «Коммерсантъ» от 27.12.2025" — без номера
-                kommersant_date_match = re.search(
-                    r"в[\s\u00a0\u202f]+газет[аы][\s\u00a0\u202f]+«?Коммерсант[\"ъ»']?»?\s*[^0-9]{0,40}?от[\s\u00a0\u202f]*(\d{1,2}[.,]\d{1,2}[.,]\d{4})",
-                    text,
-                    re.IGNORECASE,
-                )
-            if not kommersant_date_match:
-                # Вариант "27.12.2025 в газете «Коммерсантъ»" — дата стоит ПЕРЕД упоминанием газеты
-                kommersant_date_match = re.search(
-                    r"(\d{1,2}[.,]\d{1,2}[.,]\d{4})[\s\u00a0\u202f]+в[\s\u00a0\u202f]+газет[аы][\s\u00a0\u202f]+«?Коммерсант[\"ъ»']?»?",
-                    text,
-                    re.IGNORECASE,
-                )
-            if not kommersant_date_match:
-                # Формулировка из скобок:
-                # "(опубликована на сайте официального издания газеты «Коммерсантъ» ... от 27.12.2025)"
-                # Между "Коммерсантъ" и "от" может быть большой фрагмент текста, поэтому даём большой допуск.
-                kommersant_date_match = re.search(
-                    r"официальн[а-яё\s]+издан[а-яё\s]+газет[аы]\s+«?Коммерсант[\"ъ»']?»?[^0-9]{0,400}?от\s*(\d{1,2}[.,]\d{1,2}[.,]\d{4})",
-                    text,
-                    re.IGNORECASE,
-                )
-            if not kommersant_date_match:
-                # Самый общий вариант: рядом с упоминанием "Коммерсант" есть дата.
-                # Сначала пробуем классический паттерн,
-                # затем — полный проход по всем датам с поиском ближайшей к слову "Коммерсант".
-                kommersant_date_match = re.search(
-                    r"Коммерсант[ъ\"»']?\s*[^0-9]{0,200}?(\d{1,2}[.,]\d{1,2}[.,]\d{4})",
-                    text,
-                    re.IGNORECASE,
-                )
-                if not kommersant_date_match and re.search(r"Коммерсант", text, re.IGNORECASE):
-                    date_pattern = re.compile(r"(\d{1,2}[.,]\d{1,2}[.,]\d{4})")
-                    best_match = None
-                    best_date = None  # сравниваем реальные даты, чтобы не брать старый закон 2002 года
-                    for m in date_pattern.finditer(text):
-                        start, end = m.start(), m.end()
-                        window_start = max(0, start - 150)
-                        window_end = min(len(text), end + 150)
-                        window = text[window_start:window_end]
-                        if re.search(r"Коммерсант", window, re.IGNORECASE):
-                            date_str = m.group(1).replace(",", ".")
-                            try:
-                                day, month, year = map(int, date_str.split("."))
-                                # Грубая фильтрация нереалистичных годов
-                                if year < 1990 or year > 2100:
-                                    continue
-                                from datetime import date as _date
-                                cur_date = _date(year, month, day)
-                            except Exception:
-                                continue
-                            if best_date is None or cur_date > best_date:
-                                best_date = cur_date
-                                best_match = m
-                    if best_match:
-                        kommersant_date_match = best_match
-            if kommersant_date_match:
-                kommersant_date = kommersant_date_match.group(1).strip().replace(",", ".")
-                extracted_fields["kommersantDate"] = kommersant_date
-                logger.info(f"Дата газеты «Коммерсантъ» [68]: {kommersant_date}")
-            # [67] — номер газеты «Коммерсантъ» (только при явном «№ …», не путать с [9] ЕФРСБ)
-            kommersant_number_match = re.search(
-                r"(?:газет[аы]\s+)?[«\"]?Коммерсант[ъ\"»']?[»\"]?\s*№\s*([0-9\-\/]+)",
-                text,
-                re.IGNORECASE,
-            )
-            if kommersant_number_match:
-                extracted_fields["kommersantNumber"] = kommersant_number_match.group(1).strip()
-                logger.info(f"Номер газеты «Коммерсантъ» [67]: {extracted_fields['kommersantNumber']}")
+            # Суммы/госпошлина/публикация из блока «ПРОСИТ СУД»
+            self._extract_claim_block_amounts(extracted_fields, text)
 
         # Заменяем старые поля долгов на правильные суммы из блока "ПРОСИТ СУД"
         if 'principalDebt13' in extracted_fields:
@@ -5680,73 +5343,8 @@ class DocumentAnalyzer:
         if extracted_fields.get("companyInn"):
             extracted_fields["companyInn"] = re.sub(r"\D", "", extracted_fields["companyInn"])
 
-        # Санити-проверка кредитных параметров: иногда из-за шумных совпадений
-        # в эти поля может попасть денежная сумма (например, госпошлина).
-        term_raw = extracted_fields.get("creditTermMonths")
-        if term_raw:
-            term_digits = re.sub(r"\D", "", str(term_raw))
-            term_value = int(term_digits) if term_digits else None
-            # Реалистичный срок кредита в месяцах.
-            if not term_value or term_value < 1 or term_value > 600:
-                # В шаблонных документах между числом и единицей встречается
-                # маркер вида [1001] ("на срок 36[1001] мес") — допускаем его,
-                # иначе реальное значение терялось бы при перезахвате.
-                term_match = re.search(
-                    r"на\s+срок\s+([0-9]{1,3})\s*(?:\[[0-9.]+\]\s*)?(?:месяц(?:ев)?|мес\.?)",
-                    text,
-                    re.IGNORECASE,
-                ) or re.search(
-                    r"срок\s+кредита[:\s]+([0-9]{1,3})\s*(?:\[[0-9.]+\]\s*)?(?:месяц(?:ев)?|мес\.?)",
-                    text,
-                    re.IGNORECASE,
-                )
-                if term_match:
-                    extracted_fields["creditTermMonths"] = term_match.group(1)
-                    logger.info(
-                        f"Скорректировано creditTermMonths по строгому паттерну: {extracted_fields['creditTermMonths']}"
-                    )
-                else:
-                    logger.warning(
-                        f"Удалено некорректное значение creditTermMonths: '{term_raw}'"
-                    )
-                    extracted_fields.pop("creditTermMonths", None)
-            else:
-                extracted_fields["creditTermMonths"] = str(term_value)
-
-        rate_raw = extracted_fields.get("creditInterestRate")
-        if rate_raw:
-            rate_match = re.search(r"([0-9]{1,3}(?:[.,][0-9]{1,2})?)", str(rate_raw))
-            rate_value = None
-            if rate_match:
-                try:
-                    rate_value = float(rate_match.group(1).replace(",", "."))
-                except Exception:
-                    rate_value = None
-
-            # Процентная ставка в таких документах не должна быть денежной суммой
-            # и обычно находится в диапазоне 0..100.
-            if rate_value is None or rate_value <= 0 or rate_value > 100:
-                strict_rate_match = re.search(
-                    r"под\s+([0-9]{1,3}(?:[.,][0-9]{1,2})?)\s*(?:\[[0-9.]+\]\s*)?%",
-                    text,
-                    re.IGNORECASE,
-                )
-                if strict_rate_match:
-                    corrected_rate = strict_rate_match.group(1).replace(".", ",")
-                    extracted_fields["creditInterestRate"] = corrected_rate
-                    logger.info(
-                        f"Скорректировано creditInterestRate по строгому паттерну: {corrected_rate}"
-                    )
-                else:
-                    logger.warning(
-                        f"Удалено некорректное значение creditInterestRate: '{rate_raw}'"
-                    )
-                    extracted_fields.pop("creditInterestRate", None)
-            else:
-                if rate_value.is_integer():
-                    extracted_fields["creditInterestRate"] = str(int(rate_value))
-                else:
-                    extracted_fields["creditInterestRate"] = str(rate_value).replace(".", ",")
+        # Санити кредитных параметров (срок/ставка)
+        self._sanitize_credit_params(extracted_fields, text)
 
         detected_entity_type = self.detect_entity_type(extracted_fields)
         if detected_entity_type:
@@ -5838,6 +5436,423 @@ class DocumentAnalyzer:
         return extracted_fields
 
     _LAW_DATE_FIELDS = ("contractDate", "courtDecisionDate", "priorDecisionDate")
+
+    def _extract_kommersant_publication(self, extracted_fields, text):
+        """[67]/[68] — номер и дата публикации в газете «Коммерсантъ» (вынесено из extract_fields)."""
+        # [68] — дата газеты «Коммерсантъ» (не путать с [11] ЕФРСБ)
+        # Приоритет: типичная формулировка "в газете «Коммерсантъ» № 123 от 27.12.2025"
+        kommersant_date_match = re.search(
+            r"(?:газет[аы]\s+)?[«\"]?Коммерсант[ъ\"»']?[»\"]?\s*№\s*[0-9\-\/]+\s*от\s*(\d{1,2}[.,]\d{1,2}[.,]\d{4})",
+            text,
+            re.IGNORECASE,
+        )
+        if not kommersant_date_match:
+            # Вариант "в газете «Коммерсантъ» от 27.12.2025" — без номера
+            kommersant_date_match = re.search(
+                r"в[\s\u00a0\u202f]+газет[аы][\s\u00a0\u202f]+«?Коммерсант[\"ъ»']?»?\s*[^0-9]{0,40}?от[\s\u00a0\u202f]*(\d{1,2}[.,]\d{1,2}[.,]\d{4})",
+                text,
+                re.IGNORECASE,
+            )
+        if not kommersant_date_match:
+            # Вариант "27.12.2025 в газете «Коммерсантъ»" — дата стоит ПЕРЕД упоминанием газеты
+            kommersant_date_match = re.search(
+                r"(\d{1,2}[.,]\d{1,2}[.,]\d{4})[\s\u00a0\u202f]+в[\s\u00a0\u202f]+газет[аы][\s\u00a0\u202f]+«?Коммерсант[\"ъ»']?»?",
+                text,
+                re.IGNORECASE,
+            )
+        if not kommersant_date_match:
+            # Формулировка из скобок:
+            # "(опубликована на сайте официального издания газеты «Коммерсантъ» ... от 27.12.2025)"
+            # Между "Коммерсантъ" и "от" может быть большой фрагмент текста, поэтому даём большой допуск.
+            kommersant_date_match = re.search(
+                r"официальн[а-яё\s]+издан[а-яё\s]+газет[аы]\s+«?Коммерсант[\"ъ»']?»?[^0-9]{0,400}?от\s*(\d{1,2}[.,]\d{1,2}[.,]\d{4})",
+                text,
+                re.IGNORECASE,
+            )
+        if not kommersant_date_match:
+            # Самый общий вариант: рядом с упоминанием "Коммерсант" есть дата.
+            # Сначала пробуем классический паттерн,
+            # затем — полный проход по всем датам с поиском ближайшей к слову "Коммерсант".
+            kommersant_date_match = re.search(
+                r"Коммерсант[ъ\"»']?\s*[^0-9]{0,200}?(\d{1,2}[.,]\d{1,2}[.,]\d{4})",
+                text,
+                re.IGNORECASE,
+            )
+            if not kommersant_date_match and re.search(r"Коммерсант", text, re.IGNORECASE):
+                date_pattern = re.compile(r"(\d{1,2}[.,]\d{1,2}[.,]\d{4})")
+                best_match = None
+                best_date = None  # сравниваем реальные даты, чтобы не брать старый закон 2002 года
+                for m in date_pattern.finditer(text):
+                    start, end = m.start(), m.end()
+                    window_start = max(0, start - 150)
+                    window_end = min(len(text), end + 150)
+                    window = text[window_start:window_end]
+                    if re.search(r"Коммерсант", window, re.IGNORECASE):
+                        date_str = m.group(1).replace(",", ".")
+                        try:
+                            day, month, year = map(int, date_str.split("."))
+                            # Грубая фильтрация нереалистичных годов
+                            if year < 1990 or year > 2100:
+                                continue
+                            from datetime import date as _date
+                            cur_date = _date(year, month, day)
+                        except Exception:
+                            continue
+                        if best_date is None or cur_date > best_date:
+                            best_date = cur_date
+                            best_match = m
+                if best_match:
+                    kommersant_date_match = best_match
+        if kommersant_date_match:
+            kommersant_date = kommersant_date_match.group(1).strip().replace(",", ".")
+            extracted_fields["kommersantDate"] = kommersant_date
+            logger.info(f"Дата газеты «Коммерсантъ» [68]: {kommersant_date}")
+        # [67] — номер газеты «Коммерсантъ» (только при явном «№ …», не путать с [9] ЕФРСБ)
+        kommersant_number_match = re.search(
+            r"(?:газет[аы]\s+)?[«\"]?Коммерсант[ъ\"»']?[»\"]?\s*№\s*([0-9\-\/]+)",
+            text,
+            re.IGNORECASE,
+        )
+        if kommersant_number_match:
+            extracted_fields["kommersantNumber"] = kommersant_number_match.group(1).strip()
+            logger.info(f"Номер газеты «Коммерсантъ» [67]: {extracted_fields['kommersantNumber']}")
+
+    def _extract_claim_block_amounts(self, extracted_fields, text):
+        """Суммы из блока «ПРОСИТ СУД» (rtk_application): основной долг, проценты, неустойка, госпошлина, публикация. Вынесено из extract_fields."""
+        # --- Неустойки ([15]) из блока "ПРОСИТ СУД" ---
+        forfeit15_sum_values = []
+        claim_start = re.search(r"ПРОСИТ\s+СУД", text, re.IGNORECASE)
+        claim_block = ""
+        if claim_start:
+            start_pos = claim_start.start()
+            claim_block = text[start_pos : start_pos + 5000]
+        search_text = claim_block if claim_block else text
+
+        money_pattern = r"\d[\d\u00a0\u202f\s]*[.,]\d{2}"
+
+        # --- Основной долг [13] и проценты [14] по строкам из блока "ПРОСИТ СУД" ---
+        # Линейный разбор надежнее широких regex по всему блоку и снижает риск,
+        # когда проценты подменяются суммой основного долга.
+        principal_candidate = None
+        interest_candidate = None
+        principal_candidate_val = -1.0
+        interest_candidate_val = -1.0
+        if search_text:
+            for raw_line in search_text.splitlines():
+                line = raw_line.strip()
+                if not line:
+                    continue
+                lower_line = line.lower()
+                # Денежные суммы берем только из строк, где явно есть рубли/₽,
+                # чтобы даты вида "09.09.2025" не превращались в "9,09".
+                if "руб" not in lower_line and "₽" not in line:
+                    continue
+                money_matches = re.findall(money_pattern, line)
+                if not money_matches:
+                    continue
+                # В строке может быть несколько чисел — берем максимальную денежную сумму
+                # (например, чтобы "53 349,00" не превращалось в "4,03" из-за частичного совпадения).
+                best_amount = None
+                best_amount_val = -1.0
+                for m in money_matches:
+                    normalized = self.normalize_amount_value(m)
+                    val = self._safe_amount_field(normalized)
+                    if val > best_amount_val:
+                        best_amount_val = val
+                        best_amount = normalized
+                amount = best_amount
+                if not amount:
+                    continue
+
+                is_principal_line = ("основн" in lower_line and "долг" in lower_line)
+                is_interest_line = ("процент" in lower_line)
+
+                # Берём МАКСИМАЛЬНУЮ сумму среди подходящих строк (а не первую),
+                # чтобы мелкие значения/шум не побеждали реальные суммы.
+                if is_principal_line and not is_interest_line:
+                    v = self._safe_amount_field(amount)
+                    if v > principal_candidate_val:
+                        principal_candidate_val = v
+                        principal_candidate = amount
+
+                # Для процентов исключаем строки основного долга, чтобы не было подмены.
+                if is_interest_line and "основн" not in lower_line:
+                    v = self._safe_amount_field(amount)
+                    if v > interest_candidate_val:
+                        interest_candidate_val = v
+                        interest_candidate = amount
+
+        if principal_candidate:
+            logger.info(f"Найден основной долг [13] по строке: {principal_candidate}")
+        if interest_candidate:
+            logger.info(f"Найдены проценты [14] по строке: {interest_candidate}")
+
+        if principal_candidate:
+            extracted_fields["principalDebt13"] = principal_candidate
+            extracted_fields["principalDebt"] = principal_candidate
+        if interest_candidate:
+            extracted_fields["interest14"] = interest_candidate
+            extracted_fields["interest"] = interest_candidate
+
+        if search_text:
+            seen_amounts = set()
+            for raw_line in search_text.splitlines():
+                line = raw_line.strip()
+                if not line:
+                    continue
+                lower_line = line.lower()
+                if "неустойк" not in lower_line:
+                    continue
+                # Игнорируем сводные формулировки вида
+                # "3. Задолженность по неустойке в размере 35,89 рублей учесть ..."
+                if re.match(r"\d+\.", line):
+                    continue
+                if "задолженность по неустойке" in lower_line and "учесть" in lower_line:
+                    continue
+
+                # Берём именно денежные суммы целиком (с пробелами внутри: "8 226,00")
+                number_matches = re.findall(money_pattern, line)
+                if not number_matches:
+                    continue
+
+                for num_str in number_matches:
+                    normalized = (
+                        num_str.replace("\u00a0", "")
+                        .replace("\u202f", "")
+                        .replace(" ", "")
+                        .replace(",", ".")
+                    )
+                    if not normalized or normalized in seen_amounts:
+                        continue
+                    try:
+                        value = float(normalized)
+                    except ValueError:
+                        continue
+                    seen_amounts.add(normalized)
+                    forfeit15_sum_values.append(value)
+                    logger.info(
+                        f"Найдена неустойка в блоке ПРОСИТ СУД по строке: '{line[:80]}...' -> {num_str} ({value})"
+                    )
+
+        if forfeit15_sum_values:
+            total_forfeit = sum(forfeit15_sum_values)
+            formatted_forfeit = f"{total_forfeit:,.2f}".replace(",", " ").replace(".", ",")
+            extracted_fields["forfeit15"] = formatted_forfeit
+            extracted_fields["forfeit"] = formatted_forfeit
+            logger.info(
+                f"Сумма всех неустоек [15]: {formatted_forfeit} руб. (найдено {len(forfeit15_sum_values)} значений)"
+            )
+
+        # --- Госпошлины/нотариальные тарифы из блока "ПРОСИТ СУД"/"ПРОШУ" ---
+        # В заявлениях может быть две разные госпошлины (ссудная и банкротная),
+        # поэтому мы их НЕ суммируем, а подставляем по отдельности в маркеры.
+        state_duty_values: List[str] = []
+        existing_state_duty_nonzero = self._safe_amount_field(
+            extracted_fields.get("stateDuty16") or extracted_fields.get("stateDuty")
+        )
+        if search_text:
+            seen_state_duty_raw: set[str] = set()
+            for raw_line in search_text.splitlines():
+                line = raw_line.strip()
+                if not line:
+                    continue
+                lower_line = line.lower()
+                if (
+                    "госпошл" not in lower_line
+                    and "государственной пошл" not in lower_line
+                    and "нотариальн" not in lower_line
+                ):
+                    continue
+
+                money_matches = re.findall(money_pattern, line)
+                if not money_matches:
+                    continue
+
+                # В одной строке может быть несколько чисел (или частичные совпадения).
+                # Берем ОДНО — максимальное — чтобы не выбрать "4,03" вместо "53 349,00".
+                best_value = None
+                best_raw_norm = None
+                for num_str in money_matches:
+                    normalized = (
+                        num_str.replace("\u00a0", "")
+                        .replace("\u202f", "")
+                        .replace(" ", "")
+                        .replace(",", ".")
+                    )
+                    if not normalized:
+                        continue
+                    try:
+                        value = float(normalized)
+                    except ValueError:
+                        continue
+                    if best_value is None or value > best_value:
+                        best_value = value
+                        best_raw_norm = normalized
+
+                if best_value is None or best_raw_norm is None:
+                    continue
+                if best_raw_norm in seen_state_duty_raw:
+                    continue
+
+                formatted_state_duty = f"{best_value:,.2f}".replace(",", " ").replace(".", ",")
+                state_duty_values.append(formatted_state_duty)
+                seen_state_duty_raw.add(best_raw_norm)
+                logger.info(
+                    f"Госпошлина из блока ПРОСИТ СУД: {formatted_state_duty} (строка: '{line[:80]}...')"
+                )
+
+        # Убираем дубликаты, но сохраняем порядок
+        unique_state_duty_values: List[str] = []
+        for v in state_duty_values:
+            if v not in unique_state_duty_values:
+                unique_state_duty_values.append(v)
+        state_duty_values = unique_state_duty_values
+
+        # Если в блоке ПРОСИТ СУД нашли только нули, но ранее уже была
+        # извлечена ненулевая госпошлина (например, из шапки "Госпошлина: ..."),
+        # не перезаписываем корректное значение нулём.
+        has_nonzero_from_claim = any(self._safe_amount_field(v) > 0 for v in state_duty_values)
+        if existing_state_duty_nonzero > 0 and not has_nonzero_from_claim:
+            logger.info(
+                "Госпошлина из блока ПРОСИТ СУД равна 0,00; сохраняем ранее извлеченную ненулевую госпошлину"
+            )
+            state_duty_values = []
+
+        if state_duty_values:
+            # Ненулевая госпошлина всегда приоритетнее 0,00.
+            nonzero_duties = [v for v in state_duty_values if self._safe_amount_field(v) > 0]
+            if nonzero_duties:
+                # Если ранее уже была извлечена крупная госпошлина (например 53 349),
+                # а из блока "ПРОСИТ СУД" пришло подозрительно маленькое число (например 4,03),
+                # не даём маленькому числу перезатереть корректное.
+                existing_nonzero_any = max(
+                    self._safe_amount_field(extracted_fields.get("stateDuty16")),
+                    self._safe_amount_field(extracted_fields.get("stateDuty")),
+                )
+                best_nonzero = max(nonzero_duties, key=lambda x: self._safe_amount_field(x))
+                best_val = self._safe_amount_field(best_nonzero)
+                if existing_nonzero_any > 0 and best_val > 0 and best_val < existing_nonzero_any / 5:
+                    logger.info(
+                        f"Госпошлина из блока ПРОСИТ СУД ({best_nonzero}) слишком мала относительно ранее найденной ({extracted_fields.get('stateDuty16') or extracted_fields.get('stateDuty')}); игнорируем"
+                    )
+                    nonzero_duties = []
+                    state_duty_values = []
+                else:
+                    # Сортируем по убыванию — чтобы первой была наиболее вероятная
+                    nonzero_duties = sorted(nonzero_duties, key=lambda x: self._safe_amount_field(x), reverse=True)
+                if len(nonzero_duties) == 1:
+                    duty = nonzero_duties[0]
+                    extracted_fields["stateDuty16"] = duty
+                    extracted_fields["stateDuty"] = duty
+                    logger.info(f"Установлена госпошлина (ненулевой приоритет): {duty}")
+                elif len(nonzero_duties) >= 2:
+                    bankruptcy_duty = nonzero_duties[0]
+                    loan_duty = nonzero_duties[1]
+                    extracted_fields["stateDuty16"] = bankruptcy_duty
+                    extracted_fields["stateDuty"] = bankruptcy_duty
+                    extracted_fields["loanStateDuty17"] = loan_duty
+                    logger.info(f"Госпошлина (банкротная) [16]: {bankruptcy_duty}")
+                    logger.info(f"Госпошлина (ссудная) [17]: {loan_duty}")
+                else:
+                    # После защитных фильтров список мог стать пустым — ничего не перезаписываем.
+                    logger.info("После фильтрации госпошлины в блоке ПРОСИТ СУД значений не осталось")
+            elif len(state_duty_values) == 1:
+                # Все найденные значения нулевые: используем 0,00 только когда ненулевых вариантов нет.
+                duty = state_duty_values[0]
+                existing_nonzero_any = max(
+                    self._safe_amount_field(extracted_fields.get("stateDuty16")),
+                    self._safe_amount_field(extracted_fields.get("stateDuty")),
+                )
+                # Никогда не даём 0,00 перезатереть ранее найденную ненулевую госпошлину.
+                if existing_nonzero_any > 0 and self._safe_amount_field(duty) <= 0:
+                    logger.info(
+                        "Госпошлина из блока ПРОСИТ СУД равна 0,00; сохраняем ранее извлеченную ненулевую госпошлину"
+                    )
+                else:
+                    extracted_fields["stateDuty16"] = duty
+                    extracted_fields["stateDuty"] = duty
+                    logger.info(f"Установлена банкротная госпошлина (единственная в заявлении): {duty}")
+            else:
+                bankruptcy_duty = state_duty_values[0]
+                loan_duty = state_duty_values[1]
+                extracted_fields["stateDuty16"] = bankruptcy_duty
+                extracted_fields["stateDuty"] = bankruptcy_duty
+                extracted_fields["loanStateDuty17"] = loan_duty
+                logger.info(f"Госпошлина (банкротная) [16]: {bankruptcy_duty}")
+                logger.info(f"Госпошлина (ссудная) [17]: {loan_duty}")
+
+        # [67]/[68] — газета «Коммерсантъ»
+        self._extract_kommersant_publication(extracted_fields, text)
+
+    def _sanitize_credit_params(self, extracted_fields, text):
+        """Санити-проверка кредитных параметров: срок (мес.) и ставка (%) не должны быть денежными суммами. Вынесено из extract_fields."""
+        # Санити-проверка кредитных параметров: иногда из-за шумных совпадений
+        # в эти поля может попасть денежная сумма (например, госпошлина).
+        term_raw = extracted_fields.get("creditTermMonths")
+        if term_raw:
+            term_digits = re.sub(r"\D", "", str(term_raw))
+            term_value = int(term_digits) if term_digits else None
+            # Реалистичный срок кредита в месяцах.
+            if not term_value or term_value < 1 or term_value > 600:
+                # В шаблонных документах между числом и единицей встречается
+                # маркер вида [1001] ("на срок 36[1001] мес") — допускаем его,
+                # иначе реальное значение терялось бы при перезахвате.
+                term_match = re.search(
+                    r"на\s+срок\s+([0-9]{1,3})\s*(?:\[[0-9.]+\]\s*)?(?:месяц(?:ев)?|мес\.?)",
+                    text,
+                    re.IGNORECASE,
+                ) or re.search(
+                    r"срок\s+кредита[:\s]+([0-9]{1,3})\s*(?:\[[0-9.]+\]\s*)?(?:месяц(?:ев)?|мес\.?)",
+                    text,
+                    re.IGNORECASE,
+                )
+                if term_match:
+                    extracted_fields["creditTermMonths"] = term_match.group(1)
+                    logger.info(
+                        f"Скорректировано creditTermMonths по строгому паттерну: {extracted_fields['creditTermMonths']}"
+                    )
+                else:
+                    logger.warning(
+                        f"Удалено некорректное значение creditTermMonths: '{term_raw}'"
+                    )
+                    extracted_fields.pop("creditTermMonths", None)
+            else:
+                extracted_fields["creditTermMonths"] = str(term_value)
+
+        rate_raw = extracted_fields.get("creditInterestRate")
+        if rate_raw:
+            rate_match = re.search(r"([0-9]{1,3}(?:[.,][0-9]{1,2})?)", str(rate_raw))
+            rate_value = None
+            if rate_match:
+                try:
+                    rate_value = float(rate_match.group(1).replace(",", "."))
+                except Exception:
+                    rate_value = None
+
+            # Процентная ставка в таких документах не должна быть денежной суммой
+            # и обычно находится в диапазоне 0..100.
+            if rate_value is None or rate_value <= 0 or rate_value > 100:
+                strict_rate_match = re.search(
+                    r"под\s+([0-9]{1,3}(?:[.,][0-9]{1,2})?)\s*(?:\[[0-9.]+\]\s*)?%",
+                    text,
+                    re.IGNORECASE,
+                )
+                if strict_rate_match:
+                    corrected_rate = strict_rate_match.group(1).replace(".", ",")
+                    extracted_fields["creditInterestRate"] = corrected_rate
+                    logger.info(
+                        f"Скорректировано creditInterestRate по строгому паттерну: {corrected_rate}"
+                    )
+                else:
+                    logger.warning(
+                        f"Удалено некорректное значение creditInterestRate: '{rate_raw}'"
+                    )
+                    extracted_fields.pop("creditInterestRate", None)
+            else:
+                if rate_value.is_integer():
+                    extracted_fields["creditInterestRate"] = str(int(rate_value))
+                else:
+                    extracted_fields["creditInterestRate"] = str(rate_value).replace(".", ",")
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
         """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
