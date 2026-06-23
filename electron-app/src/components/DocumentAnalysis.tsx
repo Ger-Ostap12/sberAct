@@ -65,7 +65,7 @@ const BANK_DATA: Record<string, { address: string; ogrn: string; inn: string }> 
     ogrn: '1027700167110',
     inn: '7744001497'
   },
-  'СберБанк': {
+  'Сбербанк': {
     address: '117997, г. Москва, вн. тер. г. муниципальный округ Академический, ул. Вавилова, д. 19',
     ogrn: '1027700132195',
     inn: '7707083893'
@@ -102,7 +102,7 @@ const BANK_NAMES = Object.keys(BANK_DATA);
 // автоматически выделялся в выпадающем списке. Данные (ИНН/ОГРН/адрес) при этом
 // остаются document-first и не перезаписываются.
 const BANK_ALIASES: Array<{ key: string; keywords: string[] }> = [
-  { key: 'СберБанк', keywords: ['сбербанк', 'сбер банк'] },
+  { key: 'Сбербанк', keywords: ['сбербанк', 'сбер банк'] },
   { key: 'ПАО ВТБ Банк', keywords: ['втб'] },
   { key: 'Т-банк', keywords: ['тинькофф', 'т-банк', 'тбанк'] },
   { key: 'Альфа банк', keywords: ['альфа'] },
@@ -1093,8 +1093,8 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 value={entityType || ''}
                 onChange={(e) => setEntityType(e.target.value as EntityType)}
               >
-                <FormControlLabel value="individual" control={<Radio />} label="Физ лицо" />
-                <FormControlLabel value="legal" control={<Radio />} label="Юр лицо" />
+                <FormControlLabel value="individual" control={<Radio />} label="Физ.лицо" />
+                <FormControlLabel value="legal" control={<Radio />} label="Юр.лицо" />
                 <FormControlLabel value="ip" control={<Radio />} label="ИП" />
                 <FormControlLabel value="kfh" control={<Radio />} label="Глава КФХ" />
               </RadioGroup>
@@ -1125,7 +1125,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 <FormControlLabel
                   control={<Checkbox checked={collateralKinds.auto}
                     onChange={(e) => setCollateralKinds(prev => ({ ...prev, auto: e.target.checked }))} />}
-                  label="Залог Транспортное средство"
+                  label="Залог ТС"
                 />
                 <FormControlLabel
                   control={<Checkbox checked={collateralKinds.other}
@@ -1660,7 +1660,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                     <Grid container spacing={2}>
                       <Grid item xs={12} sm={6}>
                         <Box sx={LABEL_OVERLAP_BOX}>
-                          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО/название должника:</Typography>
+                          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО/наименование:</Typography>
                           <TextField
                             fullWidth
                             value={debtor.name || ''}
@@ -1839,15 +1839,15 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 </Grid>
 
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
-              {/* Финансовый управляющий */}
+              {/* Арбитражный управляющий */}
               <Box sx={{ ...BLOCK_BOX_SX, mt: 3 }}>
                 <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
-                  Финансовый управляющий
+                  Арбитражный управляющий
                 </Typography>
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6}>
                     <Box sx={LABEL_OVERLAP_BOX}>
-                    <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО финансового управляющего:</Typography>
+                    <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО:</Typography>
                     <TextField
                       fullWidth
                       value={editedFields.managerName || ''}
@@ -1859,7 +1859,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <Box sx={LABEL_OVERLAP_BOX}>
-                    <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес проживания:</Typography>
+                    <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес:</Typography>
                     <TextField
                       fullWidth
                       value={editedFields.managerAddress || ''}
@@ -1897,7 +1897,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6}>
                         <Box sx={LABEL_OVERLAP_BOX}>
-                          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО третьего лица:</Typography>
+                          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО/наименование :</Typography>
                     <TextField
                       fullWidth
                             value={thirdParty.name || ''}
@@ -1925,7 +1925,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                   </Grid>
                       <Grid item xs={12} sm={6}>
                         <Box sx={LABEL_OVERLAP_BOX}>
-                          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес проживания:</Typography>
+                          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес:</Typography>
                           <TextField
                             fullWidth
                             value={thirdParty.address || ''}
