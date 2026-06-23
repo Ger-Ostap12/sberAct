@@ -4,9 +4,9 @@ import { CssBaseline, Box, Container, Typography, AppBar, Toolbar, IconButton, T
 import { LocalOffer as DocumentIcon, BugReport as DevToolsIcon } from '@mui/icons-material';
 import DocumentUpload from './components/DocumentUpload';
 import DocumentAnalysis from './components/DocumentAnalysis';
-import TemplateSelection from './components/TemplateSelection';
 import DocumentPreview from './components/DocumentPreview';
 import { DocumentData, TemplateType, ExtractedData } from './types';
+import { pickTemplate } from './templates';
 
 const theme = createTheme({
   palette: {
@@ -47,7 +47,7 @@ const theme = createTheme({
 });
 
 function App() {
-  const [currentStep, setCurrentStep] = useState<'upload' | 'analysis' | 'template' | 'preview'>('upload');
+  const [currentStep, setCurrentStep] = useState<'upload' | 'analysis' | 'preview'>('upload');
   const [documentData, setDocumentData] = useState<DocumentData | null>(null);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateType | null>(null);
@@ -68,11 +68,8 @@ function App() {
 
   const handleAnalysisComplete = (data: ExtractedData) => {
     setExtractedData(data);
-    setCurrentStep('template');
-  };
-
-  const handleTemplateSelected = (template: TemplateType) => {
-    setSelectedTemplate(template);
+    // Шаблон судебного акта подбирается автоматически — отдельной страницы выбора нет.
+    setSelectedTemplate(pickTemplate(data));
     setCurrentStep('preview');
   };
 
@@ -111,21 +108,13 @@ function App() {
             onBack={() => setCurrentStep('upload')}
           />
         );
-      case 'template':
-        return (
-          <TemplateSelection
-            extractedData={extractedData!}
-            onTemplateSelected={handleTemplateSelected}
-            onBack={() => setCurrentStep('analysis')}
-          />
-        );
       case 'preview':
         return (
           <DocumentPreview
             extractedData={extractedData!}
             selectedTemplate={selectedTemplate!}
             onDocumentGenerated={handleDocumentGenerated}
-            onBack={() => setCurrentStep('template')}
+            onBack={() => setCurrentStep('analysis')}
             onNewDocument={resetToUpload}
           />
         );
