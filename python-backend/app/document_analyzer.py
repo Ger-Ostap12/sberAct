@@ -3100,21 +3100,36 @@ class DocumentAnalyzer:
         return None
 
     def _extract_creditor_block(self, text: str) -> Optional[str]:
-        """Извлекает блок текста с реквизитами кредитора (после «Заявитель (кредитор)» / «Истец» / «Кредитор»)."""
+        """Извлекает блок текста с реквизитами кредитора.
+
+        Якорь — «Заявитель (кредитор)» / «Истец:» / «Кредитор:». Метка может стоять
+        как на отдельной строке («Истец:\nООО …»), так и инлайн («Истец: ООО …»):
+        в обоих случаях блок начинается со строки-метки и обрезается по началу блока
+        должника, чтобы не захватить его реквизиты (ИНН/ОГРН/адрес должника).
+        """
         if not text:
             return None
         header = text[:4500]
         for start_pattern in [
-            r"Заявитель\s*\(кредитор\)[:\s]*",
-            r"Истец[:\s]*\n",
-            r"Кредитор[:\s]*\n",
-            r"кредитор[:\s]+[^\n]+\n",
+            r"Заявитель\s*\(кредитор\)\s*:?\s*",
+            r"Истец\s*:\s*",
+            r"Кредитор\s*:\s*",
         ]:
             m = re.search(start_pattern, header, re.IGNORECASE)
             if m:
-                block_start = m.end()
+                # Включаем строку-метку (имя кредитора на той же или следующей строке).
+                block_start = m.start()
                 block_end = min(block_start + 1200, len(header))
                 block = header[block_start:block_end]
+                # Обрезаем по началу блока должника / третьего лица / управляющего,
+                # чтобы адрес/ИНН/ОГРН брались только из секции кредитора.
+                cut = re.search(
+                    r"\n\s*(?:Должник|Ответчик|Треть[ие]\s+лиц|"
+                    r"(?:Финансов|Временн|Конкурсн)\w+\s+управляющ)",
+                    block, re.IGNORECASE,
+                )
+                if cut:
+                    block = block[: cut.start()]
                 if re.search(r"ИНН|ОГРН|адрес|место\s+нахождения", block, re.IGNORECASE):
                     return block
         return None
@@ -3135,15 +3150,18 @@ class DocumentAnalyzer:
         block = self._extract_creditor_block(text)
         doc_inn = doc_ogrn = None
         if block:
-            inn_m = re.search(r"ИНН[:\s]*([0-9\s]{9,12})", block, re.IGNORECASE)
+            # ВАЖНО: класс [0-9 ] (пробел, НЕ \s) — чтобы не «прихватить» цифру
+            # с соседней строки через перенос и не получить лишний разряд.
+            inn_m = re.search(r"ИНН[:\s]*([0-9 ]{9,13})", block, re.IGNORECASE)
             if inn_m:
                 inn_clean = re.sub(r"\D", "", inn_m.group(1))
-                if len(inn_clean) in (9, 10, 12):
+                if len(inn_clean) in (10, 12):  # ЮЛ=10, ИП/физлицо=12
                     doc_inn = inn_clean
-            ogrn_m = re.search(r"ОГРН[:\s]*([0-9\s]{10,15})", block, re.IGNORECASE)
+            # ОГРН (13) и ОГРНИП (15) — строгая длина, поддержка обоих ярлыков.
+            ogrn_m = re.search(r"ОГРН(?:ИП)?[:\s]*([0-9 ]{13,17})", block, re.IGNORECASE)
             if ogrn_m:
                 ogrn_clean = re.sub(r"\D", "", ogrn_m.group(1))
-                if 10 <= len(ogrn_clean) <= 15:
+                if len(ogrn_clean) in (13, 15):
                     doc_ogrn = ogrn_clean
         doc_addr = self._extract_creditor_address(text)
 
@@ -3190,6 +3208,17 @@ class DocumentAnalyzer:
                 addr = self._clean_creditor_address(self.clean_extracted_value(addr_m.group(1).strip()))
                 # Должно быть похоже на адрес (индекс/город/улица), без почтовых меток.
                 if addr and 10 <= len(addr) <= 200 and re.search(r"\d{6}|город|\bг\.|ул\.|улиц|пр-?кт|проспект", addr, re.IGNORECASE):
+                    return addr
+        # Фолбэк: адрес без метки — первая строка блока кредитора, начинающаяся
+        # с почтового индекса (6 цифр). Блок уже обрезан по началу секции должника,
+        # поэтому это адрес именно кредитора. Почтовый/фактический адрес исключаем.
+        for line in block.split("\n"):
+            line = line.strip()
+            if re.match(r"^\d{6}[,\s]", line) and not re.match(
+                r"^\d{6}[,\s].*(?:почтов|фактическ|а/я|абонентск)", line, re.IGNORECASE
+            ):
+                addr = self._clean_creditor_address(self.clean_extracted_value(line))
+                if addr and 10 <= len(addr) <= 200:
                     return addr
         return None
 

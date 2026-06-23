@@ -1773,7 +1773,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                             </MenuItem>
                           ))}
                           <MenuItem value="OTHER">
-                            <em>Другой банк (ввести вручную)</em>
+                            <em>Другой кредитор</em>
                           </MenuItem>
                         </Select>
                       </FormControl>
