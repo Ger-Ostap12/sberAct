@@ -822,133 +822,8 @@ class DocumentAnalyzer:
                     logger.info("Определен тип документа: ip_enforcement_realization (ИП без залога, по умолчанию реализация)")
                     return "ip_enforcement_realization"
 
-        # Ключевые слова для определения типа документа
-        rtk_keywords = [
-            "включении в реестр требований кредиторов",
-            "реестр требований кредиторов",
-            "ртк",
-            "банкротство",
-            "арбитражный суд",
-            "заявление о включении"
-        ]
-
-        # Подсчитываем совпадения
-        rtk_score = sum(1 for keyword in rtk_keywords if keyword in text_lower)
-
-        if rtk_score >= 2:
-            # Проверяем наличие залога для ФЛ в реализации или реструктуризации
-            # ОБЯЗАТЕЛЬНАЯ ПРОВЕРКА: документ считается залоговым ТОЛЬКО если есть формулировка "обеспеченное залогом"
-            required_collateral_phrases = [
-                r"обеспеченное\s+залогом",
-                r"обеспечено\s+залогом",
-                r"обеспечен\s+залогом",
-                r"обеспечена\s+залогом",
-                r"обеспечены\s+залогом",
-                r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку",
-                r"обязательство.*обеспечен.*залогом",
-                r"обязательства.*обеспечен.*залогом"
-            ]
-            has_required_collateral_phrase = any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in required_collateral_phrases)
-
-            # Дополнительные индикаторы залога (только если есть обязательная формулировка)
-            has_physical_collateral = False
-            if has_required_collateral_phrase:
-                collateral_phrases = [
-                    r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку",
-                    r"что\s+подтверждается\s+договором\s+залога",
-                    r"договор\s+залога\s+№",
-                    r"предоставил\s+в\s+залог\s+Банку\s+объект\s+недвижимости"
-                ]
-                has_physical_collateral = any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in collateral_phrases)
-
-            # Проверяем, что это НЕ ИП (нет "ИП" в имени должника)
-            if has_physical_collateral and not has_ip_name:
-                # Определяем тип процедуры
-                is_restructuring = any(keyword in text_lower for keyword in ["реструктуризац", "реструктуризации", "реструктуризации долгов"])
-                is_realization = any(keyword in text_lower for keyword in ["реализац", "реализации", "реализации имущества"])
-                is_observation = any(keyword in text_lower for keyword in ["наблюден", "наблюдения", "процедура наблюдения"])
-                is_competition = any(keyword in text_lower for keyword in ["конкурсн", "конкурсное производство", "конкурсного производства"])
-
-                if is_competition:
-                    logger.info("Определен тип документа: competition_collateral (Конкурсное производство с залогом)")
-                    return "competition_collateral"
-                elif is_restructuring:
-                    logger.info("Определен тип документа: physical_restructuring_collateral (ФЛ с залогом в реструктуризации)")
-                    return "physical_restructuring_collateral"
-                elif is_realization:
-                    logger.info("Определен тип документа: physical_realization_collateral (ФЛ с залогом в реализации)")
-                    return "physical_realization_collateral"
-                elif is_observation:
-                    logger.info("Определен тип документа: observation_collateral (Наблюдение с залогом)")
-                    return "observation_collateral"
-
-            return "rtk_application"
-
-        initiation_keywords = [
-            "заявление о признании гражданина банкротом",
-            "заявление о признании должника банкротом",
-            "признать должника несостоятельным",
-            "признать гражданина банкротом",
-            "реструктуризаци",
-            "реализац",
-            "введени[ея]\\s+реструктуризации",
-            "введени[ея]\\s+реализац",
-            "гражданина банкротом",
-            "дело о банкротстве гражданина"
-        ]
-
-        initiation_score = sum(1 for keyword in initiation_keywords if re.search(keyword, text_lower))
-        if initiation_score >= 2:
-            return "initiation_physical"
-
-        mortgage_keywords = [
-            r"ипотек",
-            r"предмет\s+залога",
-            r"кадастровый\s+номер",
-            r"начальн[а-я]+\s+цен[аы]\s+продаж",
-            r"заложенного\s+имуществ",
-            r"жилой\s+дом",
-            r"земельн[а-я]+\s+участ",
-            r"установить\s+начальную\s+цену",
-            r"отчет\s+об\s+оценке"
-        ]
-        mortgage_markers = bool(re.search(r"\[12(?:21|22|23|24|25)\]", text_lower))
-        mortgage_score = sum(1 for keyword in mortgage_keywords if re.search(keyword, text_lower))
-
-        if mortgage_markers or mortgage_score >= 2:
-            return "mortgage_claim"
-
-        # Проверяем признаки инициирования банкротства юридического лица
-        initiation_legal_keywords = [
-            "заявление о признании должника банкротом",
-            "признать должника несостоятельным",
-            "ооо",
-            "оао",
-            "зао",
-            "пао",
-            "общество с ограниченной ответственностью",
-            "акционерное общество",
-            "юридическое лицо",
-            "юр лицо",
-            "введени[ея]\\s+наблюдения",
-            "наблюдение",
-            "по состоянию на.*\\[88\\]",
-            "\\[88\\]"
-        ]
-
-        # Проверяем наличие маркера [88] и ключевых слов для ЮЛ
-        has_marker_88 = bool(re.search(r'\[88\]', text))
-        legal_entity_indicators = [
-            "ооо", "оао", "зао", "пао", "общество", "акционерное",
-            "юридическое лицо", "юр лицо"
-        ]
-        has_legal_entity = any(indicator in text_lower for indicator in legal_entity_indicators)
-        initiation_legal_score = sum(1 for keyword in initiation_legal_keywords if re.search(keyword, text_lower))
-
-        if (initiation_legal_score >= 2 and has_legal_entity) or (has_marker_88 and has_legal_entity):
-            return "initiation_legal"
-
-        return "unknown"
+        # Классификация по скорингу ключевых слов
+        return self._classify_by_scoring(text, has_ip_name, text_lower)
 
     def clean_extracted_value(self, value: str) -> str:
         """Очищает извлеченное значение от звездочек и других маскирующих символов"""
@@ -5495,6 +5370,136 @@ class DocumentAnalyzer:
             extracted_fields['obligations'] = obligations
             logger.info(f"Добавлено {len(obligations)} обязательств для {document_type}")
         return extracted_fields
+
+    def _classify_by_scoring(self, text, has_ip_name, text_lower):
+        """Классификация по скорингу ключевых слов: rtk/initiation/mortgage/initiation_legal, иначе unknown. Вынесено из classify_document."""
+        # Ключевые слова для определения типа документа
+        rtk_keywords = [
+            "включении в реестр требований кредиторов",
+            "реестр требований кредиторов",
+            "ртк",
+            "банкротство",
+            "арбитражный суд",
+            "заявление о включении"
+        ]
+
+        # Подсчитываем совпадения
+        rtk_score = sum(1 for keyword in rtk_keywords if keyword in text_lower)
+
+        if rtk_score >= 2:
+            # Проверяем наличие залога для ФЛ в реализации или реструктуризации
+            # ОБЯЗАТЕЛЬНАЯ ПРОВЕРКА: документ считается залоговым ТОЛЬКО если есть формулировка "обеспеченное залогом"
+            required_collateral_phrases = [
+                r"обеспеченное\s+залогом",
+                r"обеспечено\s+залогом",
+                r"обеспечен\s+залогом",
+                r"обеспечена\s+залогом",
+                r"обеспечены\s+залогом",
+                r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку",
+                r"обязательство.*обеспечен.*залогом",
+                r"обязательства.*обеспечен.*залогом"
+            ]
+            has_required_collateral_phrase = any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in required_collateral_phrases)
+
+            # Дополнительные индикаторы залога (только если есть обязательная формулировка)
+            has_physical_collateral = False
+            if has_required_collateral_phrase:
+                collateral_phrases = [
+                    r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку",
+                    r"что\s+подтверждается\s+договором\s+залога",
+                    r"договор\s+залога\s+№",
+                    r"предоставил\s+в\s+залог\s+Банку\s+объект\s+недвижимости"
+                ]
+                has_physical_collateral = any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in collateral_phrases)
+
+            # Проверяем, что это НЕ ИП (нет "ИП" в имени должника)
+            if has_physical_collateral and not has_ip_name:
+                # Определяем тип процедуры
+                is_restructuring = any(keyword in text_lower for keyword in ["реструктуризац", "реструктуризации", "реструктуризации долгов"])
+                is_realization = any(keyword in text_lower for keyword in ["реализац", "реализации", "реализации имущества"])
+                is_observation = any(keyword in text_lower for keyword in ["наблюден", "наблюдения", "процедура наблюдения"])
+                is_competition = any(keyword in text_lower for keyword in ["конкурсн", "конкурсное производство", "конкурсного производства"])
+
+                if is_competition:
+                    logger.info("Определен тип документа: competition_collateral (Конкурсное производство с залогом)")
+                    return "competition_collateral"
+                elif is_restructuring:
+                    logger.info("Определен тип документа: physical_restructuring_collateral (ФЛ с залогом в реструктуризации)")
+                    return "physical_restructuring_collateral"
+                elif is_realization:
+                    logger.info("Определен тип документа: physical_realization_collateral (ФЛ с залогом в реализации)")
+                    return "physical_realization_collateral"
+                elif is_observation:
+                    logger.info("Определен тип документа: observation_collateral (Наблюдение с залогом)")
+                    return "observation_collateral"
+
+            return "rtk_application"
+
+        initiation_keywords = [
+            "заявление о признании гражданина банкротом",
+            "заявление о признании должника банкротом",
+            "признать должника несостоятельным",
+            "признать гражданина банкротом",
+            "реструктуризаци",
+            "реализац",
+            "введени[ея]\\s+реструктуризации",
+            "введени[ея]\\s+реализац",
+            "гражданина банкротом",
+            "дело о банкротстве гражданина"
+        ]
+
+        initiation_score = sum(1 for keyword in initiation_keywords if re.search(keyword, text_lower))
+        if initiation_score >= 2:
+            return "initiation_physical"
+
+        mortgage_keywords = [
+            r"ипотек",
+            r"предмет\s+залога",
+            r"кадастровый\s+номер",
+            r"начальн[а-я]+\s+цен[аы]\s+продаж",
+            r"заложенного\s+имуществ",
+            r"жилой\s+дом",
+            r"земельн[а-я]+\s+участ",
+            r"установить\s+начальную\s+цену",
+            r"отчет\s+об\s+оценке"
+        ]
+        mortgage_markers = bool(re.search(r"\[12(?:21|22|23|24|25)\]", text_lower))
+        mortgage_score = sum(1 for keyword in mortgage_keywords if re.search(keyword, text_lower))
+
+        if mortgage_markers or mortgage_score >= 2:
+            return "mortgage_claim"
+
+        # Проверяем признаки инициирования банкротства юридического лица
+        initiation_legal_keywords = [
+            "заявление о признании должника банкротом",
+            "признать должника несостоятельным",
+            "ооо",
+            "оао",
+            "зао",
+            "пао",
+            "общество с ограниченной ответственностью",
+            "акционерное общество",
+            "юридическое лицо",
+            "юр лицо",
+            "введени[ея]\\s+наблюдения",
+            "наблюдение",
+            "по состоянию на.*\\[88\\]",
+            "\\[88\\]"
+        ]
+
+        # Проверяем наличие маркера [88] и ключевых слов для ЮЛ
+        has_marker_88 = bool(re.search(r'\[88\]', text))
+        legal_entity_indicators = [
+            "ооо", "оао", "зао", "пао", "общество", "акционерное",
+            "юридическое лицо", "юр лицо"
+        ]
+        has_legal_entity = any(indicator in text_lower for indicator in legal_entity_indicators)
+        initiation_legal_score = sum(1 for keyword in initiation_legal_keywords if re.search(keyword, text_lower))
+
+        if (initiation_legal_score >= 2 and has_legal_entity) or (has_marker_88 and has_legal_entity):
+            return "initiation_legal"
+
+        return "unknown"
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
         """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
