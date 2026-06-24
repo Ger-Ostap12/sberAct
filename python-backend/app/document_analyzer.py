@@ -112,24 +112,8 @@ class DocumentAnalyzer:
             # Для повторного использования
             text_lower = text.lower()
 
-            # РАННЕЕ ОПРЕДЕЛЕНИЕ КФХ: автоматически определяем по словам "ГЛАВА КФХ ИП"
-            # Ищем в любом месте документа, не только в блоке должника
-            kfh_patterns = [
-                r"глава\s+кфх\s+ип\s+([А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){1,2})",  # "ГЛАВА КФХ ИП ФИО"
-                r"кфх\s+ип\s+([А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){1,2})",  # "КФХ ИП ФИО"
-                r"глава\s+кфх\s+([А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){1,2})",  # "ГЛАВА КФХ ФИО"
-            ]
-
-            is_kfh_detected = False
-            kfh_head_name = None
-
-            for pattern in kfh_patterns:
-                kfh_match = re.search(pattern, text, re.IGNORECASE)
-                if kfh_match:
-                    is_kfh_detected = True
-                    kfh_head_name = kfh_match.group(1).strip()
-                    logger.info(f"✅ КФХ обнаружено по паттерну '{pattern}': глава КФХ - {kfh_head_name}")
-                    break
+            # Ранняя детекция КФХ
+            is_kfh_detected, kfh_head_name = self._detect_kfh_head(text)
 
             # Определяем тип документа
             document_type = self.classify_document(text)
@@ -4589,6 +4573,28 @@ class DocumentAnalyzer:
                 # Объединяем все найденные значения через запятую
                 extracted_fields[field_name] = ", ".join(unique_values)
                 logger.info(f"All {field_name}: {extracted_fields[field_name]}")
+
+    def _detect_kfh_head(self, text):
+        """Ранняя детекция КФХ по тексту («ГЛАВА КФХ ИП ФИО»). Возвращает (is_kfh_detected, kfh_head_name). Вынесено из analyze."""
+        # РАННЕЕ ОПРЕДЕЛЕНИЕ КФХ: автоматически определяем по словам "ГЛАВА КФХ ИП"
+        # Ищем в любом месте документа, не только в блоке должника
+        kfh_patterns = [
+            r"глава\s+кфх\s+ип\s+([А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){1,2})",  # "ГЛАВА КФХ ИП ФИО"
+            r"кфх\s+ип\s+([А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){1,2})",  # "КФХ ИП ФИО"
+            r"глава\s+кфх\s+([А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){1,2})",  # "ГЛАВА КФХ ФИО"
+        ]
+
+        is_kfh_detected = False
+        kfh_head_name = None
+
+        for pattern in kfh_patterns:
+            kfh_match = re.search(pattern, text, re.IGNORECASE)
+            if kfh_match:
+                is_kfh_detected = True
+                kfh_head_name = kfh_match.group(1).strip()
+                logger.info(f"✅ КФХ обнаружено по паттерну '{pattern}': глава КФХ - {kfh_head_name}")
+                break
+        return is_kfh_detected, kfh_head_name
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
         """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
