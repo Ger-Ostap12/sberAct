@@ -3833,162 +3833,9 @@ class DocumentAnalyzer:
                 # Специальная обработка для ИНН, ОГРН и companyInn - используем ту же логику, что и в реструктуризации!
                 # Ищем ТОЛЬКО в блоке "Должник:" или "Ответчик:" (приоритет "Должник:")
                 if field_name in ["inn", "ogrn", "ogrnip", "companyInn"]:
-                    debtor_block = None
-
-                    # Сначала пытаемся найти блок "Должник:" (как в реструктуризации)
-                    debtor_block_match = re.search(
-                        r"Должник[:\s]*(.*?)(?=\n\s*\n|Временн(?:ый|ым)\s+управляющ|Сумма\s+требований|ЗАЯВЛЕНИЕ|Дело\s*№|$)",
-                        text,
-                        re.IGNORECASE | re.DOTALL
-                    )
-                    if debtor_block_match:
-                        debtor_block = debtor_block_match.group(1)
-                        debtor_block = debtor_block.replace('\u202f', ' ').replace('\xa0', ' ')
-                        logger.info(f"Найден блок Должник: длина {len(debtor_block)}")
-
-                    # Для взысканий ИП часто вместо полноценного "Должник:" есть блок "Ответчик(и):"
-                    # и он содержит ИНН/ОГРНИП. Если "Должник:" слишком короткий, пытаемся взять этот блок.
-                    if debtor_block and len(debtor_block.strip()) < 120:
-                        respondents_match = re.search(
-                            r"Ответчик(?:\(и\))?[:\s]*\n\s*(.*?)(?=\n\s*\n|Требовани[ея]\s*№|Требовани[ея]\s+№|ЗАЯВЛЕНИЕ|ПРОСИТ\s+СУД|ПРОШУ|$)",
-                            text,
-                            re.IGNORECASE | re.DOTALL,
-                        )
-                        if respondents_match:
-                            debtor_block = respondents_match.group(1)
-                            debtor_block = debtor_block.replace("\u202f", " ").replace("\xa0", " ")
-                            logger.info(f"Найден блок Ответчик(и): длина {len(debtor_block)}")
-
-                    # Если блока "Должник:" нет, ищем блок "Ответчик:"
-                    if not debtor_block:
-                        answer_matches = list(re.finditer(r"Ответчик[:\s]", text, re.IGNORECASE))
-                        logger.info(f"Найдено блоков 'Ответчик:': {len(answer_matches)}")
-                        if answer_matches:
-                            # Берем первый блок "Ответчик:"
-                            answer_match = answer_matches[0]
-                            start_pos = answer_match.start()
-                            logger.info(f"Позиция начала блока 'Ответчик:': {start_pos}")
-
-                            # Находим следующий "Истец:" ПОСЛЕ этого "Ответчик:" или конец документа
-                            end_pos = len(text)
-                            next_plaintiff = re.search(r"Истец[:\s]", text[start_pos:], re.IGNORECASE)
-                            if next_plaintiff:
-                                end_pos = start_pos + next_plaintiff.start()
-                                logger.info(f"Найден следующий 'Истец:' на позиции: {end_pos}")
-                            else:
-                                logger.info(f"Следующий 'Истец:' не найден, используем конец документа: {end_pos}")
-
-                            debtor_block = text[start_pos:end_pos]
-                            logger.info(f"Найден блок Ответчик: позиция {start_pos}-{end_pos}, длина {len(debtor_block)}")
-                            logger.debug(f"Первые 200 символов блока: {debtor_block[:200]}")
-                            # Для отладки ogrnip выводим весь блок, если он не слишком длинный
-                            if field_name == "ogrnip" and len(debtor_block) < 1000:
-                                logger.debug(f"🔍 Полный блок Ответчик для ogrnip: {debtor_block}")
-
-                    # Извлекаем ИНН или ОГРН из найденного блока должника/ответчика
-                    if debtor_block:
-                        found_value = False
-
-                        if field_name == "ogrn" or field_name == "ogrnip":
-                            # Извлекаем ОГРН/ОГРНИП (как в реструктуризации)
-                            logger.info(f"Ищем {'ОГРНИП' if field_name == 'ogrnip' else 'ОГРН'} в блоке должника/ответчика...")
-                            ogrn_match = None
-
-                            # Для ogrnip сначала ищем маркер [4.1] и ОГРНИП
-                            if field_name == "ogrnip":
-                                # Паттерн для маркера [4.1] (ОГРНИП) - проверяем ПЕРВЫМ
-                                ogrn_match = re.search(r"\[4\.1\]\s*([0-9\s]{12,15})", debtor_block)
-                                if ogrn_match:
-                                    logger.info(f"Найден ОГРНИП паттерн [4.1]: {ogrn_match.group(1)}")
-                                if not ogrn_match:
-                                    ogrn_match = re.search(r"([0-9\s]{12,15})\s*\[4\.1\]", debtor_block)
-                                    if ogrn_match:
-                                        logger.info(f"Найден ОГРНИП паттерн [4.1] (обратный): {ogrn_match.group(1)}")
-                                if not ogrn_match:
-                                    # Ищем явное упоминание ОГРНИП с двоеточием
-                                    ogrn_match = re.search(r"ОГРНИП[:\s]+([0-9\s]{12,15})", debtor_block, re.IGNORECASE)
-                                    if ogrn_match:
-                                        logger.info(f"Найден ОГРНИП паттерн (с двоеточием): {ogrn_match.group(1)}")
-                                if not ogrn_match:
-                                    # Ищем ОГРНИП без двоеточия (пробел или сразу число)
-                                    ogrn_match = re.search(r"ОГРНИП\s+([0-9\s]{12,15})", debtor_block, re.IGNORECASE)
-                                    if ogrn_match:
-                                        logger.info(f"Найден ОГРНИП паттерн (без двоеточия): {ogrn_match.group(1)}")
-                                if not ogrn_match:
-                                    # Ищем число перед ОГРНИП
-                                    ogrn_match = re.search(r"([0-9\s]{12,15})\s+ОГРНИП", debtor_block, re.IGNORECASE)
-                                    if ogrn_match:
-                                        logger.info(f"Найден ОГРНИП паттерн (число перед): {ogrn_match.group(1)}")
-
-                            # Для ogrn ищем ОГРН (если еще не нашли для ogrnip)
-                            if not ogrn_match:
-                                ogrn_match = re.search(r"ОГРН[:\s]*([0-9\s]{12,15})", debtor_block, re.IGNORECASE)
-                                if ogrn_match:
-                                    logger.info(f"Найден ОГРН паттерн 1: {ogrn_match.group(1)}")
-                            if not ogrn_match:
-                                ogrn_match = re.search(r"([0-9\s]{12,15})\s*\[3\]", debtor_block)
-                                if ogrn_match:
-                                    logger.info(f"Найден ОГРН паттерн [3]: {ogrn_match.group(1)}")
-                            if ogrn_match:
-                                ogrn_value = re.sub(r"\D", "", ogrn_match.group(1))
-                                logger.info(f"Очищенное значение ОГРН: '{ogrn_value}', длина: {len(ogrn_value) if ogrn_value else 0}")
-                                # Проверяем длину ОГРН: 12-15 цифр (для ЮЛ может быть 12 или 13 цифр, для ИП - 15)
-                                if ogrn_value and len(ogrn_value) >= 12 and len(ogrn_value) <= 15:
-                                    if field_name == "ogrnip":
-                                        extracted_fields["ogrnip"] = ogrn_value
-                                        logger.info(f"✅ Extracted ogrnip из блока должника/ответчика: {ogrn_value}")
-                                    else:
-                                        extracted_fields["ogrn"] = ogrn_value
-                                        # Для ИП также сохраняем в ogrnip
-                                        if "ИП" in text[:1000] or "индивидуальный предприниматель" in text[:1000].lower():
-                                            extracted_fields["ogrnip"] = ogrn_value
-                                            logger.info(f"✅ Extracted ogrnip из блока должника/ответчика (для ИП): {ogrn_value}")
-                                        logger.info(f"✅ Extracted ogrn из блока должника/ответчика: {ogrn_value}")
-                                    found_value = True
-                                else:
-                                    logger.warning(f"⚠️ ОГРН не прошел проверку длины: '{ogrn_value}' (длина: {len(ogrn_value) if ogrn_value else 0})")
-                            else:
-                                logger.warning(f"⚠️ ОГРН не найден в блоке должника/ответчика")
-
-                        elif field_name == "inn" or field_name == "companyInn":
-                            # Извлекаем ИНН (как в реструктуризации)
-                            logger.info(f"Ищем {field_name} в блоке должника/ответчика...")
-                            # Собираем ВСЕХ кандидатов ИНН в блоке и предпочитаем
-                            # того, кто проходит контрольную сумму (иначе жадный поиск
-                            # мог бы подхватить ИНН банка/иного лица, стоящий раньше).
-                            inn_candidates = re.findall(r"ИНН[:\s]*([0-9\s]{9,12})", debtor_block, re.IGNORECASE)
-                            inn_candidates += re.findall(r"([0-9\s]{9,12})\s*\[4\]", debtor_block)
-                            inn_clean = []
-                            for raw in inn_candidates:
-                                digits = re.sub(r"\D", "", raw)
-                                if 9 <= len(digits) <= 12:
-                                    inn_clean.append(digits)
-                            inn_value = None
-                            if inn_clean:
-                                # Первый валидный по контрольной сумме, иначе — первый найденный.
-                                inn_value = next((c for c in inn_clean if is_valid_inn(c)), inn_clean[0])
-                                if not is_valid_inn(inn_value):
-                                    logger.debug(f"ИНН '{inn_value}' не прошёл контрольную сумму, оставлен как есть")
-                            if inn_value:
-                                extracted_fields["inn"] = inn_value
-                                extracted_fields["companyInn"] = inn_value
-                                logger.info(f"✅ Extracted {field_name} из блока должника/ответчика: {inn_value}")
-                                found_value = True
-                            else:
-                                logger.warning(f"⚠️ ИНН не найден в блоке должника/ответчика")
-
-                        # Если нашли значение в блоке должника/ответчика, пропускаем дальнейший поиск
-                        if found_value:
-                            logger.info(f"✅ {field_name} найден в блоке должника/ответчика: {extracted_fields.get(field_name)}")
-                            continue
-                        else:
-                            logger.info(f"⚠️ {field_name} НЕ найден в блоке должника/ответчика - пропускаем дальнейший поиск, чтобы не брать данные кредитора")
-                            # Пропускаем дальнейший поиск, чтобы не брать ИНН/ОГРН кредитора
-                            continue
-                    else:
-                        logger.info(f"⚠️ Блоки 'Должник:' и 'Ответчик:' не найдены для {field_name}")
-                        # Если блоков нет, пропускаем поиск, чтобы не брать данные кредитора
-                        continue
+                    # ИНН/ОГРН/ОГРНИП должника из блока «Должник:»/«Ответчик:»
+                    self._extract_party_inn_ogrn(extracted_fields, text, field_name)
+                    continue
 
                 # Приоритетная обработка адреса должника/ответчика.
                 # Для ЮЛ адрес часто идет как "Юридический адрес:" внутри блока "Ответчик:",
@@ -5896,6 +5743,165 @@ class DocumentAnalyzer:
             else:
                 extracted_fields["applicantAddress"] = address_clean_stripped
         return debtor_clean
+
+    def _extract_party_inn_ogrn(self, extracted_fields, text, field_name):
+        """ИНН/ОГРН/ОГРНИП должника строго из блока «Должник:»/«Ответчик:» (а не кредитора), с валидацией контрольной суммы. Все пути исходно завершались continue. Вынесено из основного pattern-цикла extract_fields."""
+        debtor_block = None
+
+        # Сначала пытаемся найти блок "Должник:" (как в реструктуризации)
+        debtor_block_match = re.search(
+            r"Должник[:\s]*(.*?)(?=\n\s*\n|Временн(?:ый|ым)\s+управляющ|Сумма\s+требований|ЗАЯВЛЕНИЕ|Дело\s*№|$)",
+            text,
+            re.IGNORECASE | re.DOTALL
+        )
+        if debtor_block_match:
+            debtor_block = debtor_block_match.group(1)
+            debtor_block = debtor_block.replace('\u202f', ' ').replace('\xa0', ' ')
+            logger.info(f"Найден блок Должник: длина {len(debtor_block)}")
+
+        # Для взысканий ИП часто вместо полноценного "Должник:" есть блок "Ответчик(и):"
+        # и он содержит ИНН/ОГРНИП. Если "Должник:" слишком короткий, пытаемся взять этот блок.
+        if debtor_block and len(debtor_block.strip()) < 120:
+            respondents_match = re.search(
+                r"Ответчик(?:\(и\))?[:\s]*\n\s*(.*?)(?=\n\s*\n|Требовани[ея]\s*№|Требовани[ея]\s+№|ЗАЯВЛЕНИЕ|ПРОСИТ\s+СУД|ПРОШУ|$)",
+                text,
+                re.IGNORECASE | re.DOTALL,
+            )
+            if respondents_match:
+                debtor_block = respondents_match.group(1)
+                debtor_block = debtor_block.replace("\u202f", " ").replace("\xa0", " ")
+                logger.info(f"Найден блок Ответчик(и): длина {len(debtor_block)}")
+
+        # Если блока "Должник:" нет, ищем блок "Ответчик:"
+        if not debtor_block:
+            answer_matches = list(re.finditer(r"Ответчик[:\s]", text, re.IGNORECASE))
+            logger.info(f"Найдено блоков 'Ответчик:': {len(answer_matches)}")
+            if answer_matches:
+                # Берем первый блок "Ответчик:"
+                answer_match = answer_matches[0]
+                start_pos = answer_match.start()
+                logger.info(f"Позиция начала блока 'Ответчик:': {start_pos}")
+
+                # Находим следующий "Истец:" ПОСЛЕ этого "Ответчик:" или конец документа
+                end_pos = len(text)
+                next_plaintiff = re.search(r"Истец[:\s]", text[start_pos:], re.IGNORECASE)
+                if next_plaintiff:
+                    end_pos = start_pos + next_plaintiff.start()
+                    logger.info(f"Найден следующий 'Истец:' на позиции: {end_pos}")
+                else:
+                    logger.info(f"Следующий 'Истец:' не найден, используем конец документа: {end_pos}")
+
+                debtor_block = text[start_pos:end_pos]
+                logger.info(f"Найден блок Ответчик: позиция {start_pos}-{end_pos}, длина {len(debtor_block)}")
+                logger.debug(f"Первые 200 символов блока: {debtor_block[:200]}")
+                # Для отладки ogrnip выводим весь блок, если он не слишком длинный
+                if field_name == "ogrnip" and len(debtor_block) < 1000:
+                    logger.debug(f"🔍 Полный блок Ответчик для ogrnip: {debtor_block}")
+
+        # Извлекаем ИНН или ОГРН из найденного блока должника/ответчика
+        if debtor_block:
+            found_value = False
+
+            if field_name == "ogrn" or field_name == "ogrnip":
+                # Извлекаем ОГРН/ОГРНИП (как в реструктуризации)
+                logger.info(f"Ищем {'ОГРНИП' if field_name == 'ogrnip' else 'ОГРН'} в блоке должника/ответчика...")
+                ogrn_match = None
+
+                # Для ogrnip сначала ищем маркер [4.1] и ОГРНИП
+                if field_name == "ogrnip":
+                    # Паттерн для маркера [4.1] (ОГРНИП) - проверяем ПЕРВЫМ
+                    ogrn_match = re.search(r"\[4\.1\]\s*([0-9\s]{12,15})", debtor_block)
+                    if ogrn_match:
+                        logger.info(f"Найден ОГРНИП паттерн [4.1]: {ogrn_match.group(1)}")
+                    if not ogrn_match:
+                        ogrn_match = re.search(r"([0-9\s]{12,15})\s*\[4\.1\]", debtor_block)
+                        if ogrn_match:
+                            logger.info(f"Найден ОГРНИП паттерн [4.1] (обратный): {ogrn_match.group(1)}")
+                    if not ogrn_match:
+                        # Ищем явное упоминание ОГРНИП с двоеточием
+                        ogrn_match = re.search(r"ОГРНИП[:\s]+([0-9\s]{12,15})", debtor_block, re.IGNORECASE)
+                        if ogrn_match:
+                            logger.info(f"Найден ОГРНИП паттерн (с двоеточием): {ogrn_match.group(1)}")
+                    if not ogrn_match:
+                        # Ищем ОГРНИП без двоеточия (пробел или сразу число)
+                        ogrn_match = re.search(r"ОГРНИП\s+([0-9\s]{12,15})", debtor_block, re.IGNORECASE)
+                        if ogrn_match:
+                            logger.info(f"Найден ОГРНИП паттерн (без двоеточия): {ogrn_match.group(1)}")
+                    if not ogrn_match:
+                        # Ищем число перед ОГРНИП
+                        ogrn_match = re.search(r"([0-9\s]{12,15})\s+ОГРНИП", debtor_block, re.IGNORECASE)
+                        if ogrn_match:
+                            logger.info(f"Найден ОГРНИП паттерн (число перед): {ogrn_match.group(1)}")
+
+                # Для ogrn ищем ОГРН (если еще не нашли для ogrnip)
+                if not ogrn_match:
+                    ogrn_match = re.search(r"ОГРН[:\s]*([0-9\s]{12,15})", debtor_block, re.IGNORECASE)
+                    if ogrn_match:
+                        logger.info(f"Найден ОГРН паттерн 1: {ogrn_match.group(1)}")
+                if not ogrn_match:
+                    ogrn_match = re.search(r"([0-9\s]{12,15})\s*\[3\]", debtor_block)
+                    if ogrn_match:
+                        logger.info(f"Найден ОГРН паттерн [3]: {ogrn_match.group(1)}")
+                if ogrn_match:
+                    ogrn_value = re.sub(r"\D", "", ogrn_match.group(1))
+                    logger.info(f"Очищенное значение ОГРН: '{ogrn_value}', длина: {len(ogrn_value) if ogrn_value else 0}")
+                    # Проверяем длину ОГРН: 12-15 цифр (для ЮЛ может быть 12 или 13 цифр, для ИП - 15)
+                    if ogrn_value and len(ogrn_value) >= 12 and len(ogrn_value) <= 15:
+                        if field_name == "ogrnip":
+                            extracted_fields["ogrnip"] = ogrn_value
+                            logger.info(f"✅ Extracted ogrnip из блока должника/ответчика: {ogrn_value}")
+                        else:
+                            extracted_fields["ogrn"] = ogrn_value
+                            # Для ИП также сохраняем в ogrnip
+                            if "ИП" in text[:1000] or "индивидуальный предприниматель" in text[:1000].lower():
+                                extracted_fields["ogrnip"] = ogrn_value
+                                logger.info(f"✅ Extracted ogrnip из блока должника/ответчика (для ИП): {ogrn_value}")
+                            logger.info(f"✅ Extracted ogrn из блока должника/ответчика: {ogrn_value}")
+                        found_value = True
+                    else:
+                        logger.warning(f"⚠️ ОГРН не прошел проверку длины: '{ogrn_value}' (длина: {len(ogrn_value) if ogrn_value else 0})")
+                else:
+                    logger.warning(f"⚠️ ОГРН не найден в блоке должника/ответчика")
+
+            elif field_name == "inn" or field_name == "companyInn":
+                # Извлекаем ИНН (как в реструктуризации)
+                logger.info(f"Ищем {field_name} в блоке должника/ответчика...")
+                # Собираем ВСЕХ кандидатов ИНН в блоке и предпочитаем
+                # того, кто проходит контрольную сумму (иначе жадный поиск
+                # мог бы подхватить ИНН банка/иного лица, стоящий раньше).
+                inn_candidates = re.findall(r"ИНН[:\s]*([0-9\s]{9,12})", debtor_block, re.IGNORECASE)
+                inn_candidates += re.findall(r"([0-9\s]{9,12})\s*\[4\]", debtor_block)
+                inn_clean = []
+                for raw in inn_candidates:
+                    digits = re.sub(r"\D", "", raw)
+                    if 9 <= len(digits) <= 12:
+                        inn_clean.append(digits)
+                inn_value = None
+                if inn_clean:
+                    # Первый валидный по контрольной сумме, иначе — первый найденный.
+                    inn_value = next((c for c in inn_clean if is_valid_inn(c)), inn_clean[0])
+                    if not is_valid_inn(inn_value):
+                        logger.debug(f"ИНН '{inn_value}' не прошёл контрольную сумму, оставлен как есть")
+                if inn_value:
+                    extracted_fields["inn"] = inn_value
+                    extracted_fields["companyInn"] = inn_value
+                    logger.info(f"✅ Extracted {field_name} из блока должника/ответчика: {inn_value}")
+                    found_value = True
+                else:
+                    logger.warning(f"⚠️ ИНН не найден в блоке должника/ответчика")
+
+            # Если нашли значение в блоке должника/ответчика, пропускаем дальнейший поиск
+            if found_value:
+                logger.info(f"✅ {field_name} найден в блоке должника/ответчика: {extracted_fields.get(field_name)}")
+                return
+            else:
+                logger.info(f"⚠️ {field_name} НЕ найден в блоке должника/ответчика - пропускаем дальнейший поиск, чтобы не брать данные кредитора")
+                # Пропускаем дальнейший поиск, чтобы не брать ИНН/ОГРН кредитора
+                return
+        else:
+            logger.info(f"⚠️ Блоки 'Должник:' и 'Ответчик:' не найдены для {field_name}")
+            # Если блоков нет, пропускаем поиск, чтобы не брать данные кредитора
+            return
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
         """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
