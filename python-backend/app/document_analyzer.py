@@ -166,68 +166,8 @@ class DocumentAnalyzer:
                         extracted_fields["mortgageCollateralDescription1221"] = car_1221
                         logger.info(f"✅ Установлено mortgageCollateralDescription1221 (залог авто): {car_1221[:80]}...")
 
-                # Перегенерируем дательный падеж [2.2] с правильным именем должника
-                # Используем правильное имя из ip_specific_fields или extracted_fields
-                correct_name_for_dative = None
-
-                # Функция для проверки, что это полное ФИО (3 слова) и не название суда
-                def is_valid_name(name):
-                    if not name or "суд" in name.lower():
-                        return False
-                    # Проверяем, что это похоже на ФИО (минимум 2 слова, максимум 4 слова с префиксами)
-                    words = name.strip().split()
-                    if len(words) < 2 or len(words) > 4:
-                        return False
-                    # Проверяем, что слова начинаются с заглавной буквы (кроме префиксов)
-                    valid_words = [w for w in words if w.upper() not in ["ИП", "ГЛАВА", "КФХ"]]
-                    if len(valid_words) < 2:
-                        return False
-                    return True
-
-                # Приоритет 1: applicantName из ip_specific_fields
-                if ip_specific_fields.get("applicantName") and is_valid_name(ip_specific_fields.get("applicantName")):
-                    correct_name_for_dative = ip_specific_fields.get("applicantName")
-                    logger.info(f"Используем applicantName из ip_specific_fields для [2.2]: {correct_name_for_dative}")
-
-                # Приоритет 2: debtorName из ip_specific_fields
-                if not correct_name_for_dative and ip_specific_fields.get("debtorName") and is_valid_name(ip_specific_fields.get("debtorName")):
-                    correct_name_for_dative = ip_specific_fields.get("debtorName")
-                    logger.info(f"Используем debtorName из ip_specific_fields для [2.2]: {correct_name_for_dative}")
-
-                # Приоритет 3: applicantName из extracted_fields
-                if not correct_name_for_dative and extracted_fields.get("applicantName") and is_valid_name(extracted_fields.get("applicantName")):
-                    correct_name_for_dative = extracted_fields.get("applicantName")
-                    logger.info(f"Используем applicantName из extracted_fields для [2.2]: {correct_name_for_dative}")
-
-                # Приоритет 4: debtorName из extracted_fields
-                if not correct_name_for_dative and extracted_fields.get("debtorName") and is_valid_name(extracted_fields.get("debtorName")):
-                    correct_name_for_dative = extracted_fields.get("debtorName")
-                    logger.info(f"Используем debtorName из extracted_fields для [2.2]: {correct_name_for_dative}")
-
-                # Если нашли правильное имя, генерируем дательный падеж
-                if correct_name_for_dative:
-                    # Убираем префикс "ИП" перед склонением
-                    name_for_dative = re.sub(
-                        r'^(ИП\s+|ГЛАВА\s+КФХ\s+ИП\s+|ГЛАВА\s+КФХ\s+|КФХ\s+ИП\s+)',
-                        '',
-                        correct_name_for_dative,
-                        flags=re.IGNORECASE
-                    ).strip()
-                    if name_for_dative:
-                        dative_auto = self._convert_name_to_dative(name_for_dative)
-                        if dative_auto:
-                            extracted_fields["applicantNameDative"] = dative_auto
-                            logger.info(f"✅ Перегенерирован дательный падеж для [2.2]: {dative_auto} (из имени: {correct_name_for_dative})")
-                        else:
-                            logger.warning(f"⚠️ Не удалось сгенерировать дательный падеж для: {name_for_dative}")
-                    else:
-                        logger.warning(f"⚠️ После удаления префиксов имя стало пустым: {correct_name_for_dative}")
-                else:
-                    logger.warning(f"⚠️ Не найдено правильное имя должника для генерации дательного падежа [2.2]")
-                    logger.warning(f"  applicantName (ip_specific): {ip_specific_fields.get('applicantName')}")
-                    logger.warning(f"  debtorName (ip_specific): {ip_specific_fields.get('debtorName')}")
-                    logger.warning(f"  applicantName (extracted): {extracted_fields.get('applicantName')}")
-                    logger.warning(f"  debtorName (extracted): {extracted_fields.get('debtorName')}")
+                # Перегенерация дательного падежа [2.2] (ИП)
+                self._regenerate_ip_dative(extracted_fields, text, ip_specific_fields)
 
                 # Извлекаем обязательства для ИП
                 obligations = self.extract_obligations(text, extracted_fields)
@@ -4595,6 +4535,71 @@ class DocumentAnalyzer:
                 logger.info(f"✅ КФХ обнаружено по паттерну '{pattern}': глава КФХ - {kfh_head_name}")
                 break
         return is_kfh_detected, kfh_head_name
+
+    def _regenerate_ip_dative(self, extracted_fields, text, ip_specific_fields):
+        """Перегенерация дательного падежа [2.2] для должника-ИП: выбор корректного ФИО (приоритет ip_specific/extracted, фильтр «не суд»), снятие префиксов, склонение. Вынесено из analyze."""
+        # Перегенерируем дательный падеж [2.2] с правильным именем должника
+        # Используем правильное имя из ip_specific_fields или extracted_fields
+        correct_name_for_dative = None
+
+        # Функция для проверки, что это полное ФИО (3 слова) и не название суда
+        def is_valid_name(name):
+            if not name or "суд" in name.lower():
+                return False
+            # Проверяем, что это похоже на ФИО (минимум 2 слова, максимум 4 слова с префиксами)
+            words = name.strip().split()
+            if len(words) < 2 or len(words) > 4:
+                return False
+            # Проверяем, что слова начинаются с заглавной буквы (кроме префиксов)
+            valid_words = [w for w in words if w.upper() not in ["ИП", "ГЛАВА", "КФХ"]]
+            if len(valid_words) < 2:
+                return False
+            return True
+
+        # Приоритет 1: applicantName из ip_specific_fields
+        if ip_specific_fields.get("applicantName") and is_valid_name(ip_specific_fields.get("applicantName")):
+            correct_name_for_dative = ip_specific_fields.get("applicantName")
+            logger.info(f"Используем applicantName из ip_specific_fields для [2.2]: {correct_name_for_dative}")
+
+        # Приоритет 2: debtorName из ip_specific_fields
+        if not correct_name_for_dative and ip_specific_fields.get("debtorName") and is_valid_name(ip_specific_fields.get("debtorName")):
+            correct_name_for_dative = ip_specific_fields.get("debtorName")
+            logger.info(f"Используем debtorName из ip_specific_fields для [2.2]: {correct_name_for_dative}")
+
+        # Приоритет 3: applicantName из extracted_fields
+        if not correct_name_for_dative and extracted_fields.get("applicantName") and is_valid_name(extracted_fields.get("applicantName")):
+            correct_name_for_dative = extracted_fields.get("applicantName")
+            logger.info(f"Используем applicantName из extracted_fields для [2.2]: {correct_name_for_dative}")
+
+        # Приоритет 4: debtorName из extracted_fields
+        if not correct_name_for_dative and extracted_fields.get("debtorName") and is_valid_name(extracted_fields.get("debtorName")):
+            correct_name_for_dative = extracted_fields.get("debtorName")
+            logger.info(f"Используем debtorName из extracted_fields для [2.2]: {correct_name_for_dative}")
+
+        # Если нашли правильное имя, генерируем дательный падеж
+        if correct_name_for_dative:
+            # Убираем префикс "ИП" перед склонением
+            name_for_dative = re.sub(
+                r'^(ИП\s+|ГЛАВА\s+КФХ\s+ИП\s+|ГЛАВА\s+КФХ\s+|КФХ\s+ИП\s+)',
+                '',
+                correct_name_for_dative,
+                flags=re.IGNORECASE
+            ).strip()
+            if name_for_dative:
+                dative_auto = self._convert_name_to_dative(name_for_dative)
+                if dative_auto:
+                    extracted_fields["applicantNameDative"] = dative_auto
+                    logger.info(f"✅ Перегенерирован дательный падеж для [2.2]: {dative_auto} (из имени: {correct_name_for_dative})")
+                else:
+                    logger.warning(f"⚠️ Не удалось сгенерировать дательный падеж для: {name_for_dative}")
+            else:
+                logger.warning(f"⚠️ После удаления префиксов имя стало пустым: {correct_name_for_dative}")
+        else:
+            logger.warning(f"⚠️ Не найдено правильное имя должника для генерации дательного падежа [2.2]")
+            logger.warning(f"  applicantName (ip_specific): {ip_specific_fields.get('applicantName')}")
+            logger.warning(f"  debtorName (ip_specific): {ip_specific_fields.get('debtorName')}")
+            logger.warning(f"  applicantName (extracted): {extracted_fields.get('applicantName')}")
+            logger.warning(f"  debtorName (extracted): {extracted_fields.get('debtorName')}")
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
         """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
