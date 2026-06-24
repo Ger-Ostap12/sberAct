@@ -4631,32 +4631,8 @@ class DocumentAnalyzer:
             extracted_fields['procedureTypeRaw'] = procedure_raw
             logger.info(f"Оригинальное описание процедуры: {procedure_raw}")
 
-        # Специальная обработка названия суда для процедуры "умерший"
-        if procedure_type == 'deceased' and extracted_fields.get('courtName'):
-            court_name = extracted_fields['courtName']
-            cleaned_court_name = self._clean_court_name_deceased(court_name)
-            if cleaned_court_name != court_name:
-                extracted_fields['courtName'] = cleaned_court_name
-                logger.info(f"Очищено название суда для процедуры 'умерший': '{court_name}' -> '{cleaned_court_name}'")
-
-        # Фолбэк: если тип процедуры явно не нормализовался, но по "сырому" описанию видно "наблюдение" —
-        # считаем, что это процедура наблюдения.
-        if not extracted_fields.get("procedureType"):
-            raw_lower = (extracted_fields.get("procedureTypeRaw") or "").lower()
-            if any(token in raw_lower for token in ["наблюден", "наблюдения", "наблюдение"]):
-                extracted_fields["procedureType"] = "observation"
-                logger.info("Процедура по умолчанию установлена как 'observation' на основании procedureTypeRaw")
-
-        manager_inn = extracted_fields.get("managerInn")
-        if manager_inn:
-            normalized_inn = re.sub(r"\D", "", manager_inn)
-            # Отсеиваем мусор, не проходящий контрольную сумму (например, 689768767676),
-            # чтобы в поле не подставлялся заведомо ложный ИНН.
-            if normalized_inn and is_valid_inn(normalized_inn):
-                extracted_fields["managerInn"] = normalized_inn
-            else:
-                logger.debug(f"managerInn '{manager_inn}' отброшен: не прошёл контрольную сумму")
-                extracted_fields.pop("managerInn", None)
+        # Пост-обработка процедуры и managerInn
+        self._normalize_procedure_and_manager(extracted_fields, text, procedure_type)
 
         debtor_name_raw = extracted_fields.get("debtorName")
         applicant_name_raw = extracted_fields.get("applicantName")
@@ -4743,94 +4719,8 @@ class DocumentAnalyzer:
 
         # Для КФХ используем kfhHeadName для генерации падежных форм (без префиксов)
         is_kfh = extracted_fields.get("isKfh", False)
-        kfh_head_name = extracted_fields.get("kfhHeadName", "")
-        name_for_inflection = applicant_clean
-
-        if is_kfh and kfh_head_name:
-            # Для КФХ используем только ФИО без префиксов
-            name_for_inflection = kfh_head_name
-            logger.info(f"🔧 КФХ: используем kfhHeadName '{kfh_head_name}' для генерации падежных форм")
-
-        if "applicantNameGenitive" not in extracted_fields and name_for_inflection:
-            genitive_auto = self._convert_name_to_genitive(name_for_inflection)
-            if genitive_auto:
-                extracted_fields["applicantNameGenitive"] = genitive_auto
-
-        # Творительный падеж для должника (маркер [2.3])
-        if applicant_name_instrumental_raw:
-            instr_clean = re.sub(r"\[.*?\]", "", applicant_name_instrumental_raw)
-            instr_clean = self.clean_extracted_value(instr_clean)
-            instr_clean = instr_clean.strip('«»" ')
-            instr_clean = re.sub(r"^\s*фио\s+", "", instr_clean, flags=re.IGNORECASE)
-            # Убираем префиксы "ГЛАВА КФХ ИП" для творительного падежа
-            instr_clean = re.sub(
-                r'^(ГЛАВА\s+КФХ\s+ИП\s+|ГЛАВА\s+КФХ\s+|КФХ\s+ИП\s+|ИП\s+ГЛАВА\s+КФХ\s+)',
-                '',
-                instr_clean,
-                flags=re.IGNORECASE
-            ).strip()
-            instr_clean = re.sub(r"\s*введена\s+процедура\s+наблюдения.*$", "", instr_clean, flags=re.IGNORECASE)
-            instr_clean = instr_clean.strip()
-            if instr_clean and len(instr_clean) > 3:
-                extracted_fields["applicantNameInstrumental"] = instr_clean
-            else:
-                extracted_fields.pop("applicantNameInstrumental", None)
-
-        if "applicantNameInstrumental" not in extracted_fields and name_for_inflection:
-            instr_auto = self._convert_name_to_instrumental(name_for_inflection)
-            if instr_auto:
-                extracted_fields["applicantNameInstrumental"] = instr_auto
-
-        # Обработка винительного падежа [2.4]
-        applicant_name_accusative_raw = extracted_fields.get("applicantNameAccusative")
-        if applicant_name_accusative_raw:
-            accs_clean = re.sub(r"\[.*?\]", "", applicant_name_accusative_raw)
-            accs_clean = self.clean_extracted_value(accs_clean)
-            accs_clean = accs_clean.strip('«»" ')
-            accs_clean = re.sub(r"^\s*фио\s+", "", accs_clean, flags=re.IGNORECASE)
-            # Убираем префиксы "ГЛАВА КФХ ИП" для винительного падежа
-            accs_clean = re.sub(
-                r'^(ГЛАВА\s+КФХ\s+ИП\s+|ГЛАВА\s+КФХ\s+|КФХ\s+ИП\s+|ИП\s+ГЛАВА\s+КФХ\s+)',
-                '',
-                accs_clean,
-                flags=re.IGNORECASE
-            ).strip()
-            accs_clean = re.sub(r"\s*введена\s+процедура\s+наблюдения.*$", "", accs_clean, flags=re.IGNORECASE)
-            accs_clean = accs_clean.strip()
-            if accs_clean and len(accs_clean) > 3:
-                # Отклоняем значения, которые явно являются описанием процедуры
-                if not re.search(r"^введена\s+процедура|процедура\s+наблюдения", accs_clean, re.IGNORECASE):
-                    extracted_fields["applicantNameAccusative"] = accs_clean
-            else:
-                extracted_fields.pop("applicantNameAccusative", None)
-
-        if "applicantNameAccusative" not in extracted_fields and name_for_inflection:
-            # Для КФХ используем правильное склонение с одушевленностью (кого?)
-            accs_auto = self._convert_name_to_accusative(name_for_inflection)
-            if accs_auto:
-                extracted_fields["applicantNameAccusative"] = accs_auto
-
-        # Дательный падеж для должника (маркер [2.2]) - везде это имя должника в дательном падеже, кроме ипотеки
-        # НЕ генерируем дательный падеж, если name_for_inflection содержит "суд" (это название суда, а не имя должника)
-        if "applicantNameDative" not in extracted_fields and name_for_inflection:
-            # Проверяем, что это не название суда
-            if "суд" not in name_for_inflection.lower():
-                # Убираем префикс "ИП" перед склонением (как для других падежей)
-                name_for_dative = re.sub(
-                    r'^(ИП\s+|ГЛАВА\s+КФХ\s+ИП\s+|ГЛАВА\s+КФХ\s+|КФХ\s+ИП\s+)',
-                    '',
-                    name_for_inflection,
-                    flags=re.IGNORECASE
-                ).strip()
-                if not name_for_dative:
-                    name_for_dative = name_for_inflection
-
-                dative_auto = self._convert_name_to_dative(name_for_dative)
-                if dative_auto:
-                    extracted_fields["applicantNameDative"] = dative_auto
-                    logger.info(f"Сгенерирован дательный падеж для [2.2]: {dative_auto}")
-            else:
-                logger.warning(f"Пропущена генерация дательного падежа - name_for_inflection содержит 'суд': {name_for_inflection}")
+        # Падежные формы должника [2.1]-[2.4]
+        self._generate_debtor_case_forms(extracted_fields, text, applicant_clean, is_kfh, applicant_name_instrumental_raw)
 
         # Для юрлиц пытаемся получить короткое название. Игнорируем мусорные значения вроде "введена процедура наблюдения".
         legal_name_source = debtor_clean or applicant_clean or debtor_block or applicant_name_raw or debtor_name_raw
@@ -5870,6 +5760,126 @@ class DocumentAnalyzer:
                                 addr = addr[:idx].strip()
                         extracted_fields["applicantAddress"] = addr.strip()
         return debtor_block
+
+    def _generate_debtor_case_forms(self, extracted_fields, text, applicant_clean, is_kfh, applicant_name_instrumental_raw):
+        """Падежные формы имени должника [2.1] род., [2.3] твор., [2.4] вин., [2.2] дат.: очистка raw-значений и автогенерация склонений (КФХ — по ФИО без префиксов). Вынесено из extract_fields."""
+        kfh_head_name = extracted_fields.get("kfhHeadName", "")
+        name_for_inflection = applicant_clean
+
+        if is_kfh and kfh_head_name:
+            # Для КФХ используем только ФИО без префиксов
+            name_for_inflection = kfh_head_name
+            logger.info(f"🔧 КФХ: используем kfhHeadName '{kfh_head_name}' для генерации падежных форм")
+
+        if "applicantNameGenitive" not in extracted_fields and name_for_inflection:
+            genitive_auto = self._convert_name_to_genitive(name_for_inflection)
+            if genitive_auto:
+                extracted_fields["applicantNameGenitive"] = genitive_auto
+
+        # Творительный падеж для должника (маркер [2.3])
+        if applicant_name_instrumental_raw:
+            instr_clean = re.sub(r"\[.*?\]", "", applicant_name_instrumental_raw)
+            instr_clean = self.clean_extracted_value(instr_clean)
+            instr_clean = instr_clean.strip('«»" ')
+            instr_clean = re.sub(r"^\s*фио\s+", "", instr_clean, flags=re.IGNORECASE)
+            # Убираем префиксы "ГЛАВА КФХ ИП" для творительного падежа
+            instr_clean = re.sub(
+                r'^(ГЛАВА\s+КФХ\s+ИП\s+|ГЛАВА\s+КФХ\s+|КФХ\s+ИП\s+|ИП\s+ГЛАВА\s+КФХ\s+)',
+                '',
+                instr_clean,
+                flags=re.IGNORECASE
+            ).strip()
+            instr_clean = re.sub(r"\s*введена\s+процедура\s+наблюдения.*$", "", instr_clean, flags=re.IGNORECASE)
+            instr_clean = instr_clean.strip()
+            if instr_clean and len(instr_clean) > 3:
+                extracted_fields["applicantNameInstrumental"] = instr_clean
+            else:
+                extracted_fields.pop("applicantNameInstrumental", None)
+
+        if "applicantNameInstrumental" not in extracted_fields and name_for_inflection:
+            instr_auto = self._convert_name_to_instrumental(name_for_inflection)
+            if instr_auto:
+                extracted_fields["applicantNameInstrumental"] = instr_auto
+
+        # Обработка винительного падежа [2.4]
+        applicant_name_accusative_raw = extracted_fields.get("applicantNameAccusative")
+        if applicant_name_accusative_raw:
+            accs_clean = re.sub(r"\[.*?\]", "", applicant_name_accusative_raw)
+            accs_clean = self.clean_extracted_value(accs_clean)
+            accs_clean = accs_clean.strip('«»" ')
+            accs_clean = re.sub(r"^\s*фио\s+", "", accs_clean, flags=re.IGNORECASE)
+            # Убираем префиксы "ГЛАВА КФХ ИП" для винительного падежа
+            accs_clean = re.sub(
+                r'^(ГЛАВА\s+КФХ\s+ИП\s+|ГЛАВА\s+КФХ\s+|КФХ\s+ИП\s+|ИП\s+ГЛАВА\s+КФХ\s+)',
+                '',
+                accs_clean,
+                flags=re.IGNORECASE
+            ).strip()
+            accs_clean = re.sub(r"\s*введена\s+процедура\s+наблюдения.*$", "", accs_clean, flags=re.IGNORECASE)
+            accs_clean = accs_clean.strip()
+            if accs_clean and len(accs_clean) > 3:
+                # Отклоняем значения, которые явно являются описанием процедуры
+                if not re.search(r"^введена\s+процедура|процедура\s+наблюдения", accs_clean, re.IGNORECASE):
+                    extracted_fields["applicantNameAccusative"] = accs_clean
+            else:
+                extracted_fields.pop("applicantNameAccusative", None)
+
+        if "applicantNameAccusative" not in extracted_fields and name_for_inflection:
+            # Для КФХ используем правильное склонение с одушевленностью (кого?)
+            accs_auto = self._convert_name_to_accusative(name_for_inflection)
+            if accs_auto:
+                extracted_fields["applicantNameAccusative"] = accs_auto
+
+        # Дательный падеж для должника (маркер [2.2]) - везде это имя должника в дательном падеже, кроме ипотеки
+        # НЕ генерируем дательный падеж, если name_for_inflection содержит "суд" (это название суда, а не имя должника)
+        if "applicantNameDative" not in extracted_fields and name_for_inflection:
+            # Проверяем, что это не название суда
+            if "суд" not in name_for_inflection.lower():
+                # Убираем префикс "ИП" перед склонением (как для других падежей)
+                name_for_dative = re.sub(
+                    r'^(ИП\s+|ГЛАВА\s+КФХ\s+ИП\s+|ГЛАВА\s+КФХ\s+|КФХ\s+ИП\s+)',
+                    '',
+                    name_for_inflection,
+                    flags=re.IGNORECASE
+                ).strip()
+                if not name_for_dative:
+                    name_for_dative = name_for_inflection
+
+                dative_auto = self._convert_name_to_dative(name_for_dative)
+                if dative_auto:
+                    extracted_fields["applicantNameDative"] = dative_auto
+                    logger.info(f"Сгенерирован дательный падеж для [2.2]: {dative_auto}")
+            else:
+                logger.warning(f"Пропущена генерация дательного падежа - name_for_inflection содержит 'суд': {name_for_inflection}")
+
+    def _normalize_procedure_and_manager(self, extracted_fields, text, procedure_type):
+        """Пост-обработка процедуры и управляющего: чистка названия суда для «умерший», фолбэк процедуры «наблюдение» по raw-описанию, валидация managerInn по контрольной сумме. Вынесено из extract_fields."""
+        # Специальная обработка названия суда для процедуры "умерший"
+        if procedure_type == 'deceased' and extracted_fields.get('courtName'):
+            court_name = extracted_fields['courtName']
+            cleaned_court_name = self._clean_court_name_deceased(court_name)
+            if cleaned_court_name != court_name:
+                extracted_fields['courtName'] = cleaned_court_name
+                logger.info(f"Очищено название суда для процедуры 'умерший': '{court_name}' -> '{cleaned_court_name}'")
+
+        # Фолбэк: если тип процедуры явно не нормализовался, но по "сырому" описанию видно "наблюдение" —
+        # считаем, что это процедура наблюдения.
+        if not extracted_fields.get("procedureType"):
+            raw_lower = (extracted_fields.get("procedureTypeRaw") or "").lower()
+            if any(token in raw_lower for token in ["наблюден", "наблюдения", "наблюдение"]):
+                extracted_fields["procedureType"] = "observation"
+                logger.info("Процедура по умолчанию установлена как 'observation' на основании procedureTypeRaw")
+
+        manager_inn = extracted_fields.get("managerInn")
+        if manager_inn:
+            normalized_inn = re.sub(r"\D", "", manager_inn)
+            # Отсеиваем мусор, не проходящий контрольную сумму (например, 689768767676),
+            # чтобы в поле не подставлялся заведомо ложный ИНН.
+            if normalized_inn and is_valid_inn(normalized_inn):
+                extracted_fields["managerInn"] = normalized_inn
+            else:
+                logger.debug(f"managerInn '{manager_inn}' отброшен: не прошёл контрольную сумму")
+                extracted_fields.pop("managerInn", None)
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
         """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
