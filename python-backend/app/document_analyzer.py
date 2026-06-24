@@ -4619,179 +4619,9 @@ class DocumentAnalyzer:
             elif extracted_fields.get("stateDuty"):
                 extracted_fields["loanStateDuty17"] = extracted_fields["stateDuty"]
 
-        def _extract_multiline_address_from_block(block_text: str) -> Optional[str]:
-            """
-            Извлекает многострочный адрес после "адрес регистрации/место жительства/адрес прописки"
-            с продолжением на следующих строках до служебных маркеров.
-            """
-            if not block_text:
-                return None
 
-            lines = [ln.strip() for ln in re.split(r"[\r\n]+", block_text) if ln.strip()]
-            if not lines:
-                return None
-
-            start_idx = -1
-            for i, line in enumerate(lines):
-                lower_line = line.lower()
-                if any(k in lower_line for k in ["место жительства", "адрес регистрации", "адрес прописки"]):
-                    start_idx = i
-                    break
-
-            if start_idx == -1:
-                return None
-
-            stop_tokens = [
-                "инн", "огрн", "огрнип", "кпп", "телефон", "e-mail", "email",
-                "дата рождения", "место рождения", "представитель", "заявление",
-                "исковое", "просит суд"
-            ]
-
-            addr_parts: List[str] = []
-
-            # 1) берем хвост текущей строки после двоеточия
-            first_line = lines[start_idx]
-            first_part = re.sub(
-                r"^(?:место\s+жительства|адрес\s+регистрации|адрес\s+прописки)\s*:?\s*",
-                "",
-                first_line,
-                flags=re.IGNORECASE
-            ).strip(" ,.;:-")
-            if first_part:
-                addr_parts.append(first_part)
-
-            # 2) добавляем следующие строки, пока не встретили служебные маркеры
-            for next_line in lines[start_idx + 1:start_idx + 8]:
-                lower_next = next_line.lower()
-                if any(token in lower_next for token in stop_tokens):
-                    break
-                cleaned = next_line.strip(" ,.;:-")
-                if cleaned:
-                    addr_parts.append(cleaned)
-
-            if not addr_parts:
-                return None
-
-            normalized = ", ".join(addr_parts)
-            normalized = re.sub(r"\s+", " ", normalized).strip(" ,.;:-")
-            return normalized or None
-
-        debtor_block_match = re.search(
-            r"Должник[:\s]*(.*?)(?=\n\s*\n|Временн(?:ый|ым)\s+управляющ|Сумма\s+требований|ЗАЯВЛЕНИЕ|Дело\s*№|$)",
-            text,
-            re.IGNORECASE | re.DOTALL
-        )
-        debtor_block = None
-        if debtor_block_match:
-            debtor_block = debtor_block_match.group(1)
-            debtor_block = debtor_block.replace('\u202f', ' ').replace('\xa0', ' ')
-
-            # Извлекаем юридический адрес, если он есть в блоке должника
-            address_match = re.search(
-                r"юридический\s+адрес[:\s]*([^\n\r]+(?:[\n\r]+[^\n\r]+)*)",
-                debtor_block,
-                re.IGNORECASE
-            )
-            if address_match:
-                address_text = address_match.group(1)
-                address_lines = re.split(r"[\n\r]+", address_text)
-                cleaned_lines = []
-                for line in address_lines:
-                    line = re.sub(r"\[[0-9\.]+\]", "", line)
-                    line = line.strip(" ,.:-;")
-                    if not line:
-                        continue
-                    lower_line = line.lower()
-                    if any(token in lower_line for token in ["инн", "огрн", "кпп", "телефон", "e-mail", "email"]):
-                        continue
-                    cleaned_lines.append(line)
-
-                if cleaned_lines:
-                    extracted_fields["applicantAddress"] = ", ".join(cleaned_lines)
-            else:
-                # fallback: для физических лиц ищем адрес регистрации/проживания в блоке должника
-                # Сначала пробуем вариант с индексом
-                residence_match = re.search(
-                    r"(?:место\s+жительства|адрес\s+регистрации)[:\s]*([0-9]{6}[^\n]+)",
-                    debtor_block,
-                    re.IGNORECASE
-                )
-                if not residence_match:
-                    # Если индекса нет (как в "Адрес регистрации: Ростовская область, г РОСТОВ-НА-ДОНУ,\nул ЕРЕМЕНКО, ..."),
-                    # берём всё после "Адрес регистрации:" / "место жительства:" включая следующую строку.
-                    residence_match = re.search(
-                        r"(?:место\s+жительства|адрес\s+регистрации)[:\s]*([^\n\r]+(?:[\n\r]+[^\n\r]+)*)",
-                        debtor_block,
-                        re.IGNORECASE
-                    )
-                if residence_match:
-                    addr_raw = residence_match.group(1)
-                    addr_clean = self.clean_extracted_value(addr_raw)
-                    # Очищаем мусор после служебных слов (ИНН, ОГРН и т.п.)
-                    for token in ["инн", "огрн", "огрнип", "кпп", "телефон", "e-mail", "email"]:
-                        token_lower = token.lower()
-                        idx = addr_clean.lower().find(token_lower)
-                        if idx != -1:
-                            addr_clean = addr_clean[:idx].strip()
-                    extracted_fields["applicantAddress"] = addr_clean
-
-                # Универсальный фолбэк: пытаемся собрать многострочный адрес (в т.ч. для ипотеки)
-                if not extracted_fields.get("applicantAddress"):
-                    multi_addr = _extract_multiline_address_from_block(debtor_block)
-                    if multi_addr:
-                        extracted_fields["applicantAddress"] = multi_addr
-                        logger.info(f"✅ Extracted applicantAddress (multiline fallback): {multi_addr}")
-
-            # Извлекаем ОГРН (только если еще не извлечен в основном цикле)
-            if "ogrn" not in extracted_fields or not extracted_fields.get("ogrn"):
-                ogrn_match = re.search(r"ОГРН[:\s]*([0-9\s]{12,15})", debtor_block, re.IGNORECASE)
-                if not ogrn_match:
-                    ogrn_match = re.search(r"ОГРНИП[:\s]*([0-9\s]{15})", debtor_block, re.IGNORECASE)
-                if not ogrn_match:
-                    ogrn_match = re.search(r"([0-9\s]{12,15})\s*\[3\]", debtor_block)
-                if ogrn_match:
-                    ogrn_value = re.sub(r"\D", "", ogrn_match.group(1))
-                    # Проверяем длину ОГРН: 12-15 цифр (для ЮЛ может быть 12 или 13 цифр, для ИП - 15)
-                    if ogrn_value and len(ogrn_value) >= 12 and len(ogrn_value) <= 15:
-                        extracted_fields["ogrn"] = ogrn_value
-                        logger.info(f"✅ Extracted ogrn из блока Должник (после цикла): {ogrn_value}")
-
-            # Извлекаем ИНН (только если еще не извлечен в основном цикле).
-            # Среди кандидатов предпочитаем валидного по контрольной сумме.
-            if "inn" not in extracted_fields or not extracted_fields.get("inn"):
-                inn_candidates = re.findall(r"ИНН[:\s]*([0-9\s]{10,12})", debtor_block, re.IGNORECASE)
-                inn_candidates += re.findall(r"([0-9\s]{10,12})\s*\[4\]", debtor_block)
-                inn_clean = [re.sub(r"\D", "", c) for c in inn_candidates]
-                inn_clean = [c for c in inn_clean if 10 <= len(c) <= 12]
-                if inn_clean:
-                    inn_value = next((c for c in inn_clean if is_valid_inn(c)), inn_clean[0])
-                    extracted_fields["inn"] = inn_value
-                    extracted_fields["companyInn"] = inn_value
-                    logger.info(f"✅ Extracted inn из блока Должник (после цикла): {inn_value}")
-
-            # Определяем КФХ: после "Должник" указывается "ГЛАВА КФХ ИП ФИО"
-            # Пример: "ГЛАВА КФХ ИП Иванов Иван Иванович"
-            # Если КФХ уже было определено ранним определением, не перезаписываем
-            if not extracted_fields.get("isKfh"):
-                kfh_match = re.search(
-                    r"глава\s+кфх\s+ип\s+([А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){1,2})",
-                    debtor_block,
-                    re.IGNORECASE
-                )
-                if kfh_match:
-                    extracted_fields["isKfh"] = True
-                    extracted_fields["kfhHeadName"] = kfh_match.group(1).strip()
-                    # Для КФХ адрес берём строго из блока должника по первому "индекс + строка"
-                    kfh_addr_match = re.search(r"([0-9]{6}[,\s]+[А-ЯЁ][^\n\r]+)", debtor_block)
-                    if kfh_addr_match:
-                        addr = self.clean_extracted_value(kfh_addr_match.group(1))
-                        # Обрезаем всё после маркеров ИНН/ОГРН, если они попали в строку
-                        for token in ["инн", "огрн", "кпп", "телефон", "e-mail", "email"]:
-                            token_lower = token.lower()
-                            idx = addr.lower().find(token_lower)
-                            if idx != -1:
-                                addr = addr[:idx].strip()
-                        extracted_fields["applicantAddress"] = addr.strip()
+        # Реквизиты ЮЛ из блока «Должник:» (debtor_block)
+        debtor_block = self._extract_legal_entity_requisites(extracted_fields, text)
 
         procedure_type, procedure_raw = self.determine_procedure_type(text)
         if procedure_type:
@@ -5863,6 +5693,183 @@ class DocumentAnalyzer:
                         )
             except Exception as e:
                 logger.debug(f"Ошибка при коррекции totalDebt для rtk_application: {e}")
+
+    def _extract_multiline_address_from_block(self, block_text: str) -> Optional[str]:
+        """
+        Извлекает многострочный адрес после "адрес регистрации/место жительства/адрес прописки"
+        с продолжением на следующих строках до служебных маркеров.
+        """
+        if not block_text:
+            return None
+
+        lines = [ln.strip() for ln in re.split(r"[\r\n]+", block_text) if ln.strip()]
+        if not lines:
+            return None
+
+        start_idx = -1
+        for i, line in enumerate(lines):
+            lower_line = line.lower()
+            if any(k in lower_line for k in ["место жительства", "адрес регистрации", "адрес прописки"]):
+                start_idx = i
+                break
+
+        if start_idx == -1:
+            return None
+
+        stop_tokens = [
+            "инн", "огрн", "огрнип", "кпп", "телефон", "e-mail", "email",
+            "дата рождения", "место рождения", "представитель", "заявление",
+            "исковое", "просит суд"
+        ]
+
+        addr_parts: List[str] = []
+
+        # 1) берем хвост текущей строки после двоеточия
+        first_line = lines[start_idx]
+        first_part = re.sub(
+            r"^(?:место\s+жительства|адрес\s+регистрации|адрес\s+прописки)\s*:?\s*",
+            "",
+            first_line,
+            flags=re.IGNORECASE
+        ).strip(" ,.;:-")
+        if first_part:
+            addr_parts.append(first_part)
+
+        # 2) добавляем следующие строки, пока не встретили служебные маркеры
+        for next_line in lines[start_idx + 1:start_idx + 8]:
+            lower_next = next_line.lower()
+            if any(token in lower_next for token in stop_tokens):
+                break
+            cleaned = next_line.strip(" ,.;:-")
+            if cleaned:
+                addr_parts.append(cleaned)
+
+        if not addr_parts:
+            return None
+
+        normalized = ", ".join(addr_parts)
+        normalized = re.sub(r"\s+", " ", normalized).strip(" ,.;:-")
+        return normalized or None
+
+    def _extract_legal_entity_requisites(self, extracted_fields, text):
+        """Реквизиты ЮЛ из блока «Должник:»: юридический адрес (в т.ч. многострочный), ОГРН, ИНН (по контрольной сумме), адрес КФХ. Возвращает найденный debtor_block для downstream-логики. Вынесено из extract_fields."""
+        debtor_block_match = re.search(
+            r"Должник[:\s]*(.*?)(?=\n\s*\n|Временн(?:ый|ым)\s+управляющ|Сумма\s+требований|ЗАЯВЛЕНИЕ|Дело\s*№|$)",
+            text,
+            re.IGNORECASE | re.DOTALL
+        )
+        debtor_block = None
+        if debtor_block_match:
+            debtor_block = debtor_block_match.group(1)
+            debtor_block = debtor_block.replace('\u202f', ' ').replace('\xa0', ' ')
+
+            # Извлекаем юридический адрес, если он есть в блоке должника
+            address_match = re.search(
+                r"юридический\s+адрес[:\s]*([^\n\r]+(?:[\n\r]+[^\n\r]+)*)",
+                debtor_block,
+                re.IGNORECASE
+            )
+            if address_match:
+                address_text = address_match.group(1)
+                address_lines = re.split(r"[\n\r]+", address_text)
+                cleaned_lines = []
+                for line in address_lines:
+                    line = re.sub(r"\[[0-9\.]+\]", "", line)
+                    line = line.strip(" ,.:-;")
+                    if not line:
+                        continue
+                    lower_line = line.lower()
+                    if any(token in lower_line for token in ["инн", "огрн", "кпп", "телефон", "e-mail", "email"]):
+                        continue
+                    cleaned_lines.append(line)
+
+                if cleaned_lines:
+                    extracted_fields["applicantAddress"] = ", ".join(cleaned_lines)
+            else:
+                # fallback: для физических лиц ищем адрес регистрации/проживания в блоке должника
+                # Сначала пробуем вариант с индексом
+                residence_match = re.search(
+                    r"(?:место\s+жительства|адрес\s+регистрации)[:\s]*([0-9]{6}[^\n]+)",
+                    debtor_block,
+                    re.IGNORECASE
+                )
+                if not residence_match:
+                    # Если индекса нет (как в "Адрес регистрации: Ростовская область, г РОСТОВ-НА-ДОНУ,\nул ЕРЕМЕНКО, ..."),
+                    # берём всё после "Адрес регистрации:" / "место жительства:" включая следующую строку.
+                    residence_match = re.search(
+                        r"(?:место\s+жительства|адрес\s+регистрации)[:\s]*([^\n\r]+(?:[\n\r]+[^\n\r]+)*)",
+                        debtor_block,
+                        re.IGNORECASE
+                    )
+                if residence_match:
+                    addr_raw = residence_match.group(1)
+                    addr_clean = self.clean_extracted_value(addr_raw)
+                    # Очищаем мусор после служебных слов (ИНН, ОГРН и т.п.)
+                    for token in ["инн", "огрн", "огрнип", "кпп", "телефон", "e-mail", "email"]:
+                        token_lower = token.lower()
+                        idx = addr_clean.lower().find(token_lower)
+                        if idx != -1:
+                            addr_clean = addr_clean[:idx].strip()
+                    extracted_fields["applicantAddress"] = addr_clean
+
+                # Универсальный фолбэк: пытаемся собрать многострочный адрес (в т.ч. для ипотеки)
+                if not extracted_fields.get("applicantAddress"):
+                    multi_addr = self._extract_multiline_address_from_block(debtor_block)
+                    if multi_addr:
+                        extracted_fields["applicantAddress"] = multi_addr
+                        logger.info(f"✅ Extracted applicantAddress (multiline fallback): {multi_addr}")
+
+            # Извлекаем ОГРН (только если еще не извлечен в основном цикле)
+            if "ogrn" not in extracted_fields or not extracted_fields.get("ogrn"):
+                ogrn_match = re.search(r"ОГРН[:\s]*([0-9\s]{12,15})", debtor_block, re.IGNORECASE)
+                if not ogrn_match:
+                    ogrn_match = re.search(r"ОГРНИП[:\s]*([0-9\s]{15})", debtor_block, re.IGNORECASE)
+                if not ogrn_match:
+                    ogrn_match = re.search(r"([0-9\s]{12,15})\s*\[3\]", debtor_block)
+                if ogrn_match:
+                    ogrn_value = re.sub(r"\D", "", ogrn_match.group(1))
+                    # Проверяем длину ОГРН: 12-15 цифр (для ЮЛ может быть 12 или 13 цифр, для ИП - 15)
+                    if ogrn_value and len(ogrn_value) >= 12 and len(ogrn_value) <= 15:
+                        extracted_fields["ogrn"] = ogrn_value
+                        logger.info(f"✅ Extracted ogrn из блока Должник (после цикла): {ogrn_value}")
+
+            # Извлекаем ИНН (только если еще не извлечен в основном цикле).
+            # Среди кандидатов предпочитаем валидного по контрольной сумме.
+            if "inn" not in extracted_fields or not extracted_fields.get("inn"):
+                inn_candidates = re.findall(r"ИНН[:\s]*([0-9\s]{10,12})", debtor_block, re.IGNORECASE)
+                inn_candidates += re.findall(r"([0-9\s]{10,12})\s*\[4\]", debtor_block)
+                inn_clean = [re.sub(r"\D", "", c) for c in inn_candidates]
+                inn_clean = [c for c in inn_clean if 10 <= len(c) <= 12]
+                if inn_clean:
+                    inn_value = next((c for c in inn_clean if is_valid_inn(c)), inn_clean[0])
+                    extracted_fields["inn"] = inn_value
+                    extracted_fields["companyInn"] = inn_value
+                    logger.info(f"✅ Extracted inn из блока Должник (после цикла): {inn_value}")
+
+            # Определяем КФХ: после "Должник" указывается "ГЛАВА КФХ ИП ФИО"
+            # Пример: "ГЛАВА КФХ ИП Иванов Иван Иванович"
+            # Если КФХ уже было определено ранним определением, не перезаписываем
+            if not extracted_fields.get("isKfh"):
+                kfh_match = re.search(
+                    r"глава\s+кфх\s+ип\s+([А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){1,2})",
+                    debtor_block,
+                    re.IGNORECASE
+                )
+                if kfh_match:
+                    extracted_fields["isKfh"] = True
+                    extracted_fields["kfhHeadName"] = kfh_match.group(1).strip()
+                    # Для КФХ адрес берём строго из блока должника по первому "индекс + строка"
+                    kfh_addr_match = re.search(r"([0-9]{6}[,\s]+[А-ЯЁ][^\n\r]+)", debtor_block)
+                    if kfh_addr_match:
+                        addr = self.clean_extracted_value(kfh_addr_match.group(1))
+                        # Обрезаем всё после маркеров ИНН/ОГРН, если они попали в строку
+                        for token in ["инн", "огрн", "кпп", "телефон", "e-mail", "email"]:
+                            token_lower = token.lower()
+                            idx = addr.lower().find(token_lower)
+                            if idx != -1:
+                                addr = addr[:idx].strip()
+                        extracted_fields["applicantAddress"] = addr.strip()
+        return debtor_block
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
         """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
