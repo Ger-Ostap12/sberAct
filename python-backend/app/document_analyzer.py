@@ -4796,81 +4796,8 @@ class DocumentAnalyzer:
         # Санити кредитных параметров (срок/ставка)
         self._sanitize_credit_params(extracted_fields, text)
 
-        detected_entity_type = self.detect_entity_type(extracted_fields)
-        if detected_entity_type:
-            extracted_fields['entityType'] = detected_entity_type
-            logger.info(f"Определён тип должника: {detected_entity_type}")
-            if detected_entity_type == "legal":
-                # Для юрлиц: legalShortName и debtorName могут быть без ОПФ, но applicantName должен сохранять ОПФ для маркеров [2], [2.1], [2.2]
-                name_source_legal = debtor_clean or extracted_fields.get("debtorName") or extracted_fields.get("applicantName")
-                if name_source_legal:
-                    short_legal_name = self._strip_ooo_prefix(name_source_legal)
-                    if short_legal_name:
-                        extracted_fields["debtorName"] = short_legal_name
-                        # applicantName НЕ перезаписываем здесь, чтобы сохранить ОПФ для маркеров [2], [2.1], [2.2]
-                        # Если applicantName еще не установлен, используем исходное значение с ОПФ
-                        if not extracted_fields.get("applicantName"):
-                            extracted_fields["applicantName"] = name_source_legal
-                        extracted_fields["legalShortName"] = short_legal_name
-                        debtor_clean = short_legal_name
-
-                # Для ЮЛ дата рождения не применяется (иначе сюда ошибочно попадает ОГРН).
-                extracted_fields.pop("birthDate", None)
-                extracted_fields.pop("birthPlace", None)
-
-                # ВАЖНО: Используем inn в первую очередь, так как он извлечен из блока "Ответчик:"
-                # companyInn может быть неправильным (из кредитора), если он был установлен до специальной логики
-                inn_clean = extracted_fields.get("inn") or extracted_fields.get("companyInn")
-                if inn_clean:
-                    inn_clean = re.sub(r"\D", "", inn_clean)
-                    # Проверяем длину ИНН перед установкой
-                    if len(inn_clean) >= 10 and len(inn_clean) <= 12:
-                        extracted_fields["inn"] = inn_clean
-                        extracted_fields["companyInn"] = inn_clean
-                    else:
-                        logger.warning(f"⚠️ ИНН не прошел проверку длины при перезаписи: '{inn_clean}' (длина: {len(inn_clean)})")
-
-                extracted_fields.pop("snils", None)
-
-                extracted_fields['procedureType'] = 'observation'
-                extracted_fields.setdefault('procedureTypeRaw', 'наблюдение')
-
-                # Для ЮЛ добавляем ИНН в отображаемое ФИО финансового управляющего (для актов и интерфейса)
-                manager_name = extracted_fields.get("managerName")
-                manager_inn_final = extracted_fields.get("managerInn")
-                if manager_name and manager_inn_final and "инн" not in manager_name.lower():
-                    extracted_fields["managerName"] = f"{manager_name.strip()} (ИНН {manager_inn_final})"
-            elif detected_entity_type in ("individual", "ip"):
-                extracted_fields.pop("ogrn", None)
-                extracted_fields.pop("companyInn", None)
-            elif detected_entity_type == "kfh":
-                # КФХ — не юрлицо, очищаем ОГРН/ИНН организации при необходимости
-                extracted_fields.pop("companyInn", None)
-
-        # Дополнительная коррекция типа должника для процедур наблюдения:
-        # принудительно ЮЛ только если есть признаки ЮЛ и имя должника НЕ похоже на ФИО (используем только debtorName/applicantName как в detect_entity_type).
-        procedure_type_final = (extracted_fields.get("procedureType") or "").lower()
-        if procedure_type_final == "observation":
-            current_entity = (extracted_fields.get("entityType") or "").lower()
-            name_for_entity = (extracted_fields.get("debtorName") or "").strip() or (extracted_fields.get("applicantName") or "").strip()
-            name_looks_like_fio = bool(re.search(r"[А-ЯЁа-яё]{2,}\s+[А-ЯЁа-яё]{2,}\s+[А-ЯЁа-яё]{2,}", name_for_entity))
-            legal_tokens_in_name = any(t in name_for_entity.lower() for t in ["ооо", "оао", "пао", "зао", "общество с ограниченной", "акционерное общество"])
-            if current_entity not in ("kfh", "ip") and (extracted_fields.get("ogrn") or extracted_fields.get("legalShortName") or extracted_fields.get("companyInn")) and not (name_looks_like_fio and not legal_tokens_in_name):
-                extracted_fields["entityType"] = "legal"
-
-        # Если на более поздних этапах (например, для competition_collateral) тип явно проставили как legal,
-        # добавляем ИНН в отображаемое ФИО финансового управляющего
-        final_entity_type = extracted_fields.get("entityType")
-        if final_entity_type == "legal":
-            manager_name_final = extracted_fields.get("managerName")
-            manager_inn_final = extracted_fields.get("managerInn")
-            if manager_name_final and manager_inn_final and "инн" not in manager_name_final.lower():
-                extracted_fields["managerName"] = f"{manager_name_final.strip()} (ИНН {manager_inn_final})"
-
-        # Фолбэк для [3] допустим только для не-ЮЛ.
-        if extracted_fields.get("entityType") != "legal":
-            if extracted_fields.get("ogrn") and not extracted_fields.get("birthDate"):
-                extracted_fields["birthDate"] = extracted_fields["ogrn"]
+        # Финализация типа должника и финуправляющего
+        self._finalize_debtor_type(extracted_fields, text, debtor_clean)
 
         # Финальная нормализация блока «Финансовые данные»: неустойка/штраф,
         # даты платёжных поручений (депозит/госпошлина), банкротная/ссудная
@@ -5885,6 +5812,84 @@ class DocumentAnalyzer:
                         extracted_fields["applicantAddress"] = addr.strip()
                         logger.info(f"✅ Адрес КФХ извлечен: {addr.strip()}")
                         break
+
+    def _finalize_debtor_type(self, extracted_fields, text, debtor_clean):
+        """Финализация типа должника и финуправляющего: entityType, ОПФ в applicantName для ЮЛ, ИНН управляющего в ФИО, коррекция типа для наблюдения, фолбэк [3]. Вынесено из extract_fields."""
+        detected_entity_type = self.detect_entity_type(extracted_fields)
+        if detected_entity_type:
+            extracted_fields['entityType'] = detected_entity_type
+            logger.info(f"Определён тип должника: {detected_entity_type}")
+            if detected_entity_type == "legal":
+                # Для юрлиц: legalShortName и debtorName могут быть без ОПФ, но applicantName должен сохранять ОПФ для маркеров [2], [2.1], [2.2]
+                name_source_legal = debtor_clean or extracted_fields.get("debtorName") or extracted_fields.get("applicantName")
+                if name_source_legal:
+                    short_legal_name = self._strip_ooo_prefix(name_source_legal)
+                    if short_legal_name:
+                        extracted_fields["debtorName"] = short_legal_name
+                        # applicantName НЕ перезаписываем здесь, чтобы сохранить ОПФ для маркеров [2], [2.1], [2.2]
+                        # Если applicantName еще не установлен, используем исходное значение с ОПФ
+                        if not extracted_fields.get("applicantName"):
+                            extracted_fields["applicantName"] = name_source_legal
+                        extracted_fields["legalShortName"] = short_legal_name
+                        debtor_clean = short_legal_name
+
+                # Для ЮЛ дата рождения не применяется (иначе сюда ошибочно попадает ОГРН).
+                extracted_fields.pop("birthDate", None)
+                extracted_fields.pop("birthPlace", None)
+
+                # ВАЖНО: Используем inn в первую очередь, так как он извлечен из блока "Ответчик:"
+                # companyInn может быть неправильным (из кредитора), если он был установлен до специальной логики
+                inn_clean = extracted_fields.get("inn") or extracted_fields.get("companyInn")
+                if inn_clean:
+                    inn_clean = re.sub(r"\D", "", inn_clean)
+                    # Проверяем длину ИНН перед установкой
+                    if len(inn_clean) >= 10 and len(inn_clean) <= 12:
+                        extracted_fields["inn"] = inn_clean
+                        extracted_fields["companyInn"] = inn_clean
+                    else:
+                        logger.warning(f"⚠️ ИНН не прошел проверку длины при перезаписи: '{inn_clean}' (длина: {len(inn_clean)})")
+
+                extracted_fields.pop("snils", None)
+
+                extracted_fields['procedureType'] = 'observation'
+                extracted_fields.setdefault('procedureTypeRaw', 'наблюдение')
+
+                # Для ЮЛ добавляем ИНН в отображаемое ФИО финансового управляющего (для актов и интерфейса)
+                manager_name = extracted_fields.get("managerName")
+                manager_inn_final = extracted_fields.get("managerInn")
+                if manager_name and manager_inn_final and "инн" not in manager_name.lower():
+                    extracted_fields["managerName"] = f"{manager_name.strip()} (ИНН {manager_inn_final})"
+            elif detected_entity_type in ("individual", "ip"):
+                extracted_fields.pop("ogrn", None)
+                extracted_fields.pop("companyInn", None)
+            elif detected_entity_type == "kfh":
+                # КФХ — не юрлицо, очищаем ОГРН/ИНН организации при необходимости
+                extracted_fields.pop("companyInn", None)
+
+        # Дополнительная коррекция типа должника для процедур наблюдения:
+        # принудительно ЮЛ только если есть признаки ЮЛ и имя должника НЕ похоже на ФИО (используем только debtorName/applicantName как в detect_entity_type).
+        procedure_type_final = (extracted_fields.get("procedureType") or "").lower()
+        if procedure_type_final == "observation":
+            current_entity = (extracted_fields.get("entityType") or "").lower()
+            name_for_entity = (extracted_fields.get("debtorName") or "").strip() or (extracted_fields.get("applicantName") or "").strip()
+            name_looks_like_fio = bool(re.search(r"[А-ЯЁа-яё]{2,}\s+[А-ЯЁа-яё]{2,}\s+[А-ЯЁа-яё]{2,}", name_for_entity))
+            legal_tokens_in_name = any(t in name_for_entity.lower() for t in ["ооо", "оао", "пао", "зао", "общество с ограниченной", "акционерное общество"])
+            if current_entity not in ("kfh", "ip") and (extracted_fields.get("ogrn") or extracted_fields.get("legalShortName") or extracted_fields.get("companyInn")) and not (name_looks_like_fio and not legal_tokens_in_name):
+                extracted_fields["entityType"] = "legal"
+
+        # Если на более поздних этапах (например, для competition_collateral) тип явно проставили как legal,
+        # добавляем ИНН в отображаемое ФИО финансового управляющего
+        final_entity_type = extracted_fields.get("entityType")
+        if final_entity_type == "legal":
+            manager_name_final = extracted_fields.get("managerName")
+            manager_inn_final = extracted_fields.get("managerInn")
+            if manager_name_final and manager_inn_final and "инн" not in manager_name_final.lower():
+                extracted_fields["managerName"] = f"{manager_name_final.strip()} (ИНН {manager_inn_final})"
+
+        # Фолбэк для [3] допустим только для не-ЮЛ.
+        if extracted_fields.get("entityType") != "legal":
+            if extracted_fields.get("ogrn") and not extracted_fields.get("birthDate"):
+                extracted_fields["birthDate"] = extracted_fields["ogrn"]
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
         """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
