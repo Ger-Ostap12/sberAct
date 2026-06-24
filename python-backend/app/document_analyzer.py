@@ -361,55 +361,8 @@ class DocumentAnalyzer:
                 extracted_fields = self.extract_fields(text, effective_type)
                 collateral_detected = False
 
-            # Дополнительная проверка для observation_collateral после извлечения полей
-            # Если это юридическое лицо с залогом и процедура наблюдения, но тип еще не определен
-            if document_type == "rtk_application":
-                entity_type = extracted_fields.get("entityType", "").lower()
-
-                # ОБЯЗАТЕЛЬНАЯ ПРОВЕРКА: документ считается залоговым ТОЛЬКО если есть формулировка "обеспеченное залогом"
-                required_collateral_phrases = [
-                    r"обеспеченное\s+залогом",
-                    r"обеспечено\s+залогом",
-                    r"обеспечен\s+залогом",
-                    r"обеспечена\s+залогом",
-                    r"обеспечены\s+залогом",
-                    r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку",
-                    r"обязательство.*обеспечен.*залогом",
-                    r"обязательства.*обеспечен.*залогом"
-                ]
-                has_required_collateral_phrase = any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in required_collateral_phrases)
-
-                # Дополнительные индикаторы залога (только если есть обязательная формулировка)
-                has_collateral = False
-                if has_required_collateral_phrase:
-                    has_collateral = any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in [
-                        r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку",
-                        r"что\s+подтверждается\s+договором\s+залога",
-                        r"договор\s+залога\s+№"
-                    ])
-
-                is_observation = any(keyword in text_lower for keyword in ["наблюден", "наблюдения", "процедура наблюдения"]) or \
-                                entity_type == "legal" or \
-                                (extracted_fields.get("procedureType") or "").lower() == "observation"
-
-                if entity_type == "legal" and has_collateral and is_observation and not has_ip_name:
-                    document_type = "observation_collateral"
-                    logger.info("Определен тип документа: observation_collateral (Наблюдение с залогом для ЮЛ после извлечения полей)")
-                    # Дополняем полями залога
-                    collateral_fields = self.extract_physical_collateral_fields(text)
-                    for key, value in collateral_fields.items():
-                        if value:
-                            extracted_fields[key] = value
-
-                    # Если предмет залога [1221] не найден, пытаемся извлечь через fallback метод
-                    if "mortgageCollateralDescription1221" not in extracted_fields or not extracted_fields.get("mortgageCollateralDescription1221"):
-                        logger.info("🔍 Предмет залога [1221] не найден для observation_collateral, пробуем fallback метод...")
-                        collateral_block = self._extract_mortgage_collateral_block(text)
-                        if collateral_block:
-                            extracted_fields["mortgageCollateralDescription1221"] = collateral_block
-                            logger.info(f"✅ Извлечено mortgageCollateralDescription1221 через fallback метод: {collateral_block[:150]}...")
-
-                    extracted_fields["observationHasCollateral"] = "true"
+            # Возможный апгрейд типа -> observation_collateral
+            document_type = self._maybe_upgrade_to_observation_collateral(extracted_fields, text, document_type, text_lower)
 
             # Устанавливаем флаг КФХ, если он был обнаружен ранним определением
             if is_kfh_detected:
@@ -4611,6 +4564,59 @@ class DocumentAnalyzer:
         # Нормализуем регистр названия суда («…Суд… Области» → «…суд… области»).
         if extracted_fields.get("courtName"):
             extracted_fields["courtName"] = self._normalize_court_name(extracted_fields["courtName"])
+
+    def _maybe_upgrade_to_observation_collateral(self, extracted_fields, text, document_type, text_lower):
+        """Доп. проверка после извлечения: ЮЛ + залог + наблюдение -> тип observation_collateral (+ поля залога). Возвращает (возможно обновлённый) document_type. Вынесено из analyze."""
+        # Дополнительная проверка для observation_collateral после извлечения полей
+        # Если это юридическое лицо с залогом и процедура наблюдения, но тип еще не определен
+        if document_type == "rtk_application":
+            entity_type = extracted_fields.get("entityType", "").lower()
+
+            # ОБЯЗАТЕЛЬНАЯ ПРОВЕРКА: документ считается залоговым ТОЛЬКО если есть формулировка "обеспеченное залогом"
+            required_collateral_phrases = [
+                r"обеспеченное\s+залогом",
+                r"обеспечено\s+залогом",
+                r"обеспечен\s+залогом",
+                r"обеспечена\s+залогом",
+                r"обеспечены\s+залогом",
+                r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку",
+                r"обязательство.*обеспечен.*залогом",
+                r"обязательства.*обеспечен.*залогом"
+            ]
+            has_required_collateral_phrase = any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in required_collateral_phrases)
+
+            # Дополнительные индикаторы залога (только если есть обязательная формулировка)
+            has_collateral = False
+            if has_required_collateral_phrase:
+                has_collateral = any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in [
+                    r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку",
+                    r"что\s+подтверждается\s+договором\s+залога",
+                    r"договор\s+залога\s+№"
+                ])
+
+            is_observation = any(keyword in text_lower for keyword in ["наблюден", "наблюдения", "процедура наблюдения"]) or \
+                            entity_type == "legal" or \
+                            (extracted_fields.get("procedureType") or "").lower() == "observation"
+
+            if entity_type == "legal" and has_collateral and is_observation and not has_ip_name:
+                document_type = "observation_collateral"
+                logger.info("Определен тип документа: observation_collateral (Наблюдение с залогом для ЮЛ после извлечения полей)")
+                # Дополняем полями залога
+                collateral_fields = self.extract_physical_collateral_fields(text)
+                for key, value in collateral_fields.items():
+                    if value:
+                        extracted_fields[key] = value
+
+                # Если предмет залога [1221] не найден, пытаемся извлечь через fallback метод
+                if "mortgageCollateralDescription1221" not in extracted_fields or not extracted_fields.get("mortgageCollateralDescription1221"):
+                    logger.info("🔍 Предмет залога [1221] не найден для observation_collateral, пробуем fallback метод...")
+                    collateral_block = self._extract_mortgage_collateral_block(text)
+                    if collateral_block:
+                        extracted_fields["mortgageCollateralDescription1221"] = collateral_block
+                        logger.info(f"✅ Извлечено mortgageCollateralDescription1221 через fallback метод: {collateral_block[:150]}...")
+
+                extracted_fields["observationHasCollateral"] = "true"
+        return document_type
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
         """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
