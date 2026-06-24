@@ -4722,67 +4722,8 @@ class DocumentAnalyzer:
         # Падежные формы должника [2.1]-[2.4]
         self._generate_debtor_case_forms(extracted_fields, text, applicant_clean, is_kfh, applicant_name_instrumental_raw)
 
-        # Для юрлиц пытаемся получить короткое название. Игнорируем мусорные значения вроде "введена процедура наблюдения".
-        legal_name_source = debtor_clean or applicant_clean or debtor_block or applicant_name_raw or debtor_name_raw
-        if legal_name_source and re.search(r"введена\s+процедура\s+наблюдения", legal_name_source, re.IGNORECASE):
-            legal_name_source = applicant_clean or applicant_name_raw or debtor_block
-
-        legal_short_name = self.extract_legal_entity_short_name(legal_name_source)
-        if legal_short_name:
-            extracted_fields["legalShortName"] = legal_short_name
-            # ВАЖНО: не затираем debtorName/applicantName для всех документов подряд.
-            # Это было источником неожиданных эффектов.
-            # Оставляем их как есть, а для специализированных типов (например, initiation_legal)
-            # делаем аккуратную переустановку ниже.
-
-        # Специальная донастройка ТОЛЬКО для юр. инициирования
-        source_doc_type = (extracted_fields.get("sourceDocumentType") or "").lower()
-        if source_doc_type.startswith("initiation_legal"):
-            # Для заявлений о инициировании банкротства ЮЛ берём название должника строго из блока "Должник:"
-            if debtor_block:
-                # Полное наименование организации из шапки
-                company_match = re.search(
-                    r"(?:ООО|ОАО|ПАО|ЗАО|АО|Обществ[ао]\s+с\s+ограниченной\s+ответственностью)\s*[«\"]?([^\"\n]+)[»\"]?",
-                    debtor_block,
-                    re.IGNORECASE,
-                )
-                if company_match:
-                    short_name = company_match.group(1).strip()
-                    # company_match.group(0) содержит форму с организационно‑правовой формой
-                    full_name = company_match.group(0).strip(' «»"')
-
-                    # Для маркеров [2], [2.1], [2.2] applicantName должен содержать ОПФ
-                    # debtorName и legalShortName могут быть без ОПФ
-                    name_core = short_name or full_name
-                    extracted_fields["debtorName"] = name_core
-                    # applicantName сохраняем с ОПФ для маркеров [2], [2.1], [2.2]
-                    extracted_fields["applicantName"] = full_name if full_name else name_core
-                    extracted_fields["legalShortName"] = name_core
-                    debtor_clean = name_core
-
-        address_raw = extracted_fields.get("applicantAddress")
-        if address_raw:
-            address_clean = self.clean_extracted_value(address_raw.replace('\u202f', ' ').replace('\xa0', ' '))
-            address_clean = re.sub(r"\[[0-9\.]+\]", "", address_clean)
-            for token in [
-                "почтовый адрес", "телефон", "e-mail", "инн", "огрн", "кпп",
-                "банк", "банковских", "сбербанк", "банк россии",
-                "исковое заявление", "о взыскании", "просит суд", "цена иска"
-            ]:
-                token_lower = token.lower()
-                idx = address_clean.lower().find(token_lower)
-                if idx != -1:
-                    address_clean = address_clean[:idx].strip()
-            # Проверка: адрес не должен быть только цифрами (ИНН, ОГРН и т.д.)
-            # Адрес должен содержать буквы (область, город, улица)
-            address_clean_stripped = address_clean.strip()
-            # Если адрес состоит только из цифр, пробелов и знаков препинания - это не адрес
-            if address_clean_stripped and not re.search(r'[А-ЯЁа-яё]', address_clean_stripped):
-                # Это не адрес, скорее всего ИНН или другой номер
-                logger.warning(f"Адрес содержит только цифры, удаляем: {address_clean_stripped}")
-                extracted_fields.pop("applicantAddress", None)
-            else:
-                extracted_fields["applicantAddress"] = address_clean_stripped
+        # Короткое имя ЮЛ и донастройка initiation_legal
+        debtor_clean = self._tune_legal_entity_naming(extracted_fields, text, debtor_clean, applicant_clean, applicant_name_raw, debtor_block, debtor_name_raw)
 
         # Валидация и фолбэки адреса должника
         self._resolve_debtor_address(extracted_fields, text, debtor_block)
@@ -5890,6 +5831,71 @@ class DocumentAnalyzer:
         if extracted_fields.get("entityType") != "legal":
             if extracted_fields.get("ogrn") and not extracted_fields.get("birthDate"):
                 extracted_fields["birthDate"] = extracted_fields["ogrn"]
+
+    def _tune_legal_entity_naming(self, extracted_fields, text, debtor_clean, applicant_clean, applicant_name_raw, debtor_block, debtor_name_raw):
+        """Короткое наименование ЮЛ (legalShortName) и донастройка для initiation_legal: переустановка applicantName с ОПФ из блока «Должник:», адрес из шапки. Возвращает обновлённый debtor_clean. Вынесено из extract_fields."""
+        # Для юрлиц пытаемся получить короткое название. Игнорируем мусорные значения вроде "введена процедура наблюдения".
+        legal_name_source = debtor_clean or applicant_clean or debtor_block or applicant_name_raw or debtor_name_raw
+        if legal_name_source and re.search(r"введена\s+процедура\s+наблюдения", legal_name_source, re.IGNORECASE):
+            legal_name_source = applicant_clean or applicant_name_raw or debtor_block
+
+        legal_short_name = self.extract_legal_entity_short_name(legal_name_source)
+        if legal_short_name:
+            extracted_fields["legalShortName"] = legal_short_name
+            # ВАЖНО: не затираем debtorName/applicantName для всех документов подряд.
+            # Это было источником неожиданных эффектов.
+            # Оставляем их как есть, а для специализированных типов (например, initiation_legal)
+            # делаем аккуратную переустановку ниже.
+
+        # Специальная донастройка ТОЛЬКО для юр. инициирования
+        source_doc_type = (extracted_fields.get("sourceDocumentType") or "").lower()
+        if source_doc_type.startswith("initiation_legal"):
+            # Для заявлений о инициировании банкротства ЮЛ берём название должника строго из блока "Должник:"
+            if debtor_block:
+                # Полное наименование организации из шапки
+                company_match = re.search(
+                    r"(?:ООО|ОАО|ПАО|ЗАО|АО|Обществ[ао]\s+с\s+ограниченной\s+ответственностью)\s*[«\"]?([^\"\n]+)[»\"]?",
+                    debtor_block,
+                    re.IGNORECASE,
+                )
+                if company_match:
+                    short_name = company_match.group(1).strip()
+                    # company_match.group(0) содержит форму с организационно‑правовой формой
+                    full_name = company_match.group(0).strip(' «»"')
+
+                    # Для маркеров [2], [2.1], [2.2] applicantName должен содержать ОПФ
+                    # debtorName и legalShortName могут быть без ОПФ
+                    name_core = short_name or full_name
+                    extracted_fields["debtorName"] = name_core
+                    # applicantName сохраняем с ОПФ для маркеров [2], [2.1], [2.2]
+                    extracted_fields["applicantName"] = full_name if full_name else name_core
+                    extracted_fields["legalShortName"] = name_core
+                    debtor_clean = name_core
+
+        address_raw = extracted_fields.get("applicantAddress")
+        if address_raw:
+            address_clean = self.clean_extracted_value(address_raw.replace('\u202f', ' ').replace('\xa0', ' '))
+            address_clean = re.sub(r"\[[0-9\.]+\]", "", address_clean)
+            for token in [
+                "почтовый адрес", "телефон", "e-mail", "инн", "огрн", "кпп",
+                "банк", "банковских", "сбербанк", "банк россии",
+                "исковое заявление", "о взыскании", "просит суд", "цена иска"
+            ]:
+                token_lower = token.lower()
+                idx = address_clean.lower().find(token_lower)
+                if idx != -1:
+                    address_clean = address_clean[:idx].strip()
+            # Проверка: адрес не должен быть только цифрами (ИНН, ОГРН и т.д.)
+            # Адрес должен содержать буквы (область, город, улица)
+            address_clean_stripped = address_clean.strip()
+            # Если адрес состоит только из цифр, пробелов и знаков препинания - это не адрес
+            if address_clean_stripped and not re.search(r'[А-ЯЁа-яё]', address_clean_stripped):
+                # Это не адрес, скорее всего ИНН или другой номер
+                logger.warning(f"Адрес содержит только цифры, удаляем: {address_clean_stripped}")
+                extracted_fields.pop("applicantAddress", None)
+            else:
+                extracted_fields["applicantAddress"] = address_clean_stripped
+        return debtor_clean
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
         """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
