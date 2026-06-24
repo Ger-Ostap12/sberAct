@@ -3841,56 +3841,9 @@ class DocumentAnalyzer:
                 # Для ЮЛ адрес часто идет как "Юридический адрес:" внутри блока "Ответчик:",
                 # и общий fallback может ошибочно забрать технические номера (CP-Case и т.п.).
                 if field_name == "applicantAddress":
-                    debtor_block = None
-
-                    debtor_block_match = re.search(
-                        r"Должник[:\s]*(.*?)(?=\n\s*\n|Временн(?:ый|ым)\s+управляющ|Сумма\s+требований|ЗАЯВЛЕНИЕ|Дело\s*№|$)",
-                        text,
-                        re.IGNORECASE | re.DOTALL
-                    )
-                    if debtor_block_match:
-                        debtor_block = debtor_block_match.group(1)
-                    else:
-                        answer_matches = list(re.finditer(r"Ответчик[:\s]", text, re.IGNORECASE))
-                        if answer_matches:
-                            answer_match = answer_matches[0]
-                            start_pos = answer_match.start()
-                            end_pos = len(text)
-                            next_plaintiff = re.search(r"Истец[:\s]", text[start_pos:], re.IGNORECASE)
-                            if next_plaintiff:
-                                end_pos = start_pos + next_plaintiff.start()
-                            debtor_block = text[start_pos:end_pos]
-
-                    if debtor_block:
-                        debtor_block = debtor_block.replace('\u202f', ' ').replace('\xa0', ' ')
-                        addr_match = re.search(
-                            # Берем только текущую строку после маркера адреса,
-                            # чтобы не захватывать дальнейший текст иска.
-                            r"(?:юридический\s+адрес|адрес\s+регистрации|место\s+нахождения)[:\s]*([^\n\r]+)",
-                            debtor_block,
-                            re.IGNORECASE
-                        )
-                        if addr_match:
-                            addr_raw = addr_match.group(1)
-                            addr_lines = re.split(r"[\n\r]+", addr_raw)
-                            cleaned_lines = []
-                            for line in addr_lines:
-                                line = re.sub(r"\[[0-9\.]+\]", "", line)
-                                line = line.strip(" ,.:-;")
-                                if not line:
-                                    continue
-                                lower_line = line.lower()
-                                if any(token in lower_line for token in [
-                                    "инн", "огрн", "огрнип", "кпп", "телефон", "e-mail", "email",
-                                    "цена иска", "исковое заявление", "о взыскании", "просит суд"
-                                ]):
-                                    continue
-                                cleaned_lines.append(line)
-
-                            if cleaned_lines:
-                                extracted_fields[field_name] = ", ".join(cleaned_lines).strip()
-                                logger.info(f"✅ Extracted applicantAddress из блока должника/ответчика: {extracted_fields[field_name]}")
-                                continue
+                    # Адрес должника из блока «Должник:»/«Ответчик:»
+                    if self._extract_party_address(extracted_fields, text, field_name):
+                        continue
 
                 # ВАЖНО: Для ИНН, ОГРН, ОГРНИП и companyInn мы уже обработали выше, пропускаем общие паттерны
                 if field_name in ["inn", "ogrn", "ogrnip", "companyInn"]:
@@ -5902,6 +5855,60 @@ class DocumentAnalyzer:
             logger.info(f"⚠️ Блоки 'Должник:' и 'Ответчик:' не найдены для {field_name}")
             # Если блоков нет, пропускаем поиск, чтобы не брать данные кредитора
             return
+
+    def _extract_party_address(self, extracted_fields, text, field_name):
+        """Адрес должника из блока «Должник:»/«Ответчик:» (юр.адрес/адрес регистрации/место нахождения), с очисткой строк от маркеров и служебных токенов. Возвращает True, если адрес установлен (тогда основной цикл делает continue). Вынесено из pattern-цикла."""
+        debtor_block = None
+
+        debtor_block_match = re.search(
+            r"Должник[:\s]*(.*?)(?=\n\s*\n|Временн(?:ый|ым)\s+управляющ|Сумма\s+требований|ЗАЯВЛЕНИЕ|Дело\s*№|$)",
+            text,
+            re.IGNORECASE | re.DOTALL
+        )
+        if debtor_block_match:
+            debtor_block = debtor_block_match.group(1)
+        else:
+            answer_matches = list(re.finditer(r"Ответчик[:\s]", text, re.IGNORECASE))
+            if answer_matches:
+                answer_match = answer_matches[0]
+                start_pos = answer_match.start()
+                end_pos = len(text)
+                next_plaintiff = re.search(r"Истец[:\s]", text[start_pos:], re.IGNORECASE)
+                if next_plaintiff:
+                    end_pos = start_pos + next_plaintiff.start()
+                debtor_block = text[start_pos:end_pos]
+
+        if debtor_block:
+            debtor_block = debtor_block.replace('\u202f', ' ').replace('\xa0', ' ')
+            addr_match = re.search(
+                # Берем только текущую строку после маркера адреса,
+                # чтобы не захватывать дальнейший текст иска.
+                r"(?:юридический\s+адрес|адрес\s+регистрации|место\s+нахождения)[:\s]*([^\n\r]+)",
+                debtor_block,
+                re.IGNORECASE
+            )
+            if addr_match:
+                addr_raw = addr_match.group(1)
+                addr_lines = re.split(r"[\n\r]+", addr_raw)
+                cleaned_lines = []
+                for line in addr_lines:
+                    line = re.sub(r"\[[0-9\.]+\]", "", line)
+                    line = line.strip(" ,.:-;")
+                    if not line:
+                        continue
+                    lower_line = line.lower()
+                    if any(token in lower_line for token in [
+                        "инн", "огрн", "огрнип", "кпп", "телефон", "e-mail", "email",
+                        "цена иска", "исковое заявление", "о взыскании", "просит суд"
+                    ]):
+                        continue
+                    cleaned_lines.append(line)
+
+                if cleaned_lines:
+                    extracted_fields[field_name] = ", ".join(cleaned_lines).strip()
+                    logger.info(f"✅ Extracted applicantAddress из блока должника/ответчика: {extracted_fields[field_name]}")
+                    return True
+        return False
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
         """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
