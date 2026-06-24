@@ -128,81 +128,11 @@ class DocumentAnalyzer:
             elif document_type in ["ip_enforcement_statement", "ip_enforcement_statement_collateral",
                                  "ip_enforcement_realization", "ip_enforcement_realization_collateral",
                                  "ip_enforcement_restructuring", "ip_enforcement_restructuring_collateral"]:
-                # Используем основной extract_fields для ИП, чтобы получить все поля
-                # Затем дополняем специфичными полями для ИП
-                extracted_fields = self.extract_fields(text, "rtk_application")  # Используем rtk_application как базовый тип
-
-                # Дополняем специфичными полями для ИП из extract_ip_enforcement_fields
-                ip_specific_fields = self.extract_ip_enforcement_fields(text)
-                logger.info(f"Извлеченные специфичные поля для ИП: {list(ip_specific_fields.keys())}")
-
-                # Проверяем, является ли это процедурой "умерший" (проверяем текст напрямую)
-                text_lower = text.lower()
-                is_deceased = any(keyword in text_lower for keyword in ["умер", "умерший", "смерть", "смерти"])
-
-                for key, value in ip_specific_fields.items():
-                    if value:
-                        # ВАЖНО: Не перезаписываем ИНН и ОГРН, если они уже были извлечены из блока "Ответчик:" в основном цикле
-                        if key in ["inn", "ogrnip", "ogrn"]:
-                            if key in extracted_fields and extracted_fields[key]:
-                                logger.info(f"⚠️ Пропускаем перезапись {key} из ip_specific_fields (уже извлечен из блока Ответчик: {extracted_fields[key]})")
-                                continue
-                        # Специальная обработка для courtName в процедуре "умерший"
-                        if key == 'courtName' and is_deceased:
-                            cleaned_value = self._clean_court_name_deceased(value)
-                            if cleaned_value:
-                                extracted_fields[key] = cleaned_value
-                                logger.info(f"Установлено поле ИП {key} (очищено для умершего): {cleaned_value}")
-                            else:
-                                logger.info(f"Поле ИП {key} очищено до пустого значения, пропускаем")
-                        else:
-                            # Всегда перезаписываем специфичные поля для ИП, даже если они уже есть
-                            extracted_fields[key] = value
-                            logger.info(f"Установлено поле ИП {key}: {value}")
-
-                # Определяем наличие залога для ИП
-                if document_type in ["ip_enforcement_statement_collateral", "ip_enforcement_realization_collateral",
-                                     "ip_enforcement_restructuring_collateral"]:
-                    extracted_fields["ipHasCollateral"] = "true"
-                else:
-                    collateral_detected = self.detect_ip_collateral(text)
-                    extracted_fields["ipHasCollateral"] = "true" if collateral_detected else "false"
-
-                # Извлекаем обязательства для ИП
-                obligations = self.extract_obligations(text, extracted_fields)
-                if obligations:
-                    extracted_fields['obligations'] = obligations
-                    logger.info(f"Добавлено {len(obligations)} обязательств для ИП")
+                # Анализ ветки ИП-исполнения
+                extracted_fields = self._analyze_ip_enforcement(text, document_type)
             elif document_type in ["physical_realization_collateral", "physical_restructuring_collateral", "observation_collateral", "competition_collateral"]:
-                # Для ФЛ/ЮЛ с залогом в реализации/реструктуризации/наблюдении используем extract_fields и дополняем полями залога
-                extracted_fields = self.extract_fields(text, "rtk_application")
-
-                # Извлекаем поля залога (аналогично ИП, но без префикса ИП)
-                collateral_fields = self.extract_physical_collateral_fields(text)
-                logger.info(f"Извлеченные поля залога: {list(collateral_fields.keys())}")
-                for key, value in collateral_fields.items():
-                    if value:
-                        extracted_fields[key] = value
-                        logger.info(f"Установлено поле залога {key}: {value}")
-
-                # Если предмет залога [1221] не найден, пытаемся извлечь через fallback метод
-                if "mortgageCollateralDescription1221" not in extracted_fields or not extracted_fields.get("mortgageCollateralDescription1221"):
-                    logger.info("🔍 Предмет залога [1221] не найден в extract_physical_collateral_fields, пробуем fallback метод...")
-                    collateral_block = self._extract_mortgage_collateral_block(text)
-                    if collateral_block:
-                        extracted_fields["mortgageCollateralDescription1221"] = collateral_block
-                        logger.info(f"✅ Извлечено mortgageCollateralDescription1221 через fallback метод: {collateral_block[:150]}...")
-
-                if document_type == "observation_collateral":
-                    extracted_fields["observationHasCollateral"] = "true"
-                else:
-                    extracted_fields["physicalHasCollateral"] = "true"
-
-                # Извлекаем обязательства
-                obligations = self.extract_obligations(text, extracted_fields)
-                if obligations:
-                    extracted_fields['obligations'] = obligations
-                    logger.info(f"Добавлено {len(obligations)} обязательств для {document_type}")
+                # Анализ ветки залога (реализация/наблюдение)
+                extracted_fields = self._analyze_physical_collateral(text, document_type)
             else:
                 # Универсальный fallback: если для типа документа нет собственных паттернов,
                 # используем rtk_application как базовый шаблон, чтобы всё равно извлекать поля.
@@ -5482,6 +5412,88 @@ class DocumentAnalyzer:
         if obligations:
             extracted_fields['obligations'] = obligations
             logger.info(f"Добавлено {len(obligations)} обязательств для ЮЛ (взыскание)")
+        return extracted_fields
+
+    def _analyze_ip_enforcement(self, text, document_type):
+        """Ветка анализа ИП-исполнения (взыскание/реализация/реструктуризация): extract_fields + ip_specific, умерший, дательный падеж, обязательства. Возвращает extracted_fields. Вынесено из analyze."""
+        # Используем основной extract_fields для ИП, чтобы получить все поля
+        # Затем дополняем специфичными полями для ИП
+        extracted_fields = self.extract_fields(text, "rtk_application")  # Используем rtk_application как базовый тип
+
+        # Дополняем специфичными полями для ИП из extract_ip_enforcement_fields
+        ip_specific_fields = self.extract_ip_enforcement_fields(text)
+        logger.info(f"Извлеченные специфичные поля для ИП: {list(ip_specific_fields.keys())}")
+
+        # Проверяем, является ли это процедурой "умерший" (проверяем текст напрямую)
+        text_lower = text.lower()
+        is_deceased = any(keyword in text_lower for keyword in ["умер", "умерший", "смерть", "смерти"])
+
+        for key, value in ip_specific_fields.items():
+            if value:
+                # ВАЖНО: Не перезаписываем ИНН и ОГРН, если они уже были извлечены из блока "Ответчик:" в основном цикле
+                if key in ["inn", "ogrnip", "ogrn"]:
+                    if key in extracted_fields and extracted_fields[key]:
+                        logger.info(f"⚠️ Пропускаем перезапись {key} из ip_specific_fields (уже извлечен из блока Ответчик: {extracted_fields[key]})")
+                        continue
+                # Специальная обработка для courtName в процедуре "умерший"
+                if key == 'courtName' and is_deceased:
+                    cleaned_value = self._clean_court_name_deceased(value)
+                    if cleaned_value:
+                        extracted_fields[key] = cleaned_value
+                        logger.info(f"Установлено поле ИП {key} (очищено для умершего): {cleaned_value}")
+                    else:
+                        logger.info(f"Поле ИП {key} очищено до пустого значения, пропускаем")
+                else:
+                    # Всегда перезаписываем специфичные поля для ИП, даже если они уже есть
+                    extracted_fields[key] = value
+                    logger.info(f"Установлено поле ИП {key}: {value}")
+
+        # Определяем наличие залога для ИП
+        if document_type in ["ip_enforcement_statement_collateral", "ip_enforcement_realization_collateral",
+                             "ip_enforcement_restructuring_collateral"]:
+            extracted_fields["ipHasCollateral"] = "true"
+        else:
+            collateral_detected = self.detect_ip_collateral(text)
+            extracted_fields["ipHasCollateral"] = "true" if collateral_detected else "false"
+
+        # Извлекаем обязательства для ИП
+        obligations = self.extract_obligations(text, extracted_fields)
+        if obligations:
+            extracted_fields['obligations'] = obligations
+            logger.info(f"Добавлено {len(obligations)} обязательств для ИП")
+        return extracted_fields
+
+    def _analyze_physical_collateral(self, text, document_type):
+        """Ветка анализа ФЛ/ЮЛ с залогом (реализация/реструктуризация/наблюдение/конкурс): extract_fields + поля залога, обязательства. Возвращает extracted_fields. Вынесено из analyze."""
+        # Для ФЛ/ЮЛ с залогом в реализации/реструктуризации/наблюдении используем extract_fields и дополняем полями залога
+        extracted_fields = self.extract_fields(text, "rtk_application")
+
+        # Извлекаем поля залога (аналогично ИП, но без префикса ИП)
+        collateral_fields = self.extract_physical_collateral_fields(text)
+        logger.info(f"Извлеченные поля залога: {list(collateral_fields.keys())}")
+        for key, value in collateral_fields.items():
+            if value:
+                extracted_fields[key] = value
+                logger.info(f"Установлено поле залога {key}: {value}")
+
+        # Если предмет залога [1221] не найден, пытаемся извлечь через fallback метод
+        if "mortgageCollateralDescription1221" not in extracted_fields or not extracted_fields.get("mortgageCollateralDescription1221"):
+            logger.info("🔍 Предмет залога [1221] не найден в extract_physical_collateral_fields, пробуем fallback метод...")
+            collateral_block = self._extract_mortgage_collateral_block(text)
+            if collateral_block:
+                extracted_fields["mortgageCollateralDescription1221"] = collateral_block
+                logger.info(f"✅ Извлечено mortgageCollateralDescription1221 через fallback метод: {collateral_block[:150]}...")
+
+        if document_type == "observation_collateral":
+            extracted_fields["observationHasCollateral"] = "true"
+        else:
+            extracted_fields["physicalHasCollateral"] = "true"
+
+        # Извлекаем обязательства
+        obligations = self.extract_obligations(text, extracted_fields)
+        if obligations:
+            extracted_fields['obligations'] = obligations
+            logger.info(f"Добавлено {len(obligations)} обязательств для {document_type}")
         return extracted_fields
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
