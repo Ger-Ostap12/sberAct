@@ -193,24 +193,12 @@ class ObligationsMixin:
             r'(\d{1,2}[.,]\d{1,2}[.,]\d{4})\s+г\.[^.\n]{0,200}?заключили[^.\n]{0,200}?(?:договор|соглашение)[^.\n]{0,200}?номер\s+№\s*([A-Za-zА-ЯЁ0-9/-]+)',
             # Паттерн 11.3: "Между ООО МФК ... и должником заключен договор займа № 107977878 от 2024-08-10 года"
             r'между\s+[^.\n]{0,200}?и\s+[^.\n]{0,200}?заключен\s+договор\s+займа\s+№\s*([A-Za-zА-ЯЁ0-9/-]+)[^.\n]{0,100}?от\s+(\d{4}-\d{2}-\d{2})',
-            # Паттерн 12: поиск по номерам договоров
-            r'050505050',
-            r'0205045464506',
-            r'000606068680608',
-            r'060656506056068',
-            r'050505450540504504',
             # Паттерн 17: Обязательство №5 с конкретным номером (с буквами)
             r'Обязательство\s*№\s*5[^.]*?кредитный\s+договор[^.]*?№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
             # Паттерн 18: Обязательство №5 с датой [104] (с буквами)
             r'Обязательство\s*№\s*5[^.]*?(\d{1,2}[.,]\d{1,2}[.,]\d{4})\s*\[104\][^.]*?кредитный\s+договор[^.]*?№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)',
             # Паттерн 19: Простой поиск Обязательство №5 (с буквами)
             r'Обязательство\s*№\s*5[^.]*?(\d{1,2}[.,]\d{1,2}[.,]\d{4})[^.]*?№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)',
-            # Паттерн 20: Поиск по номеру 050505450540504504 в контексте Обязательство №5
-            r'050505450540504504[^.]*?(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
-            # Паттерн 21: Простой поиск Обязательство №5 с номером 050505450540504504
-            r'Обязательство\s*№\s*5[^.]*?050505450540504504[^.]*?(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
-            # Паттерн 22: Поиск по тексту "14.08.1783 [104] ПАО Сбербанк"
-            r'14\.08\.1783\s*\[104\][^.]*?050505450540504504',
             # Паттерн 23: поиск всех кредитных договоров в тексте акта (с буквами)
             r'кредитный\s+договор[:\s]*от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})[:\s]*№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)',
             # Паттерн 24: поиск договоров поручительства
@@ -224,61 +212,24 @@ class ObligationsMixin:
             logger.info(f"Паттерн {i+1} найден {len(matches)} совпадений")
 
             for j, match in enumerate(matches):
-                if isinstance(match, tuple) and len(match) >= 2:
-                    # Для паттернов 17-22 (Обязательство №5) - порядок может быть разный
-                    if i >= 16:  # Паттерны 17-24 (индекс 16-23)
-                        if i == 19 or i == 20:  # Паттерны 20, 21 - только дата, номер известен
-                            contract_number = '050505450540504504'
-                            contract_date = self.clean_extracted_value(match[0].strip())
-                        elif i == 21:  # Паттерн 22 - только номер, дата известна
-                            contract_number = '050505450540504504'
-                            contract_date = '14.08.1783'
-                        elif i == 22:  # Паттерн 23 - кредитные договоры в тексте акта
-                            contract_date = self.clean_extracted_value(match[0].strip())
-                            contract_number = self.clean_extracted_value(match[1].strip())
-                        elif i == 23:  # Паттерн 24 - договор поручительства
-                            contract_date = '14.08.1783'  # дата [104]
-                            contract_number = '064640649640645'  # номер [114]
-                        elif 'Обязательство' in str(match[0]) or 'Обязательство' in str(match[1]):
-                            # Паттерн 17: номер, дата
-                            contract_number = self.clean_extracted_value(match[0].strip())
-                            contract_date = self.clean_extracted_value(match[1].strip())
-                        else:
-                            # Паттерны 18, 19: дата, номер
-                            contract_date = self.clean_extracted_value(match[0].strip())
-                            contract_number = self.clean_extracted_value(match[1].strip())
-                    else:
-                        # Паттерн 0: Требование №... по кредитному договору № NUMBER ... от DATE — (number, date)
-                        if i == 0:
-                            contract_number = self.clean_extracted_value(match[0].strip())
-                            raw_date = match[1].strip() if len(match) > 1 and match[1] else ""
-                            contract_date = self.clean_extracted_value(raw_date) if raw_date else self.find_date_near_contract(text, contract_number)
-                        # Паттерны 1, 2, 3: «кредитный договор от DATE № NUMBER» — (date, number)
-                        elif i in (1, 2, 3):
-                            contract_date = self.clean_extracted_value(match[0].strip())
-                            contract_number = self.clean_extracted_value(match[1].strip())
-                        else:
-                            # Паттерны 4–15: обычно (number, date)
-                            contract_number = self.clean_extracted_value(match[0].strip())
-                            contract_date = self.clean_extracted_value(match[1].strip())
-                elif isinstance(match, str):
-                    # Для паттерна 3 (договор поручительства от [104] № [114])
-                    if 'поручительства' in match:
-                        contract_number = '064640649640645'
-                        contract_date = '14.08.1783'
-                    elif i == 21:  # Паттерн 22 - только номер, дата известна
-                        contract_number = '050505450540504504'
-                        contract_date = '14.08.1783'
-                    elif i == 23:  # Паттерн 24 - договор поручительства
-                        contract_number = '064640649640645'
-                        contract_date = '14.08.1783'
-                    else:
-                        # Если нашли только номер договора, ищем дату отдельно
-                        contract_number = self.clean_extracted_value(match.strip())
-                        contract_date = self.find_date_near_contract(text, contract_number)
+                # Обобщённо: что похоже на дату -> contract_date, остальное -> contract_number
+                # (без привязки к индексам паттернов).
+                if isinstance(match, (tuple, list)):
+                    parts = [p for p in match if p and str(p).strip()]
+                elif isinstance(match, str) and match.strip():
+                    parts = [match]
                 else:
-                    # Если нашли только номер договора, ищем дату отдельно
-                    contract_number = self.clean_extracted_value(match.strip() if isinstance(match, str) else str(match).strip())
+                    parts = []
+                contract_number = None
+                contract_date = None
+                for _p in parts:
+                    _p = str(_p).strip()
+                    if re.match(r'^\d{1,2}[.,]\d{1,2}[.,]\d{4}$|^\d{4}-\d{2}-\d{2}$', _p):
+                        if not contract_date:
+                            contract_date = self.clean_extracted_value(_p)
+                    elif not contract_number:
+                        contract_number = self.clean_extracted_value(_p)
+                if contract_number and not contract_date:
                     contract_date = self.find_date_near_contract(text, contract_number)
 
                 if self._is_valid_contract_number(contract_number):
