@@ -380,36 +380,8 @@ class DocumentAnalyzer:
             # Оцениваем уверенность в результатах
             confidence = self.calculate_confidence(document_type, extracted_fields, text)
 
-            # Постобработка данных для ипотеки и документов с залогом - приводим интерфейс к корректным значениям
-            if document_type == "mortgage_claim" or document_type == "competition_collateral":
-                self._normalize_mortgage_interface_fields(extracted_fields, text)
-                # Для конкурсного производства с залогом явно считаем должника юридическим лицом
-                if document_type == "competition_collateral":
-                    extracted_fields["entityType"] = "legal"
-                # Если есть ИНН финуправляющего — добавляем его в отображаемое имя
-                manager_name_cc = extracted_fields.get("managerName")
-                manager_inn_cc = extracted_fields.get("managerInn")
-                if manager_name_cc and manager_inn_cc and "инн" not in manager_name_cc.lower():
-                    extracted_fields["managerName"] = f"{manager_name_cc.strip()} (ИНН {manager_inn_cc})"
-
-            # Тип лица: текстовый фолбэк для определений суда без блока «Должник:»
-            # (например, «…банкротом индивидуального предпринимателя Главы КФХ …»),
-            # где имя должника — плейсхолдер. Делаем ДО рекомендаций, чтобы они
-            # использовали уже скорректированный тип лица.
-            if extracted_fields.get("entityType") not in ("kfh", "ip", "legal"):
-                text_entity = self._entity_from_text(text)
-                if text_entity:
-                    extracted_fields["entityType"] = text_entity
-                    if text_entity == "kfh":
-                        extracted_fields["isKfh"] = True
-
-            # Номер дела: оставляем только если это реальный номер судебного дела
-            # («/ГОД» в конце). Отсекаем доверенности (№ЮЗБ/415-Д), договоры и пр.,
-            # которые могли попасть жадными паттернами. В ипотечных исках на момент
-            # подачи дела ещё нет — поле должно остаться пустым.
-            _cn = extracted_fields.get("caseNumber")
-            if _cn and not self._is_valid_case_number(_cn):
-                extracted_fields.pop("caseNumber", None)
+            # Постобработка ипотеки и валидация номера дела
+            self._postprocess_mortgage_and_case_number(extracted_fields, text, document_type)
 
             # Определяем рекомендуемые акты на основе типа документа, типа лица и залога
             recommended_acts = self._get_recommended_acts(document_type, extracted_fields, text)
@@ -446,35 +418,8 @@ class DocumentAnalyzer:
             # Пост-очистка полей (адрес/третье лицо/суд)
             self._cleanup_extracted_fields(extracted_fields, text)
 
-            # Несколько должников (со-ответчиков). При 2+ — склеиваем плоские поля и
-            # падежи через запятую (шаблоны не меняем). При 0/1 — одиночный должник
-            # из текущих плоских полей (поведение прежнее, без регрессий).
-            parsed_debtors = extract_debtors(text)
-            if len(parsed_debtors) >= 2:
-                extracted_fields.update(self._combine_debtors(parsed_debtors))
-                debtors_result = parsed_debtors
-            else:
-                debtors_result = [self._single_debtor_from_fields(extracted_fields)]
-
-            # Несколько третьих лиц: извлекаем массив (физлица и организации). Если
-            # извлеклось — отдаём как есть; иначе одно лицо из плоских полей (если есть).
-            parsed_tp = extract_third_parties(text)
-            if parsed_tp:
-                third_parties_result = parsed_tp
-            elif extracted_fields.get("thirdPartyName"):
-                third_parties_result = [{
-                    "name": extracted_fields.get("thirdPartyName") or "",
-                    "address": extracted_fields.get("thirdPartyAddress") or "",
-                    "inn": extracted_fields.get("thirdPartyInn") or "",
-                    "birthDate": extracted_fields.get("thirdPartyBirthDate") or "",
-                    "snils": extracted_fields.get("thirdPartySnils") or "",
-                }]
-            else:
-                third_parties_result = []
-
-            # Кросс-блочный дедуп индивидуальных реквизитов: один ИНН/ОГРН/СНИЛС не
-            # может принадлежать сразу должнику и третьему лицу/кредитору/управляющему.
-            self._dedup_cross_block_ids(extracted_fields, details, third_parties_result)
+            # Списки должников и третьих лиц + дедуп
+            debtors_result, third_parties_result = self._resolve_debtors_and_third_parties(extracted_fields, text, details)
 
             # Залоги. Оставляем предметы, классифицированные как авто/недвижимость —
             # это реальный залог. Предметы типа «иное» сохраняем ТОЛЬКО если документ
@@ -4617,6 +4562,72 @@ class DocumentAnalyzer:
 
                 extracted_fields["observationHasCollateral"] = "true"
         return document_type
+
+    def _postprocess_mortgage_and_case_number(self, extracted_fields, text, document_type):
+        """Постобработка ипотеки/залога (корректировка интерфейсных значений) и валидация номера дела («/ГОД» в конце, отсев доверенностей/договоров). Вынесено из analyze."""
+        # Постобработка данных для ипотеки и документов с залогом - приводим интерфейс к корректным значениям
+        if document_type == "mortgage_claim" or document_type == "competition_collateral":
+            self._normalize_mortgage_interface_fields(extracted_fields, text)
+            # Для конкурсного производства с залогом явно считаем должника юридическим лицом
+            if document_type == "competition_collateral":
+                extracted_fields["entityType"] = "legal"
+            # Если есть ИНН финуправляющего — добавляем его в отображаемое имя
+            manager_name_cc = extracted_fields.get("managerName")
+            manager_inn_cc = extracted_fields.get("managerInn")
+            if manager_name_cc and manager_inn_cc and "инн" not in manager_name_cc.lower():
+                extracted_fields["managerName"] = f"{manager_name_cc.strip()} (ИНН {manager_inn_cc})"
+
+        # Тип лица: текстовый фолбэк для определений суда без блока «Должник:»
+        # (например, «…банкротом индивидуального предпринимателя Главы КФХ …»),
+        # где имя должника — плейсхолдер. Делаем ДО рекомендаций, чтобы они
+        # использовали уже скорректированный тип лица.
+        if extracted_fields.get("entityType") not in ("kfh", "ip", "legal"):
+            text_entity = self._entity_from_text(text)
+            if text_entity:
+                extracted_fields["entityType"] = text_entity
+                if text_entity == "kfh":
+                    extracted_fields["isKfh"] = True
+
+        # Номер дела: оставляем только если это реальный номер судебного дела
+        # («/ГОД» в конце). Отсекаем доверенности (№ЮЗБ/415-Д), договоры и пр.,
+        # которые могли попасть жадными паттернами. В ипотечных исках на момент
+        # подачи дела ещё нет — поле должно остаться пустым.
+        _cn = extracted_fields.get("caseNumber")
+        if _cn and not self._is_valid_case_number(_cn):
+            extracted_fields.pop("caseNumber", None)
+
+    def _resolve_debtors_and_third_parties(self, extracted_fields, text, details):
+        """Разбор списков должников (со-ответчиков) и третьих лиц + кросс-блочный дедуп реквизитов. Возвращает (debtors_result, third_parties_result). Вынесено из analyze."""
+        # Несколько должников (со-ответчиков). При 2+ — склеиваем плоские поля и
+        # падежи через запятую (шаблоны не меняем). При 0/1 — одиночный должник
+        # из текущих плоских полей (поведение прежнее, без регрессий).
+        parsed_debtors = extract_debtors(text)
+        if len(parsed_debtors) >= 2:
+            extracted_fields.update(self._combine_debtors(parsed_debtors))
+            debtors_result = parsed_debtors
+        else:
+            debtors_result = [self._single_debtor_from_fields(extracted_fields)]
+
+        # Несколько третьих лиц: извлекаем массив (физлица и организации). Если
+        # извлеклось — отдаём как есть; иначе одно лицо из плоских полей (если есть).
+        parsed_tp = extract_third_parties(text)
+        if parsed_tp:
+            third_parties_result = parsed_tp
+        elif extracted_fields.get("thirdPartyName"):
+            third_parties_result = [{
+                "name": extracted_fields.get("thirdPartyName") or "",
+                "address": extracted_fields.get("thirdPartyAddress") or "",
+                "inn": extracted_fields.get("thirdPartyInn") or "",
+                "birthDate": extracted_fields.get("thirdPartyBirthDate") or "",
+                "snils": extracted_fields.get("thirdPartySnils") or "",
+            }]
+        else:
+            third_parties_result = []
+
+        # Кросс-блочный дедуп индивидуальных реквизитов: один ИНН/ОГРН/СНИЛС не
+        # может принадлежать сразу должнику и третьему лицу/кредитору/управляющему.
+        self._dedup_cross_block_ids(extracted_fields, details, third_parties_result)
+        return debtors_result, third_parties_result
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
         """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
