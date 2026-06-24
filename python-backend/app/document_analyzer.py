@@ -1213,7 +1213,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                                 cleaned_value = re.sub(r'\s+', ' ', cleaned_value).strip()
 
                                 # Убираем лишний текст про банкротство - более агрессивная очистка
-                                cleaned_value = re.sub(r'ЗУБЕНКО[^0-9]*', '', cleaned_value)
                                 cleaned_value = re.sub(r'\([^)]*родительный[^)]*\)', '', cleaned_value)
                                 cleaned_value = re.sub(r'\[2\][^0-9]*', '', cleaned_value)
                                 cleaned_value = re.sub(r'банкрот[^0-9]*', '', cleaned_value)
@@ -1247,17 +1246,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                                 # Оставляем только цифры, запятые, пробелы, дефисы и русские буквы
                                 cleaned_value = re.sub(r'[^0-9,\s\-а-яёА-ЯЁ\.]+', '', cleaned_value)
 
-                                # Если адрес неполный (только индекс и область), пытаемся найти более полный
-                                if cleaned_value and len(cleaned_value.split(',')) < 3:
-                                    # Ищем полный адрес после найденного неполного
-                                    full_address_pattern = re.search(
-                                        r'003002[,\s]+Кунжутная\s+область[,\s]+([^,\n]+(?:[,\s]+[^,\n]+)*?)(?:\n|$|[,\[]|(?:телефон|дата|огрн|инн|снилс|паспорт|серия|номер|договор|далее|путем|подписания|клиентом|индивидуальных|условий|потребительского|кредита))',
-                                        text, re.IGNORECASE
-                                    )
-                                    if full_address_pattern:
-                                        full_address = full_address_pattern.group(1).strip()
-                                        if len(full_address) > len(cleaned_value):
-                                            cleaned_value = f"003002, Кунжутная область, {full_address}"
                                 cleaned_value = re.sub(r'\s+', ' ', cleaned_value).strip()
 
                                 # Агрессивная очистка - убираем все лишнее
@@ -1278,13 +1266,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                                 cleaned_value = re.sub(r'\[2\].*$', '', cleaned_value)
                                 cleaned_value = re.sub(r'\[9\].*$', '', cleaned_value)
                                 cleaned_value = re.sub(r'сообщение.*$', '', cleaned_value, flags=re.IGNORECASE)
-                                cleaned_value = re.sub(r'0008008.*$', '', cleaned_value)
                                 cleaned_value = re.sub(r'01\.02\.1883.*$', '', cleaned_value)
 
                                 # Убираем имена и лишний текст
-                                cleaned_value = re.sub(r'ЗУБЕНКО[^0-9]*', '', cleaned_value, flags=re.IGNORECASE)
-                                cleaned_value = re.sub(r'МИХАИЛА[^0-9]*', '', cleaned_value, flags=re.IGNORECASE)
-                                cleaned_value = re.sub(r'ПЕТРОВИЧА[^0-9]*', '', cleaned_value, flags=re.IGNORECASE)
                                 cleaned_value = re.sub(r'\([^)]*\)', '', cleaned_value)  # Убираем скобки и их содержимое
 
                                 # Убираем все до первого числа (индекса)
@@ -1324,11 +1308,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                                             full_address = re.sub(r'\[2\].*$', '', full_address)
                                             full_address = re.sub(r'\[9\].*$', '', full_address)
                                             full_address = re.sub(r'сообщение.*$', '', full_address, flags=re.IGNORECASE)
-                                            full_address = re.sub(r'0008008.*$', '', full_address)
                                             full_address = re.sub(r'01\.02\.1883.*$', '', full_address)
-                                            full_address = re.sub(r'ЗУБЕНКО[^0-9]*', '', full_address, flags=re.IGNORECASE)
-                                            full_address = re.sub(r'МИХАИЛА[^0-9]*', '', full_address, flags=re.IGNORECASE)
-                                            full_address = re.sub(r'ПЕТРОВИЧА[^0-9]*', '', full_address, flags=re.IGNORECASE)
                                             full_address = re.sub(r'\([^)]*\)', '', full_address)
                                             full_address = re.sub(r'[^0-9,\s\-а-яёА-ЯЁ\.]', '', full_address)
                                             full_address = re.sub(r'\s+', ' ', full_address).strip()
