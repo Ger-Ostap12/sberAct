@@ -5239,6 +5239,239 @@ class DocumentAnalyzer:
             obligations.append(obligation)
             logger.info(f"Создано обязательство {obligation_num}: {obligation}")
 
+    def _parse_obligations_fallback(self, extracted_fields, text, obligations):
+        """Фолбэк-разбор обязательств гибкими паттернами, когда блоки «Обязательство N:» не найдены. Аппендит в obligations (по ссылке). Вынесено из extract_obligations."""
+        logger.info("Блоки 'Обязательство X:' не найдены, используем альтернативные паттерны")
+
+        # Ищем паттерны для обязательств - более гибкие
+        obligation_patterns = [
+            # Паттерн 0: "Требование № 1 по кредитному договору №XXXXX ... от DD.MM.YYYY"
+            r'Требовани[ея]\s*№\s*\d+\s+по\s+кредитному\s+договору\s+№\s*([A-Za-zА-ЯЁ0-9./-]+)(?:[^\n]{0,200}?\s+от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4}))?',
+            # Паттерн 0: «кредитный договор от DATE № NOMER» и «договор поручительства от DATE № NOMER» (приоритет)
+            r'кредитный\s+договор\s+от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})\s+№\s*([0-9А-ЯЁa-z/\-]+?)(?=\s|,|$|\.)',
+            r'договор\s+поручительства\s+от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})\s+№\s*([0-9А-ЯЁa-z/\-]+?)(?=\s|,|$|\.)',
+            # Паттерн 0.1: эмиссионный контракт №
+            r'эмиссионный\s+контракт[:\s]*№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
+            r'эмисионного\s+контракта[:\s]*№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
+            # Паттерн 0.2: Договор займа № / Договоров займа №
+            r'Договор\s+займа[:\s]*№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
+            r'Договоров\s+займа[:\s]*№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
+            # Паттерн 0.3: договор потребительского кредита №
+            r'договор\s+потребительского\s+кредита[:\s]*№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
+            # Паттерн 1: общий паттерн для кредитных договоров (с буквами)
+            r'кредитный\s+договор[:\s]*от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})[:\s]*№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)',
+            # Паттерн 2: общий паттерн для кредитных договоров без даты (с буквами)
+            r'кредитный\s+договор[:\s]*от\s+Не\s+указана[:\s]*№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)',
+            # Паттерн 3: договор поручительства от [104] № [114]
+            r'договор\s+поручительства[:\s]*от\s+\[104\]\s*№\s*\[114\]',
+            # Паттерн 4: договор №123 от 01.01.2024 (с буквами)
+            r'договор[:\s]*№?\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
+            # Паттерн 5: кредитный договор №123 от 01.01.2024 (с буквами)
+            r'кредитный\s+договор[:\s]*№?\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
+            # Паттерн 6: договор займа №123 от 01.01.2024 (с буквами)
+            r'договор\s+займа[:\s]*№?\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
+            # Паттерн 8: Обязательство 1: договор №123 от 01.01.2024 (с буквами)
+            r'обязательство\s+\d+[:\s]*[^.]*?договор[:\s]*№?\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
+            # Паттерн 9: Обязательство 1: кредитный договор №123 от 01.01.2024 (с буквами)
+            r'обязательство\s+\d+[:\s]*[^.]*?кредитный\s+договор[:\s]*№?\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
+            # Паттерн 10: Обязательство 1: договор займа №123 от 01.01.2024 (с буквами)
+            r'обязательство\s+\d+[:\s]*[^.]*?договор\s+займа[:\s]*№?\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
+            # Паттерн 11: Обязательство 1: займ №123 от 01.01.2024 (с буквами)
+            r'обязательство\s+\d+[:\s]*[^.]*?займ[:\s]*№?\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
+            # Паттерн 11.1: "Банк и ФИО заключили Соглашение ... номер № XXXXX"
+            r'(\d{1,2}[.,]\d{1,2}[.,]\d{4})\s+г\.\s+[^.\n]{0,200}?заключили\s+Соглашение[^.\n]{0,300}?номер\s+№\s*([A-Za-zА-ЯЁ0-9/-]+)',
+            # Паттерн 11.2: общий вариант "заключили .* (договор|соглашение) ... номер № XXXXX"
+            r'(\d{1,2}[.,]\d{1,2}[.,]\d{4})\s+г\.[^.\n]{0,200}?заключили[^.\n]{0,200}?(?:договор|соглашение)[^.\n]{0,200}?номер\s+№\s*([A-Za-zА-ЯЁ0-9/-]+)',
+            # Паттерн 11.3: "Между ООО МФК ... и должником заключен договор займа № 107977878 от 2024-08-10 года"
+            r'между\s+[^.\n]{0,200}?и\s+[^.\n]{0,200}?заключен\s+договор\s+займа\s+№\s*([A-Za-zА-ЯЁ0-9/-]+)[^.\n]{0,100}?от\s+(\d{4}-\d{2}-\d{2})',
+            # Паттерн 12: поиск по номерам договоров
+            r'050505050',
+            r'0205045464506',
+            r'000606068680608',
+            r'060656506056068',
+            r'050505450540504504',
+            # Паттерн 17: Обязательство №5 с конкретным номером (с буквами)
+            r'Обязательство\s*№\s*5[^.]*?кредитный\s+договор[^.]*?№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
+            # Паттерн 18: Обязательство №5 с датой [104] (с буквами)
+            r'Обязательство\s*№\s*5[^.]*?(\d{1,2}[.,]\d{1,2}[.,]\d{4})\s*\[104\][^.]*?кредитный\s+договор[^.]*?№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)',
+            # Паттерн 19: Простой поиск Обязательство №5 (с буквами)
+            r'Обязательство\s*№\s*5[^.]*?(\d{1,2}[.,]\d{1,2}[.,]\d{4})[^.]*?№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)',
+            # Паттерн 20: Поиск по номеру 050505450540504504 в контексте Обязательство №5
+            r'050505450540504504[^.]*?(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
+            # Паттерн 21: Простой поиск Обязательство №5 с номером 050505450540504504
+            r'Обязательство\s*№\s*5[^.]*?050505450540504504[^.]*?(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
+            # Паттерн 22: Поиск по тексту "14.08.1783 [104] ПАО Сбербанк"
+            r'14\.08\.1783\s*\[104\][^.]*?050505450540504504',
+            # Паттерн 23: поиск всех кредитных договоров в тексте акта (с буквами)
+            r'кредитный\s+договор[:\s]*от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})[:\s]*№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)',
+            # Паттерн 24: поиск договоров поручительства
+            r'договор\s+поручительства[:\s]*от\s+\[104\]\s*№\s*\[114\]'
+        ]
+
+        logger.info(f"Ищем обязательства в тексте: {text[:500]}...")
+
+        for i, pattern in enumerate(obligation_patterns):
+            matches = re.findall(pattern, text, re.IGNORECASE | re.DOTALL)
+            logger.info(f"Паттерн {i+1} найден {len(matches)} совпадений")
+
+            for j, match in enumerate(matches):
+                if isinstance(match, tuple) and len(match) >= 2:
+                    # Для паттернов 17-22 (Обязательство №5) - порядок может быть разный
+                    if i >= 16:  # Паттерны 17-24 (индекс 16-23)
+                        if i == 19 or i == 20:  # Паттерны 20, 21 - только дата, номер известен
+                            contract_number = '050505450540504504'
+                            contract_date = self.clean_extracted_value(match[0].strip())
+                        elif i == 21:  # Паттерн 22 - только номер, дата известна
+                            contract_number = '050505450540504504'
+                            contract_date = '14.08.1783'
+                        elif i == 22:  # Паттерн 23 - кредитные договоры в тексте акта
+                            contract_date = self.clean_extracted_value(match[0].strip())
+                            contract_number = self.clean_extracted_value(match[1].strip())
+                        elif i == 23:  # Паттерн 24 - договор поручительства
+                            contract_date = '14.08.1783'  # дата [104]
+                            contract_number = '064640649640645'  # номер [114]
+                        elif 'Обязательство' in str(match[0]) or 'Обязательство' in str(match[1]):
+                            # Паттерн 17: номер, дата
+                            contract_number = self.clean_extracted_value(match[0].strip())
+                            contract_date = self.clean_extracted_value(match[1].strip())
+                        else:
+                            # Паттерны 18, 19: дата, номер
+                            contract_date = self.clean_extracted_value(match[0].strip())
+                            contract_number = self.clean_extracted_value(match[1].strip())
+                    else:
+                        # Паттерн 0: Требование №... по кредитному договору № NUMBER ... от DATE — (number, date)
+                        if i == 0:
+                            contract_number = self.clean_extracted_value(match[0].strip())
+                            raw_date = match[1].strip() if len(match) > 1 and match[1] else ""
+                            contract_date = self.clean_extracted_value(raw_date) if raw_date else self.find_date_near_contract(text, contract_number)
+                        # Паттерны 1, 2, 3: «кредитный договор от DATE № NUMBER» — (date, number)
+                        elif i in (1, 2, 3):
+                            contract_date = self.clean_extracted_value(match[0].strip())
+                            contract_number = self.clean_extracted_value(match[1].strip())
+                        else:
+                            # Паттерны 4–15: обычно (number, date)
+                            contract_number = self.clean_extracted_value(match[0].strip())
+                            contract_date = self.clean_extracted_value(match[1].strip())
+                elif isinstance(match, str):
+                    # Для паттерна 3 (договор поручительства от [104] № [114])
+                    if 'поручительства' in match:
+                        contract_number = '064640649640645'
+                        contract_date = '14.08.1783'
+                    elif i == 21:  # Паттерн 22 - только номер, дата известна
+                        contract_number = '050505450540504504'
+                        contract_date = '14.08.1783'
+                    elif i == 23:  # Паттерн 24 - договор поручительства
+                        contract_number = '064640649640645'
+                        contract_date = '14.08.1783'
+                    else:
+                        # Если нашли только номер договора, ищем дату отдельно
+                        contract_number = self.clean_extracted_value(match.strip())
+                        contract_date = self.find_date_near_contract(text, contract_number)
+                else:
+                    # Если нашли только номер договора, ищем дату отдельно
+                    contract_number = self.clean_extracted_value(match.strip() if isinstance(match, str) else str(match).strip())
+                    contract_date = self.find_date_near_contract(text, contract_number)
+
+                if self._is_valid_contract_number(contract_number):
+                    obligation = {
+                        'id': f"obligation_{i}_{j}",
+                        'contractNumber': contract_number.strip(),
+                        'contractDate': (contract_date or 'Не указана').strip(),
+                        'obligationType': self.detect_obligation_type(text, contract_number)
+                    }
+                    obligations.append(obligation)
+                    logger.info(f"Найдено обязательство: {obligation}")
+
+    def _regenerate_obligations_from_blocks(self, extracted_fields, text, obligations):
+        """Доп. поиск обязательств по блокам «Обязательство N:» гибкими паттернами, когда их мало (<5). Аппендит в obligations (по ссылке). Вынесено из extract_obligations."""
+        # Ищем блоки "Обязательство X:" в тексте - более гибкий паттерн
+        obligation_blocks = re.findall(r'обязательство\s+(\d+)[:\s]*(.*?)(?=обязательство\s+\d+|$)', text, re.IGNORECASE | re.DOTALL)
+        logger.info(f"Найдено блоков обязательств (паттерн 1): {len(obligation_blocks)}")
+
+        # Если не нашли, пробуем другой паттерн
+        if not obligation_blocks:
+            obligation_blocks = re.findall(r'обязательство\s+(\d+)[:\s]*(.*?)(?=\n\n|\nобязательство|\n[А-Я]|$)', text, re.IGNORECASE | re.DOTALL)
+            logger.info(f"Найдено блоков обязательств (паттерн 2): {len(obligation_blocks)}")
+
+        # Если все еще не нашли, пробуем найти по номерам
+        if not obligation_blocks:
+            # Ищем все вхождения "Обязательство" в тексте
+            obligation_matches = re.findall(r'обязательство\s+(\d+)', text, re.IGNORECASE)
+            logger.info(f"Найдено упоминаний 'Обязательство': {obligation_matches}")
+
+            # Создаем блоки вручную
+            for i, num in enumerate(obligation_matches):
+                # Ищем текст после "Обязательство X:"
+                pattern = rf'обязательство\s+{num}[:\s]*(.*?)(?=обязательство\s+\d+|$)'
+                match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+                if match:
+                    obligation_blocks.append((num, match.group(1)))
+                    logger.info(f"Создан блок обязательства {num}: {match.group(1)[:100]}...")
+
+        logger.info(f"Итого найдено блоков обязательств: {len(obligation_blocks)}")
+
+        for i, (num, block_text) in enumerate(obligation_blocks):
+            logger.info(f"Обрабатываем блок обязательства {num}: {block_text[:200]}...")
+
+            # Ищем номер договора в блоке - более гибкие паттерны
+            contract_patterns = [
+                r'договор[:\s]*№?\s*([А-ЯЁ0-9/-]{3,})',
+                r'№\s*([А-ЯЁ0-9/-]{3,})',
+                r'номер[:\s]*([А-ЯЁ0-9/-]{3,})',
+                r'кредитный\s+договор[:\s]*№?\s*([А-ЯЁ0-9/-]{3,})',
+                r'договор\s+займа[:\s]*№?\s*([А-ЯЁ0-9/-]{3,})',
+                r'договор\s+ссуды[:\s]*№?\s*([А-ЯЁ0-9/-]{3,})'
+            ]
+
+            contract_number = None
+            for pattern in contract_patterns:
+                match = re.search(pattern, block_text, re.IGNORECASE)
+                if match:
+                    contract_number = match.group(1).strip()
+                    logger.info(f"Найден номер договора в блоке {num}: {contract_number}")
+                    break
+
+            if not contract_number:
+                contract_number = f"Договор_{num}"
+
+            if not self._is_valid_contract_number(contract_number):
+                continue
+
+            # Ищем дату в блоке - более гибкие паттерны
+            date_patterns = [
+                r'от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
+                r'дата[:\s]*(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
+                r'(\d{1,2}[.,]\d{1,2}[.,]\d{4})'
+            ]
+
+            contract_date = 'Не указана'
+            for pattern in date_patterns:
+                match = re.search(pattern, block_text, re.IGNORECASE)
+                if match:
+                    contract_date = match.group(1).strip()
+                    logger.info(f"Найдена дата в блоке {num}: {contract_date}")
+                    break
+
+            # Определяем тип обязательства
+            obligation_type = 'Кредитный договор'
+            if 'залог' in block_text.lower():
+                obligation_type = 'Договор залога'
+            elif 'займ' in block_text.lower():
+                obligation_type = 'Договор займа'
+            elif 'ссуд' in block_text.lower():
+                obligation_type = 'Договор ссуды'
+            elif 'кредит' in block_text.lower():
+                obligation_type = 'Кредитный договор'
+
+            obligation = {
+                'id': f"obligation_block_{num}",
+                'contractNumber': contract_number,
+                'contractDate': contract_date,
+                'obligationType': obligation_type
+            }
+            obligations.append(obligation)
+            logger.info(f"Найдено обязательство из блока {num}: {obligation}")
+
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
         """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
 
@@ -6172,146 +6405,8 @@ class DocumentAnalyzer:
 
         # Если не нашли блоки "Обязательство X:", попробуем альтернативные паттерны
         if not obligations:
-            logger.info("Блоки 'Обязательство X:' не найдены, используем альтернативные паттерны")
-
-            # Ищем паттерны для обязательств - более гибкие
-            obligation_patterns = [
-                # Паттерн 0: "Требование № 1 по кредитному договору №XXXXX ... от DD.MM.YYYY"
-                r'Требовани[ея]\s*№\s*\d+\s+по\s+кредитному\s+договору\s+№\s*([A-Za-zА-ЯЁ0-9./-]+)(?:[^\n]{0,200}?\s+от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4}))?',
-                # Паттерн 0: «кредитный договор от DATE № NOMER» и «договор поручительства от DATE № NOMER» (приоритет)
-                r'кредитный\s+договор\s+от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})\s+№\s*([0-9А-ЯЁa-z/\-]+?)(?=\s|,|$|\.)',
-                r'договор\s+поручительства\s+от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})\s+№\s*([0-9А-ЯЁa-z/\-]+?)(?=\s|,|$|\.)',
-                # Паттерн 0.1: эмиссионный контракт №
-                r'эмиссионный\s+контракт[:\s]*№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
-                r'эмисионного\s+контракта[:\s]*№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
-                # Паттерн 0.2: Договор займа № / Договоров займа №
-                r'Договор\s+займа[:\s]*№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
-                r'Договоров\s+займа[:\s]*№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
-                # Паттерн 0.3: договор потребительского кредита №
-                r'договор\s+потребительского\s+кредита[:\s]*№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
-                # Паттерн 1: общий паттерн для кредитных договоров (с буквами)
-                r'кредитный\s+договор[:\s]*от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})[:\s]*№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)',
-                # Паттерн 2: общий паттерн для кредитных договоров без даты (с буквами)
-                r'кредитный\s+договор[:\s]*от\s+Не\s+указана[:\s]*№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)',
-                # Паттерн 3: договор поручительства от [104] № [114]
-                r'договор\s+поручительства[:\s]*от\s+\[104\]\s*№\s*\[114\]',
-                # Паттерн 4: договор №123 от 01.01.2024 (с буквами)
-                r'договор[:\s]*№?\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
-                # Паттерн 5: кредитный договор №123 от 01.01.2024 (с буквами)
-                r'кредитный\s+договор[:\s]*№?\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
-                # Паттерн 6: договор займа №123 от 01.01.2024 (с буквами)
-                r'договор\s+займа[:\s]*№?\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
-                # Паттерн 8: Обязательство 1: договор №123 от 01.01.2024 (с буквами)
-                r'обязательство\s+\d+[:\s]*[^.]*?договор[:\s]*№?\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
-                # Паттерн 9: Обязательство 1: кредитный договор №123 от 01.01.2024 (с буквами)
-                r'обязательство\s+\d+[:\s]*[^.]*?кредитный\s+договор[:\s]*№?\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
-                # Паттерн 10: Обязательство 1: договор займа №123 от 01.01.2024 (с буквами)
-                r'обязательство\s+\d+[:\s]*[^.]*?договор\s+займа[:\s]*№?\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
-                # Паттерн 11: Обязательство 1: займ №123 от 01.01.2024 (с буквами)
-                r'обязательство\s+\d+[:\s]*[^.]*?займ[:\s]*№?\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
-                # Паттерн 11.1: "Банк и ФИО заключили Соглашение ... номер № XXXXX"
-                r'(\d{1,2}[.,]\d{1,2}[.,]\d{4})\s+г\.\s+[^.\n]{0,200}?заключили\s+Соглашение[^.\n]{0,300}?номер\s+№\s*([A-Za-zА-ЯЁ0-9/-]+)',
-                # Паттерн 11.2: общий вариант "заключили .* (договор|соглашение) ... номер № XXXXX"
-                r'(\d{1,2}[.,]\d{1,2}[.,]\d{4})\s+г\.[^.\n]{0,200}?заключили[^.\n]{0,200}?(?:договор|соглашение)[^.\n]{0,200}?номер\s+№\s*([A-Za-zА-ЯЁ0-9/-]+)',
-                # Паттерн 11.3: "Между ООО МФК ... и должником заключен договор займа № 107977878 от 2024-08-10 года"
-                r'между\s+[^.\n]{0,200}?и\s+[^.\n]{0,200}?заключен\s+договор\s+займа\s+№\s*([A-Za-zА-ЯЁ0-9/-]+)[^.\n]{0,100}?от\s+(\d{4}-\d{2}-\d{2})',
-                # Паттерн 12: поиск по номерам договоров
-                r'050505050',
-                r'0205045464506',
-                r'000606068680608',
-                r'060656506056068',
-                r'050505450540504504',
-                # Паттерн 17: Обязательство №5 с конкретным номером (с буквами)
-                r'Обязательство\s*№\s*5[^.]*?кредитный\s+договор[^.]*?№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)[^.]*?от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
-                # Паттерн 18: Обязательство №5 с датой [104] (с буквами)
-                r'Обязательство\s*№\s*5[^.]*?(\d{1,2}[.,]\d{1,2}[.,]\d{4})\s*\[104\][^.]*?кредитный\s+договор[^.]*?№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)',
-                # Паттерн 19: Простой поиск Обязательство №5 (с буквами)
-                r'Обязательство\s*№\s*5[^.]*?(\d{1,2}[.,]\d{1,2}[.,]\d{4})[^.]*?№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)',
-                # Паттерн 20: Поиск по номеру 050505450540504504 в контексте Обязательство №5
-                r'050505450540504504[^.]*?(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
-                # Паттерн 21: Простой поиск Обязательство №5 с номером 050505450540504504
-                r'Обязательство\s*№\s*5[^.]*?050505450540504504[^.]*?(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
-                # Паттерн 22: Поиск по тексту "14.08.1783 [104] ПАО Сбербанк"
-                r'14\.08\.1783\s*\[104\][^.]*?050505450540504504',
-                # Паттерн 23: поиск всех кредитных договоров в тексте акта (с буквами)
-                r'кредитный\s+договор[:\s]*от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})[:\s]*№\s*([A-Za-zА-ЯЁ0-9/-]+?)(?=\s|$|,|\.|;|:|от\s+\d|\(|\)|\[|\n)',
-                # Паттерн 24: поиск договоров поручительства
-                r'договор\s+поручительства[:\s]*от\s+\[104\]\s*№\s*\[114\]'
-            ]
-
-            logger.info(f"Ищем обязательства в тексте: {text[:500]}...")
-
-            for i, pattern in enumerate(obligation_patterns):
-                matches = re.findall(pattern, text, re.IGNORECASE | re.DOTALL)
-                logger.info(f"Паттерн {i+1} найден {len(matches)} совпадений")
-
-                for j, match in enumerate(matches):
-                    if isinstance(match, tuple) and len(match) >= 2:
-                        # Для паттернов 17-22 (Обязательство №5) - порядок может быть разный
-                        if i >= 16:  # Паттерны 17-24 (индекс 16-23)
-                            if i == 19 or i == 20:  # Паттерны 20, 21 - только дата, номер известен
-                                contract_number = '050505450540504504'
-                                contract_date = self.clean_extracted_value(match[0].strip())
-                            elif i == 21:  # Паттерн 22 - только номер, дата известна
-                                contract_number = '050505450540504504'
-                                contract_date = '14.08.1783'
-                            elif i == 22:  # Паттерн 23 - кредитные договоры в тексте акта
-                                contract_date = self.clean_extracted_value(match[0].strip())
-                                contract_number = self.clean_extracted_value(match[1].strip())
-                            elif i == 23:  # Паттерн 24 - договор поручительства
-                                contract_date = '14.08.1783'  # дата [104]
-                                contract_number = '064640649640645'  # номер [114]
-                            elif 'Обязательство' in str(match[0]) or 'Обязательство' in str(match[1]):
-                                # Паттерн 17: номер, дата
-                                contract_number = self.clean_extracted_value(match[0].strip())
-                                contract_date = self.clean_extracted_value(match[1].strip())
-                            else:
-                                # Паттерны 18, 19: дата, номер
-                                contract_date = self.clean_extracted_value(match[0].strip())
-                                contract_number = self.clean_extracted_value(match[1].strip())
-                        else:
-                            # Паттерн 0: Требование №... по кредитному договору № NUMBER ... от DATE — (number, date)
-                            if i == 0:
-                                contract_number = self.clean_extracted_value(match[0].strip())
-                                raw_date = match[1].strip() if len(match) > 1 and match[1] else ""
-                                contract_date = self.clean_extracted_value(raw_date) if raw_date else self.find_date_near_contract(text, contract_number)
-                            # Паттерны 1, 2, 3: «кредитный договор от DATE № NUMBER» — (date, number)
-                            elif i in (1, 2, 3):
-                                contract_date = self.clean_extracted_value(match[0].strip())
-                                contract_number = self.clean_extracted_value(match[1].strip())
-                            else:
-                                # Паттерны 4–15: обычно (number, date)
-                                contract_number = self.clean_extracted_value(match[0].strip())
-                                contract_date = self.clean_extracted_value(match[1].strip())
-                    elif isinstance(match, str):
-                        # Для паттерна 3 (договор поручительства от [104] № [114])
-                        if 'поручительства' in match:
-                            contract_number = '064640649640645'
-                            contract_date = '14.08.1783'
-                        elif i == 21:  # Паттерн 22 - только номер, дата известна
-                            contract_number = '050505450540504504'
-                            contract_date = '14.08.1783'
-                        elif i == 23:  # Паттерн 24 - договор поручительства
-                            contract_number = '064640649640645'
-                            contract_date = '14.08.1783'
-                        else:
-                            # Если нашли только номер договора, ищем дату отдельно
-                            contract_number = self.clean_extracted_value(match.strip())
-                            contract_date = self.find_date_near_contract(text, contract_number)
-                    else:
-                        # Если нашли только номер договора, ищем дату отдельно
-                        contract_number = self.clean_extracted_value(match.strip() if isinstance(match, str) else str(match).strip())
-                        contract_date = self.find_date_near_contract(text, contract_number)
-
-                    if self._is_valid_contract_number(contract_number):
-                        obligation = {
-                            'id': f"obligation_{i}_{j}",
-                            'contractNumber': contract_number.strip(),
-                            'contractDate': (contract_date or 'Не указана').strip(),
-                            'obligationType': self.detect_obligation_type(text, contract_number)
-                        }
-                        obligations.append(obligation)
-                        logger.info(f"Найдено обязательство: {obligation}")
+            # Фолбэк-разбор обязательств (гибкие паттерны)
+            self._parse_obligations_fallback(extracted_fields, text, obligations)
 
         # Убираем дубликаты обязательств
         unique_obligations = []
@@ -6399,93 +6494,8 @@ class DocumentAnalyzer:
 
         # Дополнительно ищем обязательства по блокам "Обязательство X:"
         if not obligations or len(obligations) < 5:
-            # Ищем блоки "Обязательство X:" в тексте - более гибкий паттерн
-            obligation_blocks = re.findall(r'обязательство\s+(\d+)[:\s]*(.*?)(?=обязательство\s+\d+|$)', text, re.IGNORECASE | re.DOTALL)
-            logger.info(f"Найдено блоков обязательств (паттерн 1): {len(obligation_blocks)}")
-
-            # Если не нашли, пробуем другой паттерн
-            if not obligation_blocks:
-                obligation_blocks = re.findall(r'обязательство\s+(\d+)[:\s]*(.*?)(?=\n\n|\nобязательство|\n[А-Я]|$)', text, re.IGNORECASE | re.DOTALL)
-                logger.info(f"Найдено блоков обязательств (паттерн 2): {len(obligation_blocks)}")
-
-            # Если все еще не нашли, пробуем найти по номерам
-            if not obligation_blocks:
-                # Ищем все вхождения "Обязательство" в тексте
-                obligation_matches = re.findall(r'обязательство\s+(\d+)', text, re.IGNORECASE)
-                logger.info(f"Найдено упоминаний 'Обязательство': {obligation_matches}")
-
-                # Создаем блоки вручную
-                for i, num in enumerate(obligation_matches):
-                    # Ищем текст после "Обязательство X:"
-                    pattern = rf'обязательство\s+{num}[:\s]*(.*?)(?=обязательство\s+\d+|$)'
-                    match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
-                    if match:
-                        obligation_blocks.append((num, match.group(1)))
-                        logger.info(f"Создан блок обязательства {num}: {match.group(1)[:100]}...")
-
-            logger.info(f"Итого найдено блоков обязательств: {len(obligation_blocks)}")
-
-            for i, (num, block_text) in enumerate(obligation_blocks):
-                logger.info(f"Обрабатываем блок обязательства {num}: {block_text[:200]}...")
-
-                # Ищем номер договора в блоке - более гибкие паттерны
-                contract_patterns = [
-                    r'договор[:\s]*№?\s*([А-ЯЁ0-9/-]{3,})',
-                    r'№\s*([А-ЯЁ0-9/-]{3,})',
-                    r'номер[:\s]*([А-ЯЁ0-9/-]{3,})',
-                    r'кредитный\s+договор[:\s]*№?\s*([А-ЯЁ0-9/-]{3,})',
-                    r'договор\s+займа[:\s]*№?\s*([А-ЯЁ0-9/-]{3,})',
-                    r'договор\s+ссуды[:\s]*№?\s*([А-ЯЁ0-9/-]{3,})'
-                ]
-
-                contract_number = None
-                for pattern in contract_patterns:
-                    match = re.search(pattern, block_text, re.IGNORECASE)
-                    if match:
-                        contract_number = match.group(1).strip()
-                        logger.info(f"Найден номер договора в блоке {num}: {contract_number}")
-                        break
-
-                if not contract_number:
-                    contract_number = f"Договор_{num}"
-
-                if not self._is_valid_contract_number(contract_number):
-                    continue
-
-                # Ищем дату в блоке - более гибкие паттерны
-                date_patterns = [
-                    r'от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
-                    r'дата[:\s]*(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
-                    r'(\d{1,2}[.,]\d{1,2}[.,]\d{4})'
-                ]
-
-                contract_date = 'Не указана'
-                for pattern in date_patterns:
-                    match = re.search(pattern, block_text, re.IGNORECASE)
-                    if match:
-                        contract_date = match.group(1).strip()
-                        logger.info(f"Найдена дата в блоке {num}: {contract_date}")
-                        break
-
-                # Определяем тип обязательства
-                obligation_type = 'Кредитный договор'
-                if 'залог' in block_text.lower():
-                    obligation_type = 'Договор залога'
-                elif 'займ' in block_text.lower():
-                    obligation_type = 'Договор займа'
-                elif 'ссуд' in block_text.lower():
-                    obligation_type = 'Договор ссуды'
-                elif 'кредит' in block_text.lower():
-                    obligation_type = 'Кредитный договор'
-
-                obligation = {
-                    'id': f"obligation_block_{num}",
-                    'contractNumber': contract_number,
-                    'contractDate': contract_date,
-                    'obligationType': obligation_type
-                }
-                obligations.append(obligation)
-                logger.info(f"Найдено обязательство из блока {num}: {obligation}")
+            # Доп. поиск обязательств по блокам
+            self._regenerate_obligations_from_blocks(extracted_fields, text, obligations)
         obligations = self._dedupe_obligations(obligations)
         logger.info(f"Всего найдено обязательств: {len(obligations)}")
         return obligations
