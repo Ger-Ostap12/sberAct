@@ -3746,49 +3746,8 @@ class DocumentAnalyzer:
                 if self._extract_summable_field(extracted_fields, text, field_name, field_patterns):
                     continue
             elif field_name in multiple_fields:
-                # Для полей с множественными значениями собираем все вхождения
-                found_values = []
-                for pattern in field_patterns:
-                    matches = re.findall(pattern, text, re.IGNORECASE)
-                    for match in matches:
-                        value = match.strip()
-                        if value and len(value) > 2:
-                            # Очищаем значение от звездочек
-                            cleaned_value = self.clean_extracted_value(value)
-                            if not cleaned_value:  # Если после очистки ничего не осталось
-                                continue
-
-                            # Фильтруем мусорные значения
-                            if field_name == 'contractNumber':
-                                # Защита C: «№ 353-ФЗ» — ссылка на закон, не номер договора.
-                                if looks_like_law_ref(cleaned_value):
-                                    logger.info(f"Пропуск contractNumber (ссылка на закон): {cleaned_value}")
-                                elif not any(word in cleaned_value.lower() for word in ['считается', 'поручительства', 'возникшим', 'которые', 'согласно', 'установленную', 'принятые', 'договор', 'кредитный', 'путем', 'подписания', 'далее']) and len(cleaned_value.strip()) >= 2:
-                                    found_values.append(cleaned_value)
-                                    logger.info(f"Found {field_name}: {cleaned_value}")
-                            elif field_name == 'obligationType':
-                                if not any(word in cleaned_value.lower() for word in ['возникшим', 'которые', 'согласно', 'установленную', 'принятые']):
-                                    found_values.append(cleaned_value)
-                                    logger.info(f"Found {field_name}: {cleaned_value}")
-                            else:
-                                found_values.append(cleaned_value)
-                                logger.info(f"Found {field_name}: {cleaned_value}")
-
-                if found_values:
-                    # Удаляем дубликаты, сохраняя порядок появления
-                    unique_values = []
-                    seen_values = set()
-                    for value in found_values:
-                        normalized = value.lower()
-                        if normalized in seen_values:
-                            continue
-                        seen_values.add(normalized)
-                        unique_values.append(value)
-
-                    if unique_values:
-                        # Объединяем все найденные значения через запятую
-                        extracted_fields[field_name] = ", ".join(unique_values)
-                        logger.info(f"All {field_name}: {extracted_fields[field_name]}")
+                # Поле с множественными значениями (договоры)
+                self._extract_multiple_field(extracted_fields, text, field_name, field_patterns)
             else:
                 # Для обычных полей ищем первое вхождение
                 # Специальная обработка для ИНН, ОГРН и companyInn - используем ту же логику, что и в реструктуризации!
@@ -5916,6 +5875,52 @@ class DocumentAnalyzer:
                 logger.info(f"Selected {field_name}: {extracted_fields[field_name]}")
         return True
         return False
+
+    def _extract_multiple_field(self, extracted_fields, text, field_name, field_patterns):
+        """Поля с множественными значениями (contractNumber/contractDate/obligationType): сбор всех вхождений по паттернам, защита C (закон != договор), фильтры мусора, дедуп с сохранением порядка. Вынесено из pattern-цикла."""
+        # Для полей с множественными значениями собираем все вхождения
+        found_values = []
+        for pattern in field_patterns:
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            for match in matches:
+                value = match.strip()
+                if value and len(value) > 2:
+                    # Очищаем значение от звездочек
+                    cleaned_value = self.clean_extracted_value(value)
+                    if not cleaned_value:  # Если после очистки ничего не осталось
+                        continue
+
+                    # Фильтруем мусорные значения
+                    if field_name == 'contractNumber':
+                        # Защита C: «№ 353-ФЗ» — ссылка на закон, не номер договора.
+                        if looks_like_law_ref(cleaned_value):
+                            logger.info(f"Пропуск contractNumber (ссылка на закон): {cleaned_value}")
+                        elif not any(word in cleaned_value.lower() for word in ['считается', 'поручительства', 'возникшим', 'которые', 'согласно', 'установленную', 'принятые', 'договор', 'кредитный', 'путем', 'подписания', 'далее']) and len(cleaned_value.strip()) >= 2:
+                            found_values.append(cleaned_value)
+                            logger.info(f"Found {field_name}: {cleaned_value}")
+                    elif field_name == 'obligationType':
+                        if not any(word in cleaned_value.lower() for word in ['возникшим', 'которые', 'согласно', 'установленную', 'принятые']):
+                            found_values.append(cleaned_value)
+                            logger.info(f"Found {field_name}: {cleaned_value}")
+                    else:
+                        found_values.append(cleaned_value)
+                        logger.info(f"Found {field_name}: {cleaned_value}")
+
+        if found_values:
+            # Удаляем дубликаты, сохраняя порядок появления
+            unique_values = []
+            seen_values = set()
+            for value in found_values:
+                normalized = value.lower()
+                if normalized in seen_values:
+                    continue
+                seen_values.add(normalized)
+                unique_values.append(value)
+
+            if unique_values:
+                # Объединяем все найденные значения через запятую
+                extracted_fields[field_name] = ", ".join(unique_values)
+                logger.info(f"All {field_name}: {extracted_fields[field_name]}")
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
         """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
