@@ -4784,91 +4784,8 @@ class DocumentAnalyzer:
             else:
                 extracted_fields["applicantAddress"] = address_clean_stripped
 
-        # Адрес должника не должен совпадать с адресом кредитора (частая ошибка извлечения)
-        applicant_addr = (extracted_fields.get("applicantAddress") or "").strip()
-        creditor_addr = (extracted_fields.get("creditorAddress") or "").strip()
-        if applicant_addr and creditor_addr and applicant_addr == creditor_addr:
-            extracted_fields.pop("applicantAddress", None)
-            logger.warning("⚠️ Адрес заявителя совпадал с адресом кредитора — поле очищено")
-
-        # Адрес должника не должен быть названием/адресом суда (индекс + "Арбитражный суд ... области")
-        if extracted_fields.get("applicantAddress"):
-            addr = (extracted_fields.get("applicantAddress") or "").strip()
-            if "Арбитражный суд" in addr or (re.search(r"\bсуд\b", addr) and "области" in addr):
-                extracted_fields.pop("applicantAddress", None)
-                logger.warning("⚠️ Адрес заявителя совпадал с названием/адресом суда — поле очищено")
-
-        # Специальный fallback по заявлениям РТК:
-        # если адрес пустой или был очищен как адрес суда/кредитора — пробуем ещё раз взять его из блока "Должник: Адрес ..."
-        if not extracted_fields.get("applicantAddress"):
-            # Ищем адрес в шапке заявления после блока "Должник ... Адрес"
-            debtor_address_match = re.search(
-                r"Должник[:\s][\s\S]{0,400}?Адрес[:\s]*([^\n]+(?:\n[^\n]+)?)",
-                text,
-                re.IGNORECASE
-            )
-            if debtor_address_match:
-                raw_addr = debtor_address_match.group(1).strip()
-                # Убираем служебные слова "регистрации", "место жительства" в начале
-                raw_addr = re.sub(
-                    r'^(адрес|адрес\s+регистрации|регистрации|место\s+жительства|место\s+регистрации)\s*[:\-–—]*\s*',
-                    '',
-                    raw_addr,
-                    flags=re.IGNORECASE
-                )
-                # Заменяем переводы строк на запятую и пробел
-                raw_addr = re.sub(r"\s*\n\s*", ", ", raw_addr)
-                # Оставляем только буквы, цифры, точки, запятые, дефисы и пробелы
-                cleaned_addr = re.sub(r"[^0-9,\s\-а-яёА-ЯЁ\.]+", "", raw_addr)
-                cleaned_addr = re.sub(r"\s+", " ", cleaned_addr).strip(" ,")
-
-                if cleaned_addr and "Арбитражный суд" not in cleaned_addr:
-                    extracted_fields["applicantAddress"] = cleaned_addr
-                    logger.info(f"✅ Адрес должника (fallback из блока 'Должник: Адрес'): {cleaned_addr}")
-
-        # Для КФХ: если адрес не найден, извлекаем его из текста документа
-        if extracted_fields.get("isKfh") and not extracted_fields.get("applicantAddress"):
-            # Ищем адрес в тексте после "Адрес:" или в блоке должника
-            kfh_addr_patterns = [
-                r"Адрес[:\s]+([0-9]{6}[,\s]+[А-ЯЁ][^\n]+?)(?=\n|$|ИНН|ОГРН|ОГРНИП|телефон|e-mail)",
-                r"адрес[:\s]+([0-9]{6}[,\s]+[А-ЯЁ][^\n]+?)(?=\n|$|ИНН|ОГРН|ОГРНИП|телефон|e-mail)",
-                r"место\s+жительства[:\s]+([0-9]{6}[,\s]+[А-ЯЁ][^\n]+?)(?=\n|$|ИНН|ОГРН|ОГРНИП|телефон|e-mail)",
-                r"адрес\s+регистрации[:\s]+([0-9]{6}[,\s]+[А-ЯЁ][^\n]+?)(?=\n|$|ИНН|ОГРН|ОГРНИП|телефон|e-mail)",
-            ]
-
-            # Также ищем в блоке должника, если он есть
-            debtor_block_for_kfh = None
-            if debtor_block:
-                debtor_block_for_kfh = debtor_block
-            else:
-                # Пытаемся найти блок должника в тексте
-                debtor_block_match = re.search(
-                    r"должник[:\s]+([^\n]+(?:\n[^\n]+){0,10}?)(?=\n\s*\n|ПРОСИТ|Сумма|Дело|$)",
-                    text,
-                    re.IGNORECASE | re.MULTILINE
-                )
-                if debtor_block_match:
-                    debtor_block_for_kfh = debtor_block_match.group(0)
-
-            for pattern in kfh_addr_patterns:
-                if debtor_block_for_kfh:
-                    match = re.search(pattern, debtor_block_for_kfh, re.IGNORECASE)
-                else:
-                    match = re.search(pattern, text, re.IGNORECASE)
-
-                if match:
-                    addr = self.clean_extracted_value(match.group(1))
-                    # Обрезаем всё после маркеров ИНН/ОГРН, если они попали в строку
-                    for token in ["инн", "огрн", "огрнип", "кпп", "телефон", "e-mail", "email"]:
-                        token_lower = token.lower()
-                        idx = addr.lower().find(token_lower)
-                        if idx != -1:
-                            addr = addr[:idx].strip()
-                    # Проверяем, что адрес содержит буквы
-                    if addr and re.search(r'[А-ЯЁа-яё]', addr):
-                        extracted_fields["applicantAddress"] = addr.strip()
-                        logger.info(f"✅ Адрес КФХ извлечен: {addr.strip()}")
-                        break
+        # Валидация и фолбэки адреса должника
+        self._resolve_debtor_address(extracted_fields, text, debtor_block)
 
         if extracted_fields.get("ogrn"):
             extracted_fields["ogrn"] = re.sub(r"\D", "", extracted_fields["ogrn"])
@@ -5880,6 +5797,94 @@ class DocumentAnalyzer:
             else:
                 logger.debug(f"managerInn '{manager_inn}' отброшен: не прошёл контрольную сумму")
                 extracted_fields.pop("managerInn", None)
+
+    def _resolve_debtor_address(self, extracted_fields, text, debtor_block):
+        """Валидация и фолбэки адреса должника: адрес != кредитор/суд, повторное извлечение из шапки (РТК) и из блока должника (КФХ). Вынесено из extract_fields."""
+        # Адрес должника не должен совпадать с адресом кредитора (частая ошибка извлечения)
+        applicant_addr = (extracted_fields.get("applicantAddress") or "").strip()
+        creditor_addr = (extracted_fields.get("creditorAddress") or "").strip()
+        if applicant_addr and creditor_addr and applicant_addr == creditor_addr:
+            extracted_fields.pop("applicantAddress", None)
+            logger.warning("⚠️ Адрес заявителя совпадал с адресом кредитора — поле очищено")
+
+        # Адрес должника не должен быть названием/адресом суда (индекс + "Арбитражный суд ... области")
+        if extracted_fields.get("applicantAddress"):
+            addr = (extracted_fields.get("applicantAddress") or "").strip()
+            if "Арбитражный суд" in addr or (re.search(r"\bсуд\b", addr) and "области" in addr):
+                extracted_fields.pop("applicantAddress", None)
+                logger.warning("⚠️ Адрес заявителя совпадал с названием/адресом суда — поле очищено")
+
+        # Специальный fallback по заявлениям РТК:
+        # если адрес пустой или был очищен как адрес суда/кредитора — пробуем ещё раз взять его из блока "Должник: Адрес ..."
+        if not extracted_fields.get("applicantAddress"):
+            # Ищем адрес в шапке заявления после блока "Должник ... Адрес"
+            debtor_address_match = re.search(
+                r"Должник[:\s][\s\S]{0,400}?Адрес[:\s]*([^\n]+(?:\n[^\n]+)?)",
+                text,
+                re.IGNORECASE
+            )
+            if debtor_address_match:
+                raw_addr = debtor_address_match.group(1).strip()
+                # Убираем служебные слова "регистрации", "место жительства" в начале
+                raw_addr = re.sub(
+                    r'^(адрес|адрес\s+регистрации|регистрации|место\s+жительства|место\s+регистрации)\s*[:\-–—]*\s*',
+                    '',
+                    raw_addr,
+                    flags=re.IGNORECASE
+                )
+                # Заменяем переводы строк на запятую и пробел
+                raw_addr = re.sub(r"\s*\n\s*", ", ", raw_addr)
+                # Оставляем только буквы, цифры, точки, запятые, дефисы и пробелы
+                cleaned_addr = re.sub(r"[^0-9,\s\-а-яёА-ЯЁ\.]+", "", raw_addr)
+                cleaned_addr = re.sub(r"\s+", " ", cleaned_addr).strip(" ,")
+
+                if cleaned_addr and "Арбитражный суд" not in cleaned_addr:
+                    extracted_fields["applicantAddress"] = cleaned_addr
+                    logger.info(f"✅ Адрес должника (fallback из блока 'Должник: Адрес'): {cleaned_addr}")
+
+        # Для КФХ: если адрес не найден, извлекаем его из текста документа
+        if extracted_fields.get("isKfh") and not extracted_fields.get("applicantAddress"):
+            # Ищем адрес в тексте после "Адрес:" или в блоке должника
+            kfh_addr_patterns = [
+                r"Адрес[:\s]+([0-9]{6}[,\s]+[А-ЯЁ][^\n]+?)(?=\n|$|ИНН|ОГРН|ОГРНИП|телефон|e-mail)",
+                r"адрес[:\s]+([0-9]{6}[,\s]+[А-ЯЁ][^\n]+?)(?=\n|$|ИНН|ОГРН|ОГРНИП|телефон|e-mail)",
+                r"место\s+жительства[:\s]+([0-9]{6}[,\s]+[А-ЯЁ][^\n]+?)(?=\n|$|ИНН|ОГРН|ОГРНИП|телефон|e-mail)",
+                r"адрес\s+регистрации[:\s]+([0-9]{6}[,\s]+[А-ЯЁ][^\n]+?)(?=\n|$|ИНН|ОГРН|ОГРНИП|телефон|e-mail)",
+            ]
+
+            # Также ищем в блоке должника, если он есть
+            debtor_block_for_kfh = None
+            if debtor_block:
+                debtor_block_for_kfh = debtor_block
+            else:
+                # Пытаемся найти блок должника в тексте
+                debtor_block_match = re.search(
+                    r"должник[:\s]+([^\n]+(?:\n[^\n]+){0,10}?)(?=\n\s*\n|ПРОСИТ|Сумма|Дело|$)",
+                    text,
+                    re.IGNORECASE | re.MULTILINE
+                )
+                if debtor_block_match:
+                    debtor_block_for_kfh = debtor_block_match.group(0)
+
+            for pattern in kfh_addr_patterns:
+                if debtor_block_for_kfh:
+                    match = re.search(pattern, debtor_block_for_kfh, re.IGNORECASE)
+                else:
+                    match = re.search(pattern, text, re.IGNORECASE)
+
+                if match:
+                    addr = self.clean_extracted_value(match.group(1))
+                    # Обрезаем всё после маркеров ИНН/ОГРН, если они попали в строку
+                    for token in ["инн", "огрн", "огрнип", "кпп", "телефон", "e-mail", "email"]:
+                        token_lower = token.lower()
+                        idx = addr.lower().find(token_lower)
+                        if idx != -1:
+                            addr = addr[:idx].strip()
+                    # Проверяем, что адрес содержит буквы
+                    if addr and re.search(r'[А-ЯЁа-яё]', addr):
+                        extracted_fields["applicantAddress"] = addr.strip()
+                        logger.info(f"✅ Адрес КФХ извлечен: {addr.strip()}")
+                        break
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
         """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
