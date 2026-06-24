@@ -487,34 +487,8 @@ class DocumentAnalyzer:
             # блока «Ответчик(и):/Должник:» и пересчитываем падежи.
             self._fix_debtor_name(text, extracted_fields)
 
-            # Реквизиты должника-физлица из его блока: дата/место рождения, СНИЛС.
-            # birthDate берём авторитетно (существующий фолбэк иногда кладёт сюда ОГРН);
-            # birthPlace/snils — только если поле ещё не заполнено.
-            details = extract_debtor_details(text)
-            # birthDate авторитетно из записи должника: если валидной даты там нет,
-            # очищаем мусор существующего фолбэка (невозможные/фабрикованные даты).
-            if details.get("birthDate"):
-                extracted_fields["birthDate"] = details["birthDate"]
-            else:
-                extracted_fields.pop("birthDate", None)
-            if details.get("birthPlace"):
-                extracted_fields["birthPlace"] = details["birthPlace"]
-            # ИНН должника — авторитетно из его записи (исправляет подстановку ИНН банка).
-            if details.get("inn"):
-                extracted_fields["inn"] = details["inn"]
-                extracted_fields["companyInn"] = details["inn"]
-            # ОГРН/ОГРНИП должника — авторитетно из его записи.
-            if details.get("ogrn"):
-                if len(details["ogrn"]) == 15:
-                    extracted_fields["ogrnip"] = details["ogrn"]
-                else:
-                    extracted_fields["ogrn"] = details["ogrn"]
-            # СНИЛС берём строго из записи основного должника. Если там его нет —
-            # очищаем значение, утёкшее от представителя/со-ответчика.
-            if details.get("snils"):
-                extracted_fields["snils"] = details["snils"]
-            else:
-                extracted_fields.pop("snils", None)
+            # Реквизиты должника-физлица из его записи
+            details = self._finalize_debtor_person_requisites(extracted_fields, text)
 
             # Срезаем ведущую метку из адреса должника («Адрес регистрации: 867624…» →
             # «867624…»), если она попала в значение при извлечении.
@@ -4600,6 +4574,38 @@ class DocumentAnalyzer:
             logger.warning(f"  debtorName (ip_specific): {ip_specific_fields.get('debtorName')}")
             logger.warning(f"  applicantName (extracted): {extracted_fields.get('applicantName')}")
             logger.warning(f"  debtorName (extracted): {extracted_fields.get('debtorName')}")
+
+    def _finalize_debtor_person_requisites(self, extracted_fields, text):
+        """Авторитетные реквизиты должника-физлица из его записи (дата/место рождения, ИНН, ОГРН/ОГРНИП, СНИЛС). Возвращает details для последующего dedup. Вынесено из analyze."""
+        # Реквизиты должника-физлица из его блока: дата/место рождения, СНИЛС.
+        # birthDate берём авторитетно (существующий фолбэк иногда кладёт сюда ОГРН);
+        # birthPlace/snils — только если поле ещё не заполнено.
+        details = extract_debtor_details(text)
+        # birthDate авторитетно из записи должника: если валидной даты там нет,
+        # очищаем мусор существующего фолбэка (невозможные/фабрикованные даты).
+        if details.get("birthDate"):
+            extracted_fields["birthDate"] = details["birthDate"]
+        else:
+            extracted_fields.pop("birthDate", None)
+        if details.get("birthPlace"):
+            extracted_fields["birthPlace"] = details["birthPlace"]
+        # ИНН должника — авторитетно из его записи (исправляет подстановку ИНН банка).
+        if details.get("inn"):
+            extracted_fields["inn"] = details["inn"]
+            extracted_fields["companyInn"] = details["inn"]
+        # ОГРН/ОГРНИП должника — авторитетно из его записи.
+        if details.get("ogrn"):
+            if len(details["ogrn"]) == 15:
+                extracted_fields["ogrnip"] = details["ogrn"]
+            else:
+                extracted_fields["ogrn"] = details["ogrn"]
+        # СНИЛС берём строго из записи основного должника. Если там его нет —
+        # очищаем значение, утёкшее от представителя/со-ответчика.
+        if details.get("snils"):
+            extracted_fields["snils"] = details["snils"]
+        else:
+            extracted_fields.pop("snils", None)
+        return details
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
         """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
