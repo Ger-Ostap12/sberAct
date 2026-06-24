@@ -490,46 +490,8 @@ class DocumentAnalyzer:
             # Реквизиты должника-физлица из его записи
             details = self._finalize_debtor_person_requisites(extracted_fields, text)
 
-            # Срезаем ведущую метку из адреса должника («Адрес регистрации: 867624…» →
-            # «867624…»), если она попала в значение при извлечении.
-            addr_val = extracted_fields.get("applicantAddress")
-            if addr_val:
-                cleaned_addr = re.sub(
-                    r"^\s*(?:Адрес(?:\s+регистрации|\s+проживания|\s+места\s+жительства)?|"
-                    r"Место\s+(?:жительства|регистрации|нахождения)|"
-                    r"Зарегистрирован\w*(?:\s+по\s+адресу)?)\s*[:\-]?\s*",
-                    "", addr_val, flags=re.IGNORECASE,
-                ).strip()
-                if cleaned_addr:
-                    extracted_fields["applicantAddress"] = cleaned_addr
-
-            # Валидация имени третьего лица: должно быть ФИО или организацией.
-            # Иначе это мусор из тела (например, «и должник отвечают перед») — чистим блок.
-            tp_name = extracted_fields.get("thirdPartyName")
-            if tp_name:
-                is_org = re.match(r"^(?:ИП|ООО|АО|ПАО|ЗАО|ОАО|Общество|Публичное)\b", tp_name, re.IGNORECASE)
-                if not (is_person_name(tp_name) or is_org):
-                    for key in ("thirdPartyName", "thirdPartyAddress", "thirdPartyInn",
-                                "thirdPartyBirthDate", "thirdPartySnils"):
-                        extracted_fields.pop(key, None)
-                    tp_name = None
-
-            # Реквизиты первого третьего лица (ИНН/дата рождения/СНИЛС), если блок валиден.
-            if tp_name:
-                tp = extract_third_party_details(text)
-                for key in ("thirdPartyInn", "thirdPartyBirthDate", "thirdPartySnils"):
-                    if tp.get(key) and not extracted_fields.get(key):
-                        extracted_fields[key] = tp[key]
-
-            # Название суда: универсальный фолбэк, если не извлеклось основным путём
-            # (ипотека/взыскание — суд общей юрисдикции, а не арбитраж).
-            if not extracted_fields.get("courtName"):
-                court = self._extract_court_name(text)
-                if court:
-                    extracted_fields["courtName"] = court
-            # Нормализуем регистр названия суда («…Суд… Области» → «…суд… области»).
-            if extracted_fields.get("courtName"):
-                extracted_fields["courtName"] = self._normalize_court_name(extracted_fields["courtName"])
+            # Пост-очистка полей (адрес/третье лицо/суд)
+            self._cleanup_extracted_fields(extracted_fields, text)
 
             # Несколько должников (со-ответчиков). При 2+ — склеиваем плоские поля и
             # падежи через запятую (шаблоны не меняем). При 0/1 — одиночный должник
@@ -4606,6 +4568,49 @@ class DocumentAnalyzer:
         else:
             extracted_fields.pop("snils", None)
         return details
+
+    def _cleanup_extracted_fields(self, extracted_fields, text):
+        """Пост-очистка извлечённых полей: срез метки из адреса должника, валидация имени/реквизитов третьего лица, фолбэк и нормализация названия суда. Вынесено из analyze."""
+        # Срезаем ведущую метку из адреса должника («Адрес регистрации: 867624…» →
+        # «867624…»), если она попала в значение при извлечении.
+        addr_val = extracted_fields.get("applicantAddress")
+        if addr_val:
+            cleaned_addr = re.sub(
+                r"^\s*(?:Адрес(?:\s+регистрации|\s+проживания|\s+места\s+жительства)?|"
+                r"Место\s+(?:жительства|регистрации|нахождения)|"
+                r"Зарегистрирован\w*(?:\s+по\s+адресу)?)\s*[:\-]?\s*",
+                "", addr_val, flags=re.IGNORECASE,
+            ).strip()
+            if cleaned_addr:
+                extracted_fields["applicantAddress"] = cleaned_addr
+
+        # Валидация имени третьего лица: должно быть ФИО или организацией.
+        # Иначе это мусор из тела (например, «и должник отвечают перед») — чистим блок.
+        tp_name = extracted_fields.get("thirdPartyName")
+        if tp_name:
+            is_org = re.match(r"^(?:ИП|ООО|АО|ПАО|ЗАО|ОАО|Общество|Публичное)\b", tp_name, re.IGNORECASE)
+            if not (is_person_name(tp_name) or is_org):
+                for key in ("thirdPartyName", "thirdPartyAddress", "thirdPartyInn",
+                            "thirdPartyBirthDate", "thirdPartySnils"):
+                    extracted_fields.pop(key, None)
+                tp_name = None
+
+        # Реквизиты первого третьего лица (ИНН/дата рождения/СНИЛС), если блок валиден.
+        if tp_name:
+            tp = extract_third_party_details(text)
+            for key in ("thirdPartyInn", "thirdPartyBirthDate", "thirdPartySnils"):
+                if tp.get(key) and not extracted_fields.get(key):
+                    extracted_fields[key] = tp[key]
+
+        # Название суда: универсальный фолбэк, если не извлеклось основным путём
+        # (ипотека/взыскание — суд общей юрисдикции, а не арбитраж).
+        if not extracted_fields.get("courtName"):
+            court = self._extract_court_name(text)
+            if court:
+                extracted_fields["courtName"] = court
+        # Нормализуем регистр названия суда («…Суд… Области» → «…суд… области»).
+        if extracted_fields.get("courtName"):
+            extracted_fields["courtName"] = self._normalize_court_name(extracted_fields["courtName"])
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
         """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
