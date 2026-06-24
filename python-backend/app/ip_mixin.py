@@ -7,7 +7,6 @@ logger = logging.getLogger(__name__)
 
 
 class IpExtractionMixin:
-    """Методы группы, вынесенные из DocumentAnalyzer (поведение 1-в-1)."""
 
     def extract_ip_enforcement_fields(self, text: str) -> Dict[str, str]:
         """

@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 class InflectionMixin:
-    """Методы группы, вынесенные из DocumentAnalyzer (поведение 1-в-1)."""
 
     def _ensure_morph(self) -> Optional[MorphAnalyzer]:
         if MorphAnalyzer is None:

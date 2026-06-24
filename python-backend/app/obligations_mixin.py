@@ -7,7 +7,6 @@ logger = logging.getLogger(__name__)
 
 
 class ObligationsMixin:
-    """Методы группы, вынесенные из DocumentAnalyzer (поведение 1-в-1)."""
 
     def _parse_obligation_blocks(self, extracted_fields, text, obligations, obligation_blocks):
         """Разбор блоков «Обязательство N:»: номер/дата договора, суммы, тип. Аппендит в obligations (по ссылке). Вынесено из extract_obligations."""
