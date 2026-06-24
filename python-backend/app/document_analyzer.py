@@ -3742,48 +3742,9 @@ class DocumentAnalyzer:
             logger.info(f"Обрабатываем поле: {field_name} с {len(field_patterns)} паттернами")
 
             if field_name in summable_fields:
-                collected_values = []
-                # Для общей суммы долга и суммы долга: берём значение только из первого совпавшего паттерна
-                # (чтобы не подставлять сумму выдачи кредита вместо суммы требований)
-                use_first_pattern_only = field_name in ("debtAmount", "totalDebt")
-
-                for i, pattern in enumerate(field_patterns):
-                    logger.info(f"  Паттерн {i+1} для {field_name}: {pattern}")
-                    matches = re.findall(pattern, text, re.IGNORECASE)
-                    logger.info(f"  Найдено совпадений: {len(matches)}")
-                    pattern_values = []
-                    for match in matches:
-                        if isinstance(match, tuple):
-                            match_value = next((part for part in match if part), "")
-                        else:
-                            match_value = match
-
-                        match_value = (match_value or "").strip()
-                        if not match_value:
-                            continue
-
-                        normalized_amount = self.normalize_amount_value(match_value)
-                        if normalized_amount:
-                            pattern_values.append(normalized_amount)
-                            if not use_first_pattern_only:
-                                collected_values.append(normalized_amount)
-                            logger.info(f"Found {field_name} amount: {normalized_amount}")
-
-                    if use_first_pattern_only and pattern_values:
-                        # Для totalDebt берём последнюю найденную сумму в паттерне (например, "а всего 163 210,00 руб.")
-                        chosen_value = pattern_values[-1] if field_name == "totalDebt" else pattern_values[0]
-                        extracted_fields[field_name] = chosen_value
-                        logger.info(f"Selected {field_name} (первый приоритетный паттерн): {extracted_fields[field_name]}")
-                        break
-                    elif not use_first_pattern_only:
-                        collected_values.extend(pattern_values)
-                else:
-                    if not use_first_pattern_only and collected_values:
-                        # Для сумм без строгого приоритета берём первое найденное значение,
-                        # чтобы избежать искусственного завышения (особенно для forfeit)
-                        extracted_fields[field_name] = collected_values[0]
-                        logger.info(f"Selected {field_name}: {extracted_fields[field_name]}")
-                continue
+                # Суммируемое поле (суммы из паттернов)
+                if self._extract_summable_field(extracted_fields, text, field_name, field_patterns):
+                    continue
             elif field_name in multiple_fields:
                 # Для полей с множественными значениями собираем все вхождения
                 found_values = []
@@ -5908,6 +5869,52 @@ class DocumentAnalyzer:
                     extracted_fields[field_name] = ", ".join(cleaned_lines).strip()
                     logger.info(f"✅ Extracted applicantAddress из блока должника/ответчика: {extracted_fields[field_name]}")
                     return True
+        return False
+
+    def _extract_summable_field(self, extracted_fields, text, field_name, field_patterns):
+        """Суммируемые поля (долг/проценты/неустойка/итого): выбор значения из паттернов с приоритетом первого для debtAmount/totalDebt. Возвращает True (поле обработано -> continue). Вынесено из pattern-цикла."""
+        collected_values = []
+        # Для общей суммы долга и суммы долга: берём значение только из первого совпавшего паттерна
+        # (чтобы не подставлять сумму выдачи кредита вместо суммы требований)
+        use_first_pattern_only = field_name in ("debtAmount", "totalDebt")
+
+        for i, pattern in enumerate(field_patterns):
+            logger.info(f"  Паттерн {i+1} для {field_name}: {pattern}")
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            logger.info(f"  Найдено совпадений: {len(matches)}")
+            pattern_values = []
+            for match in matches:
+                if isinstance(match, tuple):
+                    match_value = next((part for part in match if part), "")
+                else:
+                    match_value = match
+
+                match_value = (match_value or "").strip()
+                if not match_value:
+                    continue
+
+                normalized_amount = self.normalize_amount_value(match_value)
+                if normalized_amount:
+                    pattern_values.append(normalized_amount)
+                    if not use_first_pattern_only:
+                        collected_values.append(normalized_amount)
+                    logger.info(f"Found {field_name} amount: {normalized_amount}")
+
+            if use_first_pattern_only and pattern_values:
+                # Для totalDebt берём последнюю найденную сумму в паттерне (например, "а всего 163 210,00 руб.")
+                chosen_value = pattern_values[-1] if field_name == "totalDebt" else pattern_values[0]
+                extracted_fields[field_name] = chosen_value
+                logger.info(f"Selected {field_name} (первый приоритетный паттерн): {extracted_fields[field_name]}")
+                break
+            elif not use_first_pattern_only:
+                collected_values.extend(pattern_values)
+        else:
+            if not use_first_pattern_only and collected_values:
+                # Для сумм без строгого приоритета берём первое найденное значение,
+                # чтобы избежать искусственного завышения (особенно для forfeit)
+                extracted_fields[field_name] = collected_values[0]
+                logger.info(f"Selected {field_name}: {extracted_fields[field_name]}")
+        return True
         return False
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
