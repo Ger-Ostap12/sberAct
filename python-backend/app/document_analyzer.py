@@ -120,60 +120,8 @@ class DocumentAnalyzer:
 
             # Извлекаем данные на основе типа документа
             if document_type in ("ip_collection", "ip_collection_collateral", "ip_collection_collateral_auto"):
-                # Используем основной extract_fields для ИП, чтобы получить все поля
-                extracted_fields = self.extract_fields(text, "rtk_application")  # Используем rtk_application как базовый тип
-
-                # Дополняем специфичными полями для ИП из extract_ip_enforcement_fields
-                ip_specific_fields = self.extract_ip_enforcement_fields(text)
-                logger.info(f"Извлеченные специфичные поля для ИП (взыскание): {list(ip_specific_fields.keys())}")
-                logger.info(f"🔍 Значения полей [1000], [1001], [1004]:")
-                logger.info(f"  creditAmount [1000]: {ip_specific_fields.get('creditAmount')}")
-                logger.info(f"  creditTermMonths [1001]: {ip_specific_fields.get('creditTermMonths')}")
-                logger.info(f"  debtSnapshotDate [1004]: {ip_specific_fields.get('debtSnapshotDate')}")
-
-                for key, value in ip_specific_fields.items():
-                    if value:
-                        # ВАЖНО: Не перезаписываем ИНН и ОГРН, если они уже были извлечены из блока "Ответчик:" в основном цикле
-                        if key in ["inn", "ogrnip", "ogrn"]:
-                            if key in extracted_fields and extracted_fields[key]:
-                                logger.info(f"⚠️ Пропускаем перезапись {key} из ip_specific_fields (уже извлечен из блока Ответчик: {extracted_fields[key]})")
-                                continue
-                        # Не перезаписываем уже найденные денежные поля основного извлечения,
-                        # чтобы не заносить шум из fallback-паттернов ip_specific_fields.
-                        if key in ["principalDebt13", "interest14", "forfeit15", "principalDebt", "interest", "forfeit", "totalDebt", "stateDuty16", "stateDuty"]:
-                            if key in extracted_fields and extracted_fields[key]:
-                                # Для госпошлины разрешаем обновить 0,00 -> ненулевое значение.
-                                if key in ["stateDuty16", "stateDuty"]:
-                                    existing_amount = self._safe_amount_field(extracted_fields.get(key))
-                                    incoming_amount = self._safe_amount_field(value)
-                                    if existing_amount <= 0 < incoming_amount:
-                                        logger.info(
-                                            f"🔁 Обновляем {key}: текущее значение {extracted_fields[key]} заменяется на ненулевое {value}"
-                                        )
-                                    else:
-                                        logger.info(f"⚠️ Пропускаем перезапись {key} из ip_specific_fields (уже есть корректное значение: {extracted_fields[key]})")
-                                        continue
-                                else:
-                                    logger.info(f"⚠️ Пропускаем перезапись {key} из ip_specific_fields (уже есть корректное значение: {extracted_fields[key]})")
-                                    continue
-                        extracted_fields[key] = value
-                        logger.info(f"Установлено поле ИП {key}: {value}")
-
-                # Для «Взыскание ИП залог авто» [1221] — описание авто (марка, модель, год, VIN и т.д.)
-                if document_type == "ip_collection_collateral_auto":
-                    car_1221 = self._extract_car_collateral_1221(text)
-                    if car_1221:
-                        extracted_fields["mortgageCollateralDescription1221"] = car_1221
-                        logger.info(f"✅ Установлено mortgageCollateralDescription1221 (залог авто): {car_1221[:80]}...")
-
-                # Перегенерация дательного падежа [2.2] (ИП)
-                self._regenerate_ip_dative(extracted_fields, text, ip_specific_fields)
-
-                # Извлекаем обязательства для ИП
-                obligations = self.extract_obligations(text, extracted_fields)
-                if obligations:
-                    extracted_fields['obligations'] = obligations
-                    logger.info(f"Добавлено {len(obligations)} обязательств для ИП (взыскание)")
+                # Анализ ветки ИП-взыскания
+                extracted_fields = self._analyze_ip_collection(text, document_type)
             elif document_type in ("legal_collection", "legal_collection_collateral", "legal_collection_collateral_auto"):
                 # Используем основной extract_fields для ЮЛ, чтобы получить все поля
                 extracted_fields = self.extract_fields(text, "rtk_application")  # Используем rtk_application как базовый тип
@@ -5471,6 +5419,64 @@ class DocumentAnalyzer:
             }
             obligations.append(obligation)
             logger.info(f"Найдено обязательство из блока {num}: {obligation}")
+
+    def _analyze_ip_collection(self, text, document_type):
+        """Ветка анализа ИП-взыскания: extract_fields + слияние ip_specific_fields (без перезаписи ИНН/сумм), залог авто [1221], дательный падеж, обязательства. Возвращает extracted_fields. Вынесено из analyze."""
+        # Используем основной extract_fields для ИП, чтобы получить все поля
+        extracted_fields = self.extract_fields(text, "rtk_application")  # Используем rtk_application как базовый тип
+
+        # Дополняем специфичными полями для ИП из extract_ip_enforcement_fields
+        ip_specific_fields = self.extract_ip_enforcement_fields(text)
+        logger.info(f"Извлеченные специфичные поля для ИП (взыскание): {list(ip_specific_fields.keys())}")
+        logger.info(f"🔍 Значения полей [1000], [1001], [1004]:")
+        logger.info(f"  creditAmount [1000]: {ip_specific_fields.get('creditAmount')}")
+        logger.info(f"  creditTermMonths [1001]: {ip_specific_fields.get('creditTermMonths')}")
+        logger.info(f"  debtSnapshotDate [1004]: {ip_specific_fields.get('debtSnapshotDate')}")
+
+        for key, value in ip_specific_fields.items():
+            if value:
+                # ВАЖНО: Не перезаписываем ИНН и ОГРН, если они уже были извлечены из блока "Ответчик:" в основном цикле
+                if key in ["inn", "ogrnip", "ogrn"]:
+                    if key in extracted_fields and extracted_fields[key]:
+                        logger.info(f"⚠️ Пропускаем перезапись {key} из ip_specific_fields (уже извлечен из блока Ответчик: {extracted_fields[key]})")
+                        continue
+                # Не перезаписываем уже найденные денежные поля основного извлечения,
+                # чтобы не заносить шум из fallback-паттернов ip_specific_fields.
+                if key in ["principalDebt13", "interest14", "forfeit15", "principalDebt", "interest", "forfeit", "totalDebt", "stateDuty16", "stateDuty"]:
+                    if key in extracted_fields and extracted_fields[key]:
+                        # Для госпошлины разрешаем обновить 0,00 -> ненулевое значение.
+                        if key in ["stateDuty16", "stateDuty"]:
+                            existing_amount = self._safe_amount_field(extracted_fields.get(key))
+                            incoming_amount = self._safe_amount_field(value)
+                            if existing_amount <= 0 < incoming_amount:
+                                logger.info(
+                                    f"🔁 Обновляем {key}: текущее значение {extracted_fields[key]} заменяется на ненулевое {value}"
+                                )
+                            else:
+                                logger.info(f"⚠️ Пропускаем перезапись {key} из ip_specific_fields (уже есть корректное значение: {extracted_fields[key]})")
+                                continue
+                        else:
+                            logger.info(f"⚠️ Пропускаем перезапись {key} из ip_specific_fields (уже есть корректное значение: {extracted_fields[key]})")
+                            continue
+                extracted_fields[key] = value
+                logger.info(f"Установлено поле ИП {key}: {value}")
+
+        # Для «Взыскание ИП залог авто» [1221] — описание авто (марка, модель, год, VIN и т.д.)
+        if document_type == "ip_collection_collateral_auto":
+            car_1221 = self._extract_car_collateral_1221(text)
+            if car_1221:
+                extracted_fields["mortgageCollateralDescription1221"] = car_1221
+                logger.info(f"✅ Установлено mortgageCollateralDescription1221 (залог авто): {car_1221[:80]}...")
+
+        # Перегенерация дательного падежа [2.2] (ИП)
+        self._regenerate_ip_dative(extracted_fields, text, ip_specific_fields)
+
+        # Извлекаем обязательства для ИП
+        obligations = self.extract_obligations(text, extracted_fields)
+        if obligations:
+            extracted_fields['obligations'] = obligations
+            logger.info(f"Добавлено {len(obligations)} обязательств для ИП (взыскание)")
+        return extracted_fields
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
         """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
