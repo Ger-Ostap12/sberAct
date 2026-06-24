@@ -123,100 +123,8 @@ class DocumentAnalyzer:
                 # Анализ ветки ИП-взыскания
                 extracted_fields = self._analyze_ip_collection(text, document_type)
             elif document_type in ("legal_collection", "legal_collection_collateral", "legal_collection_collateral_auto"):
-                # Используем основной extract_fields для ЮЛ, чтобы получить все поля
-                extracted_fields = self.extract_fields(text, "rtk_application")  # Используем rtk_application как базовый тип
-
-                # Для типов с залогом извлекаем только данные о залоге (НЕ перезаписываем суммы долга/процентов)
-                if document_type in ("legal_collection_collateral", "legal_collection_collateral_auto"):
-                    # Извлекаем данные о залоге (аналогично ИП), но используем только нужные поля
-                    ip_specific_fields = self.extract_ip_enforcement_fields(text)
-                    logger.info(f"Извлеченные специфичные поля для ЮЛ с залогом: {list(ip_specific_fields.keys())}")
-
-                    # Только поля, связанные с залогом, которые нужно добавить для ЮЛ
-                    collateral_fields = [
-                        "ipCollateralContractNumber", "ipCollateralContractDate", "ipCollateralClaimAmount",
-                        "mortgageCollateralDescription1221", "contractNumber", "contractDate",
-                        "creditAmount", "creditTermMonths", "creditInterestRate", "creditPenaltyRate",
-                        "debtSnapshotDate", "courtName", "creditorName", "debtAmount"
-                    ]
-
-                    # Поля, которые НИКОГДА не перезаписываем для ЮЛ (они уже правильно извлечены в основном цикле)
-                    fields_to_preserve = [
-                        "inn", "ogrnip", "ogrn", "principalDebt13", "interest14", "forfeit15",
-                        "interest", "principalDebt", "totalDebt", "stateDuty16"
-                    ]
-
-                    for key, value in ip_specific_fields.items():
-                        if value:
-                            # ВАЖНО: Не перезаписываем важные поля сумм, если они уже были извлечены в основном цикле
-                            if key in fields_to_preserve:
-                                if key in extracted_fields and extracted_fields[key]:
-                                    # Для госпошлины разрешаем обновление 0,00 -> ненулевое значение.
-                                    if key == "stateDuty16":
-                                        existing_amount = self._safe_amount_field(extracted_fields.get(key))
-                                        incoming_amount = self._safe_amount_field(value)
-                                        if existing_amount <= 0 < incoming_amount:
-                                            logger.info(
-                                                f"🔁 Обновляем {key} для ЮЛ с залогом: текущее значение "
-                                                f"{extracted_fields[key]} заменяется на ненулевое {value}"
-                                            )
-                                        else:
-                                            logger.info(
-                                                f"⚠️ Пропускаем перезапись {key} из ip_specific_fields "
-                                                f"(уже извлечен в основном цикле: {extracted_fields[key]})"
-                                            )
-                                            continue
-                                    else:
-                                        logger.info(f"⚠️ Пропускаем перезапись {key} из ip_specific_fields (уже извлечен в основном цикле: {extracted_fields[key]})")
-                                        continue
-                            # Госпошлину для ЮЛ с залогом сохраняем отдельно (может приходить из ip_specific_fields
-                            # как корректное ненулевое значение, даже если в основном цикле было 0,00).
-                            if key == "stateDuty16":
-                                extracted_fields["stateDuty16"] = value
-                                # Синхронизируем общее поле госпошлины с [16], чтобы генератор не получил 0,00.
-                                extracted_fields["stateDuty"] = value
-                                logger.info(f"Установлено поле ЮЛ с залогом {key}: {value}")
-                            # Добавляем только поля, связанные с залогом или договором
-                            elif key in collateral_fields:
-                                extracted_fields[key] = value
-                                logger.info(f"Установлено поле ЮЛ с залогом {key}: {value}")
-                            else:
-                                logger.debug(f"Пропущено поле {key} (не относится к залогу для ЮЛ)")
-
-                    # Для «Взыскание ЮЛ залог авто» [1221] — описание авто (марка, модель, год, VIN и т.д.)
-                    if document_type == "legal_collection_collateral_auto":
-                        car_1221 = self._extract_car_collateral_1221(text)
-                        if car_1221:
-                            extracted_fields["mortgageCollateralDescription1221"] = car_1221
-                            logger.info(f"✅ Установлено mortgageCollateralDescription1221 (залог авто): {car_1221[:80]}...")
-
-                    # Специальное извлечение процентов для ЮЛ с залогом: "просроченные проценты" или "проценты" после тире или без него
-                    interest_patterns = [
-                        r"просроченные\s+проценты\s*[–—-]\s*([0-9\s\u00a0\u202f,]+(?:[.,][0-9]+)?)\s*(?:руб(?:\.|лей)?|₽|р\.?)?",  # просроченные проценты – X
-                        r"просроченные\s+проценты[:\s]+([0-9\s,]+(?:[.,][0-9]+)?)\s*(?:руб|рублей|₽|р\.?)?",  # просроченные проценты: X или просроченные проценты X
-                        r"проценты\s*[–—-]\s*([0-9\s\u00a0\u202f,]+(?:[.,][0-9]+)?)\s*(?:руб(?:\.|лей)?|₽|р\.?)?",  # проценты – X
-                        r"проценты[:\s]+([0-9\s,]+(?:[.,][0-9]+)?)\s*(?:руб|рублей|₽|р\.?)?",  # проценты: X или проценты X
-                        r"([0-9\s,]+(?:[.,][0-9]+)?)\s*(?:руб|рублей|₽|р\.?)?\s*[–—-]\s*просроченные\s+проценты",  # X – просроченные проценты
-                        r"([0-9\s,]+(?:[.,][0-9]+)?)\s*(?:руб|рублей|₽|р\.?)?\s*[–—-]\s*проценты",  # X – проценты
-                    ]
-
-                    for pattern in interest_patterns:
-                        match = re.search(pattern, text, re.IGNORECASE)
-                        if match:
-                            interest_value = match.group(1).strip()
-                            # Очищаем от пробелов и форматируем
-                            interest_value = re.sub(r'\s+', ' ', interest_value)
-                            if interest_value:
-                                extracted_fields["interest14"] = interest_value
-                                extracted_fields["interest"] = interest_value
-                                logger.info(f"✅ Перезаписано interest14 для ЮЛ с залогом из паттерна '{pattern[:50]}...': {interest_value}")
-                                break
-
-                # Извлекаем обязательства для ЮЛ
-                obligations = self.extract_obligations(text, extracted_fields)
-                if obligations:
-                    extracted_fields['obligations'] = obligations
-                    logger.info(f"Добавлено {len(obligations)} обязательств для ЮЛ (взыскание)")
+                # Анализ ветки взыскания с ЮЛ
+                extracted_fields = self._analyze_legal_collection(text, document_type)
             elif document_type in ["ip_enforcement_statement", "ip_enforcement_statement_collateral",
                                  "ip_enforcement_realization", "ip_enforcement_realization_collateral",
                                  "ip_enforcement_restructuring", "ip_enforcement_restructuring_collateral"]:
@@ -5476,6 +5384,104 @@ class DocumentAnalyzer:
         if obligations:
             extracted_fields['obligations'] = obligations
             logger.info(f"Добавлено {len(obligations)} обязательств для ИП (взыскание)")
+        return extracted_fields
+
+    def _analyze_legal_collection(self, text, document_type):
+        """Ветка анализа взыскания с ЮЛ: extract_fields + данные о залоге (без перезаписи сумм), дательный падеж, обязательства. Возвращает extracted_fields. Вынесено из analyze."""
+        # Используем основной extract_fields для ЮЛ, чтобы получить все поля
+        extracted_fields = self.extract_fields(text, "rtk_application")  # Используем rtk_application как базовый тип
+
+        # Для типов с залогом извлекаем только данные о залоге (НЕ перезаписываем суммы долга/процентов)
+        if document_type in ("legal_collection_collateral", "legal_collection_collateral_auto"):
+            # Извлекаем данные о залоге (аналогично ИП), но используем только нужные поля
+            ip_specific_fields = self.extract_ip_enforcement_fields(text)
+            logger.info(f"Извлеченные специфичные поля для ЮЛ с залогом: {list(ip_specific_fields.keys())}")
+
+            # Только поля, связанные с залогом, которые нужно добавить для ЮЛ
+            collateral_fields = [
+                "ipCollateralContractNumber", "ipCollateralContractDate", "ipCollateralClaimAmount",
+                "mortgageCollateralDescription1221", "contractNumber", "contractDate",
+                "creditAmount", "creditTermMonths", "creditInterestRate", "creditPenaltyRate",
+                "debtSnapshotDate", "courtName", "creditorName", "debtAmount"
+            ]
+
+            # Поля, которые НИКОГДА не перезаписываем для ЮЛ (они уже правильно извлечены в основном цикле)
+            fields_to_preserve = [
+                "inn", "ogrnip", "ogrn", "principalDebt13", "interest14", "forfeit15",
+                "interest", "principalDebt", "totalDebt", "stateDuty16"
+            ]
+
+            for key, value in ip_specific_fields.items():
+                if value:
+                    # ВАЖНО: Не перезаписываем важные поля сумм, если они уже были извлечены в основном цикле
+                    if key in fields_to_preserve:
+                        if key in extracted_fields and extracted_fields[key]:
+                            # Для госпошлины разрешаем обновление 0,00 -> ненулевое значение.
+                            if key == "stateDuty16":
+                                existing_amount = self._safe_amount_field(extracted_fields.get(key))
+                                incoming_amount = self._safe_amount_field(value)
+                                if existing_amount <= 0 < incoming_amount:
+                                    logger.info(
+                                        f"🔁 Обновляем {key} для ЮЛ с залогом: текущее значение "
+                                        f"{extracted_fields[key]} заменяется на ненулевое {value}"
+                                    )
+                                else:
+                                    logger.info(
+                                        f"⚠️ Пропускаем перезапись {key} из ip_specific_fields "
+                                        f"(уже извлечен в основном цикле: {extracted_fields[key]})"
+                                    )
+                                    continue
+                            else:
+                                logger.info(f"⚠️ Пропускаем перезапись {key} из ip_specific_fields (уже извлечен в основном цикле: {extracted_fields[key]})")
+                                continue
+                    # Госпошлину для ЮЛ с залогом сохраняем отдельно (может приходить из ip_specific_fields
+                    # как корректное ненулевое значение, даже если в основном цикле было 0,00).
+                    if key == "stateDuty16":
+                        extracted_fields["stateDuty16"] = value
+                        # Синхронизируем общее поле госпошлины с [16], чтобы генератор не получил 0,00.
+                        extracted_fields["stateDuty"] = value
+                        logger.info(f"Установлено поле ЮЛ с залогом {key}: {value}")
+                    # Добавляем только поля, связанные с залогом или договором
+                    elif key in collateral_fields:
+                        extracted_fields[key] = value
+                        logger.info(f"Установлено поле ЮЛ с залогом {key}: {value}")
+                    else:
+                        logger.debug(f"Пропущено поле {key} (не относится к залогу для ЮЛ)")
+
+            # Для «Взыскание ЮЛ залог авто» [1221] — описание авто (марка, модель, год, VIN и т.д.)
+            if document_type == "legal_collection_collateral_auto":
+                car_1221 = self._extract_car_collateral_1221(text)
+                if car_1221:
+                    extracted_fields["mortgageCollateralDescription1221"] = car_1221
+                    logger.info(f"✅ Установлено mortgageCollateralDescription1221 (залог авто): {car_1221[:80]}...")
+
+            # Специальное извлечение процентов для ЮЛ с залогом: "просроченные проценты" или "проценты" после тире или без него
+            interest_patterns = [
+                r"просроченные\s+проценты\s*[–—-]\s*([0-9\s\u00a0\u202f,]+(?:[.,][0-9]+)?)\s*(?:руб(?:\.|лей)?|₽|р\.?)?",  # просроченные проценты – X
+                r"просроченные\s+проценты[:\s]+([0-9\s,]+(?:[.,][0-9]+)?)\s*(?:руб|рублей|₽|р\.?)?",  # просроченные проценты: X или просроченные проценты X
+                r"проценты\s*[–—-]\s*([0-9\s\u00a0\u202f,]+(?:[.,][0-9]+)?)\s*(?:руб(?:\.|лей)?|₽|р\.?)?",  # проценты – X
+                r"проценты[:\s]+([0-9\s,]+(?:[.,][0-9]+)?)\s*(?:руб|рублей|₽|р\.?)?",  # проценты: X или проценты X
+                r"([0-9\s,]+(?:[.,][0-9]+)?)\s*(?:руб|рублей|₽|р\.?)?\s*[–—-]\s*просроченные\s+проценты",  # X – просроченные проценты
+                r"([0-9\s,]+(?:[.,][0-9]+)?)\s*(?:руб|рублей|₽|р\.?)?\s*[–—-]\s*проценты",  # X – проценты
+            ]
+
+            for pattern in interest_patterns:
+                match = re.search(pattern, text, re.IGNORECASE)
+                if match:
+                    interest_value = match.group(1).strip()
+                    # Очищаем от пробелов и форматируем
+                    interest_value = re.sub(r'\s+', ' ', interest_value)
+                    if interest_value:
+                        extracted_fields["interest14"] = interest_value
+                        extracted_fields["interest"] = interest_value
+                        logger.info(f"✅ Перезаписано interest14 для ЮЛ с залогом из паттерна '{pattern[:50]}...': {interest_value}")
+                        break
+
+        # Извлекаем обязательства для ЮЛ
+        obligations = self.extract_obligations(text, extracted_fields)
+        if obligations:
+            extracted_fields['obligations'] = obligations
+            logger.info(f"Добавлено {len(obligations)} обязательств для ЮЛ (взыскание)")
         return extracted_fields
 
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
