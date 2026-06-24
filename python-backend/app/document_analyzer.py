@@ -5099,6 +5099,146 @@ class DocumentAnalyzer:
                         snippet = text[max(0, start_idx-50):start_idx+500]
                         logger.info(f"🔍 Найден фрагмент текста: ...{snippet}...")
 
+    def _parse_obligation_blocks(self, extracted_fields, text, obligations, obligation_blocks):
+        """Разбор блоков «Обязательство N:»: номер/дата договора, суммы, тип. Аппендит в obligations (по ссылке). Вынесено из extract_obligations."""
+        for i, obligation_data in enumerate(obligation_blocks):
+            # Проверяем формат данных
+            if not isinstance(obligation_data, tuple) or len(obligation_data) < 2:
+                logger.warning(f"Некорректный формат данных обязательства: {obligation_data}")
+                continue
+
+            obligation_num = obligation_data[0] if obligation_data[0] else str(i + 1)
+            block_text = obligation_data[1] if len(obligation_data) > 1 and obligation_data[1] else ""
+
+            if not block_text:
+                logger.warning(f"Пустой блок текста для обязательства {obligation_num}")
+                continue
+
+            logger.info(f"Обрабатываем блок обязательства {obligation_num}: {block_text[:100] if len(block_text) > 100 else block_text}...")
+
+            # Извлекаем дату из начала блока (первая дата в формате ДД.ММ.ГГГГ)
+            date_match = re.search(r'(\d{1,2}[.,]\d{1,2}[.,]\d{4})', block_text)
+            contract_date = date_match.group(1) if date_match and date_match.groups() else 'Не указана'
+
+            # Извлекаем номер договора после "заключили кредитный договор"
+            contract_match = re.search(r'заключили\s+кредитный\s+договор[:\s]*№?\s*([А-ЯЁ0-9/-]+)', block_text)
+            if not contract_match:
+                # Попробуем найти просто номер договора
+                contract_match = re.search(r'договор[:\s]*№?\s*([А-ЯЁ0-9/-]+)', block_text)
+
+            contract_number = self.clean_extracted_value(contract_match.group(1)) if contract_match and contract_match.groups() else f'Договор_{obligation_num}'
+
+            # Извлекаем сумму после "образовалась задолженность в размере"
+            amount_match = re.search(r'образовалась\s+задолженность\s+в\s+размере[:\s]*([0-9\s,]+)\s*(?:руб|рублей|₽|р\.?)', block_text)
+            if not amount_match:
+                amount_match = re.search(r'образовалась\s+задолженность\s+в\s+размере[:\s]*([0-9\s,]+)', block_text)
+
+            raw_amount = amount_match.group(1) if amount_match and amount_match.groups() else '0'
+            normalized_amount_str = self.normalize_amount_value(raw_amount)
+            obligation_amount_value = 0.0
+            try:
+                obligation_amount_value = float(normalized_amount_str.replace(' ', '').replace(',', '.'))
+            except (ValueError, AttributeError):
+                obligation_amount_value = 0.0
+            # Сохраняем строковое значение, чтобы не потерять копейки
+            obligation_amount = normalized_amount_str or '0'
+
+            # Извлекаем сумму выдачи кредита из фразы "в сумме X рублей"
+            issued_amount_match = re.search(r'в\s+сумме\s+([0-9\s,]+(?:[.,][0-9]+)?)\s*руб', block_text, re.IGNORECASE)
+            issued_amount_value = 0.0
+            issued_amount = None
+            if issued_amount_match:
+                issued_raw = issued_amount_match.group(1)
+                issued_norm = self.normalize_amount_value(issued_raw)
+                try:
+                    issued_amount_value = float(issued_norm.replace(' ', '').replace(',', '.'))
+                    issued_amount = issued_norm
+                except (ValueError, AttributeError):
+                    issued_amount_value = 0.0
+
+            # Проверяем, является ли обязательство залоговым
+            # Ищем упоминания залога в блоке обязательства
+            is_collateral_obligation = False
+            collateral_keywords = [
+                r"залог",
+                r"договор\s+залога",
+                r"подтверждается\s+договором\s+залога",
+                r"предоставил\s+в\s+залог",
+                r"предоставляет\s+в\s+залог"
+            ]
+            for keyword in collateral_keywords:
+                if re.search(keyword, block_text, re.IGNORECASE):
+                    is_collateral_obligation = True
+                    logger.info(f"Обязательство {obligation_num} определено как залоговое")
+                    break
+
+            # Если обязательство залоговое, извлекаем и суммируем неустойки
+            penalty0071 = None
+            penalty0071_value = 0.0
+            if is_collateral_obligation:
+                # Ищем все неустойки в блоке обязательства по слову "неустойка"
+                # Гибкие паттерны для поиска любых неустоек:
+                # - X руб. – неустойка ...
+                # - неустойка ... X руб.
+                # - неустойка ... в размере X руб.
+                penalty_patterns = [
+                    # Паттерн 1: сумма перед "– неустойка" или "— неустойка" или "- неустойка"
+                    r"([0-9\s,]+(?:[.,][0-9]+)?)\s*руб\.?\s*[–—-]\s*неустойка",
+                    # Паттерн 2: сумма после "неустойка" и перед "руб."
+                    r"неустойка[^0-9]*?([0-9\s,]+(?:[.,][0-9]+)?)\s*руб\.?",
+                    # Паттерн 3: "неустойка" и "в размере" X руб.
+                    r"неустойка[^0-9]*?в\s+размере[:\s]*([0-9\s,]+(?:[.,][0-9]+)?)\s*руб\.?",
+                    # Паттерн 4: неустойка ... X руб. (более общий)
+                    r"неустойка[^.]*?([0-9\s,]+(?:[.,][0-9]+)?)\s*руб\.?",
+                ]
+
+                penalties = []
+                found_matches = set()  # Для избежания дубликатов
+
+                for pattern in penalty_patterns:
+                    matches = re.finditer(pattern, block_text, re.IGNORECASE)
+                    for match in matches:
+                        if match.groups():
+                            penalty_str = match.group(1).strip()
+                            # Проверяем, не добавляли ли мы уже эту сумму
+                            if penalty_str not in found_matches:
+                                found_matches.add(penalty_str)
+                                # Нормализуем сумму (убираем пробелы, заменяем запятую на точку)
+                                normalized = penalty_str.replace(' ', '').replace(',', '.')
+                                try:
+                                    penalty_value = float(normalized)
+                                    penalties.append(penalty_value)
+                                    logger.info(f"Найдена неустойка в обязательстве {obligation_num}: {penalty_str} ({penalty_value})")
+                                except ValueError:
+                                    logger.warning(f"Не удалось преобразовать неустойку в число: {penalty_str}")
+
+                # Суммируем все неустойки
+                if penalties:
+                    total_penalty = sum(penalties)
+                    # Форматируем сумму: 1499.11 -> "1 499,11"
+                    formatted_penalty = f"{total_penalty:,.2f}".replace(',', ' ').replace('.', ',')
+                    penalty0071 = formatted_penalty
+                    penalty0071_value = total_penalty
+                    logger.info(f"Сумма неустоек в залоговом обязательстве {obligation_num}: {penalty0071} руб.")
+
+            detected_type = self.detect_obligation_type(block_text, contract_number)
+            obligation = {
+                'id': f'obligation_{obligation_num}',
+                'contractNumber': contract_number,
+                'contractDate': contract_date,
+                'obligationType': 'Договор залога' if is_collateral_obligation else detected_type,
+                'amount': obligation_amount,
+                'amountValue': obligation_amount_value,
+                'issuedAmount': issued_amount if issued_amount else None,
+                'issuedAmountValue': issued_amount_value,
+                'isCollateral': is_collateral_obligation,
+                'penalty0071': penalty0071,
+                'penalty0071Value': penalty0071_value
+            }
+
+            obligations.append(obligation)
+            logger.info(f"Создано обязательство {obligation_num}: {obligation}")
+
     def _drop_law_context_dates(self, fields: Dict[str, Any], text: str) -> None:
         """Удаляет даты, которые в исходном тексте стоят ТОЛЬКО в ссылках на закон/Пленум.
 
@@ -5993,44 +6133,6 @@ class DocumentAnalyzer:
         obligations = []
         obligation_patterns = []  # Инициализация на случай альтернативного поиска
 
-        def _is_valid_contract_number(num: Optional[str]) -> bool:
-            if not num:
-                return False
-            num_clean = str(num).strip()
-            if len(num_clean) < 3:
-                return False
-            lower = num_clean.lower()
-            if lower in {"путем", "подписания", "далее", "договор"}:
-                return False
-            if any(word in lower for word in ["считается", "поручительства", "фз", "а99", "0008008"]):
-                return False
-            digits_only = re.sub(r"\D", "", num_clean)
-            has_letters = bool(re.search(r"[A-Za-zА-Яа-яЁё]", num_clean))
-            # Для чисто цифровых номеров ужесточаем критерий: короткие значения
-            # (например, "168") чаще всего не являются номером договора.
-            if not has_letters and digits_only == num_clean:
-                if len(digits_only) < 5:
-                    return False
-            return True
-
-        def _dedupe_obligations(items: List[Dict[str, str]]) -> List[Dict[str, str]]:
-            deduped: List[Dict[str, str]] = []
-            seen: set[str] = set()
-            for item in items:
-                number = (item.get("contractNumber") or "").strip()
-                date = (item.get("contractDate") or "").strip()
-                if not _is_valid_contract_number(number):
-                    continue
-                # Убираем дубли по номеру договора (дата может дублироваться/шуметь).
-                key = number.lower()
-                if key in seen:
-                    continue
-                seen.add(key)
-                if not date:
-                    item["contractDate"] = "Не указана"
-                deduped.append(item)
-            return deduped
-
         # Находим позицию начала заявления (после "Заявление", "Исковое заявление" и т.п.)
         # Обязательства должны извлекаться только после этого места
         statement_keywords = [
@@ -6065,143 +6167,8 @@ class DocumentAnalyzer:
 
         logger.info(f"Найдено блоков обязательств: {len(obligation_blocks)}")
 
-        for i, obligation_data in enumerate(obligation_blocks):
-            # Проверяем формат данных
-            if not isinstance(obligation_data, tuple) or len(obligation_data) < 2:
-                logger.warning(f"Некорректный формат данных обязательства: {obligation_data}")
-                continue
-
-            obligation_num = obligation_data[0] if obligation_data[0] else str(i + 1)
-            block_text = obligation_data[1] if len(obligation_data) > 1 and obligation_data[1] else ""
-
-            if not block_text:
-                logger.warning(f"Пустой блок текста для обязательства {obligation_num}")
-                continue
-
-            logger.info(f"Обрабатываем блок обязательства {obligation_num}: {block_text[:100] if len(block_text) > 100 else block_text}...")
-
-            # Извлекаем дату из начала блока (первая дата в формате ДД.ММ.ГГГГ)
-            date_match = re.search(r'(\d{1,2}[.,]\d{1,2}[.,]\d{4})', block_text)
-            contract_date = date_match.group(1) if date_match and date_match.groups() else 'Не указана'
-
-            # Извлекаем номер договора после "заключили кредитный договор"
-            contract_match = re.search(r'заключили\s+кредитный\s+договор[:\s]*№?\s*([А-ЯЁ0-9/-]+)', block_text)
-            if not contract_match:
-                # Попробуем найти просто номер договора
-                contract_match = re.search(r'договор[:\s]*№?\s*([А-ЯЁ0-9/-]+)', block_text)
-
-            contract_number = self.clean_extracted_value(contract_match.group(1)) if contract_match and contract_match.groups() else f'Договор_{obligation_num}'
-
-            # Извлекаем сумму после "образовалась задолженность в размере"
-            amount_match = re.search(r'образовалась\s+задолженность\s+в\s+размере[:\s]*([0-9\s,]+)\s*(?:руб|рублей|₽|р\.?)', block_text)
-            if not amount_match:
-                amount_match = re.search(r'образовалась\s+задолженность\s+в\s+размере[:\s]*([0-9\s,]+)', block_text)
-
-            raw_amount = amount_match.group(1) if amount_match and amount_match.groups() else '0'
-            normalized_amount_str = self.normalize_amount_value(raw_amount)
-            obligation_amount_value = 0.0
-            try:
-                obligation_amount_value = float(normalized_amount_str.replace(' ', '').replace(',', '.'))
-            except (ValueError, AttributeError):
-                obligation_amount_value = 0.0
-            # Сохраняем строковое значение, чтобы не потерять копейки
-            obligation_amount = normalized_amount_str or '0'
-
-            # Извлекаем сумму выдачи кредита из фразы "в сумме X рублей"
-            issued_amount_match = re.search(r'в\s+сумме\s+([0-9\s,]+(?:[.,][0-9]+)?)\s*руб', block_text, re.IGNORECASE)
-            issued_amount_value = 0.0
-            issued_amount = None
-            if issued_amount_match:
-                issued_raw = issued_amount_match.group(1)
-                issued_norm = self.normalize_amount_value(issued_raw)
-                try:
-                    issued_amount_value = float(issued_norm.replace(' ', '').replace(',', '.'))
-                    issued_amount = issued_norm
-                except (ValueError, AttributeError):
-                    issued_amount_value = 0.0
-
-            # Проверяем, является ли обязательство залоговым
-            # Ищем упоминания залога в блоке обязательства
-            is_collateral_obligation = False
-            collateral_keywords = [
-                r"залог",
-                r"договор\s+залога",
-                r"подтверждается\s+договором\s+залога",
-                r"предоставил\s+в\s+залог",
-                r"предоставляет\s+в\s+залог"
-            ]
-            for keyword in collateral_keywords:
-                if re.search(keyword, block_text, re.IGNORECASE):
-                    is_collateral_obligation = True
-                    logger.info(f"Обязательство {obligation_num} определено как залоговое")
-                    break
-
-            # Если обязательство залоговое, извлекаем и суммируем неустойки
-            penalty0071 = None
-            penalty0071_value = 0.0
-            if is_collateral_obligation:
-                # Ищем все неустойки в блоке обязательства по слову "неустойка"
-                # Гибкие паттерны для поиска любых неустоек:
-                # - X руб. – неустойка ...
-                # - неустойка ... X руб.
-                # - неустойка ... в размере X руб.
-                penalty_patterns = [
-                    # Паттерн 1: сумма перед "– неустойка" или "— неустойка" или "- неустойка"
-                    r"([0-9\s,]+(?:[.,][0-9]+)?)\s*руб\.?\s*[–—-]\s*неустойка",
-                    # Паттерн 2: сумма после "неустойка" и перед "руб."
-                    r"неустойка[^0-9]*?([0-9\s,]+(?:[.,][0-9]+)?)\s*руб\.?",
-                    # Паттерн 3: "неустойка" и "в размере" X руб.
-                    r"неустойка[^0-9]*?в\s+размере[:\s]*([0-9\s,]+(?:[.,][0-9]+)?)\s*руб\.?",
-                    # Паттерн 4: неустойка ... X руб. (более общий)
-                    r"неустойка[^.]*?([0-9\s,]+(?:[.,][0-9]+)?)\s*руб\.?",
-                ]
-
-                penalties = []
-                found_matches = set()  # Для избежания дубликатов
-
-                for pattern in penalty_patterns:
-                    matches = re.finditer(pattern, block_text, re.IGNORECASE)
-                    for match in matches:
-                        if match.groups():
-                            penalty_str = match.group(1).strip()
-                            # Проверяем, не добавляли ли мы уже эту сумму
-                            if penalty_str not in found_matches:
-                                found_matches.add(penalty_str)
-                                # Нормализуем сумму (убираем пробелы, заменяем запятую на точку)
-                                normalized = penalty_str.replace(' ', '').replace(',', '.')
-                                try:
-                                    penalty_value = float(normalized)
-                                    penalties.append(penalty_value)
-                                    logger.info(f"Найдена неустойка в обязательстве {obligation_num}: {penalty_str} ({penalty_value})")
-                                except ValueError:
-                                    logger.warning(f"Не удалось преобразовать неустойку в число: {penalty_str}")
-
-                # Суммируем все неустойки
-                if penalties:
-                    total_penalty = sum(penalties)
-                    # Форматируем сумму: 1499.11 -> "1 499,11"
-                    formatted_penalty = f"{total_penalty:,.2f}".replace(',', ' ').replace('.', ',')
-                    penalty0071 = formatted_penalty
-                    penalty0071_value = total_penalty
-                    logger.info(f"Сумма неустоек в залоговом обязательстве {obligation_num}: {penalty0071} руб.")
-
-            detected_type = self.detect_obligation_type(block_text, contract_number)
-            obligation = {
-                'id': f'obligation_{obligation_num}',
-                'contractNumber': contract_number,
-                'contractDate': contract_date,
-                'obligationType': 'Договор залога' if is_collateral_obligation else detected_type,
-                'amount': obligation_amount,
-                'amountValue': obligation_amount_value,
-                'issuedAmount': issued_amount if issued_amount else None,
-                'issuedAmountValue': issued_amount_value,
-                'isCollateral': is_collateral_obligation,
-                'penalty0071': penalty0071,
-                'penalty0071Value': penalty0071_value
-            }
-
-            obligations.append(obligation)
-            logger.info(f"Создано обязательство {obligation_num}: {obligation}")
+        # Разбор блоков «Обязательство N:»
+        self._parse_obligation_blocks(extracted_fields, text, obligations, obligation_blocks)
 
         # Если не нашли блоки "Обязательство X:", попробуем альтернативные паттерны
         if not obligations:
@@ -6336,7 +6303,7 @@ class DocumentAnalyzer:
                         contract_number = self.clean_extracted_value(match.strip() if isinstance(match, str) else str(match).strip())
                         contract_date = self.find_date_near_contract(text, contract_number)
 
-                    if _is_valid_contract_number(contract_number):
+                    if self._is_valid_contract_number(contract_number):
                         obligation = {
                             'id': f"obligation_{i}_{j}",
                             'contractNumber': contract_number.strip(),
@@ -6409,7 +6376,7 @@ class DocumentAnalyzer:
             for num in num_order:
                 num_clean = (num or '').strip()
                 # Отбрасываем явно мусорные и технические номера (счета, корр.счета и т.п.)
-                if not _is_valid_contract_number(num_clean):
+                if not self._is_valid_contract_number(num_clean):
                     continue
                 # Игнорируем очень длинные чисто цифровые номера (расчетные/корр. счета)
                 if num_clean.isdigit() and len(num_clean.replace(' ', '')) >= 15:
@@ -6482,7 +6449,7 @@ class DocumentAnalyzer:
                 if not contract_number:
                     contract_number = f"Договор_{num}"
 
-                if not _is_valid_contract_number(contract_number):
+                if not self._is_valid_contract_number(contract_number):
                     continue
 
                 # Ищем дату в блоке - более гибкие паттерны
@@ -6519,9 +6486,49 @@ class DocumentAnalyzer:
                 }
                 obligations.append(obligation)
                 logger.info(f"Найдено обязательство из блока {num}: {obligation}")
-        obligations = _dedupe_obligations(obligations)
+        obligations = self._dedupe_obligations(obligations)
         logger.info(f"Всего найдено обязательств: {len(obligations)}")
         return obligations
+
+    def _is_valid_contract_number(self, num: Optional[str]) -> bool:
+        if not num:
+            return False
+        num_clean = str(num).strip()
+        if len(num_clean) < 3:
+            return False
+        lower = num_clean.lower()
+        if lower in {"путем", "подписания", "далее", "договор"}:
+            return False
+        if any(word in lower for word in ["считается", "поручительства", "фз", "а99", "0008008"]):
+            return False
+        digits_only = re.sub(r"\D", "", num_clean)
+        has_letters = bool(re.search(r"[A-Za-zА-Яа-яЁё]", num_clean))
+        # Для чисто цифровых номеров ужесточаем критерий: короткие значения
+        # (например, "168") чаще всего не являются номером договора.
+        if not has_letters and digits_only == num_clean:
+            if len(digits_only) < 5:
+                return False
+        return True
+
+
+    def _dedupe_obligations(self, items: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        deduped: List[Dict[str, str]] = []
+        seen: set[str] = set()
+        for item in items:
+            number = (item.get("contractNumber") or "").strip()
+            date = (item.get("contractDate") or "").strip()
+            if not self._is_valid_contract_number(number):
+                continue
+            # Убираем дубли по номеру договора (дата может дублироваться/шуметь).
+            key = number.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            if not date:
+                item["contractDate"] = "Не указана"
+            deduped.append(item)
+        return deduped
+
 
     def _get_recommended_acts(self, document_type: str, extracted_fields: Dict[str, Any], text: str) -> Dict[str, Any]:
         """
