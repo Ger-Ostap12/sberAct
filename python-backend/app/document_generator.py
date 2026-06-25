@@ -612,126 +612,13 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             logger.info(f"📝 Установлено поле thirdPartyName25 (маркер [25]) из thirdPartyName: {cleaned_data.get('thirdPartyName')[:100]}...")
         return cleaned_data
 
-    def replace_document_data(self, doc: Document, data: Dict[str, Any]):
+    def _apply_debtor_name_field_mapping(self, cleaned_data: Dict[str, Any], field_mapping: Dict[str, str], is_mortgage_document: bool) -> Dict[str, str]:
+        """Настраивает маппинг [2]/[2.1]/[2.2] под должника: для не-ипотеки —
+        дательный падеж (applicantNameDative); для ипотеки — ОПФ/падежи
+        mortgageDebtorName|debtorName и правки field_mapping. Возвращает
+        (возможно пересозданный) field_mapping. Вынесено из replace_document_data
+        без изменения поведения (gen-golden).
         """
-        Заменяет данные в существующем документе, используя нумерацию [1], [2], [3] и т.д.
-
-        Args:
-            doc: Документ для замены
-            data: Данные для замены
-        """
-        cleaned_data = self._prepare_replacement_data(doc, data)
-        # is_ip нужен ниже по методу; пролог его не возвращает — пересчёт из cleaned_data
-        is_ip = "ip_enforcement" in (cleaned_data.get("sourceDocumentType") or "").lower()
-
-        # Маппинг полей из извлеченных данных на номера в шаблоне
-        field_mapping = {
-            "caseNumber": "1",           # [1] - Номер дела
-            "courtName": "0",            # [0] - Название суда (арбитражный суд области/края/республики)
-            "mortgageCourtAddress001": "001",  # [001] - Адрес суда (ипотека)
-            "mortgageCourtName002": "002",     # [002] - Наименование суда (ипотека)
-            "applicantName": "2",        # [2] - ФИО должника
-            "applicantNameGenitive": "2.1",  # [2.1] - ФИО должника в родительном падеже
-            "applicantNameInstrumental": "2.3",  # [2.3] - ФИО должника в творительном падеже
-            "applicantNameAccusative": "2.4",  # [2.4] - ФИО должника в винительном падеже
-            "mortgageRepresentative22": "2.2",  # [2.2] - Представитель истца (ипотека)
-            "birthDate": "3",            # [3] - Дата рождения
-            "birthPlace": "3.1",        # [3.1] - Город/место рождения
-            "inn": "4",                  # [4] - ИНН
-            "ogrnip": "4.1",             # [4.1] - ОГРНИП индивидуального предпринимателя
-            "snils": "5",                # [5] - СНИЛС
-            "applicantAddress": "6",     # [6] - Адрес регистрации
-            "courtDecisionDate": "7",    # [7] - Дата решения суда
-            "managerName": "8",          # [8] - ФИО финансового управляющего
-            "messageNumber": "9",        # [9] - Номер сообщения ЕФРСБ
-            "mortgagePeriodAmount10": "10",  # [10] - Сумма за период (ипотека)
-            "efirsbPublicationDate": "11",  # [11] - Дата публикации на сайте ЕФРСБ
-            "kommersantNumber": "67",    # [67] - Номер газеты «Коммерсантъ»
-            "kommersantDate": "68",      # [68] - Дата газеты «Коммерсантъ»
-            "mortgagePrincipalAmount11": "11",  # [11] - Просроченный основной долг (ипотека)
-            "cpCaseDate": "554",         # [554] - Дата из номера CP-Case
-            "debtSnapshotDate88": "88",  # [88] - Дата состояния задолженности (для инициирования ЮЛ)
-            "totalDebt": "12",           # [12] - Общая сумма долга
-            "mortgageInterestAmount12": "12",  # [12] - Просроченные проценты (ипотека)
-            "sroName": "987",            # [987] - Название СРО (саморегулируемая организация)
-            "creditorName": "989",       # [989] - Название кредитора
-            "creditorAddress": "988",    # [988] - Юридический адрес кредитора
-            "creditorOgrn": "990",       # [990] - ОГРН кредитора
-            "creditorInn": "991",        # [991] - ИНН кредитора
-            # Исключаем старые поля, чтобы не конфликтовать с новыми
-            # "principalDebt": "13",     # [13] - Основной долг (старое поле)
-            # "interest": "14",          # [14] - Проценты (старое поле)
-            # "forfeit": "15",           # [15] - Неустойка (старое поле)
-            # "stateDuty": "16",         # [16] - Госпошлина (старое поле)
-            "principalDebt13": "13",     # [13] - Основной долг из блока "ПРОСИТ СУД"
-            "principalDebt": "13",       # [13] - Основной долг (общее поле)
-            "loanDebt": "13",           # [13] - Ссудная задолженность (синхронизируется с principalDebt)
-            "interest14": "14",          # [14] - Проценты из блока "ПРОСИТ СУД"
-            "interest": "14",            # [14] - Проценты (общее поле)
-            "forfeit15": "15",           # [15] - Неустойка из блока "ПРОСИТ СУД"
-            "forfeit": "15",             # [15] - Неустойка (общее поле)
-            "penalties": "15",           # [15] - Штрафные санкции (синоним неустойки)
-            "stateDuty16": "16",         # [16] - Банкротная госпошлина
-            "stateDuty": "16",           # [16] - Банкротная госпошлина (общее поле)
-            "loanStateDuty17": "17",     # [17] - Ссудная госпошлина
-            "objectionsDeadline18": "18",  # [18] - Установка срока на предоставление возражений
-            "considerationDeadline19": "19",  # [19] - На рассмотрение заявления в срок
-            "withoutMovementDeadline20": "20",  # [20] - Срок для оставления без движения
-            "separateDisputeNumber22": "22",  # [22] - Номер обособленного спора
-            "applicationReceiptDate23": "23",  # [23] - Дата поступления заявления в суд (согласно штампу)
-            "courtSubmissionDate24": "24",     # [24] - Дата направления в суд
-            "courtHearingDateTime99": "99",    # [99] - Дата и время судебного заседания
-            "judge": "415",              # [415] - Судья
-            "date": "DATE",              # [DATE] - Дата (пользовательская)
-            "mortgageCreditAmount111": "111",  # [111] - Сумма кредита (ипотека)
-            "mortgageCreditTerm112": "112",    # [112] - Срок кредита (ипотека)
-            "mortgageInterestRate113": "113",  # [113] - Процентная ставка (ипотека)
-            "mortgagePenaltyRate114": "114",   # [114] - Ставка неустойки (ипотека)
-            "mortgagePeriodStart120": "120",   # [120] - Начало расчетного периода (ипотека)
-            "mortgagePeriodEnd121": "121",     # [121] - Конец расчетного периода (ипотека)
-            "bankCommission": "122",           # [122] - Комиссия Банка (сумма)
-            "mortgageCollateralDescription1221": "1221",  # [1221] - Описание предмета залога
-            # Специальная дата для юр. инициирования конкурсного (ликвидируемый) — маркер [5555]
-            "liquidationRecordDate5555": "5555",
-            "mortgageStartPriceDecision1222": "1222",     # [1222] - Цена продажи из резолютивной части
-            "mortgageAppraisalReport1223": "1223",        # [1223] - Отчет об оценке
-            "mortgageCollateralValue1224": "1224",        # [1224] - Рыночная стоимость залога
-            "mortgageStartingPrice1225": "1225",          # [1225] - Начальная цена продажи
-            "contractDate": "100",       # [100] - Дата кредитного договора
-            "contractNumber": "110",     # [110] - Номер кредитного договора
-            "creditAmount": "1000",      # [1000] - Сумма кредита
-            "creditTermMonths": "1001",  # [1001] - Срок кредита (в месяцах)
-            "creditInterestRate": "1002",  # [1002] - Процентная ставка по кредиту
-            "creditPenaltyRate": "1003",   # [1003] - Ставка неустойки
-            "debtSnapshotDate": "1004",    # [1004] - Дата расчета задолженности
-            "currentDate": "777",        # [777] - Текущая дата формирования акта
-            # Поля залога для ИП
-            "ipCollateralContractNumber": "0005",  # [0005] - Номер договора залога (ИП)
-            "ipCollateralContractDate": "0006",   # [0006] - Дата договора залога (ИП)
-            "ipCollateralClaimAmount": "0007",    # [0007] - Сумма требований в реестре (ИП)
-            "penalty0071": "0071",                # [0071] - Неустойка в обязательстве по залогу
-            "other35": "35",                      # [35] - Иное
-            "currentInterest36": "36",            # [36] - Срочные проценты на основной долг
-            "currentInterestOverdue37": "37",    # [37] - Срочные проценты на просроченный основной долг
-            "reason86": "86",                     # [86] - Причина (для актов "Отложение", "Возврат", "Определение Б/Д иное")
-            "forParties87": "87",                 # [87] - Для сторон (для актов "Отложение", "Возврат", "Определение Б/Д иное")
-            "courtRequests85": "85",              # [85] - Запросы суда (для актов "Отложение", "Определение о принятии", "Принятие после Б/Д")
-            "ppDepositDate80": "80",              # [80] - Дата ПП депозит
-            "ppStateDutyDate81": "81",            # [81] - Дата ПП ГП
-            "thirdPartyName25": "25",             # [25] - Название/ФИО третьего лица
-            # Ранее вынесенное решение другого суда (вставляется только в те акты,
-            # где эти маркеры физически есть в шаблоне → «не во все»).
-            "priorCourtName": "90",               # [90] - Суд ранее вынесенного решения
-            "priorCaseNumber": "91",              # [91] - Номер дела ранее вынесенного решения
-            "priorAmount": "92",                  # [92] - Взысканная сумма по ранее вынесенному решению
-            "priorDecisionDate": "93",            # [93] - Дата ранее вынесенного решения
-            "priorStateDuty": "94",               # [94] - Госпошлина по ранее вынесенному (прошлому) делу
-        }
-
-        is_mortgage_document = (cleaned_data.get("sourceDocumentType") or "").lower() == "mortgage_claim"
-        is_ip_collateral = (cleaned_data.get("sourceDocumentType") or "").lower() == "ip_enforcement_statement_collateral"
-        is_physical_collateral = (cleaned_data.get("sourceDocumentType") or "").lower() in ["physical_realization_collateral", "physical_restructuring_collateral", "observation_collateral", "competition_collateral"]
-
         # Для всех типов, кроме ипотеки, [2.2] - это имя должника в дательном падеже (applicantNameDative)
         # Для ипотеки [2.2] - это представитель истца (mortgageRepresentative22)
         if not is_mortgage_document:
@@ -884,6 +771,129 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 logger.warning(f"applicantName содержит 'суд' ({current_applicant_name}), не используем для [2]. mortgageDebtorName: {mortgage_debtor_name}, debtorName: {debtor_name[:100] if debtor_name else 'None'}")
             else:
                 logger.warning(f"Не удалось найти правильное ФИО ответчика. mortgageDebtorName: {mortgage_debtor_name}, debtorName: {debtor_name[:100] if debtor_name else 'None'}, applicantName: {current_applicant_name[:100] if current_applicant_name else 'None'}")
+        return field_mapping
+
+    def replace_document_data(self, doc: Document, data: Dict[str, Any]):
+        """
+        Заменяет данные в существующем документе, используя нумерацию [1], [2], [3] и т.д.
+
+        Args:
+            doc: Документ для замены
+            data: Данные для замены
+        """
+        cleaned_data = self._prepare_replacement_data(doc, data)
+        # is_ip нужен ниже по методу; пролог его не возвращает — пересчёт из cleaned_data
+        is_ip = "ip_enforcement" in (cleaned_data.get("sourceDocumentType") or "").lower()
+
+        # Маппинг полей из извлеченных данных на номера в шаблоне
+        field_mapping = {
+            "caseNumber": "1",           # [1] - Номер дела
+            "courtName": "0",            # [0] - Название суда (арбитражный суд области/края/республики)
+            "mortgageCourtAddress001": "001",  # [001] - Адрес суда (ипотека)
+            "mortgageCourtName002": "002",     # [002] - Наименование суда (ипотека)
+            "applicantName": "2",        # [2] - ФИО должника
+            "applicantNameGenitive": "2.1",  # [2.1] - ФИО должника в родительном падеже
+            "applicantNameInstrumental": "2.3",  # [2.3] - ФИО должника в творительном падеже
+            "applicantNameAccusative": "2.4",  # [2.4] - ФИО должника в винительном падеже
+            "mortgageRepresentative22": "2.2",  # [2.2] - Представитель истца (ипотека)
+            "birthDate": "3",            # [3] - Дата рождения
+            "birthPlace": "3.1",        # [3.1] - Город/место рождения
+            "inn": "4",                  # [4] - ИНН
+            "ogrnip": "4.1",             # [4.1] - ОГРНИП индивидуального предпринимателя
+            "snils": "5",                # [5] - СНИЛС
+            "applicantAddress": "6",     # [6] - Адрес регистрации
+            "courtDecisionDate": "7",    # [7] - Дата решения суда
+            "managerName": "8",          # [8] - ФИО финансового управляющего
+            "messageNumber": "9",        # [9] - Номер сообщения ЕФРСБ
+            "mortgagePeriodAmount10": "10",  # [10] - Сумма за период (ипотека)
+            "efirsbPublicationDate": "11",  # [11] - Дата публикации на сайте ЕФРСБ
+            "kommersantNumber": "67",    # [67] - Номер газеты «Коммерсантъ»
+            "kommersantDate": "68",      # [68] - Дата газеты «Коммерсантъ»
+            "mortgagePrincipalAmount11": "11",  # [11] - Просроченный основной долг (ипотека)
+            "cpCaseDate": "554",         # [554] - Дата из номера CP-Case
+            "debtSnapshotDate88": "88",  # [88] - Дата состояния задолженности (для инициирования ЮЛ)
+            "totalDebt": "12",           # [12] - Общая сумма долга
+            "mortgageInterestAmount12": "12",  # [12] - Просроченные проценты (ипотека)
+            "sroName": "987",            # [987] - Название СРО (саморегулируемая организация)
+            "creditorName": "989",       # [989] - Название кредитора
+            "creditorAddress": "988",    # [988] - Юридический адрес кредитора
+            "creditorOgrn": "990",       # [990] - ОГРН кредитора
+            "creditorInn": "991",        # [991] - ИНН кредитора
+            # Исключаем старые поля, чтобы не конфликтовать с новыми
+            # "principalDebt": "13",     # [13] - Основной долг (старое поле)
+            # "interest": "14",          # [14] - Проценты (старое поле)
+            # "forfeit": "15",           # [15] - Неустойка (старое поле)
+            # "stateDuty": "16",         # [16] - Госпошлина (старое поле)
+            "principalDebt13": "13",     # [13] - Основной долг из блока "ПРОСИТ СУД"
+            "principalDebt": "13",       # [13] - Основной долг (общее поле)
+            "loanDebt": "13",           # [13] - Ссудная задолженность (синхронизируется с principalDebt)
+            "interest14": "14",          # [14] - Проценты из блока "ПРОСИТ СУД"
+            "interest": "14",            # [14] - Проценты (общее поле)
+            "forfeit15": "15",           # [15] - Неустойка из блока "ПРОСИТ СУД"
+            "forfeit": "15",             # [15] - Неустойка (общее поле)
+            "penalties": "15",           # [15] - Штрафные санкции (синоним неустойки)
+            "stateDuty16": "16",         # [16] - Банкротная госпошлина
+            "stateDuty": "16",           # [16] - Банкротная госпошлина (общее поле)
+            "loanStateDuty17": "17",     # [17] - Ссудная госпошлина
+            "objectionsDeadline18": "18",  # [18] - Установка срока на предоставление возражений
+            "considerationDeadline19": "19",  # [19] - На рассмотрение заявления в срок
+            "withoutMovementDeadline20": "20",  # [20] - Срок для оставления без движения
+            "separateDisputeNumber22": "22",  # [22] - Номер обособленного спора
+            "applicationReceiptDate23": "23",  # [23] - Дата поступления заявления в суд (согласно штампу)
+            "courtSubmissionDate24": "24",     # [24] - Дата направления в суд
+            "courtHearingDateTime99": "99",    # [99] - Дата и время судебного заседания
+            "judge": "415",              # [415] - Судья
+            "date": "DATE",              # [DATE] - Дата (пользовательская)
+            "mortgageCreditAmount111": "111",  # [111] - Сумма кредита (ипотека)
+            "mortgageCreditTerm112": "112",    # [112] - Срок кредита (ипотека)
+            "mortgageInterestRate113": "113",  # [113] - Процентная ставка (ипотека)
+            "mortgagePenaltyRate114": "114",   # [114] - Ставка неустойки (ипотека)
+            "mortgagePeriodStart120": "120",   # [120] - Начало расчетного периода (ипотека)
+            "mortgagePeriodEnd121": "121",     # [121] - Конец расчетного периода (ипотека)
+            "bankCommission": "122",           # [122] - Комиссия Банка (сумма)
+            "mortgageCollateralDescription1221": "1221",  # [1221] - Описание предмета залога
+            # Специальная дата для юр. инициирования конкурсного (ликвидируемый) — маркер [5555]
+            "liquidationRecordDate5555": "5555",
+            "mortgageStartPriceDecision1222": "1222",     # [1222] - Цена продажи из резолютивной части
+            "mortgageAppraisalReport1223": "1223",        # [1223] - Отчет об оценке
+            "mortgageCollateralValue1224": "1224",        # [1224] - Рыночная стоимость залога
+            "mortgageStartingPrice1225": "1225",          # [1225] - Начальная цена продажи
+            "contractDate": "100",       # [100] - Дата кредитного договора
+            "contractNumber": "110",     # [110] - Номер кредитного договора
+            "creditAmount": "1000",      # [1000] - Сумма кредита
+            "creditTermMonths": "1001",  # [1001] - Срок кредита (в месяцах)
+            "creditInterestRate": "1002",  # [1002] - Процентная ставка по кредиту
+            "creditPenaltyRate": "1003",   # [1003] - Ставка неустойки
+            "debtSnapshotDate": "1004",    # [1004] - Дата расчета задолженности
+            "currentDate": "777",        # [777] - Текущая дата формирования акта
+            # Поля залога для ИП
+            "ipCollateralContractNumber": "0005",  # [0005] - Номер договора залога (ИП)
+            "ipCollateralContractDate": "0006",   # [0006] - Дата договора залога (ИП)
+            "ipCollateralClaimAmount": "0007",    # [0007] - Сумма требований в реестре (ИП)
+            "penalty0071": "0071",                # [0071] - Неустойка в обязательстве по залогу
+            "other35": "35",                      # [35] - Иное
+            "currentInterest36": "36",            # [36] - Срочные проценты на основной долг
+            "currentInterestOverdue37": "37",    # [37] - Срочные проценты на просроченный основной долг
+            "reason86": "86",                     # [86] - Причина (для актов "Отложение", "Возврат", "Определение Б/Д иное")
+            "forParties87": "87",                 # [87] - Для сторон (для актов "Отложение", "Возврат", "Определение Б/Д иное")
+            "courtRequests85": "85",              # [85] - Запросы суда (для актов "Отложение", "Определение о принятии", "Принятие после Б/Д")
+            "ppDepositDate80": "80",              # [80] - Дата ПП депозит
+            "ppStateDutyDate81": "81",            # [81] - Дата ПП ГП
+            "thirdPartyName25": "25",             # [25] - Название/ФИО третьего лица
+            # Ранее вынесенное решение другого суда (вставляется только в те акты,
+            # где эти маркеры физически есть в шаблоне → «не во все»).
+            "priorCourtName": "90",               # [90] - Суд ранее вынесенного решения
+            "priorCaseNumber": "91",              # [91] - Номер дела ранее вынесенного решения
+            "priorAmount": "92",                  # [92] - Взысканная сумма по ранее вынесенному решению
+            "priorDecisionDate": "93",            # [93] - Дата ранее вынесенного решения
+            "priorStateDuty": "94",               # [94] - Госпошлина по ранее вынесенному (прошлому) делу
+        }
+
+        is_mortgage_document = (cleaned_data.get("sourceDocumentType") or "").lower() == "mortgage_claim"
+        is_ip_collateral = (cleaned_data.get("sourceDocumentType") or "").lower() == "ip_enforcement_statement_collateral"
+        is_physical_collateral = (cleaned_data.get("sourceDocumentType") or "").lower() in ["physical_realization_collateral", "physical_restructuring_collateral", "observation_collateral", "competition_collateral"]
+
+        field_mapping = self._apply_debtor_name_field_mapping(cleaned_data, field_mapping, is_mortgage_document)
 
         # Коррекция падежей для женщин и восстановление обрезанной фамилии (ФЛ)
         self._correct_female_applicant_cases(cleaned_data)
