@@ -1514,7 +1514,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                   Судебная информация
                 </Typography>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Название суда:</Typography>
                   <TextField
@@ -1528,7 +1528,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                     </Box>
                 </Grid>
 
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Номер дела:</Typography>
                   <TextField
@@ -1541,7 +1541,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                     </Box>
                 </Grid>
 
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Судья:</Typography>
                       <FormControl fullWidth size="small" margin="dense">
@@ -1574,7 +1574,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                     </Box>
                   </Grid>
 
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Номер обособленного спора:</Typography>
                   <TextField
@@ -1734,7 +1734,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                       </Box>
                     )}
                     <Grid container spacing={2}>
-                      <Grid item xs={12} sm={6}>
+                      <Grid item xs={12}>
                         <Box sx={LABEL_OVERLAP_BOX}>
                           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО/наименование:</Typography>
                           <TextField
@@ -1746,19 +1746,20 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                           />
                         </Box>
                       </Grid>
-                      <Grid item xs={12} sm={6}>
+                      <Grid item xs={12}>
                         <Box sx={LABEL_OVERLAP_BOX}>
                           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес должника:</Typography>
                           <TextField
                             fullWidth
                             value={debtor.address || ''}
+                            multiline
                             onChange={(e) => updateDebtor(index, 'address', e.target.value)}
                             size="small"
                             margin="dense"
                           />
                         </Box>
                       </Grid>
-                      <Grid item xs={12} sm={6}>
+                      <Grid item xs={12}>
                         <Box sx={LABEL_OVERLAP_BOX}>
                           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ИНН:</Typography>
                           <TextField
@@ -1770,7 +1771,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                           />
                         </Box>
                       </Grid>
-                      <Grid item xs={12} sm={6}>
+                      <Grid item xs={12}>
                         <Box sx={LABEL_OVERLAP_BOX}>
                           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ОГРНИП:</Typography>
                           <TextField
@@ -1782,12 +1783,13 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                           />
                         </Box>
                       </Grid>
-                      <Grid item xs={12} sm={6}>
+                      <Grid item xs={12}>
                         <Box sx={LABEL_OVERLAP_BOX}>
                           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Город/место рождения:</Typography>
                           <TextField
                             fullWidth
                             value={debtor.birthPlace ?? ''}
+                            multiline
                             onChange={(e) => updateDebtor(index, 'birthPlace', e.target.value)}
                             size="small"
                             margin="dense"
@@ -1795,7 +1797,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                           />
                         </Box>
                       </Grid>
-                      <Grid item xs={12} sm={6}>
+                      <Grid item xs={12}>
                         <Box sx={LABEL_OVERLAP_BOX}>
                           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата рождения:</Typography>
                           <TextField
@@ -1831,7 +1833,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                   Информация о кредиторе
                 </Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Кредитор:</Typography>
                       <FormControl fullWidth size="small" margin="dense">
@@ -1859,6 +1861,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                           <TextField
                             fullWidth
                             value={editedFields.creditorName || ''}
+                            multiline
                             onChange={(e) => handleFieldChange('creditorName', e.target.value)}
                             size="small"
                             margin="dense"
@@ -1869,12 +1872,13 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                     </Box>
                   </Grid>
 
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Юридический адрес кредитора:</Typography>
                       <TextField
                         fullWidth
                         value={editedFields.creditorAddress || ''}
+                        multiline
                         onChange={(e) => handleFieldChange('creditorAddress', e.target.value)}
                         size="small"
                         margin="dense"
@@ -1883,7 +1887,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                     </Box>
                   </Grid>
 
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ОГРН кредитора:</Typography>
                       <TextField
@@ -1897,7 +1901,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                     </Box>
                   </Grid>
 
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ИНН кредитора:</Typography>
                       <TextField
@@ -1921,7 +1925,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                   Арбитражный управляющий
                 </Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                     <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО:</Typography>
                     <TextField
@@ -1933,12 +1937,13 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                     />
                   </Box>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                     <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес:</Typography>
                     <TextField
                       fullWidth
                       value={editedFields.managerAddress || ''}
+                      multiline
                       onChange={(e) => handleFieldChange('managerAddress', e.target.value)}
                       size="small"
                       margin="dense"
@@ -1971,7 +1976,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                       </IconButton>
                     </Box>
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                         <Box sx={LABEL_OVERLAP_BOX}>
                           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО/наименование :</Typography>
                     <TextField
@@ -1983,7 +1988,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                     />
                         </Box>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                         <Box sx={LABEL_OVERLAP_BOX}>
                           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата рождения:</Typography>
                     <TextField
@@ -1999,19 +2004,20 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                     />
                         </Box>
                   </Grid>
-                      <Grid item xs={12} sm={6}>
+                      <Grid item xs={12}>
                         <Box sx={LABEL_OVERLAP_BOX}>
                           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес:</Typography>
                           <TextField
                             fullWidth
                             value={thirdParty.address || ''}
+                            multiline
                             onChange={(e) => updateThirdParty(index, 'address', e.target.value)}
                             size="small"
                             margin="dense"
                           />
                         </Box>
                 </Grid>
-                      <Grid item xs={12} sm={6}>
+                      <Grid item xs={12}>
                         <Box sx={LABEL_OVERLAP_BOX}>
                           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ИНН:</Typography>
                           <TextField
@@ -2023,7 +2029,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                           />
               </Box>
                       </Grid>
-                      <Grid item xs={12} sm={6}>
+                      <Grid item xs={12}>
                         <Box sx={LABEL_OVERLAP_BOX}>
                           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>СНИЛС:</Typography>
                           <TextField
@@ -2246,7 +2252,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                   Сведения о взыскании
                 </Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Кем взыскано:</Typography>
                       <TextField
@@ -2259,7 +2265,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                       />
                     </Box>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Номер дела:</Typography>
                       <TextField
@@ -2272,7 +2278,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                       />
                     </Box>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Взысканная сумма:</Typography>
                       <TextField
@@ -2288,7 +2294,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                       />
                     </Box>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата решения:</Typography>
                       <TextField
@@ -2302,7 +2308,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                       />
                     </Box>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Госпошлина:</Typography>
                       <TextField
@@ -2344,12 +2350,13 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                       </IconButton>
                     </Box>
                       <Grid container spacing={2}>
-                        <Grid item xs={12} sm={4}>
+                        <Grid item xs={12}>
                         <Box sx={LABEL_OVERLAP_BOX}>
                           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Номер договора:</Typography>
                           <TextField
                             fullWidth
                             value={obligation.contractNumber || ''}
+                            multiline
                             onChange={(e) => {
                               const updatedObligations = [...(analysisResult.obligations || [])];
                               updatedObligations[index] = { ...obligation, contractNumber: e.target.value };
@@ -2380,12 +2387,13 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                           />
                         </Box>
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid item xs={12}>
                         <Box sx={LABEL_OVERLAP_BOX}>
                           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Тип обязательства:</Typography>
                           <TextField
                             fullWidth
                             value={obligation.obligationType || ''}
+                            multiline
                             onChange={(e) => {
                               const updatedObligations = [...(analysisResult.obligations || [])];
                               updatedObligations[index] = { ...obligation, obligationType: e.target.value };
@@ -2452,7 +2460,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                               </Box>
                             </Grid>
                           )}
-                          <Grid item xs={12} sm={6}>
+                          <Grid item xs={12}>
                             <Box sx={LABEL_OVERLAP_BOX}>
                               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Наименование объекта:</Typography>
                               <TextField
@@ -2464,7 +2472,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                               />
                             </Box>
                           </Grid>
-                          <Grid item xs={12} sm={6}>
+                          <Grid item xs={12}>
                             <Box sx={LABEL_OVERLAP_BOX}>
                               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Залоговая стоимость:</Typography>
                               <TextField
@@ -2494,7 +2502,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                           </Grid>
                           {collateral.collateralType === 'real_estate' && (
                             <>
-                              <Grid item xs={12} sm={6}>
+                              <Grid item xs={12}>
                                 <Box sx={LABEL_OVERLAP_BOX}>
                                   <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Кадастровый номер:</Typography>
                                   <TextField
@@ -2506,7 +2514,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                                   />
                                 </Box>
                               </Grid>
-                              <Grid item xs={12} sm={6}>
+                              <Grid item xs={12}>
                                 <Box sx={LABEL_OVERLAP_BOX}>
                                   <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес:</Typography>
                                   <TextField
@@ -2522,7 +2530,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                           )}
                           {collateral.collateralType === 'auto' && (
                             <>
-                              <Grid item xs={12} sm={6}>
+                              <Grid item xs={12}>
                                 <Box sx={LABEL_OVERLAP_BOX}>
                                   <Typography variant="body2" sx={LABEL_OVERLAP_SX}>VIN:</Typography>
                                   <TextField
@@ -2534,7 +2542,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                                   />
                                 </Box>
                               </Grid>
-                              <Grid item xs={12} sm={6}>
+                              <Grid item xs={12}>
                                 <Box sx={LABEL_OVERLAP_BOX}>
                                   <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Марка / модель:</Typography>
                                   <TextField
