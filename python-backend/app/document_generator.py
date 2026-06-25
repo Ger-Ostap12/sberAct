@@ -773,19 +773,12 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 logger.warning(f"Не удалось найти правильное ФИО ответчика. mortgageDebtorName: {mortgage_debtor_name}, debtorName: {debtor_name[:100] if debtor_name else 'None'}, applicantName: {current_applicant_name[:100] if current_applicant_name else 'None'}")
         return field_mapping
 
-    def replace_document_data(self, doc: Document, data: Dict[str, Any]):
+    def _base_field_mapping(self) -> Dict[str, str]:
+        """Базовый маппинг полей данных на номера маркеров шаблона
+        ([1], [2], [2.1], [13]…). Возвращает свежий словарь (вызывающий код
+        его мутирует под ипотеку/типы). Вынесено из replace_document_data
+        без изменения поведения (gen-golden).
         """
-        Заменяет данные в существующем документе, используя нумерацию [1], [2], [3] и т.д.
-
-        Args:
-            doc: Документ для замены
-            data: Данные для замены
-        """
-        cleaned_data = self._prepare_replacement_data(doc, data)
-        # is_ip нужен ниже по методу; пролог его не возвращает — пересчёт из cleaned_data
-        is_ip = "ip_enforcement" in (cleaned_data.get("sourceDocumentType") or "").lower()
-
-        # Маппинг полей из извлеченных данных на номера в шаблоне
         field_mapping = {
             "caseNumber": "1",           # [1] - Номер дела
             "courtName": "0",            # [0] - Название суда (арбитражный суд области/края/республики)
@@ -888,91 +881,14 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             "priorDecisionDate": "93",            # [93] - Дата ранее вынесенного решения
             "priorStateDuty": "94",               # [94] - Госпошлина по ранее вынесенному (прошлому) делу
         }
+        return field_mapping
 
-        is_mortgage_document = (cleaned_data.get("sourceDocumentType") or "").lower() == "mortgage_claim"
-        is_ip_collateral = (cleaned_data.get("sourceDocumentType") or "").lower() == "ip_enforcement_statement_collateral"
-        is_physical_collateral = (cleaned_data.get("sourceDocumentType") or "").lower() in ["physical_realization_collateral", "physical_restructuring_collateral", "observation_collateral", "competition_collateral"]
-
-        field_mapping = self._apply_debtor_name_field_mapping(cleaned_data, field_mapping, is_mortgage_document)
-
-        # Коррекция падежей для женщин и восстановление обрезанной фамилии (ФЛ)
-        self._correct_female_applicant_cases(cleaned_data)
-
-        # Нормализуем регистр всех имен перед заменой в документе
-        name_fields = [
-            "applicantName", "debtorName", "creditorName", "legalShortName",
-            "applicantNameGenitive", "applicantNameInstrumental", "applicantNameAccusative", "applicantNameDative",
-            "mortgageDebtorName", "mortgageDebtorNameDative", "mortgageRepresentative22", "kfhHeadName"
-        ]
-        for field_name in name_fields:
-            if field_name in cleaned_data and cleaned_data[field_name]:
-                original_value = cleaned_data[field_name]
-                # Пропускаем нормализацию, если значение уже содержит только префикс "ИП" без имени
-                if original_value.strip().upper() == "ИП":
-                    continue
-                normalized_value = self._normalize_name_case(original_value)
-                if normalized_value != original_value:
-                    cleaned_data[field_name] = normalized_value
-                    logger.info(f"📝 Нормализован регистр {field_name}: '{original_value}' -> '{normalized_value}'")
-
-        # Заменяем данные в параграфах
-        logger.info("🔍 Начинаем замену данных в документе...")
-
-        # Нормализация номера дела: убираем лишний суффикс после года (А44-1233-4/2025-4 -> А44-1233-4/2025)
-        case_number = cleaned_data.get("caseNumber", "")
-        if case_number:
-            # Убираем дублирование вида номер/год-цифра (например А44-1233-4/2025-4 -> А44-1233-4/2025)
-            trailing_suffix = re.match(r'^(.+/\d{4})-\d+$', case_number.strip())
-            if trailing_suffix:
-                normalized = trailing_suffix.group(1)
-                cleaned_data["caseNumber"] = normalized
-                logger.info(f"📝 Убран лишний суффикс в номере дела: {case_number} -> {normalized}")
-                case_number = normalized
-
-            # Паттерн для поиска дублирования: номер-номер/год-номер/год (А53-2345-4/2025-4/2025 -> А53-2345-4/2025)
-            pattern = r'^([А-ЯЁA-Z0-9-]+)/(\d{4})-([А-ЯЁA-Z0-9-]+)/(\d{4})$'
-            match = re.match(pattern, case_number)
-            if match:
-                prefix = match.group(1)
-                year1 = match.group(2)
-                suffix = match.group(3)
-                year2 = match.group(4)
-                if year1 == year2 and suffix in prefix:
-                    cleaned_data["caseNumber"] = f"{prefix}/{year1}"
-                    logger.info(f"📝 Исправлено дублирование номера дела: {case_number} -> {cleaned_data['caseNumber']}")
-                    case_number = cleaned_data["caseNumber"]
-
-        # Модифицируем номер дела, если есть номер обособленного спора (только если его ещё нет в номере)
-        # Формат: A99-15434/2025 -> A99-15434-4/2025. Не добавляем -4, если уже есть А44-1233-4/2025
-        if cleaned_data.get("separateDisputeNumber22"):
-            separate_dispute_number = str(cleaned_data.get("separateDisputeNumber22")).strip()
-            case_number = cleaned_data.get("caseNumber", "")
-            if case_number and separate_dispute_number:
-                pattern = r'^([А-ЯЁA-Z0-9-]+)/(\d{4})$'
-                match = re.match(pattern, case_number)
-                if match:
-                    prefix = match.group(1)
-                    year = match.group(2)
-                    # Не добавляем суффикс, если он уже есть в префиксе (например А44-1233-4)
-                    if prefix.endswith(f"-{separate_dispute_number}"):
-                        logger.info(f"📝 Номер дела уже содержит обособленный спор: {case_number}")
-                    else:
-                        modified_case_number = f"{prefix}-{separate_dispute_number}/{year}"
-                        cleaned_data["caseNumber"] = modified_case_number
-                        logger.info(f"📝 Номер дела модифицирован с учетом обособленного спора: {case_number} -> {modified_case_number}")
-                else:
-                    # Если формат не совпадает, пытаемся вставить перед последним слэшем
-                    if '/' in case_number:
-                        parts = case_number.rsplit('/', 1)
-                        if len(parts) == 2 and parts[1].isdigit():
-                            modified_case_number = f"{parts[0]}-{separate_dispute_number}/{parts[1]}"
-                            cleaned_data["caseNumber"] = modified_case_number
-                            logger.info(f"📝 Номер дела модифицирован (альтернативный формат): {case_number} -> {modified_case_number}")
-                        else:
-                            logger.warning(f"⚠️ Не удалось модифицировать номер дела: {case_number} (нестандартный формат)")
-                    else:
-                        logger.warning(f"⚠️ Не удалось модифицировать номер дела: {case_number} (нет слэша с годом)")
-
+    def _apply_field_mapping_replacements(self, doc: Document, cleaned_data: Dict[str, Any], field_mapping: Dict[str, str], is_mortgage_document: bool, is_ip: bool, is_physical_collateral: bool) -> None:
+        """Подставляет значения полей в маркеры [N] согласно field_mapping.
+        Для ипотеки — приоритетные поля и формат сумм 'руб.'; для прочих —
+        спец-поля ИП/ФЛ-залога и нормализация дат. Мутирует doc. Вынесено из
+        replace_document_data без изменения поведения (gen-golden).
+        """
         # Для ипотеки сначала заменяем приоритетные поля, чтобы избежать конфликтов
         if is_mortgage_document:
             # Приоритетные поля для ипотеки (заменяются первыми)
@@ -1087,6 +1003,106 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
 
                 if self._replace_placeholder_in_doc(doc, placeholder, formatted_value):
                     logger.info(f"🔄 Заменено {placeholder} на {formatted_value} (поле: {field_key})")
+
+    def replace_document_data(self, doc: Document, data: Dict[str, Any]):
+        """
+        Заменяет данные в существующем документе, используя нумерацию [1], [2], [3] и т.д.
+
+        Args:
+            doc: Документ для замены
+            data: Данные для замены
+        """
+        cleaned_data = self._prepare_replacement_data(doc, data)
+        # is_ip нужен ниже по методу; пролог его не возвращает — пересчёт из cleaned_data
+        is_ip = "ip_enforcement" in (cleaned_data.get("sourceDocumentType") or "").lower()
+
+        field_mapping = self._base_field_mapping()
+
+        is_mortgage_document = (cleaned_data.get("sourceDocumentType") or "").lower() == "mortgage_claim"
+        is_ip_collateral = (cleaned_data.get("sourceDocumentType") or "").lower() == "ip_enforcement_statement_collateral"
+        is_physical_collateral = (cleaned_data.get("sourceDocumentType") or "").lower() in ["physical_realization_collateral", "physical_restructuring_collateral", "observation_collateral", "competition_collateral"]
+
+        field_mapping = self._apply_debtor_name_field_mapping(cleaned_data, field_mapping, is_mortgage_document)
+
+        # Коррекция падежей для женщин и восстановление обрезанной фамилии (ФЛ)
+        self._correct_female_applicant_cases(cleaned_data)
+
+        # Нормализуем регистр всех имен перед заменой в документе
+        name_fields = [
+            "applicantName", "debtorName", "creditorName", "legalShortName",
+            "applicantNameGenitive", "applicantNameInstrumental", "applicantNameAccusative", "applicantNameDative",
+            "mortgageDebtorName", "mortgageDebtorNameDative", "mortgageRepresentative22", "kfhHeadName"
+        ]
+        for field_name in name_fields:
+            if field_name in cleaned_data and cleaned_data[field_name]:
+                original_value = cleaned_data[field_name]
+                # Пропускаем нормализацию, если значение уже содержит только префикс "ИП" без имени
+                if original_value.strip().upper() == "ИП":
+                    continue
+                normalized_value = self._normalize_name_case(original_value)
+                if normalized_value != original_value:
+                    cleaned_data[field_name] = normalized_value
+                    logger.info(f"📝 Нормализован регистр {field_name}: '{original_value}' -> '{normalized_value}'")
+
+        # Заменяем данные в параграфах
+        logger.info("🔍 Начинаем замену данных в документе...")
+
+        # Нормализация номера дела: убираем лишний суффикс после года (А44-1233-4/2025-4 -> А44-1233-4/2025)
+        case_number = cleaned_data.get("caseNumber", "")
+        if case_number:
+            # Убираем дублирование вида номер/год-цифра (например А44-1233-4/2025-4 -> А44-1233-4/2025)
+            trailing_suffix = re.match(r'^(.+/\d{4})-\d+$', case_number.strip())
+            if trailing_suffix:
+                normalized = trailing_suffix.group(1)
+                cleaned_data["caseNumber"] = normalized
+                logger.info(f"📝 Убран лишний суффикс в номере дела: {case_number} -> {normalized}")
+                case_number = normalized
+
+            # Паттерн для поиска дублирования: номер-номер/год-номер/год (А53-2345-4/2025-4/2025 -> А53-2345-4/2025)
+            pattern = r'^([А-ЯЁA-Z0-9-]+)/(\d{4})-([А-ЯЁA-Z0-9-]+)/(\d{4})$'
+            match = re.match(pattern, case_number)
+            if match:
+                prefix = match.group(1)
+                year1 = match.group(2)
+                suffix = match.group(3)
+                year2 = match.group(4)
+                if year1 == year2 and suffix in prefix:
+                    cleaned_data["caseNumber"] = f"{prefix}/{year1}"
+                    logger.info(f"📝 Исправлено дублирование номера дела: {case_number} -> {cleaned_data['caseNumber']}")
+                    case_number = cleaned_data["caseNumber"]
+
+        # Модифицируем номер дела, если есть номер обособленного спора (только если его ещё нет в номере)
+        # Формат: A99-15434/2025 -> A99-15434-4/2025. Не добавляем -4, если уже есть А44-1233-4/2025
+        if cleaned_data.get("separateDisputeNumber22"):
+            separate_dispute_number = str(cleaned_data.get("separateDisputeNumber22")).strip()
+            case_number = cleaned_data.get("caseNumber", "")
+            if case_number and separate_dispute_number:
+                pattern = r'^([А-ЯЁA-Z0-9-]+)/(\d{4})$'
+                match = re.match(pattern, case_number)
+                if match:
+                    prefix = match.group(1)
+                    year = match.group(2)
+                    # Не добавляем суффикс, если он уже есть в префиксе (например А44-1233-4)
+                    if prefix.endswith(f"-{separate_dispute_number}"):
+                        logger.info(f"📝 Номер дела уже содержит обособленный спор: {case_number}")
+                    else:
+                        modified_case_number = f"{prefix}-{separate_dispute_number}/{year}"
+                        cleaned_data["caseNumber"] = modified_case_number
+                        logger.info(f"📝 Номер дела модифицирован с учетом обособленного спора: {case_number} -> {modified_case_number}")
+                else:
+                    # Если формат не совпадает, пытаемся вставить перед последним слэшем
+                    if '/' in case_number:
+                        parts = case_number.rsplit('/', 1)
+                        if len(parts) == 2 and parts[1].isdigit():
+                            modified_case_number = f"{parts[0]}-{separate_dispute_number}/{parts[1]}"
+                            cleaned_data["caseNumber"] = modified_case_number
+                            logger.info(f"📝 Номер дела модифицирован (альтернативный формат): {case_number} -> {modified_case_number}")
+                        else:
+                            logger.warning(f"⚠️ Не удалось модифицировать номер дела: {case_number} (нестандартный формат)")
+                    else:
+                        logger.warning(f"⚠️ Не удалось модифицировать номер дела: {case_number} (нет слэша с годом)")
+
+        self._apply_field_mapping_replacements(doc, cleaned_data, field_mapping, is_mortgage_document, is_ip, is_physical_collateral)
 
         # Обрабатываем обязательства (договоры) - номера 100-113
         self.replace_obligations_data(doc, cleaned_data)
