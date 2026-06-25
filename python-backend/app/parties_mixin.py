@@ -722,6 +722,15 @@ class PartiesMixin:
                 extracted_fields["applicantAddress"] = cut
                 logger.info(f"🧹 Обрезан хвост в адресе должника: '{addr}' -> '{cut}'")
 
+        # 5. creditorName: если пусто — фолбэк по тексту (метки Истец/Заявитель/Кредитор/
+        #    Взыскатель, в т.ч. гос.органы без ОПФ — «ФНС России»). Работает для всех
+        #    типов (а не только ипотеки). Если уже заполнено — не трогаем.
+        if not (extracted_fields.get("creditorName") or "").strip():
+            cn = self._extract_creditor_name_from_text(text)
+            if cn:
+                extracted_fields["creditorName"] = cn
+                logger.info(f"🏦 creditorName из текста (фолбэк по метке): '{cn}'")
+
     def _tune_legal_entity_naming(self, extracted_fields, text, debtor_clean, applicant_clean, applicant_name_raw, debtor_block, debtor_name_raw):
         """Короткое наименование ЮЛ (legalShortName) и донастройка для initiation_legal: переустановка applicantName с ОПФ из блока «Должник:», адрес из шапки. Возвращает обновлённый debtor_clean. Вынесено из extract_fields."""
         # Для юрлиц пытаемся получить короткое название. Игнорируем мусорные значения вроде "введена процедура наблюдения".
@@ -960,7 +969,17 @@ class PartiesMixin:
 
         candidate = extract_debtor_name(text)
         if not candidate or not is_person_name(candidate):
-            return
+            # Фолбэк: applicantName битый (напр. обрывок «рбитражный суд Ростовско»),
+            # но debtorName — уже валидное ФИО. Берём его, не теряя корректное имя.
+            # ТОЛЬКО для физлиц: у ЮЛ короткое наименование без ОПФ ложно проходит
+            # is_person_name и было бы пословно просклонено в мусор.
+            db = (fields.get("debtorName") or "").strip()
+            entity = (fields.get("entityType") or "").lower()
+            if (entity != "legal" and db and is_person_name(db)
+                    and db != (fields.get("applicantName") or "")):
+                candidate = db
+            else:
+                return
 
         logger.info(f"ФИО должника скорректировано: {current!r} -> {candidate!r}")
         fields["applicantName"] = candidate

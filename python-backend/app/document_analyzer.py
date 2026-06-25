@@ -559,6 +559,36 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 # Проверяем, что это не слишком длинный текст (не описание)
                 if creditor and len(creditor) < 200 and not any(word in creditor.lower() for word in ['имеет право', 'потребовать', 'судебном порядке']):
                     return creditor
+
+        # Фолбэк для иных раскладок: кредитор по синониму метки (Заявитель/Кредитор/
+        # Взыскатель) и БЕЗ обязательного ОПФ — для гос.органов («ФНС России») и
+        # банков без префикса. Берём имя до реквизитов/перевода строки.
+        from label_synonyms import CREDITOR_HEADER_LABELS, labels_alternation
+        alt = labels_alternation(CREDITOR_HEADER_LABELS)
+        m = re.search(
+            rf"(?:{alt})\s*:?\s*"
+            rf"([А-ЯЁ][^\n\r]{{3,150}}?)"
+            rf"(?=\n|\r|$|\bИНН\b|\bОГРН|Дата\s+гос|Место\s+нахожд|Почтовый|[Аа]дрес|www\.|\bтел)",
+            text, re.IGNORECASE,
+        )
+        if m:
+            creditor = self.clean_extracted_value(m.group(1)).strip(" ,;")
+            # Срезаем хвостовую скобку с дублем/ОПФ: «… «ТБАНК» (АО «ТБАНК»…)» -> «… «ТБАНК»»,
+            # «ББР Банк (акционерное общество)» -> «ББР Банк».
+            creditor = re.split(r"\s*\(", creditor, maxsplit=1)[0].strip(" ,;")
+            cl = creditor.lower()
+            # Отсекаем мусор: маркеры шаблона [12]/[987], boilerplate-фразы, описания.
+            has_marker = bool(re.search(r"\[\d", creditor))
+            boilerplate = any(w in cl for w in [
+                'имеет право', 'потребовать', 'судебном порядке', 'должник', 'ответчик',
+                'требовани', 'утвердить', 'просит', 'в размере', 'из числа', ' руб',
+            ])
+            # Должно быть похоже на кредитора: банк/общество/ФНС/инспекция/служба/ОПФ.
+            looks_creditor = bool(re.search(
+                r'банк|общество|фнс|росси|инспекц|служб|\bАО\b|\bООО\b|\bПАО\b|\bОАО\b|\bЗАО\b',
+                creditor, re.IGNORECASE))
+            if creditor and 3 < len(creditor) < 150 and not has_marker and not boilerplate and looks_creditor:
+                return creditor
         return None
 
     def _extract_creditor_block(self, text: str) -> Optional[str]:
