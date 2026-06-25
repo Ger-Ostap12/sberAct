@@ -607,6 +607,53 @@ class PartiesMixin:
                         logger.info(f"✅ Адрес КФХ извлечен: {addr.strip()}")
                         break
 
+    def _reconcile_applicant_is_debtor(self, extracted_fields, text):
+        """Исправляет «своп сторон»: applicantName (поле должника, маркер [2]) ошибочно
+        равен КРЕДИТОРУ. Частая ошибка на раскладках с меткой «Заявитель:» перед
+        «Должник:» (другие банки): позиционный паттерн цепляет кредитора в должника.
+
+        Гвард (срабатывает ТОЛЬКО при явном свопе, иначе не трогаем):
+          applicantName == creditorName  И  есть валидное иное имя должника
+          (debtorName/legalShortName из блока «Должник:», отличное от кредитора).
+        Тогда восстанавливаем applicantName из имени должника и пересобираем падежи
+        (ЮЛ — как есть; ФЛ — склоняем через _convert_name_to_*).
+        """
+        def _norm(s: str) -> str:
+            s = re.sub(r'[«»"\'\s]', '', (s or '').lower())
+            s = re.sub(r'^(ип|ооо|оао|пао|зао|ао)', '', s)
+            return s
+
+        applicant = extracted_fields.get("applicantName")
+        creditor = extracted_fields.get("creditorName")
+        if not applicant or not creditor:
+            return
+        if _norm(applicant) != _norm(creditor):
+            return  # свопа нет — applicantName не равен кредитору
+
+        debtor = (extracted_fields.get("debtorName")
+                  or extracted_fields.get("legalShortName") or "").strip()
+        if not debtor or _norm(debtor) == _norm(creditor):
+            return  # нет валидного иного должника — не трогаем, чтобы не навредить
+
+        extracted_fields["applicantName"] = debtor
+        entity_type = (extracted_fields.get("entityType") or "").lower()
+        if entity_type == "legal":
+            # Организации пословно не склоняем — все падежи равны наименованию.
+            for k in ("applicantNameGenitive", "applicantNameDative",
+                      "applicantNameInstrumental", "applicantNameAccusative"):
+                extracted_fields[k] = debtor
+        else:
+            for key, conv in (
+                ("applicantNameGenitive", self._convert_name_to_genitive),
+                ("applicantNameDative", self._convert_name_to_dative),
+                ("applicantNameInstrumental", self._convert_name_to_instrumental),
+                ("applicantNameAccusative", self._convert_name_to_accusative),
+            ):
+                val = conv(debtor)
+                if val:
+                    extracted_fields[key] = val
+        logger.info(f"♻️ Своп сторон исправлен: applicantName был кредитором, восстановлен должник: {debtor!r}")
+
     def _tune_legal_entity_naming(self, extracted_fields, text, debtor_clean, applicant_clean, applicant_name_raw, debtor_block, debtor_name_raw):
         """Короткое наименование ЮЛ (legalShortName) и донастройка для initiation_legal: переустановка applicantName с ОПФ из блока «Должник:», адрес из шапки. Возвращает обновлённый debtor_clean. Вынесено из extract_fields."""
         # Для юрлиц пытаемся получить короткое название. Игнорируем мусорные значения вроде "введена процедура наблюдения".

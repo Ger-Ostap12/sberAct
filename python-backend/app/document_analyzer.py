@@ -210,6 +210,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # Пост-очистка полей (адрес/третье лицо/суд)
             self._cleanup_extracted_fields(extracted_fields, text)
 
+            # Своп сторон: applicantName ошибочно = кредитор (раскладки «Заявитель:» → «Должник:»)
+            self._reconcile_applicant_is_debtor(extracted_fields, text)
+
             # Списки должников и третьих лиц + дедуп
             debtors_result, third_parties_result = self._resolve_debtors_and_third_parties(extracted_fields, text, details)
 
