@@ -32,8 +32,15 @@ _TOP_FIELDS = (
 )
 
 
+# Документы, исключённые из корпуса (слишком плохое качество исходника — разбор
+# заведомо мусорный, держать в эталоне бессмысленно). Относительные пути от CORPUS_DIR.
+EXCLUDED_FILES = {
+    "casebookWord/Заявление (1).docx",
+}
+
+
 def corpus_files() -> List[str]:
-    """Отсортированный список относительных путей всех документов корпуса."""
+    """Отсортированный список относительных путей всех документов корпуса (без EXCLUDED_FILES)."""
     if not os.path.isdir(CORPUS_DIR):
         return []
     files = []
@@ -41,7 +48,10 @@ def corpus_files() -> List[str]:
         for f in glob.glob(os.path.join(CORPUS_DIR, "**", ext), recursive=True):
             if "~$" in os.path.basename(f):
                 continue
-            files.append(os.path.relpath(f, CORPUS_DIR).replace("\\", "/"))
+            rel = os.path.relpath(f, CORPUS_DIR).replace("\\", "/")
+            if rel in EXCLUDED_FILES:
+                continue
+            files.append(rel)
     return sorted(set(files))
 
 
