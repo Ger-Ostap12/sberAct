@@ -39,8 +39,20 @@ EXCLUDED_FILES = {
 }
 
 
+def _is_excluded(rel: str) -> bool:
+    """Файл вне корпуса, если он в EXCLUDED_FILES ИЛИ это PDF из dataset/.
+    dataset/*.pdf — старые PDF-оригиналы, переконвертированные в docx (casebookWord);
+    Word-версии распознаются точнее, поэтому PDF-дубликаты в эталоне не держим.
+    """
+    if rel in EXCLUDED_FILES:
+        return True
+    if rel.startswith("dataset/") and rel.lower().endswith(".pdf"):
+        return True
+    return False
+
+
 def corpus_files() -> List[str]:
-    """Отсортированный список относительных путей всех документов корпуса (без EXCLUDED_FILES)."""
+    """Отсортированный список относительных путей всех документов корпуса (без исключённых)."""
     if not os.path.isdir(CORPUS_DIR):
         return []
     files = []
@@ -49,7 +61,7 @@ def corpus_files() -> List[str]:
             if "~$" in os.path.basename(f):
                 continue
             rel = os.path.relpath(f, CORPUS_DIR).replace("\\", "/")
-            if rel in EXCLUDED_FILES:
+            if _is_excluded(rel):
                 continue
             files.append(rel)
     return sorted(set(files))
