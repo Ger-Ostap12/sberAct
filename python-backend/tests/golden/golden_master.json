@@ -9,7 +9,7 @@
     "birthPlace": "",
     "inn": "987654321",
     "name": "Общества с ограниченной ответственностью «Азбука",
-    "ogrnip": "123454321234",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -57,7 +57,6 @@
     }
    ],
    "ogrn": "123454321234",
-   "ogrnip": "123454321234",
    "other35": "0,00",
    "penalties": "2 000,00",
    "principalDebt": "496 877,32",
@@ -784,7 +783,7 @@
     "birthPlace": "",
     "inn": "1234567890",
     "name": "Иванов Иван Иванович",
-    "ogrnip": "123454321234",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -877,7 +876,6 @@
    ],
    "obligationsTotalDebt": "19 619 276,72",
    "ogrn": "123454321234",
-   "ogrnip": "123454321234",
    "penalty0071": "3 111,16",
    "physicalHasCollateral": "true",
    "principalDebt": "19 289 480,06",
@@ -1043,7 +1041,7 @@
     "birthPlace": "",
     "inn": "987654321",
     "name": "Общества с ограниченной ответственностью «Азбука",
-    "ogrnip": "123454321234",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -1088,7 +1086,6 @@
     }
    ],
    "ogrn": "123454321234",
-   "ogrnip": "123454321234",
    "other35": "0,00",
    "ppStateDutyDate81": "25.11.2025",
    "principalDebt": "20 100 000,00",
@@ -1237,7 +1234,7 @@
     "birthPlace": "",
     "inn": "3461063590",
     "name": "ООО «Форте Пром Стил ГМБХ",
-    "ogrnip": "1183443007659",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -1283,7 +1280,6 @@
     }
    ],
    "ogrn": "1183443007659",
-   "ogrnip": "1183443007659",
    "procedureType": "observation",
    "procedureTypeRaw": "наблюдение",
    "requirementsSum": "1 871 897 982,82",
@@ -1327,7 +1323,7 @@
     "birthPlace": "",
     "inn": "3448049188",
     "name": "ООО «Форте Пром ГМБХ",
-    "ogrnip": "1103461000455",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -1373,7 +1369,6 @@
     }
    ],
    "ogrn": "1103461000455",
-   "ogrnip": "1103461000455",
    "procedureType": "observation",
    "procedureTypeRaw": "наблюдение",
    "requirementsSum": "1 871 897 982,82",
@@ -1417,7 +1412,7 @@
     "birthPlace": "",
     "inn": "3461063590",
     "name": "Форте Пром Стил ГмбХ",
-    "ogrnip": "1183443007659",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -1435,7 +1430,7 @@
    "companyInn": "3461063590",
    "contractDate": "17.12.2020, 27.03.2026",
    "contractNumber": "03820, 34855431",
-   "courtName": "Арбитражный суд Ростовской области Заявитель",
+   "courtName": "Арбитражный суд Ростовской области",
    "creditPenaltyRate": "0,2",
    "creditorAddress": "107078, г. Москва, ул. Каланчевская, д. 27",
    "creditorInn": "7728168971",
@@ -1451,7 +1446,6 @@
    "interest": "616 497 933,64",
    "legalShortName": "Форте Пром Стил ГмбХ",
    "loanDebt": "2 549 999 707,35",
-   "managerName": "из числа членов которой должен быть утвержден",
    "messageDate": "27.03.2026",
    "messageNumber": "34855431",
    "obligations": [
@@ -1469,7 +1463,6 @@
     }
    ],
    "ogrn": "1183443007659",
-   "ogrnip": "1183443007659",
    "principalDebt": "3 977 344 345,76",
    "principalDebt13": "3 977 344 345,76",
    "procedureType": "observation",
@@ -1631,8 +1624,8 @@
     "birthDate": "",
     "birthPlace": "",
     "inn": "6123010803",
-    "name": "АО \"КОНЦЕРН \"САРМАТ\"(заемщик)",
-    "ogrnip": "1026101344664",
+    "name": "АО \"КОНЦЕРН \"САРМАТ\"",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -1640,7 +1633,7 @@
   "entityType": "legal",
   "fields": {
    "applicantAddress": "344006,РОСТОВСКАЯ ОБЛАСТЬ,ГОРОД РОСТОВ-НА-ДОНУ, ПРОСПЕКТ КИРОВСКИЙ, ЗД. 51, КОМ. 7-10",
-   "applicantName": "АО \"КОНЦЕРН \"САРМАТ\"(заемщик)",
+   "applicantName": "АО \"КОНЦЕРН \"САРМАТ\"",
    "applicantNameAccusative": "АО \"КОНЦЕРН \"САРМАТ\"(заемщик)",
    "applicantNameDative": "АО \"КОНЦЕРНУ \"САРМАТ\"(заемщик)",
    "applicantNameGenitive": "АО \"КОНЦЕРНА \"САРМАТ\"(заемщик)",
@@ -1655,18 +1648,17 @@
    "creditorName": "ПАО Сбербанк",
    "creditorOgrn": "1027700132195",
    "debtAmount": "2 789 060,93",
-   "debtorName": "АО \"КОНЦЕРН \"САРМАТ\"(заемщик)",
+   "debtorName": "АО \"КОНЦЕРН \"САРМАТ\"",
    "entityType": "legal",
    "forfeit": "64 027,07",
    "forfeit15": "64 027,07",
    "inn": "6123010803",
    "interest": "2 294 779,03",
    "interest14": "2 294 779,03",
-   "legalShortName": "АО \"КОНЦЕРН \"САРМАТ\"(заемщик)",
+   "legalShortName": "АО \"КОНЦЕРН \"САРМАТ\"",
    "loanDebt": "2789060,93",
    "obligationType": "Кредитный договор",
    "ogrn": "1026101344664",
-   "ogrnip": "1026101344664",
    "principalDebt": "2 294 779,03",
    "principalDebt13": "2 294 779,03",
    "procedureType": "observation",
@@ -1707,8 +1699,8 @@
     "birthDate": "",
     "birthPlace": "",
     "inn": "6123013561",
-    "name": "ООО \"КОЛОР\"(заемщик)",
-    "ogrnip": "1076123000502",
+    "name": "ООО \"КОЛОР\"",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -1716,7 +1708,7 @@
   "entityType": "legal",
   "fields": {
    "applicantAddress": "344006,РОСТОВСКАЯ ОБЛАСТЬ,ГОРОД РОСТОВ-НА-ДОНУ, УЛИЦА ПУШКИНСКАЯ, Д. 116,КОМ. 16 Размер требований 2 789 060,93 руб.",
-   "applicantName": "ООО \"КОЛОР\"(заемщик)",
+   "applicantName": "ООО \"КОЛОР\"",
    "applicantNameAccusative": "ООО \"КОЛОР\"(заемщик)",
    "applicantNameDative": "ООО \"КОЛОР\"(заемщик)",
    "applicantNameGenitive": "ООО \"КОЛОР\"(заемщик)",
@@ -1732,14 +1724,14 @@
    "creditorName": "ПАО Сбербанк",
    "creditorOgrn": "1027700132195",
    "debtAmount": "2 789 060,93",
-   "debtorName": "КОЛОР\"(заемщик)",
+   "debtorName": "КОЛОР\"",
    "entityType": "legal",
    "forfeit": "64 027,07",
    "forfeit15": "64 027,07",
    "inn": "6123013561",
    "interest": "2 294 779,03",
    "interest14": "2 294 779,03",
-   "legalShortName": "КОЛОР\"(заемщик)",
+   "legalShortName": "КОЛОР\"",
    "loanDebt": "2789060,93",
    "obligationType": "Кредитный договор",
    "obligations": [
@@ -1758,7 +1750,6 @@
     }
    ],
    "ogrn": "1076123000502",
-   "ogrnip": "1076123000502",
    "principalDebt": "2 294 779,03",
    "principalDebt13": "2 294 779,03",
    "procedureType": "observation",
@@ -2342,7 +2333,6 @@
    "ipHasCollateral": "true",
    "loanDebt": "2 100 477,62",
    "loanStateDuty17": "44 007,00",
-   "managerName": "из числа членов которойдолжен быть утвержден",
    "mortgageCollateralDescription1221": "6. Утвердить в качестве саморегулируемой организации СРО - СРО ААУ \"Синергия\"(ИНН",
    "obligations": [
     {
@@ -2727,7 +2717,7 @@
     "birthPlace": "",
     "inn": "7701887506",
     "name": "Общество с ограниченной ответственностью",
-    "ogrnip": "1107746649625",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -2757,7 +2747,6 @@
    "loanStateDuty17": "5 100 000,00",
    "managerAddress": "649625, ИНН: 7701887506 посредством случайного выбора;",
    "managerInn": "7701887506",
-   "managerName": "из числа членов которой будет утвержден",
    "obligations": [
     {
      "contractDate": "21.06.2024",
@@ -2808,7 +2797,6 @@
      "obligationType": "Договор"
     }
    ],
-   "ogrnip": "1107746649625",
    "principalDebt": "108 212 411,25",
    "principalDebt13": "108 212 411,25",
    "requirementsSum": "4 826 804 161,25",
@@ -2892,7 +2880,7 @@
     "birthPlace": "",
     "inn": "3448049188",
     "name": "Имеет Неисполненные Денежные",
-    "ogrnip": "1103461000455",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -3002,7 +2990,6 @@
      "obligationType": "Кредитный договор"
     }
    ],
-   "ogrnip": "1103461000455",
    "principalDebt": "7 978 449,85",
    "principalDebt13": "192 920 450,00",
    "requirementsSum": "5 032 544 855,59",
@@ -3111,7 +3098,7 @@
     "birthPlace": "",
     "inn": "3461063590",
     "name": "Форте Пром Стил Гмбх",
-    "ogrnip": "1183443007659",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -3216,7 +3203,6 @@
     }
    ],
    "ogrn": "1183443007659",
-   "ogrnip": "1183443007659",
    "principalDebt": "6243 169,90",
    "principalDebt13": "39 666 666,65",
    "procedureType": "observation",
@@ -3347,7 +3333,6 @@
    "interest": "28,07",
    "interest14": "28,07",
    "loanDebt": "1 022 416,77",
-   "managerName": "Требование по делу",
    "obligationType": "Кредитный договор",
    "penalties": "4 671,54",
    "principalDebt": "928 123,69",
@@ -3541,7 +3526,7 @@
     "birthPlace": "",
     "inn": "3461063590",
     "name": "ООО «Форте Пром Стил ГМБХ",
-    "ogrnip": "1183443007659",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -3566,7 +3551,6 @@
    "legalShortName": "Форте Пром Стил ГМБХ",
    "loanDebt": "1 000 000 000",
    "managerInn": "644923704326",
-   "managerName": "из числа членов которой должен быть утвержден (ИНН 644923704326)",
    "messageDate": "02.03.2026",
    "messageNumber": "34277008",
    "obligationType": "кредитный договор",
@@ -3579,7 +3563,6 @@
     }
    ],
    "ogrn": "1183443007659",
-   "ogrnip": "1183443007659",
    "procedureType": "observation",
    "procedureTypeRaw": "наблюдение",
    "requirementsSum": "1 000 000 000,00",
@@ -5756,7 +5739,7 @@
     "birthPlace": "",
     "inn": "6164117249",
     "name": "ООО \"ТМД",
-    "ogrnip": "1176196047884",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -5802,7 +5785,6 @@
    "interest14": "5 902 239,34",
    "legalShortName": "ТМД",
    "loanDebt": "31633546,28",
-   "managerName": "в целях процессуальной экономии могут использовать памятку дляклиента по сбору документов",
    "mortgageCollateralDescription1221": "ния по обязательству, обеспеченному договором ипотеки, должник, участник кредитной сделки",
    "obligationType": "кредитный договор",
    "obligations": [
@@ -5861,7 +5843,6 @@
    ],
    "obligationsTotalDebt": "23 386 573,48",
    "ogrn": "1176196047884",
-   "ogrnip": "1176196047884",
    "principalDebt": "25 336 868,83",
    "principalDebt13": "25 336 868,83",
    "procedureType": "observation",
@@ -5956,7 +5937,7 @@
     "birthPlace": "",
     "inn": "3461063590",
     "name": "ООО «Форте Пром Стил ГМБХ",
-    "ogrnip": "1183443007659",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -6000,7 +5981,6 @@
     }
    ],
    "ogrn": "1183443007659",
-   "ogrnip": "1183443007659",
    "procedureType": "observation",
    "procedureTypeRaw": "наблюдение",
    "requirementsSum": "1 871 897 982,82",
@@ -6044,7 +6024,7 @@
     "birthPlace": "",
     "inn": "3448049188",
     "name": "ООО «Форте Пром ГМБХ",
-    "ogrnip": "1103461000455",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -6088,7 +6068,6 @@
     }
    ],
    "ogrn": "1103461000455",
-   "ogrnip": "1103461000455",
    "procedureType": "observation",
    "procedureTypeRaw": "наблюдение",
    "requirementsSum": "1 871 897 982,82",
@@ -6135,7 +6114,7 @@
     "birthPlace": "",
     "inn": "3461063590",
     "name": "Форте Пром Стил ГмбХ",
-    "ogrnip": "1183443007659",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -6169,7 +6148,6 @@
    "interest": "616 497 933,64",
    "legalShortName": "Форте Пром Стил ГмбХ",
    "loanDebt": "2 549 999 707,35",
-   "managerName": "из числа членов которой должен быть утвержден",
    "messageDate": "27.03.2026",
    "messageNumber": "34855431",
    "obligations": [
@@ -6187,7 +6165,6 @@
     }
    ],
    "ogrn": "1183443007659",
-   "ogrnip": "1183443007659",
    "principalDebt": "3 875 665 051,60",
    "principalDebt13": "3 875 665 051,60",
    "procedureType": "observation",
@@ -6349,8 +6326,8 @@
     "birthDate": "",
     "birthPlace": "",
     "inn": "6123010803",
-    "name": "АО\"КОНЦЕРН\"САРМАТ\" (заемщик)",
-    "ogrnip": "1026101344664",
+    "name": "АО\"КОНЦЕРН\"САРМАТ\"",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -6358,7 +6335,7 @@
   "entityType": "legal",
   "fields": {
    "applicantAddress": "344006, РОСТОВСКАЯ ОБЛАСТЬ, ГОРОД РОСТОВ-НА-ДОНУ, ПРОСПЕКТ КИРОВСКИЙ, ЗД.",
-   "applicantName": "АО\"КОНЦЕРН\"САРМАТ\" (заемщик)",
+   "applicantName": "АО\"КОНЦЕРН\"САРМАТ\"",
    "applicantNameAccusative": "АО\"КОНЦЕРН\"САРМАТ\" (заемщик)",
    "applicantNameDative": "АО\"КОНЦЕРН\"САРМАТ\" (заемщик)",
    "applicantNameGenitive": "АО\"КОНЦЕРН\"САРМАТ\" (заемщик)",
@@ -6374,18 +6351,17 @@
    "creditorOgrn": "1027700132195",
    "debtAmount": "2 789 060,93",
    "debtSnapshotDate88": "29.05.2026",
-   "debtorName": "АО\"КОНЦЕРН\"САРМАТ\" (заемщик)",
+   "debtorName": "АО\"КОНЦЕРН\"САРМАТ\"",
    "entityType": "legal",
    "forfeit": "64 027,07",
    "forfeit15": "64 027,07",
    "inn": "6123010803",
    "interest": "2 294 779,03",
    "interest14": "2 294 779,03",
-   "legalShortName": "АО\"КОНЦЕРН\"САРМАТ\" (заемщик)",
+   "legalShortName": "АО\"КОНЦЕРН\"САРМАТ\"",
    "loanDebt": "2789060,93",
    "loanStateDuty17": "154 336,00",
    "ogrn": "1026101344664",
-   "ogrnip": "1026101344664",
    "principalDebt": "2 294 779,03",
    "principalDebt13": "2 294 779,03",
    "procedureType": "observation",
@@ -6424,8 +6400,8 @@
     "birthDate": "",
     "birthPlace": "",
     "inn": "6123013561",
-    "name": "ООО\"КОЛОР\" (заемщик)",
-    "ogrnip": "1076123000502",
+    "name": "ООО\"КОЛОР\"",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -6433,7 +6409,7 @@
   "entityType": "legal",
   "fields": {
    "applicantAddress": "344006, РОСТОВСКАЯ ОБЛАСТЬ, ГОРОД РОСТОВ-НА-ДОНУ, УЛИЦА ПУШКИНСКАЯ, Д. 116,",
-   "applicantName": "ООО\"КОЛОР\" (заемщик)",
+   "applicantName": "ООО\"КОЛОР\"",
    "applicantNameAccusative": "ООО\"КОЛОР\" (заемщик)",
    "applicantNameDative": "ООО\"КОЛОР\" (заемщик)",
    "applicantNameGenitive": "ООО\"КОЛОР\" (заемщик)",
@@ -6449,18 +6425,17 @@
    "creditorOgrn": "1027700132195",
    "debtAmount": "2 789 060,93",
    "debtSnapshotDate88": "29.05.2026",
-   "debtorName": "КОЛОР\" (заемщик)",
+   "debtorName": "КОЛОР\"",
    "entityType": "legal",
    "forfeit": "64 027,07",
    "forfeit15": "64 027,07",
    "inn": "6123013561",
    "interest": "2 294 779,03",
    "interest14": "2 294 779,03",
-   "legalShortName": "КОЛОР\" (заемщик)",
+   "legalShortName": "КОЛОР\"",
    "loanDebt": "2789060,93",
    "loanStateDuty17": "154 336,00",
    "ogrn": "1076123000502",
-   "ogrnip": "1076123000502",
    "principalDebt": "2 294 779,03",
    "principalDebt13": "2 294 779,03",
    "procedureType": "observation",
@@ -7032,7 +7007,6 @@
    "ipHasCollateral": "true",
    "loanDebt": "207 356,52",
    "loanStateDuty17": "44 007,00",
-   "managerName": "из числа членов которой должен быть утвержден",
    "mortgageCollateralDescription1221": "по доверенности Юсупова Е.О.",
    "obligationType": "кредитный договор",
    "obligations": [
@@ -7416,7 +7390,7 @@
     "birthPlace": "",
     "inn": "7701887506",
     "name": "Общество с ограниченной ответственностью",
-    "ogrnip": "1107746649625",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -7445,7 +7419,6 @@
    "loanDebt": "4 826 804 161,25",
    "loanStateDuty17": "5 100 000,00",
    "managerInn": "7701887506",
-   "managerName": "Общества с ограниченной (ИНН 7701887506)",
    "obligations": [
     {
      "contractDate": "21.06.2024",
@@ -7491,7 +7464,6 @@
     }
    ],
    "ogrn": "1107746649625",
-   "ogrnip": "1107746649625",
    "principalDebt": "108 212 411,25",
    "principalDebt13": "108 212 411,25",
    "procedureType": "observation",
@@ -7573,7 +7545,7 @@
     "birthPlace": "",
     "inn": "3448049188",
     "name": "Общество С Ограниченной Ответственностью",
-    "ogrnip": "1103461000455",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -7661,7 +7633,6 @@
     }
    ],
    "ogrn": "1103461000455",
-   "ogrnip": "1103461000455",
    "principalDebt": "7 978 449,85",
    "principalDebt13": "192 920 450,00",
    "procedureType": "observation",
@@ -7750,7 +7721,7 @@
     "birthPlace": "",
     "inn": "3461063590",
     "name": "Общество С Ограниченной Ответственностью",
-    "ogrnip": "1183443007659",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -7850,7 +7821,6 @@
     }
    ],
    "ogrn": "1183443007659",
-   "ogrnip": "1183443007659",
    "principalDebt": "6 243 169,90",
    "principalDebt13": "39 666 666,65",
    "procedureType": "observation",
@@ -8109,7 +8079,7 @@
     "birthPlace": "",
     "inn": "3461063590",
     "name": "ООО «Форте Пром Стил ГМБХ",
-    "ogrnip": "1183443007659",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -8134,7 +8104,6 @@
    "legalShortName": "Форте Пром Стил ГМБХ",
    "loanDebt": "1 000 000 000",
    "managerInn": "644923704326",
-   "managerName": "из числа членов которой должен быть утвержден (ИНН 644923704326)",
    "messageDate": "02.03.2026",
    "messageNumber": "34277008",
    "obligationType": "кредитный договор",
@@ -8147,7 +8116,6 @@
     }
    ],
    "ogrn": "1183443007659",
-   "ogrnip": "1183443007659",
    "procedureType": "observation",
    "procedureTypeRaw": "наблюдение",
    "requirementsSum": "1 000 000 000,00",
@@ -8300,7 +8268,7 @@
     "birthPlace": "",
     "inn": "6164117249",
     "name": "ООО \"ТМД",
-    "ogrnip": "1176196047884",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -8332,7 +8300,6 @@
    "interest14": "5 902 239,34",
    "legalShortName": "ТМД",
    "loanDebt": "31633546,28",
-   "managerName": "в целях процессуальной экономии могут использовать памятку для",
    "obligationType": "кредитный договор",
    "obligations": [
     {
@@ -8389,7 +8356,6 @@
     }
    ],
    "ogrn": "1176196047884",
-   "ogrnip": "1176196047884",
    "principalDebt": "25 336 868,83",
    "principalDebt13": "25 336 868,83",
    "procedureType": "observation",
@@ -8550,7 +8516,7 @@
     "birthPlace": "",
     "inn": "3461063590",
     "name": "Форте Пром Стил ГмбХ",
-    "ogrnip": "1183443007659",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -8568,7 +8534,7 @@
    "companyInn": "3461063590",
    "contractDate": "17.12.2020, 27.03.2026",
    "contractNumber": "03820, 34855431",
-   "courtName": "Арбитражный суд Ростовской области Заявитель",
+   "courtName": "Арбитражный суд Ростовской области",
    "creditPenaltyRate": "0,2",
    "creditorAddress": "107078, г. Москва, ул. Каланчевская, д. 27",
    "creditorInn": "7728168971",
@@ -8584,7 +8550,6 @@
    "interest": "616 497 933,64",
    "legalShortName": "Форте Пром Стил ГмбХ",
    "loanDebt": "2 549 999 707,35",
-   "managerName": "из числа членов которой должен быть утвержден",
    "messageDate": "27.03.2026",
    "messageNumber": "34855431",
    "obligations": [
@@ -8602,7 +8567,6 @@
     }
    ],
    "ogrn": "1183443007659",
-   "ogrnip": "1183443007659",
    "principalDebt": "3 977 344 345,76",
    "principalDebt13": "3 977 344 345,76",
    "procedureType": "observation",
@@ -8656,7 +8620,7 @@
     "birthPlace": "",
     "inn": "987654321",
     "name": "Общества с ограниченной ответственностью «Азбука",
-    "ogrnip": "123454321234",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -8704,7 +8668,6 @@
     }
    ],
    "ogrn": "123454321234",
-   "ogrnip": "123454321234",
    "other35": "0,00",
    "penalties": "2 000,00",
    "principalDebt": "496 877,32",
@@ -9431,7 +9394,7 @@
     "birthPlace": "",
     "inn": "987654321",
     "name": "Общества с ограниченной ответственностью «Азбука",
-    "ogrnip": "123454321234",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -10032,7 +9995,6 @@
     }
    ],
    "ogrn": "123454321234",
-   "ogrnip": "123454321234",
    "other35": "0,00",
    "principalDebt": "496 877,32",
    "principalDebt13": "496 877,32",
@@ -13067,7 +13029,7 @@
     "birthPlace": "",
     "inn": "1234567890",
     "name": "Иванов Иван Иванович",
-    "ogrnip": "123454321234",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -13172,7 +13134,6 @@
    ],
    "obligationsTotalDebt": "19 619 276,72",
    "ogrn": "123454321234",
-   "ogrnip": "123454321234",
    "penalty0071": "3 111,16",
    "physicalHasCollateral": "true",
    "principalDebt": "19 289 480,06",
@@ -13243,7 +13204,7 @@
     "birthPlace": "",
     "inn": "987654321",
     "name": "Общества с ограниченной ответственностью «Азбука",
-    "ogrnip": "123454321234",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -13291,7 +13252,6 @@
     }
    ],
    "ogrn": "123454321234",
-   "ogrnip": "123454321234",
    "other35": "0,00",
    "penalties": "2 000,00",
    "principalDebt": "496 877,32",
@@ -14018,7 +13978,7 @@
     "birthPlace": "",
     "inn": "1234567890",
     "name": "Иванов Иван Иванович",
-    "ogrnip": "123454321234",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -14111,7 +14071,6 @@
    ],
    "obligationsTotalDebt": "19 619 276,72",
    "ogrn": "123454321234",
-   "ogrnip": "123454321234",
    "penalty0071": "3 111,16",
    "physicalHasCollateral": "true",
    "principalDebt": "19 289 480,06",
@@ -14182,7 +14141,7 @@
     "birthPlace": "",
     "inn": "987654321",
     "name": "Общества с ограниченной ответственностью «Азбука",
-    "ogrnip": "123454321234",
+    "ogrnip": "",
     "snils": ""
    }
   ],
@@ -14227,7 +14186,6 @@
     }
    ],
    "ogrn": "123454321234",
-   "ogrnip": "123454321234",
    "other35": "0,00",
    "ppStateDutyDate81": "25.11.2025",
    "principalDebt": "20 100 000,00",

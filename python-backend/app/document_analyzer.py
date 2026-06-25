@@ -213,6 +213,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # Своп сторон: applicantName ошибочно = кредитор (раскладки «Заявитель:» → «Должник:»)
             self._reconcile_applicant_is_debtor(extracted_fields, text)
 
+            # Косметика артефактов сторон: роль-суффикс «(заёмщик)», хвост метки в courtName, мусорный managerName
+            self._cleanup_party_artifacts(extracted_fields, text)
+
             # Списки должников и третьих лиц + дедуп
             debtors_result, third_parties_result = self._resolve_debtors_and_third_parties(extracted_fields, text, details)
 

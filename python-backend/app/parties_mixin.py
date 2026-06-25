@@ -108,35 +108,39 @@ class PartiesMixin:
                         if ogrn_match:
                             logger.info(f"Найден ОГРНИП паттерн (число перед): {ogrn_match.group(1)}")
 
-                # Для ogrn ищем ОГРН (если еще не нашли для ogrnip)
-                if not ogrn_match:
+                # ОГРН (13 цифр, ЮЛ) ищем ТОЛЬКО для поля ogrn. Для ogrnip (15 цифр, ИП)
+                # НЕ откатываемся на «ОГРН» — иначе 13-значный ОГРН юрлица ошибочно
+                # попадёт в ОГРНИП (которого в документе нет).
+                if field_name == "ogrn" and not ogrn_match:
                     ogrn_match = re.search(r"ОГРН[:\s]*([0-9\s]{12,15})", debtor_block, re.IGNORECASE)
                     if ogrn_match:
                         logger.info(f"Найден ОГРН паттерн 1: {ogrn_match.group(1)}")
-                if not ogrn_match:
+                if field_name == "ogrn" and not ogrn_match:
                     ogrn_match = re.search(r"([0-9\s]{12,15})\s*\[3\]", debtor_block)
                     if ogrn_match:
                         logger.info(f"Найден ОГРН паттерн [3]: {ogrn_match.group(1)}")
                 if ogrn_match:
                     ogrn_value = re.sub(r"\D", "", ogrn_match.group(1))
-                    logger.info(f"Очищенное значение ОГРН: '{ogrn_value}', длина: {len(ogrn_value) if ogrn_value else 0}")
-                    # Проверяем длину ОГРН: 12-15 цифр (для ЮЛ может быть 12 или 13 цифр, для ИП - 15)
-                    if ogrn_value and len(ogrn_value) >= 12 and len(ogrn_value) <= 15:
-                        if field_name == "ogrnip":
+                    logger.info(f"Очищенное значение: '{ogrn_value}', длина: {len(ogrn_value) if ogrn_value else 0}")
+                    if field_name == "ogrnip":
+                        # ОГРНИП индивидуального предпринимателя — строго 15 цифр.
+                        # Если кандидат не 15 цифр — это не ОГРНИП (напр. ОГРН ЮЛ 13 цифр), не пишем.
+                        if ogrn_value and len(ogrn_value) == 15:
                             extracted_fields["ogrnip"] = ogrn_value
-                            logger.info(f"✅ Extracted ogrnip из блока должника/ответчика: {ogrn_value}")
+                            found_value = True
+                            logger.info(f"✅ Extracted ogrnip (15 цифр): {ogrn_value}")
                         else:
-                            extracted_fields["ogrn"] = ogrn_value
-                            # Для ИП также сохраняем в ogrnip
-                            if "ИП" in text[:1000] or "индивидуальный предприниматель" in text[:1000].lower():
-                                extracted_fields["ogrnip"] = ogrn_value
-                                logger.info(f"✅ Extracted ogrnip из блока должника/ответчика (для ИП): {ogrn_value}")
-                            logger.info(f"✅ Extracted ogrn из блока должника/ответчика: {ogrn_value}")
-                        found_value = True
+                            logger.info(f"⚠️ Кандидат в ОГРНИП не 15 цифр ('{ogrn_value}') — пропускаем (не ОГРНИП)")
                     else:
-                        logger.warning(f"⚠️ ОГРН не прошел проверку длины: '{ogrn_value}' (длина: {len(ogrn_value) if ogrn_value else 0})")
+                        # ОГРН юрлица — 13 цифр (допускаем 12-15 ради совместимости с прежним поведением).
+                        if ogrn_value and 12 <= len(ogrn_value) <= 15:
+                            extracted_fields["ogrn"] = ogrn_value
+                            found_value = True
+                            logger.info(f"✅ Extracted ogrn: {ogrn_value}")
+                        else:
+                            logger.warning(f"⚠️ ОГРН не прошёл проверку длины: '{ogrn_value}' (длина: {len(ogrn_value) if ogrn_value else 0})")
                 else:
-                    logger.warning(f"⚠️ ОГРН не найден в блоке должника/ответчика")
+                    logger.warning(f"⚠️ ОГРН/ОГРНИП не найден в блоке должника/ответчика")
 
             elif field_name == "inn" or field_name == "companyInn":
                 # Извлекаем ИНН (как в реструктуризации)
@@ -653,6 +657,45 @@ class PartiesMixin:
                 if val:
                     extracted_fields[key] = val
         logger.info(f"♻️ Своп сторон исправлен: applicantName был кредитором, восстановлен должник: {debtor!r}")
+
+    def _cleanup_party_artifacts(self, extracted_fields, text):
+        """Косметическая пост-очистка артефактов извлечения сторон (гвардированно):
+          1. Роль-суффикс «(заёмщик)»/«(должник)» в конце наименования/ФИО — срезаем.
+          2. courtName с прилипшей хвостовой меткой соседнего блока («…области Заявитель») — обрезаем.
+          3. managerName, не похожий на ФИО (мусорная фраза «из числа членов…») — удаляем.
+        Все правки строго локальные и условные, чтобы не задеть корректные значения.
+        """
+        # 1. Роль-суффикс в скобках в конце имени/наименования.
+        role_suffix = re.compile(
+            r'\s*\(\s*(?:заёмщик|заемщик|должник|ответчик|кредитор|истец|взыскатель)\s*\)\s*$',
+            re.IGNORECASE,
+        )
+        for k in ("applicantName", "debtorName", "legalShortName", "creditorName"):
+            v = extracted_fields.get(k)
+            if isinstance(v, str) and v:
+                nv = role_suffix.sub("", v).strip()
+                if nv and nv != v:
+                    extracted_fields[k] = nv
+                    logger.info(f"🧹 Срезан роль-суффикс в {k}: '{v}' -> '{nv}'")
+
+        # 2. courtName: обрезаем всё начиная с прилипшей метки соседнего блока.
+        cn = extracted_fields.get("courtName")
+        if isinstance(cn, str) and cn:
+            cut = re.split(
+                r'\s+(?:Заявител[ья]|Должник|Ответчик|Истец|Кредитор|Взыскатель|Заинтересованн)\b',
+                cn, maxsplit=1,
+            )[0].strip(" ,")
+            if cut and cut != cn:
+                extracted_fields["courtName"] = cut
+                logger.info(f"🧹 Обрезан хвост метки в courtName: '{cn}' -> '{cut}'")
+
+        # 3. managerName: должно быть ФИО (два слова с заглавных). Иначе — мусор, удаляем.
+        mn = extracted_fields.get("managerName")
+        if isinstance(mn, str) and mn.strip():
+            looks_like_fio = bool(re.search(r'[А-ЯЁ][А-Яа-яёЁ.\-]+\s+[А-ЯЁ]', mn))
+            if not looks_like_fio:
+                extracted_fields.pop("managerName", None)
+                logger.info(f"🧹 Удалён мусорный managerName (не ФИО): '{mn}'")
 
     def _tune_legal_entity_naming(self, extracted_fields, text, debtor_clean, applicant_clean, applicant_name_raw, debtor_block, debtor_name_raw):
         """Короткое наименование ЮЛ (legalShortName) и донастройка для initiation_legal: переустановка applicantName с ОПФ из блока «Должник:», адрес из шапки. Возвращает обновлённый debtor_clean. Вынесено из extract_fields."""
