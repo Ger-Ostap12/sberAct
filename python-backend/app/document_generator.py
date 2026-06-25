@@ -1391,6 +1391,203 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                             paragraph.text = re.sub(pattern, f'поручитель СНИЛС: {field_value}', text)
                             logger.info(f"Заменен СНИЛС поручителя: {field_value}")
 
+    def _resolve_standard_templates(self, data: Dict[str, Any], normalized_template: str, source_document_type: str, source_document_type_for_routing: str, is_kfh: bool):
+        """Стандартный роутинг: по template_type / sourceDocumentType / процедуре
+        выбирает набор шаблонов и procedure_type. Возвращает (templates, procedure_type).
+        Может выставлять data['_skip_obligation_blocks']. Вынесено из generate
+        без изменения поведения (gen-golden).
+        """
+        # Стандартная логика (для обратной совместимости и для явного выбора template_type)
+        if normalized_template in {"observation_single", "observation_multiple"}:
+            normalized_template = "observation"
+
+        # ПРИОРИТЕТ: Проверяем на процедуру "умерший" в первую очередь
+        if normalized_template == "deceased" or source_document_type == "deceased" or (data.get('procedureType') or '').lower() == "deceased" or any(keyword in (data.get('procedureTypeRaw') or '').lower() for keyword in ["умер", "умерший", "смерть", "смерти"]):
+            # Шаблоны для процедуры "умерший" - ПРИОРИТЕТ перед всеми остальными
+            templates = self._get_templates_for_procedure("deceased")
+            procedure_type = "deceased"
+            logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для процедуры: умерший")
+        elif normalized_template == "physical_restructuring_collateral" or source_document_type_for_routing == "physical_restructuring_collateral":
+            # Шаблоны для ФЛ с залогом в реструктуризации
+            templates = self._get_physical_restructuring_collateral_templates()
+            procedure_type = "physical_restructuring_collateral"
+            logger.info(
+                f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для заявления ФЛ с залогом в реструктуризации"
+            )
+        elif normalized_template == "physical_realization_collateral" or source_document_type_for_routing == "physical_realization_collateral":
+            # Шаблоны для ФЛ с залогом в реализации
+            templates = self._get_physical_collateral_templates()
+            procedure_type = "physical_realization_collateral"
+            logger.info(
+                f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для заявления ФЛ с залогом в реализации"
+            )
+        elif normalized_template in ["kfh_observation", "kfh_observation_collateral"] or \
+             (is_kfh and (normalized_template in ["observation", "observation_single", "observation_multiple"] or
+                          source_document_type_for_routing == "observation_collateral" or
+                          source_document_type_for_routing in ["ip_enforcement_statement", "ip_enforcement_statement_collateral",
+                                                   "ip_enforcement_realization", "ip_enforcement_realization_collateral",
+                                                   "ip_enforcement_restructuring", "ip_enforcement_restructuring_collateral"])):
+            # ПРИОРИТЕТ: КФХ шаблоны должны обрабатываться ПЕРЕД ИП шаблонами
+            # ПРИОРИТЕТ: выбранный шаблон имеет приоритет над данными документа
+            if normalized_template == "kfh_observation_collateral":
+                # Пользователь явно выбрал шаблон с залогом
+                has_collateral = True
+            elif normalized_template == "kfh_observation":
+                # Пользователь явно выбрал шаблон без залога
+                has_collateral = False
+            elif source_document_type_for_routing == "observation_collateral":
+                # Тип документа указывает на залог
+                has_collateral = True
+            else:
+                # Определяем по данным документа только если шаблон не был явно выбран
+                has_collateral = (
+                    bool(data.get("ipCollateralContractNumber")) or
+                    bool(data.get("mortgageCollateralDescription1221"))
+                )
+            templates = self._get_kfh_observation_templates(has_collateral=has_collateral)
+            procedure_type = "kfh_observation_collateral" if has_collateral else "kfh_observation"
+            logger.info(
+                f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для КФХ "
+                f"({'наблюдение с залогом' if has_collateral else 'наблюдение, без залога'})"
+            )
+        elif normalized_template == "ip_collection_collateral" or source_document_type_for_routing == "ip_collection_collateral":
+            # Шаблоны для искового заявления о взыскании с ИП с залогом
+            templates = self._get_ip_collection_collateral_templates()
+            procedure_type = "ip_collection_collateral"
+            logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП с залогом")
+        elif normalized_template == "ip_collection_collateral_auto" or source_document_type_for_routing == "ip_collection_collateral_auto":
+            # Шаблоны для искового заявления о взыскании с ИП залог авто ([1221] — описание авто)
+            templates = self._get_ip_collection_collateral_auto_templates()
+            procedure_type = "ip_collection_collateral_auto"
+            logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП залог авто")
+        elif normalized_template == "legal_collection" or source_document_type_for_routing == "legal_collection":
+            # Шаблоны для искового заявления о взыскании с ЮЛ
+            templates = self._get_legal_collection_templates()
+            procedure_type = "legal_collection"
+            logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ")
+        elif normalized_template == "legal_collection_collateral" or source_document_type_for_routing == "legal_collection_collateral":
+            # Шаблоны для искового заявления о взыскании с ЮЛ с залогом
+            templates = self._get_legal_collection_collateral_templates()
+            procedure_type = "legal_collection_collateral"
+            logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ с залогом")
+        elif normalized_template == "legal_collection_collateral_auto" or source_document_type_for_routing == "legal_collection_collateral_auto":
+            # Шаблоны для искового заявления о взыскании с ЮЛ залог авто ([1221] — описание авто)
+            templates = self._get_legal_collection_collateral_auto_templates()
+            procedure_type = "legal_collection_collateral_auto"
+            logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ залог авто")
+        elif normalized_template == "ip_collection" or source_document_type_for_routing == "ip_collection":
+            # Шаблоны для искового заявления о взыскании с ИП
+            templates = self._get_ip_collection_templates()
+            procedure_type = "ip_collection"
+            logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП")
+        elif normalized_template in ["ip_enforcement", "ip_enforcement_realization", "ip_enforcement_realization_collateral",
+                                     "ip_enforcement_restructuring", "ip_enforcement_restructuring_collateral"] or \
+             source_document_type_for_routing in ["ip_enforcement_statement", "ip_enforcement_statement_collateral",
+                                     "ip_enforcement_realization", "ip_enforcement_realization_collateral",
+                                     "ip_enforcement_restructuring", "ip_enforcement_restructuring_collateral"]:
+            # Определяем наличие залога
+            if (
+                normalized_template.endswith("_collateral")
+                or source_document_type_for_routing in ["ip_enforcement_statement_collateral", "ip_enforcement_realization_collateral",
+                                                        "ip_enforcement_restructuring_collateral"]
+            ):
+                has_collateral_flag = True
+            else:
+                has_collateral_flag = str(data.get("ipHasCollateral", "")).strip().lower() in {"true", "1", "yes", "да"}
+
+            # Определяем тип процедуры
+            if "restructuring" in source_document_type_for_routing or normalized_template == "ip_enforcement_restructuring":
+                ip_procedure_type = "restructuring"
+            else:
+                ip_procedure_type = "realization"  # По умолчанию реализация
+
+            templates = self._get_ip_enforcement_templates(has_collateral_flag, ip_procedure_type)
+            procedure_type = source_document_type_for_routing or normalized_template or "ip_enforcement"
+            logger.info(
+                f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для заявления ИП "
+                f"({ip_procedure_type}, залог: {'есть' if has_collateral_flag else 'нет'})"
+            )
+        elif normalized_template == "initiation_physical" or source_document_type_for_routing == "initiation_physical":
+            templates = self._get_initiation_physical_templates()
+            procedure_type = "initiation_physical"
+            data["_skip_obligation_blocks"] = True
+            logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 3 ДОКУМЕНТОВ для инициирования банкротства физического лица")
+        elif normalized_template == "initiation_legal" or source_document_type_for_routing == "initiation_legal":
+            templates = self._get_initiation_legal_templates()
+            procedure_type = "initiation_legal"
+            logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 2 ДОКУМЕНТОВ для инициирования банкротства юридического лица")
+        elif normalized_template == "initiation_legal_competition_absent":
+            templates = self._get_initiation_legal_templates(contest_type="absent")
+            procedure_type = "initiation_legal_competition_absent"
+            logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 2 ДОКУМЕНТОВ для инициирования ЮЛ (конкурсное, отсутствующий должник)")
+        elif normalized_template == "initiation_legal_competition_liquidation":
+            templates = self._get_initiation_legal_templates(contest_type="liquidation")
+            procedure_type = "initiation_legal_competition_liquidation"
+            logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 2 ДОКУМЕНТОВ для инициирования ЮЛ (конкурсное, ликвидируемый должник)")
+        elif normalized_template == "mortgage" or source_document_type_for_routing == "mortgage_claim":
+            templates = self._get_mortgage_templates()
+            procedure_type = "mortgage"
+            data["_skip_obligation_blocks"] = True
+            logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 1 ДОКУМЕНТА для ипотечного иска")
+        elif normalized_template == "observation_collateral" or source_document_type_for_routing == "observation_collateral":
+            # Шаблоны для наблюдения с залогом
+            if is_kfh:
+                templates = self._get_kfh_observation_templates(has_collateral=True)
+                procedure_type = "kfh_observation_collateral"
+                logger.info(
+                    f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для КФХ (наблюдение с залогом)"
+                )
+            else:
+                templates = self._get_templates_for_procedure("observation_collateral")
+                procedure_type = "observation_collateral"
+                logger.info(
+                    f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для наблюдения с залогом"
+                )
+        elif normalized_template == "competition_collateral" or source_document_type_for_routing == "competition_collateral":
+            # Шаблоны для конкурсного производства с залогом
+            templates = self._get_templates_for_procedure("competition_collateral")
+            procedure_type = "competition_collateral"
+            logger.info(
+                f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для конкурсного производства с залогом"
+            )
+        else:
+            procedure_type = (data.get('procedureType') or '').lower()
+            entity_type = str(data.get("entityType") or "").lower()
+            raw = (data.get('procedureTypeRaw') or '').lower()
+
+            # ПРИОРИТЕТ: Проверяем на процедуру "умерший" в первую очередь
+            if procedure_type == "deceased" or any(keyword in raw for keyword in ["умер", "умерший", "смерть", "смерти"]):
+                procedure_type = 'deceased'
+                templates = self._get_templates_for_procedure("deceased")
+                logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для процедуры: умерший")
+            else:
+                if entity_type in {"legal", "юридическое лицо", "юрлицо"} or is_kfh:
+                    # Для КФХ процедуры такие же, как у юрлица (наблюдение),
+                    # но сам должник остаётся физлицом.
+                    procedure_type = "observation"
+
+                if procedure_type not in {"restructuring", "realization", "observation"}:
+                    # Пытаемся определить по необработанному тексту, если доступен
+                    if 'реструктур' in raw:
+                        procedure_type = 'restructuring'
+                    elif 'реализац' in raw:
+                        procedure_type = 'realization'
+                    elif 'наблюден' in raw or entity_type in {"legal", "юридическое лицо", "юрлицо"} or is_kfh:
+                        procedure_type = 'observation'
+                    else:
+                        procedure_type = 'realization' if entity_type not in {"legal", "юридическое лицо", "юрлицо"} else 'observation'
+
+                if is_kfh and procedure_type == "observation":
+                    templates = self._get_kfh_observation_templates(has_collateral=False)
+                    logger.info(
+                        f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для КФХ (наблюдение, без залога)"
+                    )
+                    procedure_type = "kfh_observation"
+                else:
+                    templates = self._get_templates_for_procedure(procedure_type)
+                    logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для процедуры: {procedure_type}")
+        return templates, procedure_type
+
     def generate(self, template_type: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Генерирует комплект документов (реализация или реструктуризация) на основе извлеченных данных.
@@ -1507,195 +1704,10 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             use_standard_logic = 'templates' not in locals() or templates is None or len(templates) == 0
 
             if use_standard_logic:
-                # Стандартная логика (для обратной совместимости и для явного выбора template_type)
-                if normalized_template in {"observation_single", "observation_multiple"}:
-                    normalized_template = "observation"
-
-                # ПРИОРИТЕТ: Проверяем на процедуру "умерший" в первую очередь
-                if normalized_template == "deceased" or source_document_type == "deceased" or (data.get('procedureType') or '').lower() == "deceased" or any(keyword in (data.get('procedureTypeRaw') or '').lower() for keyword in ["умер", "умерший", "смерть", "смерти"]):
-                    # Шаблоны для процедуры "умерший" - ПРИОРИТЕТ перед всеми остальными
-                    templates = self._get_templates_for_procedure("deceased")
-                    procedure_type = "deceased"
-                    logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для процедуры: умерший")
-                elif normalized_template == "physical_restructuring_collateral" or source_document_type_for_routing == "physical_restructuring_collateral":
-                    # Шаблоны для ФЛ с залогом в реструктуризации
-                    templates = self._get_physical_restructuring_collateral_templates()
-                    procedure_type = "physical_restructuring_collateral"
-                    logger.info(
-                        f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для заявления ФЛ с залогом в реструктуризации"
-                    )
-                elif normalized_template == "physical_realization_collateral" or source_document_type_for_routing == "physical_realization_collateral":
-                    # Шаблоны для ФЛ с залогом в реализации
-                    templates = self._get_physical_collateral_templates()
-                    procedure_type = "physical_realization_collateral"
-                    logger.info(
-                        f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для заявления ФЛ с залогом в реализации"
-                    )
-                elif normalized_template in ["kfh_observation", "kfh_observation_collateral"] or \
-                     (is_kfh and (normalized_template in ["observation", "observation_single", "observation_multiple"] or
-                                  source_document_type_for_routing == "observation_collateral" or
-                                  source_document_type_for_routing in ["ip_enforcement_statement", "ip_enforcement_statement_collateral",
-                                                           "ip_enforcement_realization", "ip_enforcement_realization_collateral",
-                                                           "ip_enforcement_restructuring", "ip_enforcement_restructuring_collateral"])):
-                    # ПРИОРИТЕТ: КФХ шаблоны должны обрабатываться ПЕРЕД ИП шаблонами
-                    # ПРИОРИТЕТ: выбранный шаблон имеет приоритет над данными документа
-                    if normalized_template == "kfh_observation_collateral":
-                        # Пользователь явно выбрал шаблон с залогом
-                        has_collateral = True
-                    elif normalized_template == "kfh_observation":
-                        # Пользователь явно выбрал шаблон без залога
-                        has_collateral = False
-                    elif source_document_type_for_routing == "observation_collateral":
-                        # Тип документа указывает на залог
-                        has_collateral = True
-                    else:
-                        # Определяем по данным документа только если шаблон не был явно выбран
-                        has_collateral = (
-                            bool(data.get("ipCollateralContractNumber")) or
-                            bool(data.get("mortgageCollateralDescription1221"))
-                        )
-                    templates = self._get_kfh_observation_templates(has_collateral=has_collateral)
-                    procedure_type = "kfh_observation_collateral" if has_collateral else "kfh_observation"
-                    logger.info(
-                        f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для КФХ "
-                        f"({'наблюдение с залогом' if has_collateral else 'наблюдение, без залога'})"
-                    )
-                elif normalized_template == "ip_collection_collateral" or source_document_type_for_routing == "ip_collection_collateral":
-                    # Шаблоны для искового заявления о взыскании с ИП с залогом
-                    templates = self._get_ip_collection_collateral_templates()
-                    procedure_type = "ip_collection_collateral"
-                    logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП с залогом")
-                elif normalized_template == "ip_collection_collateral_auto" or source_document_type_for_routing == "ip_collection_collateral_auto":
-                    # Шаблоны для искового заявления о взыскании с ИП залог авто ([1221] — описание авто)
-                    templates = self._get_ip_collection_collateral_auto_templates()
-                    procedure_type = "ip_collection_collateral_auto"
-                    logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП залог авто")
-                elif normalized_template == "legal_collection" or source_document_type_for_routing == "legal_collection":
-                    # Шаблоны для искового заявления о взыскании с ЮЛ
-                    templates = self._get_legal_collection_templates()
-                    procedure_type = "legal_collection"
-                    logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ")
-                elif normalized_template == "legal_collection_collateral" or source_document_type_for_routing == "legal_collection_collateral":
-                    # Шаблоны для искового заявления о взыскании с ЮЛ с залогом
-                    templates = self._get_legal_collection_collateral_templates()
-                    procedure_type = "legal_collection_collateral"
-                    logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ с залогом")
-                elif normalized_template == "legal_collection_collateral_auto" or source_document_type_for_routing == "legal_collection_collateral_auto":
-                    # Шаблоны для искового заявления о взыскании с ЮЛ залог авто ([1221] — описание авто)
-                    templates = self._get_legal_collection_collateral_auto_templates()
-                    procedure_type = "legal_collection_collateral_auto"
-                    logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ залог авто")
-                elif normalized_template == "ip_collection" or source_document_type_for_routing == "ip_collection":
-                    # Шаблоны для искового заявления о взыскании с ИП
-                    templates = self._get_ip_collection_templates()
-                    procedure_type = "ip_collection"
-                    logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП")
-                elif normalized_template in ["ip_enforcement", "ip_enforcement_realization", "ip_enforcement_realization_collateral",
-                                             "ip_enforcement_restructuring", "ip_enforcement_restructuring_collateral"] or \
-                     source_document_type_for_routing in ["ip_enforcement_statement", "ip_enforcement_statement_collateral",
-                                             "ip_enforcement_realization", "ip_enforcement_realization_collateral",
-                                             "ip_enforcement_restructuring", "ip_enforcement_restructuring_collateral"]:
-                    # Определяем наличие залога
-                    if (
-                        normalized_template.endswith("_collateral")
-                        or source_document_type_for_routing in ["ip_enforcement_statement_collateral", "ip_enforcement_realization_collateral",
-                                                                "ip_enforcement_restructuring_collateral"]
-                    ):
-                        has_collateral_flag = True
-                    else:
-                        has_collateral_flag = str(data.get("ipHasCollateral", "")).strip().lower() in {"true", "1", "yes", "да"}
-
-                    # Определяем тип процедуры
-                    if "restructuring" in source_document_type_for_routing or normalized_template == "ip_enforcement_restructuring":
-                        ip_procedure_type = "restructuring"
-                    else:
-                        ip_procedure_type = "realization"  # По умолчанию реализация
-
-                    templates = self._get_ip_enforcement_templates(has_collateral_flag, ip_procedure_type)
-                    procedure_type = source_document_type_for_routing or normalized_template or "ip_enforcement"
-                    logger.info(
-                        f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для заявления ИП "
-                        f"({ip_procedure_type}, залог: {'есть' if has_collateral_flag else 'нет'})"
-                    )
-                elif normalized_template == "initiation_physical" or source_document_type_for_routing == "initiation_physical":
-                    templates = self._get_initiation_physical_templates()
-                    procedure_type = "initiation_physical"
-                    data["_skip_obligation_blocks"] = True
-                    logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 3 ДОКУМЕНТОВ для инициирования банкротства физического лица")
-                elif normalized_template == "initiation_legal" or source_document_type_for_routing == "initiation_legal":
-                    templates = self._get_initiation_legal_templates()
-                    procedure_type = "initiation_legal"
-                    logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 2 ДОКУМЕНТОВ для инициирования банкротства юридического лица")
-                elif normalized_template == "initiation_legal_competition_absent":
-                    templates = self._get_initiation_legal_templates(contest_type="absent")
-                    procedure_type = "initiation_legal_competition_absent"
-                    logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 2 ДОКУМЕНТОВ для инициирования ЮЛ (конкурсное, отсутствующий должник)")
-                elif normalized_template == "initiation_legal_competition_liquidation":
-                    templates = self._get_initiation_legal_templates(contest_type="liquidation")
-                    procedure_type = "initiation_legal_competition_liquidation"
-                    logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 2 ДОКУМЕНТОВ для инициирования ЮЛ (конкурсное, ликвидируемый должник)")
-                elif normalized_template == "mortgage" or source_document_type_for_routing == "mortgage_claim":
-                    templates = self._get_mortgage_templates()
-                    procedure_type = "mortgage"
-                    data["_skip_obligation_blocks"] = True
-                    logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 1 ДОКУМЕНТА для ипотечного иска")
-                elif normalized_template == "observation_collateral" or source_document_type_for_routing == "observation_collateral":
-                    # Шаблоны для наблюдения с залогом
-                    if is_kfh:
-                        templates = self._get_kfh_observation_templates(has_collateral=True)
-                        procedure_type = "kfh_observation_collateral"
-                        logger.info(
-                            f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для КФХ (наблюдение с залогом)"
-                        )
-                    else:
-                        templates = self._get_templates_for_procedure("observation_collateral")
-                        procedure_type = "observation_collateral"
-                        logger.info(
-                            f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для наблюдения с залогом"
-                        )
-                elif normalized_template == "competition_collateral" or source_document_type_for_routing == "competition_collateral":
-                    # Шаблоны для конкурсного производства с залогом
-                    templates = self._get_templates_for_procedure("competition_collateral")
-                    procedure_type = "competition_collateral"
-                    logger.info(
-                        f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для конкурсного производства с залогом"
-                    )
-                else:
-                    procedure_type = (data.get('procedureType') or '').lower()
-                    entity_type = str(data.get("entityType") or "").lower()
-                    raw = (data.get('procedureTypeRaw') or '').lower()
-
-                    # ПРИОРИТЕТ: Проверяем на процедуру "умерший" в первую очередь
-                    if procedure_type == "deceased" or any(keyword in raw for keyword in ["умер", "умерший", "смерть", "смерти"]):
-                        procedure_type = 'deceased'
-                        templates = self._get_templates_for_procedure("deceased")
-                        logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для процедуры: умерший")
-                    else:
-                        if entity_type in {"legal", "юридическое лицо", "юрлицо"} or is_kfh:
-                            # Для КФХ процедуры такие же, как у юрлица (наблюдение),
-                            # но сам должник остаётся физлицом.
-                            procedure_type = "observation"
-
-                        if procedure_type not in {"restructuring", "realization", "observation"}:
-                            # Пытаемся определить по необработанному тексту, если доступен
-                            if 'реструктур' in raw:
-                                procedure_type = 'restructuring'
-                            elif 'реализац' in raw:
-                                procedure_type = 'realization'
-                            elif 'наблюден' in raw or entity_type in {"legal", "юридическое лицо", "юрлицо"} or is_kfh:
-                                procedure_type = 'observation'
-                            else:
-                                procedure_type = 'realization' if entity_type not in {"legal", "юридическое лицо", "юрлицо"} else 'observation'
-
-                        if is_kfh and procedure_type == "observation":
-                            templates = self._get_kfh_observation_templates(has_collateral=False)
-                            logger.info(
-                                f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для КФХ (наблюдение, без залога)"
-                            )
-                            procedure_type = "kfh_observation"
-                        else:
-                            templates = self._get_templates_for_procedure(procedure_type)
-                            logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для процедуры: {procedure_type}")
+                templates, procedure_type = self._resolve_standard_templates(
+                    data, normalized_template, source_document_type,
+                    source_document_type_for_routing, is_kfh,
+                )
             # Если templates не был установлен выше (стандартная логика), он должен быть установлен в блоке else
             if 'templates' not in locals() or templates is None:
                 logger.error("❌ Не удалось определить шаблоны для генерации")
