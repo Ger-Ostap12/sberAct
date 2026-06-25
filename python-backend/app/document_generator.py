@@ -199,13 +199,11 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
 
         return cleaned
 
-    def replace_document_data(self, doc: Document, data: Dict[str, Any]):
-        """
-        Заменяет данные в существующем документе, используя нумерацию [1], [2], [3] и т.д.
-
-        Args:
-            doc: Документ для замены
-            data: Данные для замены
+    def _prepare_replacement_data(self, doc: Document, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Подготовка cleaned_data для подстановки: очистка от звёздочек,
+        нормализация ЮЛ/КФХ/ИП, адреса, дат, синхронизация и форматирование сумм,
+        поля промежуточных актов и третьих лиц. Возвращает cleaned_data.
+        Вынесено из replace_document_data без изменения поведения (gen-golden).
         """
         logger.info("Заменяем данные в документе")
         logger.info(f"Данные для замены: {data}")
@@ -612,6 +610,19 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         elif cleaned_data.get('thirdPartyName'):
             cleaned_data['thirdPartyName25'] = cleaned_data.get('thirdPartyName')
             logger.info(f"📝 Установлено поле thirdPartyName25 (маркер [25]) из thirdPartyName: {cleaned_data.get('thirdPartyName')[:100]}...")
+        return cleaned_data
+
+    def replace_document_data(self, doc: Document, data: Dict[str, Any]):
+        """
+        Заменяет данные в существующем документе, используя нумерацию [1], [2], [3] и т.д.
+
+        Args:
+            doc: Документ для замены
+            data: Данные для замены
+        """
+        cleaned_data = self._prepare_replacement_data(doc, data)
+        # is_ip нужен ниже по методу; пролог его не возвращает — пересчёт из cleaned_data
+        is_ip = "ip_enforcement" in (cleaned_data.get("sourceDocumentType") or "").lower()
 
         # Маппинг полей из извлеченных данных на номера в шаблоне
         field_mapping = {
