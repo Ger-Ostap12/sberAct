@@ -1321,7 +1321,19 @@ class DocumentGenerator:
         has_state_duty_17 = bool(str(cleaned_data.get("loanStateDuty17") or "").strip())
 
         removed_count = 0
-        for placeholder in all_placeholders:
+        # ВАЖНО: _collect_placeholders возвращает set — порядок итерации зависит от
+        # рандомизации хеша строк (PYTHONHASHSEED) и менялся бы между процессами.
+        # Удаление маркера с контекстом затрагивает соседнюю пунктуацию, поэтому от
+        # порядка зависел итоговый текст (висячая «.» при пустых полях залога).
+        # Сортируем (числовые маркеры — по значению, спецмаркеры вроде [DATE] — после),
+        # чтобы вывод был детерминирован независимо от hashseed.
+        def _placeholder_order(ph: str):
+            m = re.match(r'\[(\d+(?:\.\d+)*)\]', ph)
+            if m:
+                return (0, [int(p) for p in m.group(1).split('.')], ph)
+            return (1, [], ph)
+
+        for placeholder in sorted(all_placeholders, key=_placeholder_order):
             # Маркеры обязательств (100-129) не пропускаем: если они остались после replace_obligations_data,
             # значит данные не подтянулись — удаляем маркер вместе с контекстом (фраза «кредитный договор от [100] № …» и т.п.)
             match = re.match(r'\[(\d+)\]', placeholder)
