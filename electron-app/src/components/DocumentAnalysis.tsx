@@ -2221,6 +2221,31 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                     </Box>
                   </Grid>
 
+                  {/* Сверка финблока: Общая сумма = осн.долг + проценты + неустойка +
+                      штрафные санкции + ссудная госпошлина + комиссия банка. */}
+                  <Grid item xs={12}>
+                    {(() => {
+                      const num = (v?: string) => parseFloat((v ?? '').toString().replace(/[\s  ]/g, '').replace(',', '.')) || 0;
+                      const sum = num(editedFields.principalDebt || editedFields.loanDebt)
+                        + num(editedFields.interest)
+                        + num(editedFields.forfeit)
+                        + num(editedFields.penalties)
+                        + num(editedFields.loanStateDuty17)
+                        + num(editedFields.bankCommission);
+                      const total = num(editedFields.totalDebt);
+                      const diff = Math.round((total - sum) * 100) / 100;
+                      const ok = Math.abs(diff) < 0.01;
+                      const fmt = (n: number) => n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      return (
+                        <Typography variant="body2" sx={{ mt: 1, fontWeight: 500, color: ok ? 'success.main' : 'error.main' }}>
+                          {ok
+                            ? '✓ Расчеты коррекны'
+                            : `⚠ Не сходится: Σ компонентов = ${fmt(sum)}, Общая сумма = ${fmt(total)} (расхождение ${fmt(diff)}). Проверьте числа или документ.`}
+                        </Typography>
+                      );
+                    })()}
+                  </Grid>
+
                   <Grid item xs={12} sm={6}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата ПП депозит:</Typography>
