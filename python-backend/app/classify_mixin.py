@@ -367,6 +367,7 @@ class ClassifyMixin:
         both_names_lower = (debtor_name_raw + " " + applicant_name_raw).lower()
         inn_value = re.sub(r"\D", "", str(fields.get("inn") or ""))
         ogrn_value = re.sub(r"\D", "", str(fields.get("ogrn") or ""))
+        ogrnip_value = re.sub(r"\D", "", str(fields.get("ogrnip") or ""))
         company_inn_value = re.sub(r"\D", "", str(fields.get("companyInn") or ""))
         snils_value = re.sub(r"\D", "", str(fields.get("snils") or ""))
 
@@ -399,8 +400,12 @@ class ClassifyMixin:
         if fields.get("legalShortName") and not has_fio:
             return "legal"
 
-        # 3. ИП — маркер «ИП» / «индивидуальный предприниматель» в любом из имён должника
+        # 3. ИП — маркер «ИП» / «индивидуальный предприниматель» в любом из имён
+        # должника, ЛИБО наличие ОГРНИП (его имеют только ИП), даже если в имени
+        # должника лишь ФИО без пометки «ИП».
         if re.search(r"\bип\b", both_names_lower) or "индивидуальн" in both_names_lower:
+            return "ip"
+        if len(ogrnip_value) == 15:
             return "ip"
 
         # 4. ФЛ — ФИО или ИНН 12 / СНИЛС; приоритет над 10-значным ИНН (который может быть от кредитора)

@@ -2095,7 +2095,7 @@
    }
   ],
   "documentType": "ip_enforcement_restructuring",
-  "entityType": "individual",
+  "entityType": "ip",
   "fields": {
    "applicantAddress": "344012,РОСТОВСКАЯ ОБЛАСТЬ,ГОРОД РОСТОВ-НА-ДОНУ, УЛИЦА ЮФИМЦЕВА, 10/1, 68",
    "applicantName": "БАЗОВ ГЕОРГИЙ НИКОЛАЕВИЧ",
@@ -2117,7 +2117,7 @@
    "creditorOgrn": "1027700132195",
    "debtAmount": "21 681 376,81",
    "debtorName": "БАЗОВ ГЕОРГИЙ НИКОЛАЕВИЧ",
-   "entityType": "individual",
+   "entityType": "ip",
    "forfeit": "237 556,64",
    "forfeit15": "237 556,64",
    "inn": "616506698400",
@@ -2147,7 +2147,7 @@
   "rawTextSha": "d212b4083a46c80bd9018c43b33ab410f3dff3910ead083c074111c8b07676ac",
   "recommendedActs": {
    "collateralOption": "no_collateral",
-   "entityType": "individual",
+   "entityType": "ip",
    "recommendedActIds": [
     "final_rtk_inclusion",
     "acceptance_definition",
@@ -2166,12 +2166,12 @@
     "birthPlace": "РОСТОВ-НА-ДОНУ",
     "inn": "616270139617",
     "name": "ПОЛЯКОВ ДМИТРИЙ ВЛАДИМИРОВИЧ",
-    "ogrnip": "",
+    "ogrnip": "320619600092709",
     "snils": ""
    }
   ],
   "documentType": "rtk_application",
-  "entityType": "individual",
+  "entityType": "ip",
   "fields": {
    "applicantAddress": "РОСТОВСКАЯ ОБЛАСТЬ, ГОРОДРОСТОВ-НА-ДОНУ, УЛИЦА 3-Я КОЛЬЦЕВАЯ, 44, 11",
    "applicantName": "ПОЛЯКОВ ДМИТРИЙ ВЛАДИМИРОВИЧ",
@@ -2193,7 +2193,7 @@
    "debtAmount": "9 313 520,00",
    "debtSnapshotDate88": "16.04.2026",
    "debtorName": "ПОЛЯКОВ ДМИТРИЙ ВЛАДИМИРОВИЧ",
-   "entityType": "individual",
+   "entityType": "ip",
    "forfeit": "132 283,43",
    "forfeit15": "132 283,43",
    "inn": "616270139617",
@@ -2217,6 +2217,7 @@
      "penalty0071Value": 0.0
     }
    ],
+   "ogrnip": "320619600092709",
    "principalDebt": "7 157 894,72",
    "principalDebt13": "7 157 894,72",
    "registrationDate": "20.06.1991",
@@ -2250,7 +2251,7 @@
   "rawTextSha": "7426a0b96940c0fabecfbf8c7971baf807e57c12857db1d0d21affd33ae101ad",
   "recommendedActs": {
    "collateralOption": "no_collateral",
-   "entityType": "individual",
+   "entityType": "ip",
    "recommendedActIds": [
     "final_rtk_inclusion",
     "acceptance_definition",

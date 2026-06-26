@@ -3,7 +3,7 @@ import logging
 import re
 from typing import Any, Dict, List, Optional
 
-from requisites_validation import is_valid_inn
+from requisites_validation import is_valid_inn, is_valid_ogrnip
 from fio_detector import (
     extract_debtor_name,
     is_person_name,
@@ -107,6 +107,17 @@ class PartiesMixin:
                         ogrn_match = re.search(r"([0-9\s]{12,15})\s+ОГРНИП", debtor_block, re.IGNORECASE)
                         if ogrn_match:
                             logger.info(f"Найден ОГРНИП паттерн (число перед): {ogrn_match.group(1)}")
+                    if not ogrn_match:
+                        # Фолбэк: ОГРНИП должника может стоять вне блока «Должник:»
+                        # (в теле заявления при повторном упоминании). Ищем по всему
+                        # тексту валидный 15-значный ОГРНИП.
+                        for cand in re.finditer(r"ОГРНИП[:\s]*([0-9][0-9\s]{13,20})", text, re.IGNORECASE):
+                            digits = re.sub(r"\D", "", cand.group(1))[:15]
+                            if len(digits) == 15 and is_valid_ogrnip(digits):
+                                extracted_fields["ogrnip"] = digits
+                                found_value = True
+                                logger.info(f"✅ Extracted ogrnip (фолбэк по тексту, 15 цифр): {digits}")
+                                break
 
                 # ОГРН (13 цифр, ЮЛ) ищем ТОЛЬКО для поля ogrn. Для ogrnip (15 цифр, ИП)
                 # НЕ откатываемся на «ОГРН» — иначе 13-значный ОГРН юрлица ошибочно
