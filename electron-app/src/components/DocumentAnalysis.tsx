@@ -602,7 +602,8 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
             name: pf.applicantName || pf.debtorName || '',
             address: pf.applicantAddress || '',
             inn: pf.inn || pf.companyInn || '',
-            ogrnip: pf.ogrnip || pf.ogrn || '',
+            ogrn: pf.ogrn || '',
+            ogrnip: pf.ogrnip || '',
             birthDate: pf.birthDate || '',
             birthPlace: pf.birthPlace || '',
             snils: pf.snils || ''
@@ -844,14 +845,14 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   // --- Должники (со-ответчики): динамический список ---
   const DEBTOR_FLAT_MAP: Record<string, string> = {
     name: 'applicantName', address: 'applicantAddress', inn: 'inn',
-    ogrnip: 'ogrnip', birthDate: 'birthDate', birthPlace: 'birthPlace', snils: 'snils'
+    ogrn: 'ogrn', ogrnip: 'ogrnip', birthDate: 'birthDate', birthPlace: 'birthPlace', snils: 'snils'
   };
 
   const addDebtor = () => {
     if (!analysisResult) return;
     const newDebtor: Debtor = {
       id: `debtor-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      name: '', address: '', inn: '', ogrnip: '', birthDate: '', birthPlace: '', snils: ''
+      name: '', address: '', inn: '', ogrn: '', ogrnip: '', birthDate: '', birthPlace: '', snils: ''
     };
     const debtors = [...(analysisResult.debtors || []), newDebtor];
     setAnalysisResult({ ...analysisResult, debtors });
@@ -1771,46 +1772,58 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                           />
                         </Box>
                       </Grid>
-                      <Grid item xs={12}>
-                        <Box sx={LABEL_OVERLAP_BOX}>
-                          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ОГРНИП:</Typography>
-                          <TextField
-                            fullWidth
-                            value={debtor.ogrnip || ''}
-                            onChange={(e) => updateDebtor(index, 'ogrnip', e.target.value)}
-                            size="small"
-                            margin="dense"
-                          />
-                        </Box>
-                      </Grid>
-                      <Grid item xs={12}>
-                        <Box sx={LABEL_OVERLAP_BOX}>
-                          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Город/место рождения:</Typography>
-                          <TextField
-                            fullWidth
-                            value={debtor.birthPlace ?? ''}
-                            multiline
-                            onChange={(e) => updateDebtor(index, 'birthPlace', e.target.value)}
-                            size="small"
-                            margin="dense"
-                            placeholder="например: г. Москва"
-                          />
-                        </Box>
-                      </Grid>
-                      <Grid item xs={12}>
-                        <Box sx={LABEL_OVERLAP_BOX}>
-                          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата рождения:</Typography>
-                          <TextField
-                            fullWidth
-                            type="date"
-                            value={toInputDate(debtor.birthDate)}
-                            onChange={(e) => updateDebtor(index, 'birthDate', fromInputDate(e.target.value))}
-                            size="small"
-                            margin="dense"
-                            InputLabelProps={{ shrink: true }}
-                          />
-                        </Box>
-                      </Grid>
+                      {/* Реквизит должника по типу лица: ФЛ — нет ОГРН/ОГРНИП;
+                          ИП — ОГРНИП; ЮЛ/КФХ (и неопределённый тип) — ОГРН. */}
+                      {entityType !== 'individual' && (
+                        <Grid item xs={12}>
+                          <Box sx={LABEL_OVERLAP_BOX}>
+                            <Typography variant="body2" sx={LABEL_OVERLAP_SX}>
+                              {entityType === 'ip' ? 'ОГРНИП:' : 'ОГРН:'}
+                            </Typography>
+                            <TextField
+                              fullWidth
+                              value={(entityType === 'ip' ? debtor.ogrnip : debtor.ogrn) || ''}
+                              onChange={(e) => updateDebtor(index, entityType === 'ip' ? 'ogrnip' : 'ogrn', e.target.value)}
+                              size="small"
+                              margin="dense"
+                            />
+                          </Box>
+                        </Grid>
+                      )}
+                      {/* Город/место рождения — только для физлица (ЮЛ/ИП/КФХ не имеют). */}
+                      {entityType === 'individual' && (
+                        <Grid item xs={12}>
+                          <Box sx={LABEL_OVERLAP_BOX}>
+                            <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Город/место рождения:</Typography>
+                            <TextField
+                              fullWidth
+                              value={debtor.birthPlace ?? ''}
+                              multiline
+                              onChange={(e) => updateDebtor(index, 'birthPlace', e.target.value)}
+                              size="small"
+                              margin="dense"
+                              placeholder="например: г. Москва"
+                            />
+                          </Box>
+                        </Grid>
+                      )}
+                      {/* Дата рождения — для всех, кроме юрлица. */}
+                      {entityType !== 'legal' && (
+                        <Grid item xs={12}>
+                          <Box sx={LABEL_OVERLAP_BOX}>
+                            <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата рождения:</Typography>
+                            <TextField
+                              fullWidth
+                              type="date"
+                              value={toInputDate(debtor.birthDate)}
+                              onChange={(e) => updateDebtor(index, 'birthDate', fromInputDate(e.target.value))}
+                              size="small"
+                              margin="dense"
+                              InputLabelProps={{ shrink: true }}
+                            />
+                          </Box>
+                        </Grid>
+                      )}
                     </Grid>
                   </Card>
                 ))}

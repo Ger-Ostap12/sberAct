@@ -26,6 +26,7 @@ export interface Debtor {
   name: string;
   address?: string;
   inn?: string;
+  ogrn?: string;
   ogrnip?: string;
   birthDate?: string;
   birthPlace?: string;
