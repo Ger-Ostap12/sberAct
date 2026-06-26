@@ -217,6 +217,13 @@ class PartiesMixin:
 
         if debtor_block:
             debtor_block = debtor_block.replace('\u202f', ' ').replace('\xa0', ' ')
+            # Первичная попытка — единый надёжный многострочный сборщик
+            # (ловит перенос строки, отсекает префикс ОГРН/ИНН и хвост-мусор).
+            robust_addr = self._collect_block_address(debtor_block)
+            if robust_addr:
+                extracted_fields[field_name] = robust_addr
+                logger.info(f"✅ Extracted applicantAddress (robust): {robust_addr}")
+                return True
             addr_match = re.search(
                 # Берем только текущую строку после маркера адреса,
                 # чтобы не захватывать дальнейший текст иска.
@@ -259,13 +266,18 @@ class PartiesMixin:
             debtor_block = debtor_block_match.group(1)
             debtor_block = debtor_block.replace('\u202f', ' ').replace('\xa0', ' ')
 
+            # Единый надёжный сбор адреса (перенос строк, отсечение префикса ОГРН/ИНН).
+            robust_addr = self._collect_block_address(debtor_block)
+            if robust_addr:
+                extracted_fields["applicantAddress"] = robust_addr
+
             # Извлекаем юридический адрес, если он есть в блоке должника
             address_match = re.search(
                 r"юридический\s+адрес[:\s]*([^\n\r]+(?:[\n\r]+[^\n\r]+)*)",
                 debtor_block,
                 re.IGNORECASE
             )
-            if address_match:
+            if not extracted_fields.get("applicantAddress") and address_match:
                 address_text = address_match.group(1)
                 address_lines = re.split(r"[\n\r]+", address_text)
                 cleaned_lines = []
@@ -281,7 +293,7 @@ class PartiesMixin:
 
                 if cleaned_lines:
                     extracted_fields["applicantAddress"] = ", ".join(cleaned_lines)
-            else:
+            elif not extracted_fields.get("applicantAddress"):
                 # fallback: для физических лиц ищем адрес регистрации/проживания в блоке должника
                 # Сначала пробуем вариант с индексом
                 residence_match = re.search(
@@ -423,6 +435,109 @@ class PartiesMixin:
         normalized = ", ".join(addr_parts)
         normalized = re.sub(r"\s+", " ", normalized).strip(" ,.;:-")
         return normalized or None
+
+    # Маркеры, после которых адрес заведомо закончился (реквизиты/новые секции).
+    _ADDR_STOP_TOKENS = [
+        "инн", "огрн", "огрнип", "кпп", "снилс", "паспорт", "телефон",
+        "e-mail", "email", "дата рождения", "место рождения", "д.р", "д/р",
+        "представитель", "финансовый управляющий", "временный управляющий",
+        "арбитражный управляющий", "конкурсный управляющий", "заявление",
+        "исковое", "просит суд", "размер требований", "сумма требований",
+        "цена иска", "госпошлина", "заинтересованные лица", "заинтересованное лицо",
+        "третьи лица", "третье лицо", "третьих лиц", "заявитель",
+        "на №", "о направлении", "заемщик", "заёмщик",
+    ]
+
+    def _collect_block_address(self, block_text):
+        """Единый надёжный сбор адреса должника из его блока.
+
+        1) ищет метку адреса (юридический адрес / адрес регистрации / место
+           нахождения / место жительства / адрес прописки / просто «адрес»),
+           берёт хвост строки ПОСЛЕ метки (отсекая префикс ОГРН/ИНН, если метка
+           стоит в середине строки), и отбрасывает «прилипшие» служебные слова;
+        2) если метки нет — стартует с «голой» строки, начинающейся с индекса (6 цифр);
+        3) добавляет последующие строки до служебного маркера/пустой строки,
+           обрезая строку по первому встреченному маркеру; строки склеиваются
+           ПРОБЕЛОМ (сохраняет точки «д.», «ЗД.» и не плодит ложные запятые).
+        """
+        if not block_text:
+            return None
+        block_text = block_text.replace(" ", " ").replace("\xa0", " ")
+        lines = [ln.strip() for ln in re.split(r"[\r\n]+", block_text)]
+
+        # Метки адреса; зазор между словами необязателен (бывает «Адресрегистрации:»).
+        label_re = re.compile(
+            r"(?:юридическ\w*\s*адрес|адрес\w*\s*регистрации|адрес\w*\s*прописки|"
+            r"адрес\s*мест\w*\s*нахождени\w*|мест\w*\s*нахождени\w*|"
+            r"мест\w*\s*жительства|адрес)\s*:?\s*",
+            re.IGNORECASE,
+        )
+        # Прилипшие служебные слова в начале хвоста (когда сработала голая метка «адрес»).
+        lead_junk_re = re.compile(
+            r"^\s*(?:регистрации|прописки|нахождения|жительства|"
+            r"мест\w*\s*нахождени\w*|мест\w*\s*жительства)\s*:?\s*",
+            re.IGNORECASE,
+        )
+
+        def cut_at_stop(s):
+            """(строка_до_первого_маркера, встретился_ли_маркер). Точки сохраняем."""
+            s = re.sub(r"\[[0-9.]+\]", "", s)
+            low = s.lower()
+            idxs = [low.find(t) for t in self._ADDR_STOP_TOKENS if low.find(t) != -1]
+            if idxs:
+                return s[:min(idxs)].strip(" ,;:\t"), True
+            return s.strip(" ,;:\t"), False
+
+        start_idx, first_tail = -1, ""
+        for i, line in enumerate(lines):
+            # Перебираем ВСЕ метки адреса в строке: на раскладке «Адрес: ИНН…,
+            # место нахождения: 346404…» первая метка «Адрес:» упирается в ИНН —
+            # тогда берём следующую («место нахождения»), дающую реальный адрес.
+            for m in label_re.finditer(line):
+                tail = line[m.end():]
+                # Отрезаем повторные/вложенные ярлыки и прилипшие служебные слова.
+                prev = None
+                while prev != tail:
+                    prev = tail
+                    mm = label_re.match(tail)
+                    if mm:
+                        tail = tail[mm.end():]
+                    tail = lead_junk_re.sub("", tail)
+                tc, _ = cut_at_stop(tail)
+                if tc:
+                    start_idx, first_tail = i, tail
+                    break
+            if start_idx != -1:
+                break
+        if start_idx == -1:
+            for i, line in enumerate(lines):
+                if re.match(r"^\d{6}[,\s]", line):
+                    start_idx, first_tail = i, line
+                    break
+        if start_idx == -1:
+            return None
+
+        parts = []
+        tail_clean, stopped = cut_at_stop(first_tail)
+        if tail_clean:
+            parts.append(tail_clean)
+        if not stopped:
+            for nxt in lines[start_idx + 1:start_idx + 7]:
+                if not nxt:
+                    break
+                cleaned, stopped = cut_at_stop(nxt)
+                if not cleaned:
+                    break
+                parts.append(cleaned)
+                if stopped:
+                    break
+        if not parts:
+            return None
+        addr = " ".join(parts)                      # склейка строк пробелом
+        addr = re.sub(r"\s+", " ", addr)
+        addr = re.sub(r"(?:\s*,\s*){2,}", ", ", addr)   # «,,» / «, ,» -> «, »
+        addr = re.sub(r"\s*,\s*", ", ", addr).strip(" ,;:\t")
+        return addr or None
 
     def _finalize_debtor_person_requisites(self, extracted_fields, text):
         """Авторитетные реквизиты должника-физлица из его записи (дата/место рождения, ИНН, ОГРН/ОГРНИП, СНИЛС). Возвращает details для последующего dedup. Вынесено из analyze."""
@@ -650,13 +765,28 @@ class PartiesMixin:
         if not debtor or _norm(debtor) == _norm(creditor):
             return  # нет валидного иного должника — не трогаем, чтобы не навредить
 
-        extracted_fields["applicantName"] = debtor
         entity_type = (extracted_fields.get("entityType") or "").lower()
+        display_name = debtor
+        if entity_type == "legal":
+            # Краткое имя пришло из debtorName/legalShortName (без ОПФ). Для ЮЛ
+            # восстанавливаем полную форму с ОПФ и кавычками («ООО «Форте…»»),
+            # если она присутствует в тексте. Сначала ищем краткую ОПФ (ООО/АО/…).
+            core = re.escape(re.sub(r'[«»"]', '', debtor).strip())
+            mm = re.search(r"(?:ООО|ОАО|ПАО|ЗАО|АО)\s*«?" + core + r"»?", text, re.IGNORECASE)
+            if not mm:
+                mm = re.search(
+                    r"Обществ\w*\s+с\s+ограниченной\s+ответственностью\s*«?" + core + r"»?",
+                    text, re.IGNORECASE,
+                )
+            if mm:
+                display_name = re.sub(r"\s+", " ", mm.group(0)).strip()
+
+        extracted_fields["applicantName"] = display_name
         if entity_type == "legal":
             # Организации пословно не склоняем — все падежи равны наименованию.
             for k in ("applicantNameGenitive", "applicantNameDative",
                       "applicantNameInstrumental", "applicantNameAccusative"):
-                extracted_fields[k] = debtor
+                extracted_fields[k] = display_name
         else:
             for key, conv in (
                 ("applicantNameGenitive", self._convert_name_to_genitive),
@@ -809,6 +939,32 @@ class PartiesMixin:
 
     def _cleanup_extracted_fields(self, extracted_fields, text):
         """Пост-очистка извлечённых полей: срез метки из адреса должника, валидация имени/реквизитов третьего лица, фолбэк и нормализация названия суда. Вынесено из analyze."""
+        # ИНН/СНИЛС арбитражного управляющего не должны числиться за должником
+        # (раскладка «…управляющий: ФИО (ИНН …, СНИЛС …) адрес»: реквизиты управляющего
+        # стоят рядом и утекают в поля должника).
+        _digits = lambda v: re.sub(r"\D", "", str(v or ""))
+        mgr_inn = _digits(extracted_fields.get("managerInn"))
+        if mgr_inn and _digits(extracted_fields.get("inn")) == mgr_inn:
+            extracted_fields.pop("inn", None)
+            extracted_fields.pop("companyInn", None)
+        mgr_blk = re.search(
+            r"(?:финансов|временн|конкурсн|арбитражн)\w+\s+управляющ[^\n]*\(([^)]*)\)",
+            text, re.IGNORECASE,
+        )
+        if mgr_blk:
+            ms = re.search(r"СНИЛС[:\s]*([\d \-]{11,16})", mgr_blk.group(1), re.IGNORECASE)
+            if ms and _digits(ms.group(1)) and _digits(extracted_fields.get("snils")) == _digits(ms.group(1)):
+                extracted_fields.pop("snils", None)
+
+        # Баланс кавычек в наименованиях: ранние .strip(' «»"') срезают закрывающую
+        # «»», когда ««» — внутренняя (ООО «Азбука» -> ООО «Азбука). Дописываем «»».
+        for _nk in ("applicantName", "debtorName", "legalShortName",
+                    "applicantNameGenitive", "applicantNameDative",
+                    "applicantNameInstrumental", "applicantNameAccusative"):
+            _v = extracted_fields.get(_nk)
+            if _v and _v.count("«") > _v.count("»"):
+                extracted_fields[_nk] = _v + "»"
+
         # Срезаем ведущую метку из адреса должника («Адрес регистрации: 867624…» →
         # «867624…»), если она попала в значение при извлечении.
         addr_val = extracted_fields.get("applicantAddress")
@@ -917,6 +1073,7 @@ class PartiesMixin:
         for src_key, flat_key in (
             ("address", "applicantAddress"),
             ("inn", "inn"),
+            ("ogrn", "ogrn"),
             ("ogrnip", "ogrnip"),
             ("birthDate", "birthDate"),
             ("birthPlace", "birthPlace"),
@@ -935,6 +1092,7 @@ class PartiesMixin:
             "name": fields.get("applicantName") or fields.get("debtorName") or "",
             "address": fields.get("applicantAddress") or "",
             "inn": fields.get("inn") or fields.get("companyInn") or "",
+            "ogrn": fields.get("ogrn") or "",
             "ogrnip": fields.get("ogrnip") or "",
             "birthDate": fields.get("birthDate") or "",
             "birthPlace": fields.get("birthPlace") or "",

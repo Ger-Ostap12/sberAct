@@ -48,6 +48,12 @@ def _is_excluded(rel: str) -> bool:
         return True
     if rel.startswith("dataset/") and rel.lower().endswith(".pdf"):
         return True
+    # Заявления о взыскании — вне задачи (не банкротные), в эталоне не держим.
+    if "взыскан" in rel.lower():
+        return True
+    # Синтетические болванки «БМ …» (намеренно «трудные» фейковые данные) — не эталон.
+    if os.path.basename(rel).startswith("БМ"):
+        return True
     return False
 
 

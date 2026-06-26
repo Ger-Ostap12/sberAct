@@ -240,6 +240,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # окончательным для неустойки/штрафов/госпошлин/дат ПП/итога.
             self._normalize_financial_block(extracted_fields, text)
 
+            # Финансы из просительной части (суммы по обязательствам) — перекрывают
+            # обычную нормализацию, если в «просим суд: …включить…» найдены суммы.
+            self._apply_prayer_finances(extracted_fields, text)
+
             # Ранее вынесенное решение другого суда (взыскание до банкротства).
             prior_decision = self._extract_prior_court_decision(text)
             if prior_decision:
@@ -658,12 +662,25 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         # Фолбэк: адрес без метки — первая строка блока кредитора, начинающаяся
         # с почтового индекса (6 цифр). Блок уже обрезан по началу секции должника,
         # поэтому это адрес именно кредитора. Почтовый/фактический адрес исключаем.
-        for line in block.split("\n"):
-            line = line.strip()
+        lines = [ln.strip() for ln in block.split("\n")]
+        for i, line in enumerate(lines):
             if re.match(r"^\d{6}[,\s]", line) and not re.match(
                 r"^\d{6}[,\s].*(?:почтов|фактическ|а/я|абонентск)", line, re.IGNORECASE
             ):
-                addr = self._clean_creditor_address(self.clean_extracted_value(line))
+                parts = [line]
+                # Дособираем продолжение адреса: иногда между строками адреса
+                # вклинивается «Исх. №…/Дата…» — такие строки пропускаем, а строки
+                # с адресными токенами (наб/ул/д./стр/…) приклеиваем.
+                for nxt in lines[i + 1:i + 5]:
+                    if not nxt:
+                        break
+                    if re.match(r"^(?:Исх\b|Дата\b|№|тел|e-?mail|на\s+№)", nxt, re.IGNORECASE):
+                        continue
+                    if re.search(r"(?:\bнаб\b|\bул\b|улиц|\bд\.|\bстр\b|\bпер\b|пр-?кт|проспект|шоссе|корп|\bпом\b|\bкв\b|\bоф\b|\bзд\b|литер)", nxt, re.IGNORECASE):
+                        parts.append(nxt)
+                        continue
+                    break
+                addr = self._clean_creditor_address(self.clean_extracted_value(" ".join(parts)))
                 if addr and 10 <= len(addr) <= 200:
                     return addr
         return None
@@ -687,7 +704,16 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         line_end = end_idx if end_idx != -1 else min(len(text), match.end() + 150)
         extended_line = text[line_start:line_end].strip()
         if len(extended_line) > len(address_clean):
-            return self.clean_extracted_value(extended_line)
+            extended = self.clean_extracted_value(extended_line)
+            # Расширение до всей строки могло вернуть ведущий ярлык
+            # («Юридический адрес: …»). Отрезаем его.
+            extended = re.sub(
+                r"^\s*(?:юридическ\w*\s*адрес|адрес\w*\s*регистрации|"
+                r"адрес\w*\s*прописки|мест\w*\s*нахождени\w*|"
+                r"мест\w*\s*жительства|адрес)\s*:?\s*",
+                "", extended, flags=re.IGNORECASE
+            ).strip(" ,;:")
+            return extended or None
         return None
 
     def _normalize_mortgage_interface_fields(self, fields: Dict[str, Any], text: str):
