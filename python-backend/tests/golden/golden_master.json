@@ -2826,7 +2826,7 @@
     "birthDate": "",
     "birthPlace": "None",
     "inn": "6142027489",
-    "name": "Спн Трак",
+    "name": "ООО «СПН ТРАК»",
     "ogrn": "",
     "ogrnip": "",
     "snils": ""
@@ -2836,7 +2836,7 @@
   "entityType": "legal",
   "fields": {
    "applicantAddress": "РОСТОВСКАЯ ОБЛАСТЬ, РАЙОН БЕ-ЛОКАЛИТВИНСКИЙ, РАБОЧИЙ ПОСЕЛОК ЛИТВИНОВ-КА, ПЕР. СВЕТЛЫЙ, Д. 1",
-   "applicantName": "Спн Трак",
+   "applicantName": "ООО «СПН ТРАК»",
    "applicantNameAccusative": "ООО \"СПН ТРАК",
    "applicantNameDative": "ООО \"СПН ТРАКУ",
    "applicantNameGenitive": "ООО \"СПН ТРАКА",
@@ -4787,7 +4787,7 @@
    "creditorName": "ПАО Сбербанк",
    "creditorOgrn": "1027700132195",
    "debtAmount": "91 120 214,12",
-   "debtorName": "Спн Трак",
+   "debtorName": "ООО «СПН ТРАК»",
    "entityType": "legal",
    "forfeit": "890 835,48",
    "forfeit15": "890 835,48",

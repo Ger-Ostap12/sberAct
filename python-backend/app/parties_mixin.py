@@ -926,15 +926,21 @@ class PartiesMixin:
         #    «<ОПФ> «Имя»» из блока должника.
         if (extracted_fields.get("entityType") or "").lower() == "legal":
             an = (extracted_fields.get("applicantName") or "").strip()
-            if "«" not in an:
+            # Достраиваем ТОЛЬКО когда имя без кавычек вообще («Спн Трак»); если кавычки
+            # уже есть (в т.ч. прямые/множественные, как «АО "КОНЦЕРН "САРМАТ"») — не трогаем.
+            if "«" not in an and '"' not in an:
+                # Кавычки названия — «ёлочки» ИЛИ прямые ("СПН ТРАК"); нормализуем в «».
                 m = re.search(
                     r"Должник[:\s][\s\S]{0,80}?"
                     r"((?:Обществ\w+\s+с\s+ограниченной\s+ответственностью|ООО|ОАО|ПАО|ЗАО|АО)"
-                    r"\s*\n?\s*«[^»]+»)",
+                    r"\s*\n?\s*[«\"]\s*[^»\"\n]+\s*[»\"])",
                     text, re.IGNORECASE,
                 )
                 if m:
                     full = re.sub(r"\s+", " ", m.group(1)).strip()
+                    # Прямые кавычки -> «ёлочки»: первая " -> «, остальные " -> ».
+                    if '"' in full:
+                        full = full.replace('"', "«", 1).replace('"', "»")
                     extracted_fields["applicantName"] = full
                     extracted_fields["debtorName"] = full
                     logger.info(f"🏷️ Достроено наименование ЮЛ должника: '{full}'")
