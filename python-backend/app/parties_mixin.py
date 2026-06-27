@@ -1040,7 +1040,13 @@ class PartiesMixin:
                     "applicantNameGenitive", "applicantNameDative",
                     "applicantNameInstrumental", "applicantNameAccusative"):
             _v = extracted_fields.get(_nk)
-            if _v and _v.count("«") > _v.count("»"):
+            if not _v:
+                continue
+            # Одиночная прямая кавычка (ООО "ТМД — закрывающая срезана): «-> «…»».
+            if _v.count('"') == 1:
+                _v = _v.replace('"', "«") + "»"
+                extracted_fields[_nk] = _v
+            elif _v.count("«") > _v.count("»"):
                 extracted_fields[_nk] = _v + "»"
 
         # Срезаем ведущую метку из адреса должника («Адрес регистрации: 867624…» →

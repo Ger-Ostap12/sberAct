@@ -810,14 +810,14 @@
    "creditorName": "ПАО Сбербанк",
    "creditorOgrn": "1027700132195",
    "debtAmount": "2 789 060,93",
-   "debtorName": "КОЛОР\"",
+   "debtorName": "КОЛОР«(заемщик)»",
    "entityType": "legal",
    "forfeit": "64 027,07",
    "forfeit15": "64 027,07",
    "inn": "6123013561",
    "interest": "430 254,83",
    "interest14": "430 254,83",
-   "legalShortName": "КОЛОР\"",
+   "legalShortName": "КОЛОР«(заемщик)»",
    "loanDebt": "2789060,93",
    "obligationType": "Кредитный договор",
    "obligations": [
@@ -2837,10 +2837,10 @@
   "fields": {
    "applicantAddress": "РОСТОВСКАЯ ОБЛАСТЬ, РАЙОН БЕ-ЛОКАЛИТВИНСКИЙ, РАБОЧИЙ ПОСЕЛОК ЛИТВИНОВ-КА, ПЕР. СВЕТЛЫЙ, Д. 1",
    "applicantName": "ООО «СПН ТРАК»",
-   "applicantNameAccusative": "ООО \"СПН ТРАК",
-   "applicantNameDative": "ООО \"СПН ТРАКУ",
-   "applicantNameGenitive": "ООО \"СПН ТРАКА",
-   "applicantNameInstrumental": "ООО \"СПН ТРАКОМ",
+   "applicantNameAccusative": "ООО «СПН ТРАК»",
+   "applicantNameDative": "ООО «СПН ТРАКУ»",
+   "applicantNameGenitive": "ООО «СПН ТРАКА»",
+   "applicantNameInstrumental": "ООО «СПН ТРАКОМ»",
    "applicationDate": "20.06.1991",
    "birthPlace": "None",
    "collaterals": [
@@ -4887,7 +4887,7 @@
     "birthDate": "",
     "birthPlace": "",
     "inn": "6164117249",
-    "name": "ООО \"ТМД",
+    "name": "ООО «ТМД»",
     "ogrn": "1176196047884",
     "ogrnip": "",
     "snils": ""
@@ -4897,11 +4897,11 @@
   "entityType": "legal",
   "fields": {
    "applicantAddress": "344011, РОСТОВСКАЯ ОБЛАСТЬ, ГРОСТОВ-НА-ДОНУ, ПЕР ДОЛОМАНОВСКИЙ, ЗД 70Д, ОФИС 22",
-   "applicantName": "ООО \"ТМД",
-   "applicantNameAccusative": "ООО \"ТМД",
-   "applicantNameDative": "ООО \"ТМД",
-   "applicantNameGenitive": "ООО \"ТМД",
-   "applicantNameInstrumental": "ООО \"ТМД",
+   "applicantName": "ООО «ТМД»",
+   "applicantNameAccusative": "ООО «ТМД»",
+   "applicantNameDative": "ООО «ТМД»",
+   "applicantNameGenitive": "ООО «ТМД»",
+   "applicantNameInstrumental": "ООО «ТМД»",
    "applicationDate": "20.06.1991",
    "collaterals": [
     {
