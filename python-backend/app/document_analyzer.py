@@ -583,6 +583,15 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         )
         if m:
             creditor = self.clean_extracted_value(m.group(1)).strip(" ,;")
+            # «ФНС России в лице\nМежрайонной ИФНС …» — кредитор продолжается на
+            # следующей строке: дописываем продолжение до реквизитов/адреса.
+            if re.search(r"в\s+лице\s*$", creditor, re.IGNORECASE):
+                cont = re.search(
+                    r"в\s+лице\s*\n\s*([^\n]+?)\s*(?=\n|Адрес|ИНН|ОГРН|Почтов|$)",
+                    text, re.IGNORECASE,
+                )
+                if cont:
+                    creditor = (creditor + " " + self.clean_extracted_value(cont.group(1))).strip(" ,;")
             # Срезаем хвостовую скобку с дублем/ОПФ: «… «ТБАНК» (АО «ТБАНК»…)» -> «… «ТБАНК»»,
             # «ББР Банк (акционерное общество)» -> «ББР Банк».
             creditor = re.split(r"\s*\(", creditor, maxsplit=1)[0].strip(" ,;")

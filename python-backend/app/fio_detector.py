@@ -85,6 +85,9 @@ def extract_debtor_name(text: str):
     # 1. Позиционный разбор: строка сразу после "Ответчик(и):/Должник:".
     for m in re.finditer(rf"{_HEADER_RE}\s*:?\s*\n+\s*([^\n]+)", text, re.IGNORECASE):
         candidate = m.group(1).strip()
+        # Срезаем канцелярский префикс строки «На № …» (поле бланка перед ФИО):
+        # «На № ⇥Базов Георгий Николаевич» -> «Базов Георгий Николаевич».
+        candidate = re.sub(r"^(?:На\s*№|№)\s*", "", candidate).strip()
         if _looks_like_fio(candidate):
             name = _normalize_fio(candidate)
             logger.info(f"ФИО должника (позиционно): {name}")
