@@ -1216,11 +1216,24 @@ class PartiesMixin:
         пересчитываются лишь для тех ключей, что уже присутствовали.
         """
         current = fields.get("applicantName") or fields.get("debtorName")
-        # Если уже валидное ФИО или это организация (детектор вернёт None) — выходим.
-        if current and is_person_name(current):
+        candidate = extract_debtor_name(text)
+        _strip_ip = lambda s: re.sub(r"^\s*ип\s+", "", (s or ""), flags=re.IGNORECASE).strip()
+
+        # Если блок «Должник:» даёт ТО ЖЕ лицо в иной (как-написано, именительной)
+        # форме — предпочитаем форму из документа (совпадает фамилия, отличаются формы).
+        same_person_other_form = False
+        if current and candidate and is_person_name(current) and is_person_name(candidate):
+            cs, ds = _strip_ip(current).split(), _strip_ip(candidate).split()
+            if (cs and ds and cs[0].lower() == ds[0].lower()
+                    and _strip_ip(current).lower() != _strip_ip(candidate).lower()):
+                same_person_other_form = True
+                candidate = _strip_ip(candidate)  # «ИП» восстановит шаг 6
+
+        # Если уже валидное ФИО или это организация (детектор вернёт None) — выходим
+        # (кроме случая, когда нашли ту же фамилию в иной форме из блока «Должник:»).
+        if current and is_person_name(current) and not same_person_other_form:
             return
 
-        candidate = extract_debtor_name(text)
         if not candidate or not is_person_name(candidate):
             # Фолбэк: applicantName битый (напр. обрывок «рбитражный суд Ростовско»),
             # но debtorName — уже валидное ФИО. Берём его, не теряя корректное имя.
