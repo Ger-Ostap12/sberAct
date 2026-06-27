@@ -465,184 +465,192 @@ class AmountsMixin:
         return f"{v:,.2f}".replace(",", " ").replace(".", ",").replace(" ", " ")
 
     def _apply_prayer_finances(self, fields: Dict[str, Any], text: str) -> None:
-        """Финансы из ПРОСИТЕЛЬНОЙ части заявления («просим суд: …включить в реестр…»).
+        """Финансы из ПРОСИТЕЛЬНОЙ части: суммирует разбивки долга по категориям
+        (осн.долг/проценты/неустойка/ссудная госпошлина), итог = их сумма.
 
-        По каждому обязательству (договору) в просительной части указана разбивка
-        долга; обязательств может быть несколько. Суммируем по категориям:
-          • основной долг  — «задолженность за просроченный кредит / ссудная / основной»;
-          • проценты       — любые суммы со словом «процент»;
-          • неустойка      — «неустойка / пени / штраф».
-        Итог = сумма категорий. Подытоги обязательства («… в размере X, из которых:»)
-        и госпошлина не классифицируются и в суммы не входят.
-
-        Применяется ПОСЛЕ обычной нормализации и перекрывает её, только если в
-        просительной части найдена хотя бы одна классифицируемая сумма.
+        Структуры:
+          - многоблочная: несколько верхнеуровневых пунктов «включить/установить …
+            в размере SUB …, из которых: …» (3-я очередь + залог) — суммируются,
+            каждый блок валидируется (сумма компонентов = подытогу);
+          - одиночная «… в размере TOTAL, из которых: …» — с валидацией итога по тексту;
+          - тире-категории «X руб – основной долг, Y руб – неустойка».
+        Банкротная госпошлина (отдельные пункты) суммируется и в долг НЕ входит.
         """
         if not text:
             return
         low = text.lower()
-        start = -1
-        # Приоритет — сама разбивка «…в размере TOTAL …, из которых:»: она может
-        # стоять и в повествовании (ДО «ПРОСИТ СУД»), как в РТК-заявлениях.
-        iz = low.find("из которых")
-        if iz == -1:
-            # «в том числе» — только если ему предшествует сумма «… руб», иначе это
-            # обычный оборот речи (в реестре/выписке), а не долговая разбивка.
-            for mm in re.finditer("в том числе", low):
-                if re.search(r"руб\w*\W{0,5}$", low[max(0, mm.start() - 25):mm.start()]):
-                    iz = mm.start()
-                    break
-        if iz != -1:
-            vm = -1
-            for kw in ("в размере", "составляет", "составила", "составил"):
-                p = low.rfind(kw, max(0, iz - 130), iz)
-                if p > vm:
-                    vm = p
-            start = vm if vm != -1 else max(0, iz - 130)
-        # Иначе — якорь по пунктам просительной части (для типа B).
-        if start == -1:
-            for anchor in ("включить в третью очередь", "включить в реестр требований",
-                           "просим суд", "прошу суд", "просит суд"):
-                i = low.find(anchor)
-                if i != -1:
-                    start = i
-                    break
-        if start == -1:
-            return
-        seg = text[start:]
-        cut = re.search(r"\n\s*Приложени", seg, re.IGNORECASE)
-        if cut:
-            seg = seg[:cut.start()]
+        NUM = r"(\d[\d   ]*(?:[.,]\d{2})?)"
 
-        # Убираем строки-номера страниц («…задолженность\n9\nпо процентам…»),
-        # иначе они разрывают фразу-категорию и сумма теряет классификацию.
-        seg = re.sub(r"\n[ \t]*\d{1,4}[ \t]*(?=\n)", "", seg)
-        # Полная просительная часть (до возможной обрезки окна типа B) — нужна
-        # для поиска банкротных госпошлин, которые стоят отдельными пунктами.
-        prayer_full = seg
-
-        # Окно разбивки ограничиваем концом перечня компонентов — дальше идёт
-        # обоснование/расчёт/просьба, где встречаются слова «процент/неустойка»
-        # вне разбивки (напр. «процентная ставка 17,5%»), что портит классификацию.
-        if iz != -1:
-            wb = re.search(
-                r"(?:нормативно|согласно\b|таким\s+образом|на\s+основани|"
-                r"в\s+соответствии|расч[её]т|по\s+состоянию|также\s+просим|"
-                r"прос(?:им|ит)\s+суд|прошу\s+суд|\n\s*\n)",
-                seg[30:], re.IGNORECASE,
-            )
-            if wb:
-                seg = seg[: wb.start() + 30]
-
-        # Применяем при одной из двух явных структур разбивки долга:
-        #   A) «…в размере X, из которых: …» (итог заявлен) — с валидацией итога;
-        #   B) «…X руб – основной долг, Y руб – неустойка …» (тире-категории, итога
-        #      может не быть) — нужно ≥2 таких пунктов.
-        # На простых заявлениях (плоский «ПРОСИТ СУД») финансы разбирает существующая
-        # логика — туда не лезем, иначе категории «съезжают».
-        has_iz = ("из которых" in seg.lower()) or ("в том числе" in seg.lower())
+        amt_re = re.compile(r"(\d[\d   ]*(?:,\d{2})?)\s*руб(?:л\w*|\.)?", re.IGNORECASE)
         dash_cat_re = re.compile(
-            r"\d[\d   ]*(?:,\d{2})?\s*руб[^–\-]{0,15}[–\-]\s*"
+            r"\d[\d   ]*(?:,\d{2})?\s*руб[^\u2013\-]{0,15}[\u2013\-]\s*"
             r"(?:основн\w*\s+долг|ссудн\w*|процент\w*|неустойк\w*|штраф\w*|госпошлин\w*|пошлин\w*)",
             re.IGNORECASE,
         )
-        dash_count = len(dash_cat_re.findall(seg))
-        if not has_iz and dash_count < 2:
-            return
-
-        if not has_iz:
-            # Тип B: окно разбора ограничиваем одним «долговым» пунктом — до
-            # следующего пункта просительной части (Утвердить/Признать/Взыскать/
-            # Установить/Ввести), иначе суммируются суммы из других пунктов/должников.
-            b = re.search(
-                r"\n\s*(?:\d+[.\)]\s*)?(?:Утвердить|Признать|Взыскать|Установить|Ввести)\b",
-                seg[20:], re.IGNORECASE,
-            )
-            if b:
-                seg = seg[: b.start() + 20]
-            if len(dash_cat_re.findall(seg)) < 2:
-                return
-
-        amt_re = re.compile(r"(\d[\d   ]*(?:,\d{2})?)\s*руб(?:л\w*|\.)?", re.IGNORECASE)
 
         def classify(ph):
             ph = ph.lower()
-            # Порядок важен: «неустойка за просроченные проценты» — неустойка, не проценты.
             if "неустой" in ph or "пени" in ph or "штраф" in ph:
                 return "forfeit"
             if "процент" in ph:
                 return "interest"
             if "госпошл" in ph or "пошлин" in ph:
                 return "loan_duty"
-            # Осн. долг — по формулировкам тела долга, НЕ по «кредитного договора».
             if ("основн" in ph or "ссудн" in ph or "просроченный кредит" in ph
                     or "просроченному кредиту" in ph):
                 return "principal"
             return None
 
-        # Итог/подытог — сумма, за которой сразу идёт «из которых»/«в том числе»;
-        # это НЕ компонент, в классификацию не берём (иначе порча категорий).
-        def is_total(m):
-            tail = seg[m.end():m.end() + 18].lower()
-            return "из котор" in tail or "в том числе" in tail
+        def parse_seg(seg):
+            seg = re.sub(r"\n[ \t]*\d{1,4}[ \t]*(?=\n)", "", seg)
 
-        matches = [m for m in amt_re.finditer(seg) if not is_total(m)]
-        # Подпись категории может стоять ДО суммы («основной долг – 2 294 779,03 руб»,
-        # «в том числе») или ПОСЛЕ («3 977 руб – основной долг»). Определяем
-        # доминирующее направление по большинству и классифицируем все суммы так же.
-        after_n = before_n = 0
-        for m in matches:
-            if classify(seg[m.end():m.end() + 45]):
-                after_n += 1
-            if classify(seg[max(0, m.start() - 45):m.start()]):
-                before_n += 1
-        use_after = after_n >= before_n
+            def is_total(m):
+                tail = seg[m.end():m.end() + 18].lower()
+                return "из котор" in tail or "в том числе" in tail
+
+            ms = [m for m in amt_re.finditer(seg) if not is_total(m)]
+            after_n = before_n = 0
+            for m in ms:
+                if classify(seg[m.end():m.end() + 45]):
+                    after_n += 1
+                if classify(seg[max(0, m.start() - 45):m.start()]):
+                    before_n += 1
+            use_after = after_n >= before_n
+            pr = it = fo = ld = 0.0
+            hits = 0
+            seen = set()
+            for m in ms:
+                val = self._fin_amount(m.group(1))
+                ph = (seg[m.end():m.end() + 45] if use_after
+                      else seg[max(0, m.start() - 45):m.start()])
+                cat = classify(ph)
+                if not cat:
+                    continue
+                key = (cat, round(val, 2))
+                if key in seen:
+                    continue
+                seen.add(key)
+                if cat == "forfeit":
+                    fo += val
+                elif cat == "interest":
+                    it += val
+                elif cat == "loan_duty":
+                    ld += val
+                else:
+                    pr += val
+                hits += 1
+            return pr, it, fo, ld, hits
+
+        p_anchor = -1
+        for a in ("просим суд", "прошу суд", "просит суд",
+                  "включить в третью очередь", "включить в реестр требований"):
+            k = low.find(a)
+            if k != -1:
+                p_anchor = k
+                break
+        region = text[p_anchor:] if p_anchor != -1 else text
+        cutp = re.search(r"\n\s*Приложени", region, re.IGNORECASE)
+        prayer_full = region[:cutp.start()] if cutp else region
 
         principal = interest = forfeit = loan_duty = 0.0
-        hits = 0
-        # Дедуп: одинаковая сумма в той же категории может встретиться дважды, если
-        # разбивка продублирована (повествование И «ПРОСИТ СУД»). Реальные компоненты
-        # различаются до копеек, поэтому дубль по (категория,сумма) — это повтор.
-        seen = set()
-        for m in matches:
-            val = self._fin_amount(m.group(1))
-            ph = (seg[m.end():m.end() + 45] if use_after
-                  else seg[max(0, m.start() - 45):m.start()])
-            cat = classify(ph)
-            if not cat:
-                continue
-            key = (cat, round(val, 2))
-            if key in seen:
-                continue
-            seen.add(key)
-            if cat == "forfeit":
-                forfeit += val
-            elif cat == "interest":
-                interest += val
-            elif cat == "loan_duty":
-                loan_duty += val
-            else:
-                principal += val
-            hits += 1
-        if hits == 0 or (principal + interest + forfeit) <= 0:
-            return
+        validated = False
 
-        # Ссудная госпошлина входит в сумму долга (стоит в разбивке вместе с остальными).
-        total = principal + interest + forfeit + loan_duty
-        # Самоконтроль: применяем пересчёт ТОЛЬКО если итог реально заявлен в
-        # документе как сумма (есть «…задолженность в размере <ИТОГ>…»). Иначе
-        # структура разбивки нестандартная и сумма недостоверна — не трогаем.
-        _strip_sp = lambda z: z.replace(" ", "").replace(" ", "").replace(" ", "")
-        norm_text = _strip_sp(text)
-        # Для типа A (есть «из которых» и заявленный итог) — самоконтроль: итог
-        # должен присутствовать в тексте (целая часть; итог бывает прописью).
-        # Для типа B (тире-категории) итог = сумма компонентов и в тексте может
-        # не быть отдельной строкой — доверяем явной разбивке.
-        if has_iz:
-            int_part = str(int(total))
-            if int_part not in norm_text:
-                logger.info(f"💰 Просительная часть: итог {int_part} не подтверждён в тексте — пропуск")
+        verb_block_re = re.compile(
+            r"(?:включить|установить|призна\w+[^.\n]{0,60}?включить)"
+            r"[^.\n]{0,250}?(?:в\s*размере|вразмере)\s+" + NUM +
+            r"\s*руб[^\n]{0,40}?(?:из\s+которых|в\s+том\s+числе)\s*:?",
+            re.IGNORECASE,
+        )
+        vblocks = list(verb_block_re.finditer(text))
+        if vblocks:
+            seen_sub = set()
+            g = [0.0, 0.0, 0.0, 0.0]
+            nvalid = 0
+            for idx, m in enumerate(vblocks):
+                subtotal = self._fin_amount(m.group(1))
+                wstart = m.end()
+                wend = vblocks[idx + 1].start() if idx + 1 < len(vblocks) else len(text)
+                window = text[wstart:wend]
+                cw = re.search(
+                    r"\n\s*Приложени|также\s+прос|\bутвердить\b|\bвзыскать\b|"
+                    r"\bввести\b|призна\w+\s+(?:понесен|обоснов)",
+                    window, re.IGNORECASE,
+                )
+                if cw:
+                    window = window[:cw.start()]
+                window = window[:1800]
+                pr, it, fo, ld, h = parse_seg(window)
+                ssum = pr + it + fo + ld
+                if h and abs(ssum - subtotal) < 1.5 and round(subtotal, 2) not in seen_sub:
+                    seen_sub.add(round(subtotal, 2))
+                    g[0] += pr; g[1] += it; g[2] += fo; g[3] += ld
+                    nvalid += 1
+            if nvalid:
+                principal, interest, forfeit, loan_duty = g
+                validated = True
+
+        if not validated:
+            start = -1
+            iz = low.find("из которых")
+            if iz == -1:
+                for mm in re.finditer("в том числе", low):
+                    if re.search(r"руб\w*\W{0,5}$", low[max(0, mm.start() - 25):mm.start()]):
+                        iz = mm.start()
+                        break
+            if iz != -1:
+                vm = -1
+                for kw in ("размере", "составляет", "составила", "составил"):
+                    pkw = low.rfind(kw, max(0, iz - 130), iz)
+                    if pkw > vm:
+                        vm = pkw
+                start = vm if vm != -1 else max(0, iz - 130)
+            if start == -1:
+                for anchor in ("включить в третью очередь", "включить в реестр требований",
+                               "просим суд", "прошу суд", "просит суд"):
+                    k = low.find(anchor)
+                    if k != -1:
+                        start = k
+                        break
+            if start == -1:
                 return
+            seg = text[start:]
+            cut = re.search(r"\n\s*Приложени", seg, re.IGNORECASE)
+            if cut:
+                seg = seg[:cut.start()]
+            has_iz = ("из которых" in seg.lower()) or ("в том числе" in seg.lower())
+            if iz != -1:
+                wb = re.search(
+                    r"(?:нормативно|согласно\b|таким\s+образом|на\s+основани|"
+                    r"в\s+соответствии|расч[её]т\s+задолжен|также\s+просим|"
+                    r"прос(?:им|ит)\s+суд|прошу\s+суд|\n\s*\n)",
+                    seg[30:], re.IGNORECASE,
+                )
+                if wb:
+                    seg = seg[: wb.start() + 30]
+            if not has_iz:
+                if len(dash_cat_re.findall(seg)) < 2:
+                    return
+                b = re.search(
+                    r"\n\s*(?:\d+[.\)]\s*)?(?:Утвердить|Признать|Взыскать|Установить|Ввести)\b",
+                    seg[20:], re.IGNORECASE,
+                )
+                if b:
+                    seg = seg[: b.start() + 20]
+                if len(dash_cat_re.findall(seg)) < 2:
+                    return
+            principal, interest, forfeit, loan_duty, hits = parse_seg(seg)
+            if hits == 0 or (principal + interest + forfeit) <= 0:
+                return
+            if has_iz:
+                _strip_sp = lambda z: z.replace(" ", "").replace("\u00a0", "").replace("\u202f", "")
+                total_chk = principal + interest + forfeit + loan_duty
+                if str(int(total_chk)) not in _strip_sp(text):
+                    logger.info("PRAYER: total not confirmed in text - skip")
+                    return
+
+        if (principal + interest + forfeit) <= 0:
+            return
+        total = principal + interest + forfeit + loan_duty
 
         if principal > 0:
             fields["principalDebt"] = self._fin_fmt(principal)
@@ -654,19 +662,14 @@ class AmountsMixin:
         fields["totalDebt"] = self._fin_fmt(total)
         fields["debtAmount"] = fields["totalDebt"]
 
-        # Ссудная госпошлина: из разбивки (входит в долг). Если в разбивке её нет —
-        # очищаем (она могла ошибочно прийти из общей логики).
         if loan_duty > 0:
             fields["loanStateDuty17"] = self._fin_fmt(loan_duty)
         else:
             fields.pop("loanStateDuty17", None)
 
-        # Банкротная госпошлина — ОТДЕЛЬНЫЕ пункты «…расходы по уплате (государственной)
-        # пошлины … в размере X…» (в сумму долга НЕ входят). Их может быть несколько
-        # (напр. за рассмотрение заявления + за подачу) — СУММИРУЕМ все.
         bankr_duty = 0.0
         for bm in re.finditer(
-            r"(?:гос)?пошлин\w*[^\d]{0,120}?в\s+размере\s+(\d[\d   ]*(?:,\d{2})?)\s*руб",
+            r"(?:гос)?пошлин\w*[^\d]{0,120}?в\s*размере\s*(\d[\d   ]*(?:,\d{2})?)\s*руб",
             prayer_full, re.IGNORECASE,
         ):
             bankr_duty += self._fin_amount(bm.group(1))
@@ -676,10 +679,10 @@ class AmountsMixin:
             fields["stateDuty"] = duty
 
         logger.info(
-            f"💰 Финансы из просительной части: осн={fields.get('principalDebt')}, "
-            f"проц={fields['interest']}, неуст={fields['forfeit']}, "
-            f"ссуд.госп={fields.get('loanStateDuty17')}, банкр.госп={fields.get('stateDuty16')}, "
-            f"итог={fields['totalDebt']}"
+            "PRAYER finances: pr=%s int=%s fo=%s loanD=%s bankrD=%s total=%s" % (
+                fields.get("principalDebt"), fields["interest"], fields["forfeit"],
+                fields.get("loanStateDuty17"), fields.get("stateDuty16"), fields["totalDebt"],
+            )
         )
 
     def _normalize_financial_block(self, fields: Dict[str, Any], text: str) -> None:
