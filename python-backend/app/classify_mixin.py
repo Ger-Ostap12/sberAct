@@ -408,6 +408,11 @@ class ClassifyMixin:
         if len(ogrnip_value) == 15:
             return "ip"
 
+        # 3b. ОГРН (13 цифр) есть ТОЛЬКО у юрлиц — должник с ОГРН не может быть
+        # физлицом (перебивает ложный has_fio из мусорного debtorName).
+        if len(ogrn_value) == 13:
+            return "legal"
+
         # 4. ФЛ — ФИО или ИНН 12 / СНИЛС; приоритет над 10-значным ИНН (который может быть от кредитора)
         if has_fio or has_individual_inn_or_snils:
             return "individual"

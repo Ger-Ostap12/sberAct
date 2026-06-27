@@ -478,6 +478,7 @@ class AmountsMixin:
         """
         if not text:
             return
+        text = text.replace("	", " ")  # табы внутри чисел («5 100 	000») -> пробел
         low = text.lower()
         NUM = r"(\d[\d   ]*(?:[.,]\d{2})?)"
 
@@ -557,7 +558,7 @@ class AmountsMixin:
 
         verb_block_re = re.compile(
             r"(?:включить|установить|призна\w+[^.\n]{0,60}?включить)"
-            r"[^.\n]{0,250}?(?:в\s*размере|вразмере)\s+" + NUM +
+            r"[^.\n]{0,400}?(?:в\s*размере|вразмере)\s+" + NUM +
             r"\s*руб[^\n]{0,40}?(?:из\s+которых|в\s+том\s+числе)\s*:?",
             re.IGNORECASE,
         )

@@ -216,6 +216,12 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # Косметика артефактов сторон: роль-суффикс «(заёмщик)», хвост метки в courtName, мусорный managerName
             self._cleanup_party_artifacts(extracted_fields, text)
 
+            # Реквизиты кредитора: повтор ПОСЛЕ установки creditorName (фолбэк по
+            # метке «Заявитель …» выставляет имя в _cleanup_party_artifacts, а первый
+            # вызов на стр.170 мог отработать вхолостую при пустом creditorName).
+            if not extracted_fields.get("creditorInn") and not extracted_fields.get("creditorOgrn"):
+                self._fill_creditor_requisites(extracted_fields, text)
+
             # Списки должников и третьих лиц + дедуп
             debtors_result, third_parties_result = self._resolve_debtors_and_third_parties(extracted_fields, text, details)
 
@@ -610,6 +616,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             r"Заявитель\s*\(кредитор\)\s*:?\s*",
             r"Истец\s*:\s*",
             r"Кредитор\s*:\s*",
+            # «Заявитель Акционерное общество …» — без «(кредитор)» и двоеточия.
+            r"Заявитель\s+(?=(?:Акционерн|Публичн|Общество|ООО|АО|ПАО|ЗАО|ОАО|ИП|ФНС|«))",
         ]:
             m = re.search(start_pattern, header, re.IGNORECASE)
             if m:
@@ -654,6 +662,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         for addr_pattern in [
             r"(?:место\s+нахождения|юридическ\w+\s+адрес)[:\s]*([0-9]{6}[,\s]+[^\n]+)",
             r"(?:место\s+нахождения|юридическ\w+\s+адрес)[:\s]*([^\n]+)",
+            # Плоская метка «Адрес:» в начале строки (индекс + продолжение на след. строке).
+            r"(?:^|\n)\s*адрес[:\s]*([0-9]{6}[,\s]+[^\n]+(?:\n[^\n]+)?)",
         ]:
             addr_m = re.search(addr_pattern, block, re.IGNORECASE)
             if addr_m:

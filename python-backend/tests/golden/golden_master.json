@@ -1416,7 +1416,7 @@
    "forfeit15": "0,31",
    "interest": "41 229,47",
    "interest14": "41 229,47",
-   "ipCollateralClaimAmount": "207 356,52",
+   "ipCollateralClaimAmount": "1 249 122,53",
    "ipHasCollateral": "true",
    "loanDebt": "2 100 477,62",
    "mortgageCollateralDescription1221": "6. Утвердить в качестве саморегулируемой организации СРО - СРО ААУ \"Синергия\"(ИНН",
@@ -1607,7 +1607,7 @@
   "metadata": {
    "language": "ru",
    "pageCount": 10,
-   "wordCount": 2254
+   "wordCount": 2334
   },
   "obligations": [
    {
@@ -1780,8 +1780,8 @@
     "penalty0071Value": 0.31
    }
   ],
-  "rawTextLen": 25685,
-  "rawTextSha": "6ffeb9afb2eb37512ae1f9ed2871a0b817c78b8dfdbaeafee94111c67a1c3c1b",
+  "rawTextLen": 25764,
+  "rawTextSha": "dd4115331397c196c5a7618be1c0f6592b1eeb8766e758230ea4a316ff706e31",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "individual",
@@ -1801,39 +1801,43 @@
     "address": "344082, Ростовская область, город Ростов-на-Дону, ул. Согласия, д. 18, 1",
     "birthDate": "",
     "birthPlace": "",
-    "inn": "",
-    "name": "Общество с ограниченной ответственностью",
-    "ogrn": "",
+    "inn": "7701887506",
+    "name": "Общество с ограниченной ответственностью «Перспектива»",
+    "ogrn": "1107746649625",
     "ogrnip": "",
     "snils": ""
    }
   ],
   "documentType": "initiation_legal",
-  "entityType": "individual",
+  "entityType": "legal",
   "fields": {
    "applicantAddress": "344082, Ростовская область, город Ростов-на-Дону, ул. Согласия, д. 18, 1",
-   "applicantName": "Общество с ограниченной ответственностью",
+   "applicantName": "Общество с ограниченной ответственностью «Перспектива»",
    "applicantNameAccusative": "Общество с ограниченного ответственность",
    "applicantNameDative": "Обществу с ограниченной ответственности",
    "applicantNameGenitive": "Должника процедуру наблюдения",
    "applicantNameInstrumental": "Обществом с ограниченной ответственностью",
    "applicationDate": "26.10.2002",
    "caseNumber": "А53-12189/2026",
+   "companyInn": "7701887506",
    "contractDate": "21.06.2024, 19.05.2023, 16.01.2024, 06.12.2022, 17.01.2024, 10.04.2025, 21.09.2022",
    "contractNumber": "невозобновляемой, а-2, а-3, а-4, а-5, а-6, а-7, а-8",
-   "courtName": "Арбитражный суд Ростовской области Станиславского",
+   "courtName": "Арбитражный суд Ростовской области",
    "creditPenaltyRate": "0,05",
+   "creditorAddress": "127287, г. Москва, ул. 2-я Хуторская, д. 38а, стр. 26",
+   "creditorInn": "7710140679",
    "creditorName": "Акционерное общество «ТБАНК»",
-   "debtAmount": "126 992 592,44",
-   "debtorName": "имеет неисполненные денежные",
-   "entityType": "individual",
-   "forfeit": "1 145 669,35",
-   "forfeit15": "1 145 669,35",
-   "interest": "17 634 511,84",
-   "interest14": "17 634 511,84",
+   "creditorOgrn": "1027739642281",
+   "debtAmount": "4 826 804 161,25",
+   "debtorName": "Общество с ограниченной ответственностью «Перспектива»",
+   "entityType": "legal",
+   "forfeit": "46 231 202,36",
+   "forfeit15": "46 231 202,36",
+   "inn": "7701887506",
+   "interest": "510 347 567,42",
+   "interest14": "510 347 567,42",
+   "legalShortName": "имеет неисполненные денежные",
    "loanDebt": "4 826 804 161,25",
-   "managerAddress": "649625, ИНН: 7701887506 посредством случайного выбора;",
-   "managerInn": "7701887506",
    "obligations": [
     {
      "contractDate": "21.06.2024",
@@ -1884,11 +1888,16 @@
      "obligationType": "Договор"
     }
    ],
-   "principalDebt": "108 212 411,25",
-   "principalDebt13": "108 212 411,25",
+   "ogrn": "1107746649625",
+   "principalDebt": "4 270 225 391,47",
+   "principalDebt13": "4 270 225 391,47",
+   "procedureType": "observation",
+   "procedureTypeRaw": "наблюдение",
    "requirementsSum": "4 826 804 161,25",
    "sourceDocumentType": "initiation_legal",
-   "totalDebt": "126 992 592,44"
+   "stateDuty": "5 100 000,00",
+   "stateDuty16": "5 100 000,00",
+   "totalDebt": "4 826 804 161,25"
   },
   "metadata": {
    "language": "ru",
@@ -1945,14 +1954,16 @@
     "obligationType": "Договор"
    }
   ],
-  "rawTextLen": 35142,
-  "rawTextSha": "039db3818ffbf98fbe9f32c6511329be8bddb13847c73ac4ac3832c3268e4601",
+  "rawTextLen": 35141,
+  "rawTextSha": "fb79310d847b11ae160dfb6002047ce2435c81f67845d50b0fd4a9355c545fc8",
   "recommendedActs": {
    "collateralOption": "no_collateral",
-   "entityType": "individual",
+   "entityType": "legal",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition"
+    "acceptance_definition",
+    "final_observation",
+    "final_competition"
    ]
   },
   "thirdParties": []
@@ -1966,36 +1977,41 @@
     "birthDate": "",
     "birthPlace": "",
     "inn": "3448049188",
-    "name": "Имеет Неисполненные Денежные",
-    "ogrn": "",
+    "name": "Общество с ограниченной ответственностью «Форте Пром ГмбХ»",
+    "ogrn": "1103461000455",
     "ogrnip": "",
     "snils": ""
    }
   ],
   "documentType": "mortgage_claim",
-  "entityType": "individual",
+  "entityType": "legal",
   "fields": {
    "applicantAddress": "346404, Ростовская область, г Новочеркасск, Харьковское ш, д. 10, офис 27",
-   "applicantName": "Имеет Неисполненные Денежные",
+   "applicantName": "Общество с ограниченной ответственностью «Форте Пром ГмбХ»",
    "applicantNameAccusative": "Общество с ограниченного ответственность",
    "applicantNameDative": "Обществу с ограниченной ответственности",
    "applicantNameGenitive": "Должника процедуру наблюдения",
    "applicantNameInstrumental": "Обществом с ограниченной ответственностью",
    "applicationDate": "26.10.2002",
    "caseNumber": "А53-12198/2026",
+   "companyInn": "3448049188",
    "contractDate": "07.03.2023, 17.01.2024, 16.01.2024, 06.12.2022, 21.06.2024, 10.04.2025, 21.09.2022, 20.12.2023, 26.12.2025",
    "contractNumber": "невозобновляемой, а-3, а-4, а-5, а-6, а-7, а-8, а-9, а-1, залога, а-2, уневозобновляемой",
    "courtName": "Арбитражный суд Ростовской области Адрес",
    "creditPenaltyRate": "0,05",
+   "creditorAddress": "127287, г. Москва, ул. 2-я Хуторская, д. 38а, стр. 26",
+   "creditorInn": "7710140679",
    "creditorName": "Акционерное общество «ТБАНК»",
+   "creditorOgrn": "1027739642281",
    "debtAmount": "205 740 694,34",
-   "debtorName": "Имеет Неисполненные Денежные",
-   "entityType": "individual",
+   "debtorName": "Общество с ограниченной ответственностью «Форте Пром ГмбХ»",
+   "entityType": "legal",
    "forfeit": "4 841 794,49",
    "forfeit15": "4 841 794,49",
    "inn": "3448049188",
    "interest": "7 978 449,85",
    "interest14": "7 978 449,85",
+   "legalShortName": "имеет неисполненные денежные",
    "loanDebt": "5 032 544 855,59",
    "mortgageCourtAddress001": "12198/2026 по заявлению Акционерного общества «ББР Банк» ОГРН 1027700074775, ИНН",
    "mortgageCourtName002": "В производстве Арбитражного суда Ростовской области находится дело № А53-",
@@ -2078,8 +2094,11 @@
      "obligationType": "Кредитный договор"
     }
    ],
+   "ogrn": "1103461000455",
    "principalDebt": "192 920 450,00",
    "principalDebt13": "192 920 450,00",
+   "procedureType": "observation",
+   "procedureTypeRaw": "наблюдение",
    "requirementsSum": "5 032 544 855,59",
    "sourceDocumentType": "mortgage_claim",
    "sroName": "«Содействие» ОГРН: 1025700780071",
@@ -2170,10 +2189,12 @@
   "rawTextSha": "24a92a46dba1d8ae613ff7e6e76bca7b92237ee8652a009201a67ae774a44d92",
   "recommendedActs": {
    "collateralOption": "no_collateral",
-   "entityType": "individual",
+   "entityType": "legal",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition"
+    "acceptance_definition",
+    "final_observation",
+    "final_competition"
    ]
   },
   "thirdParties": []
@@ -2187,7 +2208,7 @@
     "birthDate": "",
     "birthPlace": "",
     "inn": "3461063590",
-    "name": "Форте Пром Стил Гмбх",
+    "name": "ООО «Форте Пром Стил ГмбХ»",
     "ogrn": "1183443007659",
     "ogrnip": "",
     "snils": ""
@@ -2197,7 +2218,7 @@
   "entityType": "legal",
   "fields": {
    "applicantAddress": "346404, Ростовская область, г. Новочеркасск, Харьковское ш, д. 10",
-   "applicantName": "Форте Пром Стил Гмбх",
+   "applicantName": "ООО «Форте Пром Стил ГмбХ»",
    "applicantNameAccusative": "Общество с ограниченного ответственность ООО «форт Пром Стившего гмбх»",
    "applicantNameDative": "Обществу с ограниченной ответственности ООО «форту Прому Стившему гмбхам»",
    "applicantNameGenitive": "Должника процедуру наблюдения",
@@ -2209,9 +2230,12 @@
    "contractNumber": "невозобновляемой, а-2, а-3, а-4, а-5, а-6, а-7, а-8, а-9, а-1, уневозобновляемой",
    "courtName": "Арбитражный суд Ростовской области Станиславского",
    "creditPenaltyRate": "0,05",
+   "creditorAddress": "127287, г. Москва, ул. 2-я Хуторская, д. 38а, стр. 26",
+   "creditorInn": "7710140679",
    "creditorName": "Акционерное общество «ТБАНК»",
+   "creditorOgrn": "1027739642281",
    "debtAmount": "46 663 162,06",
-   "debtorName": "Форте Пром Стил Гмбх",
+   "debtorName": "ООО «Форте Пром Стил ГмбХ»",
    "entityType": "legal",
    "forfeit": "753 325,51",
    "forfeit15": "753 325,51",
@@ -7581,7 +7605,7 @@
     "birthDate": "",
     "birthPlace": "",
     "inn": "1234567890",
-    "name": "Иванов Иван Иванович",
+    "name": "Общества с ограниченной ответственностью «Азбука»",
     "ogrn": "123454321234",
     "ogrnip": "",
     "snils": ""
@@ -7591,7 +7615,7 @@
   "entityType": "legal",
   "fields": {
    "applicantAddress": "344111, г. Ростов-на-Дону, ул. Б.Садовая, д. 11, Литер А, пом. 111",
-   "applicantName": "Иванов Иван Иванович",
+   "applicantName": "Общества с ограниченной ответственностью «Азбука»",
    "applicantNameAccusative": "Иванова Ивана Ивановича",
    "applicantNameDative": "Иванову Ивану Ивановичу",
    "applicantNameGenitive": "Иванова Ивана Ивановича",
@@ -7636,7 +7660,7 @@
    "creditorOgrn": "1027700132195",
    "debtAmount": "19 619 276,72",
    "debtSnapshotDate88": "11.07.2024",
-   "debtorName": "Иванов Иван Иванович",
+   "debtorName": "Общества с ограниченной ответственностью «Азбука»",
    "efirsbPublicationDate": "22.11.2022",
    "entityType": "legal",
    "forfeit": "2 998,22",

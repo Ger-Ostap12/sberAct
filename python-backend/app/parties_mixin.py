@@ -837,6 +837,17 @@ class PartiesMixin:
             if not looks_like_fio:
                 extracted_fields.pop("managerName", None)
                 logger.info(f"🧹 Удалён мусорный managerName (не ФИО): '{mn}'")
+        # 3a. Нет ФИО управляющего, а его «ИНН» совпал с ИНН/ОГРН должника → это
+        #     утёкшие реквизиты должника (пункт «определить СРО … случайным выбором»),
+        #     а не реальный управляющий. Чистим. Если ИНН иной — это может быть реальный
+        #     управляющий, чьё ФИО не извлеклось; не трогаем, чтобы не потерять данные.
+        if not (extracted_fields.get("managerName") or "").strip():
+            _d = lambda v: re.sub(r"\D", "", str(v or ""))
+            _mi = _d(extracted_fields.get("managerInn"))
+            if _mi and _mi in (_d(extracted_fields.get("inn")), _d(extracted_fields.get("ogrn")),
+                               _d(extracted_fields.get("companyInn"))):
+                for _mk in ("managerInn", "managerAddress", "managerSnils"):
+                    extracted_fields.pop(_mk, None)
 
         # 4. Адрес должника: обрезать «прилипший» хвост после адреса (суммы/реквизиты/
         #    служебные блоки), напр. «…КОМ. 16 Размер требований 2 789 060,93 руб.».
@@ -886,6 +897,24 @@ class PartiesMixin:
                     if isinstance(v, str) and v.strip() and not re.match(r"^\s*ИП\b", v, re.IGNORECASE):
                         extracted_fields[k] = "ИП " + v.strip()
                 logger.info(f"🏷️ Восстановлен префикс «ИП» в наименовании должника: 'ИП {base}'")
+
+        # 7. Достройка наименования ЮЛ: раскладка «Должник ⇥ Общество с ограниченной
+        #    ответственностью\n«Имя»» даёт обрезанное имя без кавычек. Берём полное
+        #    «<ОПФ> «Имя»» из блока должника.
+        if (extracted_fields.get("entityType") or "").lower() == "legal":
+            an = (extracted_fields.get("applicantName") or "").strip()
+            if "«" not in an:
+                m = re.search(
+                    r"Должник[:\s][\s\S]{0,80}?"
+                    r"((?:Обществ\w+\s+с\s+ограниченной\s+ответственностью|ООО|ОАО|ПАО|ЗАО|АО)"
+                    r"\s*\n?\s*«[^»]+»)",
+                    text, re.IGNORECASE,
+                )
+                if m:
+                    full = re.sub(r"\s+", " ", m.group(1)).strip()
+                    extracted_fields["applicantName"] = full
+                    extracted_fields["debtorName"] = full
+                    logger.info(f"🏷️ Достроено наименование ЮЛ должника: '{full}'")
 
     def _tune_legal_entity_naming(self, extracted_fields, text, debtor_clean, applicant_clean, applicant_name_raw, debtor_block, debtor_name_raw):
         """Короткое наименование ЮЛ (legalShortName) и донастройка для initiation_legal: переустановка applicantName с ОПФ из блока «Должник:», адрес из шапки. Возвращает обновлённый debtor_clean. Вынесено из extract_fields."""
@@ -958,7 +987,12 @@ class PartiesMixin:
         # (раскладка «…управляющий: ФИО (ИНН …, СНИЛС …) адрес»: реквизиты управляющего
         # стоят рядом и утекают в поля должника).
         _digits = lambda v: re.sub(r"\D", "", str(v or ""))
-        mgr_inn = _digits(extracted_fields.get("managerInn"))
+        # ИНН/СНИЛС управляющего используем для очистки ТОЛЬКО если управляющий
+        # реальный (есть ФИО). Иначе managerInn — это мусор (ИНН должника, затянутый
+        # из «определить СРО … случайным выбором»), и им нельзя чистить должника.
+        _mgr_name = (extracted_fields.get("managerName") or "").strip()
+        _mgr_real = bool(re.search(r"[А-ЯЁ][А-Яа-яёЁ.\-]+\s+[А-ЯЁ]", _mgr_name))
+        mgr_inn = _digits(extracted_fields.get("managerInn")) if _mgr_real else ""
         if mgr_inn and _digits(extracted_fields.get("inn")) == mgr_inn:
             extracted_fields.pop("inn", None)
             extracted_fields.pop("companyInn", None)
