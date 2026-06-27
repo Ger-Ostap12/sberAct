@@ -823,7 +823,7 @@ class PartiesMixin:
         cn = extracted_fields.get("courtName")
         if isinstance(cn, str) and cn:
             cut = re.split(
-                r'\s+(?:Заявител[ья]|Должник|Ответчик|Истец|Кредитор|Взыскатель|Заинтересованн)\b',
+                r'\s+(?:Заявител[ья]|Должник|Ответчик|Истец|Кредитор|Взыскатель|Заинтересованн|Адрес)\b',
                 cn, maxsplit=1,
             )[0].strip(" ,")
             if cut and cut != cn:
