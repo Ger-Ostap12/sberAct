@@ -1010,7 +1010,7 @@
    "contractNumber": "616100070855-24-3, упредставлено, аиобязуетсяпередКредиторомотвечать, 616100070855-24-2, 616100070855-24-1, 616100070855-24-4",
    "courtName": "Арбитражный суд Ростовской области",
    "creditInterestRate": "25,46",
-   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19Почтовыйадресдля",
+   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
    "creditorInn": "7707083893",
    "creditorName": "ПАО Сбербанк",
    "creditorOgrn": "1027700132195",
@@ -1093,7 +1093,7 @@
   "metadata": {
    "language": "ru",
    "pageCount": 4,
-   "wordCount": 1163
+   "wordCount": 1189
   },
   "obligations": [
    {
@@ -1149,8 +1149,8 @@
     "penalty0071Value": 0.0
    }
   ],
-  "rawTextLen": 13007,
-  "rawTextSha": "7a002522bd8867595b6a6e7d8bfda857a2da9a81d23ac0f86d49097a712263dc",
+  "rawTextLen": 13033,
+  "rawTextSha": "21efbbfd71c6f4cd377ac2b5a549dd6cc2dc4de06f994a5b0e4c578ea531d7e8",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "individual",
@@ -1171,7 +1171,7 @@
     "birthDate": "28.01.1980",
     "birthPlace": "гор. Астрахань",
     "inn": "616506698400",
-    "name": "БАЗОВ ГЕОРГИЙ НИКОЛАЕВИЧ",
+    "name": "ИП БАЗОВ ГЕОРГИЙ НИКОЛАЕВИЧ",
     "ogrn": "",
     "ogrnip": "317619600232839",
     "snils": ""
@@ -1181,10 +1181,10 @@
   "entityType": "ip",
   "fields": {
    "applicantAddress": "344012,РОСТОВСКАЯ ОБЛАСТЬ,ГОРОД РОСТОВ-НА-ДОНУ, УЛИЦА ЮФИМЦЕВА, 10/1, 68",
-   "applicantName": "БАЗОВ ГЕОРГИЙ НИКОЛАЕВИЧ",
-   "applicantNameAccusative": "БАЗОВА ГЕОРГИЯ НИКОЛАЕВИЧА",
-   "applicantNameGenitive": "БАЗОВА ГЕОРГИЯ НИКОЛАЕВИЧА",
-   "applicantNameInstrumental": "БАЗОВЫМ ГЕОРГИЕМ НИКОЛАЕВИЧЕМ",
+   "applicantName": "ИП БАЗОВ ГЕОРГИЙ НИКОЛАЕВИЧ",
+   "applicantNameAccusative": "ИП БАЗОВА ГЕОРГИЯ НИКОЛАЕВИЧА",
+   "applicantNameGenitive": "ИП БАЗОВА ГЕОРГИЯ НИКОЛАЕВИЧА",
+   "applicantNameInstrumental": "ИП БАЗОВЫМ ГЕОРГИЕМ НИКОЛАЕВИЧЕМ",
    "applicationDate": "16.06.2026",
    "birthDate": "28.01.1980",
    "birthPlace": "гор. Астрахань",
@@ -1199,7 +1199,7 @@
    "creditorName": "ПАО Сбербанк",
    "creditorOgrn": "1027700132195",
    "debtAmount": "21 681 376,81",
-   "debtorName": "БАЗОВ ГЕОРГИЙ НИКОЛАЕВИЧ",
+   "debtorName": "ИП БАЗОВ ГЕОРГИЙ НИКОЛАЕВИЧ",
    "entityType": "ip",
    "forfeit": "237 556,64",
    "forfeit15": "237 556,64",
@@ -1402,7 +1402,7 @@
    "courtName": "Арбитражный суд Ростовской области",
    "creditAmount": "80 000",
    "creditInterestRate": "25,4",
-   "creditorAddress": "ул. Вавилова, д.19, г. Москва, 117997Адресдля",
+   "creditorAddress": "ул. Вавилова, д.19, г. Москва, 117997",
    "creditorInn": "7707083893",
    "creditorName": "ПАО Сбербанк",
    "creditorOgrn": "1027700132195",
@@ -4739,7 +4739,7 @@
    "contractNumber": "6142027489",
    "courtName": "Арбитражный суд Ростовской области",
    "creditInterestRate": "23,15",
-   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19Почтовыйадресдля",
+   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
    "creditorInn": "7707083893",
    "creditorName": "ПАО Сбербанк",
    "creditorOgrn": "1027700132195",
@@ -4877,7 +4877,7 @@
    "contractNumber": "5221L85XS2TR2Q0QG2UW3F, 6164117249-23-5, 52211TQDZ32W3Q0QG2UW2W, 5221U6X7DNBW7Q0QG2UW2W, 6164117249-24-1, 6164117249-24-2, 5221DUO3HTTW9Q0QG2UW3F, омипотеки",
    "courtName": "Арбитражный суд Ростовской области",
    "creditInterestRate": "28,5",
-   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19Почтовыйадресдля",
+   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
    "creditorInn": "7707083893",
    "creditorName": "ПАО Сбербанк",
    "creditorOgrn": "1027700132195",

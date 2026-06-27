@@ -872,6 +872,21 @@ class PartiesMixin:
                 extracted_fields["creditorName"] = cn
                 logger.info(f"🏦 creditorName из текста (фолбэк по метке): '{cn}'")
 
+        # 6. Для ИП восстанавливаем префикс «ИП» в наименовании и падежах
+        #    (в документе «ИП БАЗОВ …», извлечение срезало «ИП»). Только если в тексте
+        #    действительно есть «ИП <ФИО>».
+        if (extracted_fields.get("entityType") or "").lower() == "ip":
+            base = (extracted_fields.get("applicantName") or extracted_fields.get("debtorName") or "").strip()
+            already = re.match(r"^\s*ИП\b", base, re.IGNORECASE)
+            if base and not already and re.search(r"\bИП\s+" + re.escape(base), text, re.IGNORECASE):
+                for k in ("applicantName", "debtorName",
+                          "applicantNameGenitive", "applicantNameDative",
+                          "applicantNameInstrumental", "applicantNameAccusative"):
+                    v = extracted_fields.get(k)
+                    if isinstance(v, str) and v.strip() and not re.match(r"^\s*ИП\b", v, re.IGNORECASE):
+                        extracted_fields[k] = "ИП " + v.strip()
+                logger.info(f"🏷️ Восстановлен префикс «ИП» в наименовании должника: 'ИП {base}'")
+
     def _tune_legal_entity_naming(self, extracted_fields, text, debtor_clean, applicant_clean, applicant_name_raw, debtor_block, debtor_name_raw):
         """Короткое наименование ЮЛ (legalShortName) и донастройка для initiation_legal: переустановка applicantName с ОПФ из блока «Должник:», адрес из шапки. Возвращает обновлённый debtor_clean. Вынесено из extract_fields."""
         # Для юрлиц пытаемся получить короткое название. Игнорируем мусорные значения вроде "введена процедура наблюдения".
