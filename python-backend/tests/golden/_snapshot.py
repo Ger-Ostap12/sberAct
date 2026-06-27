@@ -40,13 +40,15 @@ EXCLUDED_FILES = {
 
 
 def _is_excluded(rel: str) -> bool:
-    """Файл вне корпуса, если он в EXCLUDED_FILES ИЛИ это PDF из dataset/.
-    dataset/*.pdf — старые PDF-оригиналы, переконвертированные в docx (casebookWord);
-    Word-версии распознаются точнее, поэтому PDF-дубликаты в эталоне не держим.
+    """Файл вне корпуса, если он в EXCLUDED_FILES, это ЛЮБОЙ PDF, заявление о
+    взыскании или синтетическая болванка «БМ …». Работаем только с docx
+    (PDF-распознавание менее точное), без взысканий и болванок.
     """
     if rel in EXCLUDED_FILES:
         return True
-    if rel.startswith("dataset/") and rel.lower().endswith(".pdf"):
+    # PDF из эталона исключены полностью — работаем только с docx (договорённость:
+    # PDF-распознавание менее точное, для каждого PDF есть/будет docx-вариант).
+    if rel.lower().endswith(".pdf"):
         return True
     # Заявления о взыскании — вне задачи (не банкротные), в эталоне не держим.
     if "взыскан" in rel.lower():
