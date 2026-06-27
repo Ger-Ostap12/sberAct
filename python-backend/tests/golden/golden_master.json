@@ -350,6 +350,7 @@
     }
    ],
    "ogrn": "1183443007659",
+   "penalties": "0,00",
    "principalDebt": "1 465 013 605,99",
    "principalDebt13": "1 465 013 605,99",
    "procedureType": "observation",
@@ -442,6 +443,7 @@
     }
    ],
    "ogrn": "1103461000455",
+   "penalties": "0,00",
    "principalDebt": "1 465 013 605,99",
    "principalDebt13": "1 465 013 605,99",
    "procedureType": "observation",
@@ -542,6 +544,7 @@
     }
    ],
    "ogrn": "1183443007659",
+   "penalties": "0,00",
    "principalDebt": "3 977 344 345,76",
    "principalDebt13": "3 977 344 345,76",
    "procedureType": "observation",
@@ -652,6 +655,7 @@
     }
    ],
    "obligationsTotalDebt": "3 779 221,49",
+   "penalties": "0,00",
    "principalDebt": "3 500 377,14",
    "principalDebt13": "3 500 377,14",
    "procedureType": "realization",
@@ -739,6 +743,7 @@
    "loanDebt": "2789060,93",
    "obligationType": "Кредитный договор",
    "ogrn": "1026101344664",
+   "penalties": "0,00",
    "principalDebt": "2 294 779,03",
    "principalDebt13": "2 294 779,03",
    "procedureType": "observation",
@@ -831,6 +836,7 @@
     }
    ],
    "ogrn": "1076123000502",
+   "penalties": "0,00",
    "principalDebt": "2 294 779,03",
    "principalDebt13": "2 294 779,03",
    "procedureType": "observation",
@@ -937,6 +943,7 @@
     }
    ],
    "obligationsTotalDebt": "7 371 840,00",
+   "penalties": "0,00",
    "principalDebt": "6 545 133,36",
    "principalDebt13": "6 545 133,36",
    "registrationDate": "20.06.1991",
@@ -1080,6 +1087,7 @@
     }
    ],
    "obligationsTotalDebt": "22 462 465,00",
+   "penalties": "0,00",
    "principalDebt": "4 241 575,75",
    "principalDebt13": "4 241 575,75",
    "registrationDate": "20.06.1991",
@@ -1302,6 +1310,7 @@
     }
    ],
    "ogrnip": "320619600092709",
+   "penalties": "0,00",
    "principalDebt": "7 157 894,72",
    "principalDebt13": "7 157 894,72",
    "registrationDate": "20.06.1991",
@@ -1592,6 +1601,7 @@
     }
    ],
    "obligationsTotalDebt": "851 355,09",
+   "penalties": "0,00",
    "penalty0071": "0,31",
    "ppDepositDate80": "12.05.2026",
    "principalDebt": "3 308 370,37",
@@ -1889,6 +1899,7 @@
     }
    ],
    "ogrn": "1107746649625",
+   "penalties": "0,00",
    "principalDebt": "4 270 225 391,47",
    "principalDebt13": "4 270 225 391,47",
    "procedureType": "observation",
@@ -2095,6 +2106,7 @@
     }
    ],
    "ogrn": "1103461000455",
+   "penalties": "0,00",
    "principalDebt": "4 463 145 841,47",
    "principalDebt13": "4 463 145 841,47",
    "procedureType": "observation",
@@ -2318,6 +2330,7 @@
     }
    ],
    "ogrn": "1183443007659",
+   "penalties": "0,00",
    "principalDebt": "4 463 145 841,47",
    "principalDebt13": "4 463 145 841,47",
    "procedureType": "observation",
@@ -2443,17 +2456,21 @@
    "applicationDate": "16.02.2024",
    "contractNumber": "У625/0055-0143478, V625/0055-0143478",
    "courtName": "Арбитражный суд республики Ингушетия",
+   "creditorAddress": "191144, г. Санкт-Петербург, Дегтярный переулок, д. 11, лит. А",
+   "creditorInn": "7702070139",
+   "creditorName": "Банка ВТб (публичное акционерное общество)",
+   "creditorOgrn": "1027739609391",
    "debtAmount": "1 022 416,77",
    "debtSnapshotDate88": "16.02.2024",
    "debtorName": "Долгов Рашид Умарович",
    "entityType": "individual",
-   "forfeit": "94 293,08",
-   "forfeit15": "94 293,08",
-   "interest": "0,00",
-   "interest14": "0,00",
+   "forfeit": "13 565,52",
+   "forfeit15": "13 565,52",
+   "interest": "80 727,56",
+   "interest14": "80 727,56",
    "loanDebt": "1 022 416,77",
    "obligationType": "Кредитный договор",
-   "penalties": "4 671,54",
+   "penalties": "0,00",
    "principalDebt": "928 123,69",
    "principalDebt13": "928 123,69",
    "procedureType": "realization",
@@ -2468,7 +2485,7 @@
   },
   "obligations": [],
   "rawTextLen": 8913,
-  "rawTextSha": "f975feda42fd5f84c7403ac0907e1cdd3bf22da8511fc3bcd5402feed247043a",
+  "rawTextSha": "f367822e7a93f4dccf81da0ba1847353524a61ceac3f9c5cf8b0fef5343f23a7",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "individual",
@@ -2514,13 +2531,13 @@
    "debtSnapshotDate88": "16.06.2026",
    "debtorName": "Базова Георгия Николаевича",
    "entityType": "individual",
-   "forfeit": "20 228 588,52",
-   "forfeit15": "20 228 588,52",
+   "forfeit": "16 242 223,52",
+   "forfeit15": "16 242 223,52",
    "inn": "616506698400",
    "interest": "0,00",
    "interest14": "0,00",
    "loanDebt": "16.06.2026",
-   "penalties": "20 228 588,52",
+   "penalties": "3 986 365,00",
    "principalDebt": "50 916 478,06",
    "principalDebt13": "50 916 478,06",
    "requirementsSum": "16,06",
@@ -2583,8 +2600,8 @@
    "debtSnapshotDate88": "08.04.2026",
    "debtorName": "Бирюкова Елена Андреевна",
    "entityType": "individual",
-   "forfeit": "619 390,52",
-   "forfeit15": "619 390,52",
+   "forfeit": "595 911,64",
+   "forfeit15": "595 911,64",
    "inn": "615014390786",
    "interest": "0,00",
    "interest14": "0,00",
@@ -2603,7 +2620,7 @@
      "obligationType": "Договор"
     }
    ],
-   "penalties": "619 390,52",
+   "penalties": "23 478,88",
    "principalDebt": "5 012 543,74",
    "principalDebt13": "5 012 543,74",
    "requirementsSum": "8,04",
@@ -4799,6 +4816,7 @@
     }
    ],
    "obligationsTotalDebt": "7 224 940,66",
+   "penalties": "0,00",
    "penalty0071": "51 378,35",
    "physicalHasCollateral": "true",
    "principalDebt": "74 925 412,05",
@@ -4974,6 +4992,7 @@
    ],
    "obligationsTotalDebt": "23 386 573,48",
    "ogrn": "1176196047884",
+   "penalties": "0,00",
    "principalDebt": "25 336 868,83",
    "principalDebt13": "25 336 868,83",
    "procedureType": "observation",
@@ -5189,6 +5208,7 @@
     }
    ],
    "ogrn": "1183443007659",
+   "penalties": "0,00",
    "principalDebt": "3 977 344 345,76",
    "principalDebt13": "3 977 344 345,76",
    "procedureType": "observation",
@@ -5508,6 +5528,7 @@
      "obligationType": "Кредитный договор"
     }
    ],
+   "penalties": "0,00",
    "principalDebt": "119 498,84",
    "principalDebt13": "119 498,84",
    "priorCaseNumber": "А53-45591/2025",
@@ -5579,8 +5600,8 @@
    "entityType": "individual",
    "forfeit": "0,00",
    "forfeit15": "0,00",
-   "interest": "88,00",
-   "interest14": "88,00",
+   "interest": "40,00",
+   "interest14": "40,00",
    "loanDebt": "0,00",
    "managerAddress": "603000, обл Нижегородская, а/я 98",
    "managerName": "Рыжов Василий Валерьевич",
@@ -5599,8 +5620,9 @@
      "obligationType": "Договор"
     }
    ],
-   "principalDebt": "111 190,48",
-   "principalDebt13": "111 190,48",
+   "penalties": "0,00",
+   "principalDebt": "48,00",
+   "principalDebt13": "48,00",
    "requirementsSum": "5 764,00",
    "sourceDocumentType": "rtk_application",
    "stateDuty": "5 764,00",
@@ -6354,6 +6376,7 @@
     }
    ],
    "obligationsTotalDebt": "2 449 211,19",
+   "penalties": "0,00",
    "principalDebt": "7 716,37",
    "principalDebt13": "7 716,37",
    "procedureType": "restructuring",
@@ -6537,6 +6560,7 @@
     }
    ],
    "obligationsTotalDebt": "9 148,36",
+   "penalties": "0,00",
    "principalDebt": "7 716,37",
    "principalDebt13": "7 716,37",
    "procedureType": "restructuring",
@@ -6672,6 +6696,7 @@
     }
    ],
    "obligationsTotalDebt": "189 626,72",
+   "penalties": "0,00",
    "principalDebt": "162 635,77",
    "principalDebt13": "162 635,77",
    "procedureType": "restructuring",
@@ -6859,6 +6884,7 @@
     }
    ],
    "obligationsTotalDebt": "2 449 211,19",
+   "penalties": "0,00",
    "principalDebt": "2 111 142,81",
    "principalDebt13": "2 111 142,81",
    "procedureType": "restructuring",
@@ -7148,6 +7174,7 @@
      "obligationType": "Кредитный договор"
     }
    ],
+   "penalties": "0,00",
    "principalDebt": "5 951 334,57",
    "principalDebt13": "5 951 334,57",
    "registrationDate": "20.06.1991",
@@ -7286,6 +7313,7 @@
      "obligationType": "Кредитный договор"
     }
    ],
+   "penalties": "0,00",
    "principalDebt": "5 951 334,57",
    "principalDebt13": "5 951 334,57",
    "registrationDate": "20.06.1991",
@@ -7391,6 +7419,7 @@
      "obligationType": "Кредитный договор"
     }
    ],
+   "penalties": "0,00",
    "principalDebt": "312 785,98",
    "principalDebt13": "312 785,98",
    "registrationDate": "20.06.1991",
@@ -7714,6 +7743,7 @@
    ],
    "obligationsTotalDebt": "19 619 276,72",
    "ogrn": "123454321234",
+   "penalties": "0,00",
    "penalty0071": "3 111,16",
    "physicalHasCollateral": "true",
    "principalDebt": "19 289 480,06",
@@ -8048,6 +8078,7 @@
     }
    ],
    "obligationsTotalDebt": "189 626,72",
+   "penalties": "0,00",
    "principalDebt": "162 635,77",
    "principalDebt13": "162 635,77",
    "procedureType": "realization",
@@ -8181,6 +8212,7 @@
     }
    ],
    "obligationsTotalDebt": "9 148,36",
+   "penalties": "0,00",
    "principalDebt": "7 716,37",
    "principalDebt13": "7 716,37",
    "procedureType": "realization",
@@ -8354,6 +8386,7 @@
     }
    ],
    "obligationsTotalDebt": "2 449 211,19",
+   "penalties": "0,00",
    "principalDebt": "2 111 142,81",
    "principalDebt13": "2 111 142,81",
    "procedureType": "realization",

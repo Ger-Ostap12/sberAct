@@ -491,7 +491,9 @@ class AmountsMixin:
 
         def classify(ph):
             ph = ph.lower()
-            if "неустой" in ph or "пени" in ph or "штраф" in ph:
+            if "штраф" in ph:
+                return "penalty"
+            if "неустой" in ph or "пени" in ph:
                 return "forfeit"
             if "процент" in ph:
                 return "interest"
@@ -509,21 +511,34 @@ class AmountsMixin:
                 tail = seg[m.end():m.end() + 18].lower()
                 return "из котор" in tail or "в том числе" in tail
 
-            ms = [m for m in amt_re.finditer(seg) if not is_total(m)]
+            allm = list(amt_re.finditer(seg))
+            starts = [a.start() for a in allm]
+            ends = [a.end() for a in allm]
+            ms = [(i, m) for i, m in enumerate(allm) if not is_total(m)]
+
+            # Окно подписи ограничиваем границами соседних сумм (один пункт разбивки),
+            # иначе «80 727,56 - проценты; 8893,98 - пени» даёт «пени» в окне процентов.
+            def win_after(i, m):
+                nb = starts[i + 1] if i + 1 < len(allm) else len(seg)
+                return seg[m.end():min(nb, m.end() + 45)]
+
+            def win_before(i, m):
+                pe = ends[i - 1] if i - 1 >= 0 else 0
+                return seg[max(pe, m.start() - 45):m.start()]
+
             after_n = before_n = 0
-            for m in ms:
-                if classify(seg[m.end():m.end() + 45]):
+            for i, m in ms:
+                if classify(win_after(i, m)):
                     after_n += 1
-                if classify(seg[max(0, m.start() - 45):m.start()]):
+                if classify(win_before(i, m)):
                     before_n += 1
             use_after = after_n >= before_n
-            pr = it = fo = ld = 0.0
+            pr = it = fo = pen = ld = 0.0
             hits = 0
             seen = set()
-            for m in ms:
+            for i, m in ms:
                 val = self._fin_amount(m.group(1))
-                ph = (seg[m.end():m.end() + 45] if use_after
-                      else seg[max(0, m.start() - 45):m.start()])
+                ph = win_after(i, m) if use_after else win_before(i, m)
                 cat = classify(ph)
                 if not cat:
                     continue
@@ -533,6 +548,8 @@ class AmountsMixin:
                 seen.add(key)
                 if cat == "forfeit":
                     fo += val
+                elif cat == "penalty":
+                    pen += val
                 elif cat == "interest":
                     it += val
                 elif cat == "loan_duty":
@@ -540,7 +557,7 @@ class AmountsMixin:
                 else:
                     pr += val
                 hits += 1
-            return pr, it, fo, ld, hits
+            return pr, it, fo, pen, ld, hits
 
         p_anchor = -1
         for a in ("просим суд", "прошу суд", "просит суд",
@@ -553,7 +570,7 @@ class AmountsMixin:
         cutp = re.search(r"\n\s*Приложени", region, re.IGNORECASE)
         prayer_full = region[:cutp.start()] if cutp else region
 
-        principal = interest = forfeit = loan_duty = 0.0
+        principal = interest = forfeit = penalty = loan_duty = 0.0
         validated = False
 
         verb_block_re = re.compile(
@@ -565,7 +582,7 @@ class AmountsMixin:
         vblocks = list(verb_block_re.finditer(text))
         if vblocks:
             seen_sub = set()
-            g = [0.0, 0.0, 0.0, 0.0]
+            g = [0.0, 0.0, 0.0, 0.0, 0.0]
             nvalid = 0
             for idx, m in enumerate(vblocks):
                 subtotal = self._fin_amount(m.group(1))
@@ -580,14 +597,14 @@ class AmountsMixin:
                 if cw:
                     window = window[:cw.start()]
                 window = window[:1800]
-                pr, it, fo, ld, h = parse_seg(window)
-                ssum = pr + it + fo + ld
+                pr, it, fo, pen, ld, h = parse_seg(window)
+                ssum = pr + it + fo + pen + ld
                 if h and abs(ssum - subtotal) < 1.5 and round(subtotal, 2) not in seen_sub:
                     seen_sub.add(round(subtotal, 2))
-                    g[0] += pr; g[1] += it; g[2] += fo; g[3] += ld
+                    g[0] += pr; g[1] += it; g[2] += fo; g[3] += pen; g[4] += ld
                     nvalid += 1
             if nvalid:
-                principal, interest, forfeit, loan_duty = g
+                principal, interest, forfeit, penalty, loan_duty = g
                 validated = True
 
         if not validated:
@@ -639,19 +656,19 @@ class AmountsMixin:
                     seg = seg[: b.start() + 20]
                 if len(dash_cat_re.findall(seg)) < 2:
                     return
-            principal, interest, forfeit, loan_duty, hits = parse_seg(seg)
-            if hits == 0 or (principal + interest + forfeit) <= 0:
+            principal, interest, forfeit, penalty, loan_duty, hits = parse_seg(seg)
+            if hits == 0 or (principal + interest + forfeit + penalty) <= 0:
                 return
             if has_iz:
                 _strip_sp = lambda z: z.replace(" ", "").replace("\u00a0", "").replace("\u202f", "")
-                total_chk = principal + interest + forfeit + loan_duty
+                total_chk = principal + interest + forfeit + penalty + loan_duty
                 if str(int(total_chk)) not in _strip_sp(text):
                     logger.info("PRAYER: total not confirmed in text - skip")
                     return
 
-        if (principal + interest + forfeit) <= 0:
+        if (principal + interest + forfeit + penalty) <= 0:
             return
-        total = principal + interest + forfeit + loan_duty
+        total = principal + interest + forfeit + penalty + loan_duty
 
         if principal > 0:
             fields["principalDebt"] = self._fin_fmt(principal)
@@ -660,6 +677,8 @@ class AmountsMixin:
         fields["interest14"] = fields["interest"]
         fields["forfeit"] = self._fin_fmt(forfeit)
         fields["forfeit15"] = fields["forfeit"]
+        # Штрафные санкции — отдельное поле (penalties), не путать с неустойкой.
+        fields["penalties"] = self._fin_fmt(penalty)
         fields["totalDebt"] = self._fin_fmt(total)
         fields["debtAmount"] = fields["totalDebt"]
 

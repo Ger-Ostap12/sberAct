@@ -599,6 +599,22 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 creditor, re.IGNORECASE))
             if creditor and 3 < len(creditor) < 150 and not has_marker and not boilerplate and looks_creditor:
                 return creditor
+
+        # Фолбэк 2: кредитор назван в просительной части — «(включить) требование
+        # кредитора <Банк/Общество …>» (без шапки-метки). Берём название с ОПФ.
+        m2 = re.search(
+            r"(?:требовани\w*\s+)?кредитора\s+"
+            r"((?:Банк\w*\s+)?(?:ВТБ|Сбербанк|[А-ЯЁ][А-ЯЁа-яё«»\"-]+)"
+            r"[^,\n]{0,60}?(?:\([^)]*обществ[^)]*\)|«[^»]+»))",
+            text, re.IGNORECASE,
+        )
+        if m2:
+            creditor = self.clean_extracted_value(m2.group(1)).strip(" ,;")
+            cl = creditor.lower()
+            looks_cred = bool(re.search(r"банк|общество|\bАО\b|\bПАО\b|\bООО\b|\bОАО\b|\bЗАО\b", creditor, re.IGNORECASE))
+            bad = any(w in cl for w in ("банкротств", "финансирован", "процедур", "должник", "требовани"))
+            if creditor and 3 < len(creditor) < 150 and looks_cred and not bad:
+                return creditor
         return None
 
     def _extract_creditor_block(self, text: str) -> Optional[str]:
