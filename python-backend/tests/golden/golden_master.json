@@ -2570,7 +2570,7 @@
   "confidence": 0.95,
   "debtors": [
    {
-    "address": "",
+    "address": "346404, Россия, Ростовская обл, Новочеркасск г, Флерова А.Ф. ул, 4, кв. 66",
     "birthDate": "02.02.1982",
     "birthPlace": "ГОР. НОВОЧЕРКАССК",
     "inn": "615014390786",
@@ -2583,6 +2583,7 @@
   "documentType": "initiation_physical",
   "entityType": "individual",
   "fields": {
+   "applicantAddress": "346404, Россия, Ростовская обл, Новочеркасск г, Флерова А.Ф. ул, 4, кв. 66",
    "applicantName": "Бирюкова Елена Андреевна",
    "applicantNameAccusative": "Бирюкову Елену Андреевну",
    "applicantNameDative": "Бирюковой Елене Андреевне",

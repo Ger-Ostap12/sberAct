@@ -693,6 +693,20 @@ class PartiesMixin:
                     extracted_fields["applicantAddress"] = cleaned_addr
                     logger.info(f"✅ Адрес должника (fallback из блока 'Должник: Адрес'): {cleaned_addr}")
 
+        # Фолбэк: «зарегистрирован(а) по адресу: 346404,…» в теле документа
+        # (ФНС-банкротство — адрес должника не в блоке «Должник:», а в тексте).
+        if not extracted_fields.get("applicantAddress"):
+            reg = re.search(
+                r"зарегистрирован\w*\s+по\s+адресу[:\s]*([0-9]{6}[^\n;]+)",
+                text, re.IGNORECASE,
+            )
+            if reg:
+                addr = re.sub(r"(?:\s*,\s*)+", ", ", reg.group(1))   # двойные/пустые запятые
+                addr = re.sub(r"\s+", " ", addr).strip(" ,;.")
+                if addr and re.search(r"[А-ЯЁа-яё]", addr):
+                    extracted_fields["applicantAddress"] = addr
+                    logger.info(f"✅ Адрес должника (fallback 'зарегистрирован по адресу'): {addr}")
+
         # Для КФХ: если адрес не найден, извлекаем его из текста документа
         if extracted_fields.get("isKfh") and not extracted_fields.get("applicantAddress"):
             # Ищем адрес в тексте после "Адрес:" или в блоке должника
