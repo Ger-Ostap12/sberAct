@@ -5337,7 +5337,7 @@
  },
  "КФХ/КФХ ИНИИЦИИРОВАНИЕ Заявление о признании должника банкротом_01C0D457F5414539B9F5CA5EFD963F3B.docx": {
   "collaterals": [],
-  "confidence": 0.95,
+  "confidence": 1.0,
   "debtors": [
    {
     "address": "344111, г. Ростов-на-Дону, ул. Б.Садовая, д. 11, Литер А, пом. 111",
@@ -5361,11 +5361,12 @@
    "applicantNameInstrumental": "АРБУЗОВЫМ ИВАНОМ МИХАЙЛОВИЧЕМ",
    "applicationDate": "20.06.1991",
    "bankCommission": "0,00",
+   "caseNumber": "А53-22200/2026",
    "companyInn": "98765432011",
    "contractDate": "21.12.2021",
    "contractDate100": "21.12.2021",
    "contractNumber": "5221RRR223RRRR241R",
-   "courtName": "Арбитражный суд",
+   "courtName": "Арбитражный суд Ростовской области",
    "creditAmount": "0,00",
    "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
    "creditorInn": "7707083893",
@@ -5411,7 +5412,7 @@
   "metadata": {
    "language": "ru",
    "pageCount": 4,
-   "wordCount": 724
+   "wordCount": 731
   },
   "obligations": [
    {
@@ -5421,8 +5422,8 @@
     "obligationType": "Кредитный договор"
    }
   ],
-  "rawTextLen": 5277,
-  "rawTextSha": "882f90ce9ea4113acb7e534140747fcb10955e3b0e5f6b35a2596cee8e6b2115",
+  "rawTextLen": 5335,
+  "rawTextSha": "f91218a3db79c380d058c47fe229970e6e5fed36fdcec7cd84b353496b16ea43",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "kfh",
@@ -5451,7 +5452,7 @@
     "vin": ""
    }
   ],
-  "confidence": 0.95,
+  "confidence": 1.0,
   "debtors": [
    {
     "address": "344111, г. Ростов-на-Дону, ул. Б.Садовая, д. 11, Литер А, пом. 111",
@@ -5475,6 +5476,7 @@
    "applicantNameInstrumental": "АРБУЗОВЫМ ИВАНОМ МИХАЙЛОВИЧЕМ",
    "applicationDate": "20.06.1991",
    "bankCommission": "0,00",
+   "caseNumber": "А53-33300/2026",
    "collaterals": [
     {
      "address": "Ростовская область, Мясниковский р-н, х Ленинаван, ул Пушкина, д 150Х",
@@ -5493,7 +5495,7 @@
    "contractDate": "01.10.2024",
    "contractDate100": "21.12.2021",
    "contractNumber": "5221RRR223RRRR241R",
-   "courtName": "Арбитражный суд",
+   "courtName": "Арбитражный суд Ростовской области",
    "creditAmount": "0,00",
    "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
    "creditorInn": "7707083893",
@@ -5543,7 +5545,7 @@
   "metadata": {
    "language": "ru",
    "pageCount": 4,
-   "wordCount": 908
+   "wordCount": 915
   },
   "obligations": [
    {
@@ -5553,8 +5555,8 @@
     "obligationType": "Кредитный договор"
    }
   ],
-  "rawTextLen": 6722,
-  "rawTextSha": "2d97dfb2011b520d1699612ff730f8f3ceb655690074fa2bc923954256ddf12a",
+  "rawTextLen": 6780,
+  "rawTextSha": "e37f27e4d6d537407cfb4fa1ad163d4424302ab14748488d5ecadc28b17d8ec8",
   "recommendedActs": {
    "collateralOption": "collateral",
    "entityType": "kfh",
@@ -5565,274 +5567,6 @@
     "acceptance_no_motion_no_duty_collateral",
     "final_observation",
     "final_competition"
-   ]
-  },
-  "thirdParties": []
- },
- "КФХ/Наблюдение КФХ Залог акт.docx": {
-  "collaterals": [],
-  "confidence": 0.95,
-  "debtors": [
-   {
-    "address": "",
-    "birthDate": "",
-    "birthPlace": "",
-    "inn": "",
-    "name": "является заемщиком и залогодателем",
-    "ogrn": "",
-    "ogrnip": "",
-    "snils": ""
-   }
-  ],
-  "documentType": "rtk_application",
-  "entityType": "kfh",
-  "fields": {
-   "applicantName": "является заемщиком и залогодателем",
-   "applicantNameAccusative": "являющегося заёмщика и залогодателя",
-   "applicantNameDative": "являющемуся заёмщику и залогодателю",
-   "applicantNameGenitive": "являющегося заёмщика и залогодателя",
-   "applicantNameInstrumental": "являющимся заёмщиком и залогодателем",
-   "applicationDate": "13.10.2015",
-   "courtName": "Арбитражный суд Ростовской области",
-   "debtAmount": "",
-   "entityType": "kfh",
-   "forfeit": "",
-   "forfeit15": "",
-   "interest": "",
-   "interest14": "",
-   "isKfh": true,
-   "loanDebt": "Арбитражный суд Ростовской области с настоящим заявлением",
-   "obligationType": "кредитный договор",
-   "principalDebt": "",
-   "principalDebt13": "",
-   "requirementsSum": "",
-   "sourceDocumentType": "rtk_application",
-   "sroName": "Кредитор просит утвердить арбитражного управляющего из числа членов Ассоциации «",
-   "totalDebt": ""
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 3,
-   "wordCount": 2234
-  },
-  "obligations": [],
-  "rawTextLen": 17813,
-  "rawTextSha": "2c6d2b2307473e130333294e6551ae0971fc78a4a3e4eb1c7d5dd1e0e8f36039",
-  "recommendedActs": {
-   "collateralOption": "collateral",
-   "entityType": "kfh",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization",
-    "acceptance_no_motion_no_duty_collateral",
-    "final_observation",
-    "final_competition"
-   ]
-  },
-  "thirdParties": []
- },
- "КФХ/Наблюдение КФХ акт.docx": {
-  "collaterals": [],
-  "confidence": 0.95,
-  "debtors": [
-   {
-    "address": "",
-    "birthDate": "",
-    "birthPlace": "",
-    "inn": "",
-    "name": "РБИТРАЖНЫЙ СУД РОСТОВСКО",
-    "ogrn": "",
-    "ogrnip": "",
-    "snils": ""
-   }
-  ],
-  "documentType": "rtk_application",
-  "entityType": "kfh",
-  "fields": {
-   "applicantName": "РБИТРАЖНЫЙ СУД РОСТОВСКО",
-   "applicantNameAccusative": "РБИТРАЖНОГО СУД РОСТОВСКО",
-   "applicantNameGenitive": "РБИТРАЖНОГО СУДА РОСТОВСКО",
-   "applicantNameInstrumental": "РБИТРАЖНЫМ СУДОМ РОСТОВСКО",
-   "applicationDate": "13.10.2015",
-   "courtName": "Арбитражный суд Ростовской области",
-   "debtAmount": "",
-   "entityType": "kfh",
-   "forfeit": "",
-   "forfeit15": "",
-   "interest": "",
-   "interest14": "",
-   "isKfh": true,
-   "loanDebt": "Арбитражный суд Ростовской области с настоящим заявлением",
-   "obligationType": "кредитный договор",
-   "principalDebt": "",
-   "principalDebt13": "",
-   "requirementsSum": "",
-   "sourceDocumentType": "rtk_application",
-   "sroName": "Кредитор просит утвердить арбитражного управляющего из числа членов Ассоциации «",
-   "totalDebt": ""
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 3,
-   "wordCount": 1751
-  },
-  "obligations": [],
-  "rawTextLen": 13888,
-  "rawTextSha": "5d8e65ef228bb1b324b3a32399b3a381bea3a23916fbfbbb12ef554cc423344c",
-  "recommendedActs": {
-   "collateralOption": "no_collateral",
-   "entityType": "kfh",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_observation",
-    "final_competition"
-   ]
-  },
-  "thirdParties": []
- },
- "КФХ/Принятие иницирование КФХ акт.docx": {
-  "collaterals": [],
-  "confidence": 0.95,
-  "debtors": [
-   {
-    "address": "344002, г. Ростов-на-Дону",
-    "birthDate": "",
-    "birthPlace": "",
-    "inn": "",
-    "name": "РБИТРАЖНЫЙ СУД РОСТОВСКО",
-    "ogrn": "",
-    "ogrnip": "",
-    "snils": ""
-   }
-  ],
-  "documentType": "unknown",
-  "entityType": "kfh",
-  "fields": {
-   "applicantAddress": "344002, г. Ростов-на-Дону",
-   "applicantName": "РБИТРАЖНЫЙ СУД РОСТОВСКО",
-   "applicantNameAccusative": "РБИТРАЖНОГО СУД РОСТОВСКО",
-   "applicantNameGenitive": "РБИТРАЖНОГО СУДА РОСТОВСКО",
-   "applicantNameInstrumental": "РБИТРАЖНЫМ СУДОМ РОСТОВСКО",
-   "applicationDate": "26.10.2002",
-   "courtName": "Арбитражный суд РОСТОВСКОЙ области",
-   "debtAmount": "",
-   "debtorName": "учредителем юридических лиц",
-   "entityType": "kfh",
-   "isKfh": true,
-   "loanDebt": "АРБИТРАЖНЫЙ СУД РОСТОВСКОЙ ОБЛАСТИ",
-   "sourceDocumentType": "unknown",
-   "sroName": "Заявитель просит утвердить арбитражного управляющего из числа членов ассоциации «",
-   "totalDebt": ""
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 2,
-   "wordCount": 1443
-  },
-  "obligations": [],
-  "rawTextLen": 11708,
-  "rawTextSha": "fd8aaea2c26c27a2f5302e23489cd24e3e80ef834d3e171614544a9681be1812",
-  "recommendedActs": {
-   "collateralOption": "no_collateral",
-   "entityType": "kfh",
-   "recommendedActIds": [
-    "final_realization",
-    "acceptance_definition",
-    "final_observation"
-   ]
-  },
-  "thirdParties": []
- },
- "Неизвестный кредитор.docx": {
-  "collaterals": [],
-  "confidence": 0.95,
-  "debtors": [
-   {
-    "address": "1111111, ХЛЕБНЫЙ КРАЙ, ГОРОД БАННЫЙ, УЛ. ПУШКИНА, Д. 3",
-    "birthDate": "31.12.2000",
-    "birthPlace": "",
-    "inn": "790111111111",
-    "name": "ИП ПУПКИН ИЛЬЯ ГЕННАДЬЕВИЧ",
-    "ogrn": "3222721111111",
-    "ogrnip": "322272111111111",
-    "snils": ""
-   }
-  ],
-  "documentType": "ip_collection",
-  "entityType": "ip",
-  "fields": {
-   "applicantAddress": "1111111, ХЛЕБНЫЙ КРАЙ, ГОРОД БАННЫЙ, УЛ. ПУШКИНА, Д. 3",
-   "applicantName": "ИП ПУПКИН ИЛЬЯ ГЕННАДЬЕВИЧ",
-   "applicantNameAccusative": "ИП ПУПКИНЫ ИЛЬЮ ГЕННАДЬЕВИЧА",
-   "applicantNameDative": "ПУПКИНУ ИЛЬЕ ГЕННАДЬЕВИЧУ",
-   "applicantNameGenitive": "ИП ПУПКИН ИЛЬИ ГЕННАДЬЕВИЧА",
-   "applicantNameInstrumental": "ИП ПУПКИНАМИ ИЛЬЁЙ ГЕННАДЬЕВИЧЕМ",
-   "applicationDate": "23.06.2026",
-   "birthDate": "31.12.2000",
-   "companyInn": "790111111111",
-   "contractDate": "31.05.2026",
-   "contractDate100": "31.05.2026",
-   "contractNumber": "7904444444244",
-   "courtName": "Арбитражный суд Ростовской области",
-   "creditAmount": "7 900 000",
-   "creditInterestRate": "10",
-   "creditPenaltyRate": "20,00",
-   "creditTermMonths": "36",
-   "creditorAddress": "г. Волгодонск, ул. Залупова, д. 1129",
-   "creditorInn": "1111113893",
-   "creditorName": "ООО Сохранительный банк РФ",
-   "creditorOgrn": "1111110132195",
-   "debtAmount": "8 000 000,00",
-   "debtorName": "ПУПКИН ИЛЬЯ ГЕННАДЬЕВИЧ",
-   "entityType": "ip",
-   "forfeit": "500 000,00",
-   "forfeit15": "500 000,00",
-   "inn": "790111111111",
-   "interest": "500 000,00",
-   "interest14": "500 000,00",
-   "loanDebt": "8 000 000",
-   "obligationType": "Кредитный договор",
-   "obligations": [
-    {
-     "contractDate": "31.05.2026",
-     "contractNumber": "7904444444244",
-     "id": "obligation_fallback_0",
-     "obligationType": "Кредитный договор"
-    }
-   ],
-   "ogrn": "3222721111111",
-   "ogrnip": "322272111111111",
-   "principalDebt": "7 500 000,00",
-   "principalDebt13": "7 500 000,00",
-   "registrationDate": "24.11.1999",
-   "sourceDocumentType": "ip_collection",
-   "stateDuty": "700 000,00",
-   "stateDuty16": "700 000,00",
-   "totalDebt": "8 000 000,00"
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 5,
-   "wordCount": 1065
-  },
-  "obligations": [
-   {
-    "contractDate": "31.05.2026",
-    "contractNumber": "7904444444244",
-    "id": "obligation_fallback_0",
-    "obligationType": "Кредитный договор"
-   }
-  ],
-  "rawTextLen": 8243,
-  "rawTextSha": "fb5549c24c43662831d0f1c868c493f65079e8c744029f075926c87f6e959d78",
-  "recommendedActs": {
-   "collateralOption": "no_collateral",
-   "entityType": "ip",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -6570,532 +6304,6 @@
     "name": "ТОЛСТОЙ ЛЕВ НИКОЛАЕВИЧ"
    }
   ]
- },
- "заявления ипотека/3 должника.docx": {
-  "collaterals": [
-   {
-    "address": "Российская Федерация, Краснодарский край, Славянский муниципальный район, Протокское сельское поселение, хутор Бараниковский, ул. Октябрьская, земельный участок 42Б",
-    "brandModel": "",
-    "cadastralNumber": "23:27:0803003:10495",
-    "collateralType": "real_estate",
-    "collateralValue": "",
-    "description": "Земельный участок, расположенный по адресу: Российская Федерация, Краснодарский край, Славянский муниципальный район, Протокское сельское поселение, хутор Бараниковский, ул. Октябрьская, земельный участок 42Б. Площадь: 1000 +/- 11. Кадастровый номер: 23:27:0803003:10495. Запись в ЕГРН: 23:27:0803003:10495-23/250/2023-3 от 04.10.2023 г. Ипотека в силу закона",
-    "id": "collateral-0",
-    "objectName": "Земельный участок",
-    "otherDescription": "",
-    "vin": ""
-   }
-  ],
-  "confidence": 0.95,
-  "debtors": [
-   {
-    "address": "867624, ВЕРХНЯЯ РЕСПУБЛИКА, ЛАКСАНСКИЙ Р-Н, С. ШИИТОВЕЙ, УЛ. БОЛЬШЕРОТАЯ, ДОМ 67",
-    "birthDate": "04.04.1979",
-    "birthPlace": "С. КОРТУНСОВ СОРВАНСКИЙ РАЙОН КБАССР",
-    "inn": "26269332741",
-    "name": "Боевая Наталья Игоревна"
-   },
-   {
-    "address": "867624, ВЕРХНЯЯ РЕСПУБЛИКА, ЛАКСАНСКИЙ Р-Н,  С. ОТРАДНОЕ, УЛ. СЕДАЯ, ДОМ 24",
-    "birthDate": "21.04.1989",
-    "birthPlace": "С. КОРТУНСОВ, СОРВАНСКИЙ РАЙОН КБАССР",
-    "inn": "376920951261",
-    "name": "Кондратьев Марк Олегович",
-    "snils": "22847873828"
-   },
-   {
-    "address": "867624, ВЕРХНЯЯ РЕСПУБЛИКА, ЛАКСАНСКИЙ Р-Н, С. ШИИТОВЕЙ, УЛ. БОЛЬШЕРОТАЯ, ДОМ 67",
-    "birthDate": "05.05.1979",
-    "birthPlace": "С. КОРТУНСОВ СОРВАНСКИЙ РАЙОН КБАССР",
-    "inn": "26269332741",
-    "name": "Иванов Иван Иванович"
-   }
-  ],
-  "documentType": "mortgage_claim",
-  "entityType": "individual",
-  "fields": {
-   "applicantAddress": "867624, ВЕРХНЯЯ РЕСПУБЛИКА, ЛАКСАНСКИЙ Р-Н, С. ШИИТОВЕЙ, УЛ. БОЛЬШЕРОТАЯ, ДОМ 67, 867624, ВЕРХНЯЯ РЕСПУБЛИКА, ЛАКСАНСКИЙ Р-Н,  С. ОТРАДНОЕ, УЛ. СЕДАЯ, ДОМ 24, 867624, ВЕРХНЯЯ РЕСПУБЛИКА, ЛАКСАНСКИЙ Р-Н, С. ШИИТОВЕЙ, УЛ. БОЛЬШЕРОТАЯ, ДОМ 67",
-   "applicantName": "Боевая Наталья Игоревна, Кондратьев Марк Олегович, Иванов Иван Иванович",
-   "applicantNameAccusative": "Боевую Наталью Игоревну, Кондратьева Марка Олеговича, Иванова Ивана Ивановича",
-   "applicantNameDative": "Боевой Наталье Игоревне, Кондратьеву Марку Олеговичу, Иванову Ивану Ивановичу",
-   "applicantNameGenitive": "Боевой Натальи Игоревны, Кондратьева Марка Олеговича, Иванова Ивана Ивановича",
-   "applicantNameInstrumental": "Боевой Натальей Игоревной, Кондратьевым Марком Олеговичем, Ивановым Иваном Ивановичем",
-   "applicationDate": "22.06.2026",
-   "birthDate": "04.04.1979, 21.04.1989, 05.05.1979",
-   "birthPlace": "С. КОРТУНСОВ СОРВАНСКИЙ РАЙОН КБАССР, С. КОРТУНСОВ, СОРВАНСКИЙ РАЙОН КБАССР, С. КОРТУНСОВ СОРВАНСКИЙ РАЙОН КБАССР",
-   "collaterals": [
-    {
-     "address": "Российская Федерация, Краснодарский край, Славянский муниципальный район, Протокское сельское поселение, хутор Бараниковский, ул. Октябрьская, земельный участок 42Б",
-     "brandModel": "",
-     "cadastralNumber": "",
-     "collateralType": "real_estate",
-     "collateralValue": "",
-     "description": "Земельный участок, расположенный по адресу: Российская Федерация, Краснодарский край, Славянский муниципальный район, Протокское сельское поселение, хутор Бараниковский, ул. Октябрьская, земельный участок 42Б.",
-     "id": "collateral-0",
-     "objectName": "Земельный участок",
-     "otherDescription": "",
-     "vin": ""
-    }
-   ],
-   "companyInn": "26269332741, 376920951261, 26269332741",
-   "contractDate": "04.10.2023",
-   "contractNumber": "0099900",
-   "courtName": "Славянский районный суд",
-   "creditInterestRate": "18,5",
-   "creditPenaltyRate": "18.5",
-   "creditTermMonths": "336",
-   "creditorAddress": "117312, г. Москва, ул. Вавилова, д.19",
-   "creditorInn": "7707083893",
-   "creditorName": "ПАО Сбербанк",
-   "creditorOgrn": "1027700132195",
-   "debtAmount": "6 299 757,93",
-   "debtorName": "Боевая Наталья Игоревна, Кондратьев Марк Олегович, Иванов Иван Иванович",
-   "entityType": "individual",
-   "forfeit": "10 085,37",
-   "forfeit15": "10 085,37",
-   "inn": "26269332741, 376920951261, 26269332741",
-   "interest": "338 337,99",
-   "interest14": "338 337,99",
-   "loanDebt": "6 299 757,93",
-   "mortgageCollateralDescription1221": "Земельный участок, расположенный по адресу: Российская Федерация, Краснодарский край, Славянский муниципальный район, Протокское сельское поселение, хутор Бараниковский, ул. Октябрьская, земельный участок 42Б.",
-   "mortgageCourtAddress001": "353810, г. Славянск-на-Кубани, ул. Красная, д. 32",
-   "mortgageCourtName002": "Славянский районный суд",
-   "mortgageCreditAmount111": "6 000 000,00",
-   "mortgageCreditTerm112": "336",
-   "mortgageDebtorName": "Обязательства По Своевременному",
-   "mortgageDebtorNameDative": "Обязательствам По Своевременному",
-   "mortgageInterestAmount12": "338 337,99",
-   "mortgageInterestRate113": "18.5",
-   "mortgagePenaltyRate114": "18.5",
-   "mortgagePeriodAmount10": "6 299 757,93",
-   "mortgagePeriodEnd121": "15.01.2025",
-   "mortgagePeriodStart120": "08.08.2024",
-   "mortgagePrincipalAmount11": "5 951 334,57",
-   "mortgageStartPriceDecision1222": "289 800,00",
-   "obligationType": "Кредитный договор",
-   "obligations": [
-    {
-     "contractDate": "04.10.2023",
-     "contractNumber": "0099900",
-     "id": "obligation_11_2",
-     "obligationType": "Кредитный договор"
-    }
-   ],
-   "penalties": "0,00",
-   "principalDebt": "5 951 334,57",
-   "principalDebt13": "5 951 334,57",
-   "registrationDate": "20.06.1991",
-   "snils": "22847873828",
-   "sourceDocumentType": "mortgage_claim",
-   "stateDuty": "88 098,00",
-   "stateDuty16": "88 098,00",
-   "totalDebt": "6 299 757,93"
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 9,
-   "wordCount": 2277
-  },
-  "obligations": [
-   {
-    "contractDate": "04.10.2023",
-    "contractNumber": "0099900",
-    "id": "obligation_11_2",
-    "obligationType": "Кредитный договор"
-   }
-  ],
-  "rawTextLen": 17485,
-  "rawTextSha": "f7c9c0a6dfb95c5bdea674193aeab0655e958390a98368d71811a7451435662a",
-  "recommendedActs": {
-   "collateralOption": "no_collateral",
-   "entityType": "individual",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization"
-   ]
-  },
-  "thirdParties": []
- },
- "заявления ипотека/Исковое заявление_7A97016F2B4C4525B21AC954C00EFAAA.docx": {
-  "collaterals": [
-   {
-    "address": "Российская Федерация, Краснодарский край, Славянский муниципальный район, Протокское сельское поселение, хутор Бараниковский, ул. Октябрьская, земельный участок 42Б",
-    "brandModel": "",
-    "cadastralNumber": "23:27:0803003:10495",
-    "collateralType": "real_estate",
-    "collateralValue": "",
-    "description": "Земельный участок, расположенный по адресу: Российская Федерация, Краснодарский край, Славянский муниципальный район, Протокское сельское поселение, хутор Бараниковский, ул. Октябрьская, земельный участок 42Б. Площадь: 1000 +/- 11. Кадастровый номер: 23:27:0803003:10495. Запись в ЕГРН: 23:27:0803003:10495-23/250/2023-3 от 04.10.2023 г. Ипотека в силу закона",
-    "id": "collateral-0",
-    "objectName": "Земельный участок",
-    "otherDescription": "",
-    "vin": ""
-   }
-  ],
-  "confidence": 0.95,
-  "debtors": [
-   {
-    "address": "867624, ВЕРХНЯЯ РЕСПУБЛИКА, ЛАКСАНСКИЙ Р-Н, С. ШИИТОВЕЙ, УЛ. БОЛЬШЕРОТАЯ, ДОМ 67",
-    "birthDate": "04.04.1979",
-    "birthPlace": "С. КОРТУНСОВ СОРВАНСКИЙ РАЙОН КБАССР",
-    "inn": "26269332741",
-    "name": "Боевая Наталья Игоревна"
-   },
-   {
-    "address": "867624, ВЕРХНЯЯ РЕСПУБЛИКА, ЛАКСАНСКИЙ Р-Н,  С. ОТРАДНОЕ, УЛ. СЕДАЯ, ДОМ 24",
-    "birthDate": "21.04.1989",
-    "birthPlace": "С. КОРТУНСОВ, СОРВАНСКИЙ РАЙОН КБАССР",
-    "inn": "376920951261",
-    "name": "Кондратьев Марк Олегович",
-    "snils": "22847873828"
-   }
-  ],
-  "documentType": "mortgage_claim",
-  "entityType": "individual",
-  "fields": {
-   "applicantAddress": "867624, ВЕРХНЯЯ РЕСПУБЛИКА, ЛАКСАНСКИЙ Р-Н, С. ШИИТОВЕЙ, УЛ. БОЛЬШЕРОТАЯ, ДОМ 67, 867624, ВЕРХНЯЯ РЕСПУБЛИКА, ЛАКСАНСКИЙ Р-Н,  С. ОТРАДНОЕ, УЛ. СЕДАЯ, ДОМ 24",
-   "applicantName": "Боевая Наталья Игоревна, Кондратьев Марк Олегович",
-   "applicantNameAccusative": "Боевую Наталью Игоревну, Кондратьева Марка Олеговича",
-   "applicantNameDative": "Боевой Наталье Игоревне, Кондратьеву Марку Олеговичу",
-   "applicantNameGenitive": "Боевой Натальи Игоревны, Кондратьева Марка Олеговича",
-   "applicantNameInstrumental": "Боевой Натальей Игоревной, Кондратьевым Марком Олеговичем",
-   "applicationDate": "03.02.2025",
-   "birthDate": "04.04.1979, 21.04.1989",
-   "birthPlace": "С. КОРТУНСОВ СОРВАНСКИЙ РАЙОН КБАССР, С. КОРТУНСОВ, СОРВАНСКИЙ РАЙОН КБАССР",
-   "collaterals": [
-    {
-     "address": "Российская Федерация, Краснодарский край, Славянский муниципальный район, Протокское сельское поселение, хутор Бараниковский, ул. Октябрьская, земельный участок 42Б",
-     "brandModel": "",
-     "cadastralNumber": "",
-     "collateralType": "real_estate",
-     "collateralValue": "",
-     "description": "Земельный участок, расположенный по адресу: Российская Федерация, Краснодарский край, Славянский муниципальный район, Протокское сельское поселение, хутор Бараниковский, ул. Октябрьская, земельный участок 42Б.",
-     "id": "collateral-0",
-     "objectName": "Земельный участок",
-     "otherDescription": "",
-     "vin": ""
-    }
-   ],
-   "companyInn": "26269332741, 376920951261",
-   "contractDate": "04.10.2023",
-   "contractNumber": "0099900",
-   "courtName": "Славянский районный суд",
-   "creditInterestRate": "18,5",
-   "creditPenaltyRate": "18.5",
-   "creditTermMonths": "336",
-   "creditorAddress": "117312, г. Москва, ул. Вавилова, д.19",
-   "creditorInn": "7707083893",
-   "creditorName": "ПАО Сбербанк",
-   "creditorOgrn": "1027700132195",
-   "debtAmount": "6 299 757,93",
-   "debtorName": "Боевая Наталья Игоревна, Кондратьев Марк Олегович",
-   "entityType": "individual",
-   "forfeit": "10 085,37",
-   "forfeit15": "10 085,37",
-   "inn": "26269332741, 376920951261",
-   "interest": "338 337,99",
-   "interest14": "338 337,99",
-   "loanDebt": "6 299 757,93",
-   "mortgageCollateralDescription1221": "Земельный участок, расположенный по адресу: Российская Федерация, Краснодарский край, Славянский муниципальный район, Протокское сельское поселение, хутор Бараниковский, ул. Октябрьская, земельный участок 42Б.",
-   "mortgageCourtAddress001": "353810, г. Славянск-на-Кубани, ул. Красная, д. 32",
-   "mortgageCourtName002": "Славянский районный суд",
-   "mortgageCreditAmount111": "6 000 000,00",
-   "mortgageCreditTerm112": "336",
-   "mortgageDebtorName": "Обязательства По Своевременному",
-   "mortgageDebtorNameDative": "Обязательствам По Своевременному",
-   "mortgageInterestAmount12": "338 337,99",
-   "mortgageInterestRate113": "18.5",
-   "mortgagePenaltyRate114": "18.5",
-   "mortgagePeriodAmount10": "6 299 757,93",
-   "mortgagePeriodEnd121": "15.01.2025",
-   "mortgagePeriodStart120": "08.08.2024",
-   "mortgagePrincipalAmount11": "5 951 334,57",
-   "mortgageStartPriceDecision1222": "289 800,00",
-   "obligationType": "Кредитный договор",
-   "obligations": [
-    {
-     "contractDate": "04.10.2023",
-     "contractNumber": "0099900",
-     "id": "obligation_11_2",
-     "obligationType": "Кредитный договор"
-    }
-   ],
-   "penalties": "0,00",
-   "principalDebt": "5 951 334,57",
-   "principalDebt13": "5 951 334,57",
-   "registrationDate": "20.06.1991",
-   "snils": "22847873828",
-   "sourceDocumentType": "mortgage_claim",
-   "stateDuty": "88 098,00",
-   "stateDuty16": "88 098,00",
-   "totalDebt": "6 299 757,93"
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 8,
-   "wordCount": 2244
-  },
-  "obligations": [
-   {
-    "contractDate": "04.10.2023",
-    "contractNumber": "0099900",
-    "id": "obligation_11_2",
-    "obligationType": "Кредитный договор"
-   }
-  ],
-  "rawTextLen": 17239,
-  "rawTextSha": "51f7804ae630feb0c287cb9077a61c8e4cf4d7eafd52bf57457868565e68ba70",
-  "recommendedActs": {
-   "collateralOption": "no_collateral",
-   "entityType": "individual",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization"
-   ]
-  },
-  "thirdParties": []
- },
- "заявления ипотека/Исковое заявление_7D8A41A104754925885EC9B5AC15F850.docx": {
-  "collaterals": [],
-  "confidence": 0.95,
-  "debtors": [
-   {
-    "address": "",
-    "birthDate": "19.11.1967",
-    "birthPlace": "ГОР. ТЕМЕРНИЦК КРАСНОДАРСКОГО КРАЯ",
-    "inn": "071294714221",
-    "name": "Елабугова Викторирия Николаевна",
-    "ogrn": "",
-    "ogrnip": "",
-    "snils": ""
-   }
-  ],
-  "documentType": "mortgage_claim",
-  "entityType": "individual",
-  "fields": {
-   "applicantAddress": "",
-   "applicantName": "Елабугова Викторирия Николаевна",
-   "applicantNameAccusative": "ЕЛАБУГОВУ ВИКТОРИРИЮ НИКОЛАЕВНУ",
-   "applicantNameDative": "ЕЛАБУГОВОЙ ВИКТОРИРИИ НИКОЛАЕВНЕ",
-   "applicantNameGenitive": "ЕЛАБУГОВОЙ ВИКТОРИИ НИКОЛАЕВНЫ",
-   "applicantNameInstrumental": "ЕЛАБУГОВОЙ ВИКТОРИРИЕЙ НИКОЛАЕВНОЙ",
-   "applicationDate": "20.06.1991",
-   "birthDate": "19.11.1967",
-   "birthPlace": "ГОР. ТЕМЕРНИЦК КРАСНОДАРСКОГО КРАЯ",
-   "companyInn": "071294714221",
-   "contractDate": "09.05.2022",
-   "contractNumber": "000999",
-   "courtName": "Ессентукский городской суд",
-   "creditInterestRate": "11,7",
-   "creditPenaltyRate": "11.7",
-   "creditTermMonths": "60",
-   "creditorAddress": "117312, г. Москва, ул. Вавилова, д.19",
-   "creditorInn": "7707083893",
-   "creditorName": "ПАО Сбербанк",
-   "creditorOgrn": "1027700132195",
-   "debtAmount": "318 270,51",
-   "debtorName": "Елабугова Викторирия Николаевна",
-   "entityType": "individual",
-   "forfeit": "1 449,20",
-   "forfeit15": "1 449,20",
-   "inn": "071294714221",
-   "interest": "4 035,33",
-   "interest14": "4 035,33",
-   "loanDebt": "318 270,51",
-   "mortgageCourtAddress001": "357600, г. Ессентуки, ул. Вокзальная, д. 57 А",
-   "mortgageCourtName002": "Ессентукский городской суд",
-   "mortgageCreditAmount111": "600 000,00",
-   "mortgageCreditTerm112": "600 000,00",
-   "mortgageDebtorName": "Елабугова Викторирия Николаевна",
-   "mortgageDebtorNameDative": "Елабугову Викторирии Николаевне",
-   "mortgageInterestAmount12": "4 035,33",
-   "mortgageInterestRate113": "11.7",
-   "mortgagePenaltyRate114": "11.7",
-   "mortgagePeriodAmount10": "318 270,51",
-   "mortgagePeriodEnd121": "28.11.2025",
-   "mortgagePeriodStart120": "16.06.2025",
-   "mortgagePrincipalAmount11": "312 785,98",
-   "mortgageStartPriceDecision1222": "2 180 292,1",
-   "obligationType": "Кредитный договор",
-   "obligations": [
-    {
-     "contractDate": "09.05.2022",
-     "contractNumber": "000999",
-     "id": "obligation_11_1",
-     "obligationType": "Кредитный договор"
-    }
-   ],
-   "penalties": "0,00",
-   "principalDebt": "312 785,98",
-   "principalDebt13": "312 785,98",
-   "registrationDate": "20.06.1991",
-   "sourceDocumentType": "mortgage_claim",
-   "stateDuty": "30 457,00",
-   "stateDuty16": "30 457,00",
-   "totalDebt": "318 270,51"
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 8,
-   "wordCount": 2007
-  },
-  "obligations": [
-   {
-    "contractDate": "09.05.2022",
-    "contractNumber": "000999",
-    "id": "obligation_11_1",
-    "obligationType": "Кредитный договор"
-   }
-  ],
-  "rawTextLen": 15144,
-  "rawTextSha": "878a69a4eae9e6a4eccd2c981b539cbdfbf10053e54ea10057271b7ba35d4529",
-  "recommendedActs": {
-   "collateralOption": "no_collateral",
-   "entityType": "individual",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization"
-   ]
-  },
-  "thirdParties": []
- },
- "заявления ипотека/Исковое заявление_969BBE6AA7D94603B11112706BAE4575.docx": {
-  "collaterals": [
-   {
-    "address": "Ставропольский край, Шпаковский район, в черте г. Ставрополя, квартал 551, улица Роз, дом № 338",
-    "brandModel": "",
-    "cadastralNumber": "",
-    "collateralType": "real_estate",
-    "collateralValue": "",
-    "description": "Жилой дом, Земельный участок расположенный по адресу: Ставропольский край, Шпаковский район, в черте г. Ставрополя, квартал 551, улица Роз, дом № 338",
-    "id": "collateral-0",
-    "objectName": "Жилой дом",
-    "otherDescription": "",
-    "vin": ""
-   }
-  ],
-  "confidence": 0.95,
-  "debtors": [
-   {
-    "address": "765923, СТАВРОПОЛЬСКИЙ КРАЙ, Г. ФИИТ, УЛ. КОРОТКОГО, Д.30, К.7",
-    "birthDate": "28.03.1998",
-    "birthPlace": "С.КУНЖУТ-НА-БУБЛИКЕ СЫРОЙ Р-Н КРАСНОДАРСКИЙ КРАЙ",
-    "inn": "714791335221",
-    "name": "Шапков Виталий Ренатович"
-   },
-   {
-    "address": "487263, КРАСНОДАРСКИЙ КРАЙ, Г. ДЖУБГА, УЛ. ЛЕЖАЧАЯ, Д.24, КВ.99",
-    "birthDate": "20.06.1975",
-    "birthPlace": "С. ВЕРЕНИЦА-СУГГУМ",
-    "inn": "335219264201",
-    "name": "Штруделева Анна Максимовна"
-   }
-  ],
-  "documentType": "mortgage_claim",
-  "entityType": "individual",
-  "fields": {
-   "applicantAddress": "765923, СТАВРОПОЛЬСКИЙ КРАЙ, Г. ФИИТ, УЛ. КОРОТКОГО, Д.30, К.7, 487263, КРАСНОДАРСКИЙ КРАЙ, Г. ДЖУБГА, УЛ. ЛЕЖАЧАЯ, Д.24, КВ.99",
-   "applicantName": "Шапков Виталий Ренатович, Штруделева Анна Максимовна",
-   "applicantNameAccusative": "Шапкова Виталия Ренатовича, Штруделеву Анну Максимовну",
-   "applicantNameDative": "Шапкову Виталию Ренатовичу, Штруделевой Анне Максимовне",
-   "applicantNameGenitive": "Шапкова Виталия Ренатовича, Штруделевой Анны Максимовны",
-   "applicantNameInstrumental": "Шапковым Виталием Ренатовичем, Штруделевой Анной Максимовной",
-   "applicationDate": "20.06.1991",
-   "birthDate": "28.03.1998, 20.06.1975",
-   "birthPlace": "С.КУНЖУТ-НА-БУБЛИКЕ СЫРОЙ Р-Н КРАСНОДАРСКИЙ КРАЙ, С. ВЕРЕНИЦА-СУГГУМ",
-   "collaterals": [
-    {
-     "address": "Ставропольский край, Шпаковский район, в черте г. Ставрополя, квартал 551, улица Роз, дом № 338",
-     "brandModel": "",
-     "cadastralNumber": "",
-     "collateralType": "real_estate",
-     "collateralValue": "",
-     "description": "Жилой дом, Земельный участок расположенный по адресу: Ставропольский край, Шпаковский район, в черте г. Ставрополя, квартал 551, улица Роз, дом № 338",
-     "id": "collateral-0",
-     "objectName": "Жилой дом",
-     "otherDescription": "",
-     "vin": ""
-    }
-   ],
-   "companyInn": "714791335221, 335219264201",
-   "contractDate": "20.02.2020",
-   "contractNumber": "999999",
-   "courtName": "Шпаковский районный суд",
-   "creditInterestRate": "9,1",
-   "creditPenaltyRate": "4,25",
-   "creditTermMonths": "305",
-   "creditorAddress": "117312, г. Москва, ул. Вавилова, д.19",
-   "creditorInn": "7707083893",
-   "creditorName": "ПАО Сбербанк",
-   "creditorOgrn": "1027700132195",
-   "debtAmount": "6 267 103,54",
-   "debtorName": "Шапков Виталий Ренатович, Штруделева Анна Максимовна",
-   "entityType": "individual",
-   "forfeit": "4 660,70",
-   "forfeit15": "4 660,70",
-   "inn": "714791335221, 335219264201",
-   "interest": "218 072,54",
-   "interest14": "218 072,54",
-   "loanDebt": "6 267 103,54",
-   "loanStateDuty17": "87 870,00",
-   "mortgageCollateralDescription1221": "Жилой дом, Земельный участок расположенный по адресу: Ставропольский край, Шпаковский район, в черте г. Ставрополя, квартал 551, улица Роз, дом № 338",
-   "mortgageCollateralValue1224": "18 022 000",
-   "mortgageCourtAddress001": "356240, г. Михайловск, ул. Гагарина, д. 372",
-   "mortgageCourtName002": "Шпаковский районный суд",
-   "mortgageCreditAmount111": "6 825 000,00",
-   "mortgageCreditTerm112": "305",
-   "mortgageDebtorName": "Обязательства По Своевременному",
-   "mortgageDebtorNameDative": "Обязательствам По Своевременному",
-   "mortgageInterestAmount12": "218 072,54",
-   "mortgageInterestRate113": "9.10",
-   "mortgagePenaltyRate114": "4,25",
-   "mortgagePeriodAmount10": "6 267 103,54",
-   "mortgagePeriodEnd121": "21.11.2025",
-   "mortgagePeriodStart120": "28.04.2025",
-   "mortgagePrincipalAmount11": "6 044 370,30",
-   "mortgageStartingPrice1225": "14 417 600",
-   "obligationType": "Кредитный договор",
-   "obligations": [
-    {
-     "contractDate": "20.02.2020",
-     "contractNumber": "999999",
-     "id": "obligation_11_1",
-     "obligationType": "Кредитный договор"
-    }
-   ],
-   "principalDebt": "6 044 370,30",
-   "principalDebt13": "218 072,54",
-   "registrationDate": "20.06.1991",
-   "sourceDocumentType": "mortgage_claim",
-   "totalDebt": "6 480 515,38"
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 9,
-   "wordCount": 2294
-  },
-  "obligations": [
-   {
-    "contractDate": "20.02.2020",
-    "contractNumber": "999999",
-    "id": "obligation_11_1",
-    "obligationType": "Кредитный договор"
-   }
-  ],
-  "rawTextLen": 17141,
-  "rawTextSha": "81180b4e9821ae7deaef81d0776f186d0316dd93f3c81f9e485ebcd824bd65f4",
-  "recommendedActs": {
-   "collateralOption": "no_collateral",
-   "entityType": "individual",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization"
-   ]
-  },
-  "thirdParties": []
  },
  "новые/1.docx": {
   "collaterals": [
