@@ -2349,7 +2349,16 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         # подачи дела ещё нет — поле должно остаться пустым.
         _cn = extracted_fields.get("caseNumber")
         if _cn and not self._is_valid_case_number(_cn):
-            extracted_fields.pop("caseNumber", None)
+            # Хвост мог прилипнуть без пробела («…/2026Исх. Док.») — жадный класс
+            # захватил заглавную букву после года. Спасаем канонический номер.
+            _core = re.search(
+                r"[А-ЯA-Z]?\d{1,4}[А-ЯA-Z]?[-–]\d{1,15}/(?:19|20)\d{2}",
+                str(_cn).upper().replace("Ё", "Е"),
+            )
+            if _core:
+                extracted_fields["caseNumber"] = _core.group(0)
+            else:
+                extracted_fields.pop("caseNumber", None)
 
 
 
