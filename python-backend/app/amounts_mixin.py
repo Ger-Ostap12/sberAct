@@ -579,7 +579,7 @@ class AmountsMixin:
         verb_block_re = re.compile(
             r"(?:включить|установить|призна\w+[^.\n]{0,60}?включить)"
             r"[^.]{0,400}?(?:в\s*размере|вразмере|на\s+сумму)\s+" + NUM +
-            r"\s*руб[^\n]{0,40}?(?:из\s+которых|в\s+том\s+числе)\s*:?",
+            r"\s*руб[^\n]{0,40}?(?:из\s+котор\w+|в\s+том\s+числе)\s*:?",
             re.IGNORECASE,
         )
         vblocks = list(verb_block_re.finditer(text))
@@ -612,7 +612,9 @@ class AmountsMixin:
 
         if not validated:
             start = -1
-            iz = low.find("из которых")
+            # «из котор\w+» = из которых/которой/которого (разбивка долга).
+            _izm = re.search(r"из\s+котор\w+", low)
+            iz = _izm.start() if _izm else -1
             if iz == -1:
                 for mm in re.finditer("в том числе", low):
                     if re.search(r"руб\w*\W{0,5}$", low[max(0, mm.start() - 25):mm.start()]):
@@ -638,7 +640,7 @@ class AmountsMixin:
             cut = re.search(r"\n\s*Приложени", seg, re.IGNORECASE)
             if cut:
                 seg = seg[:cut.start()]
-            has_iz = ("из которых" in seg.lower()) or ("в том числе" in seg.lower())
+            has_iz = ("из котор" in seg.lower()) or ("в том числе" in seg.lower())
             if iz != -1:
                 wb = re.search(
                     r"(?:нормативно|согласно\b|таким\s+образом|на\s+основани|"

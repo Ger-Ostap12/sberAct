@@ -247,6 +247,7 @@
    "interest": "200 631,53",
    "interest14": "200 631,53",
    "loanDebt": "3 127 448,01",
+   "loanStateDuty17": "23 719,00",
    "obligationType": "кредитный договор",
    "obligations": [
     {
@@ -257,6 +258,7 @@
     }
    ],
    "other35": "0,00",
+   "penalties": "0,00",
    "ppStateDutyDate81": "31.10.2025",
    "principalDebt": "2 872 476,90",
    "principalDebt13": "2 872 476,90",
@@ -5381,7 +5383,7 @@
    "forfeit15": "3 315 899,08",
    "inn": "98765432011",
    "interest": "55 943,97",
-   "interest14": ", 55 943,97",
+   "interest14": "55 943,97",
    "ipHasCollateral": "false",
    "isKfh": true,
    "kfhHeadName": "АРБУЗОВ ИВАН МИХАЙЛОВИЧ",
@@ -5398,9 +5400,10 @@
    "ogrn": "000123454321234",
    "ogrnip": "000123454321234",
    "other35": "0,00",
+   "penalties": "0,00",
    "ppStateDutyDate81": "25.11.2025",
    "principalDebt": "20 100 000,00",
-   "principalDebt13": ", 2 111 142,81",
+   "principalDebt13": "20 100 000,00",
    "registrationDate": "20.06.1991",
    "requirementsSum": "23 471 843,05",
    "sourceDocumentType": "ip_enforcement_realization",
@@ -5510,7 +5513,7 @@
    "forfeit15": "3 315 899,08",
    "inn": "98765432011",
    "interest": "55 943,97",
-   "interest14": ", 55 943,97",
+   "interest14": "55 943,97",
    "ipCollateralClaimAmount": "4 809 638,36",
    "ipCollateralContractDate": "01.10.2024",
    "ipCollateralContractNumber": "1155555",
@@ -5531,9 +5534,10 @@
    "ogrn": "000123454321234",
    "ogrnip": "000123454321234",
    "other35": "0,00",
+   "penalties": "0,00",
    "ppStateDutyDate81": "25.11.2025",
    "principalDebt": "20 100 000,00",
-   "principalDebt13": ", 2 111 142,81",
+   "principalDebt13": "20 100 000,00",
    "registrationDate": "20.06.1991",
    "requirementsSum": "23 471 843,05",
    "sourceDocumentType": "ip_enforcement_realization_collateral",
@@ -6350,7 +6354,7 @@
     "address": "344111, г. Ростов-на-Дону, ул. Б.Садовая, д. 11, Литер А, пом. 111",
     "birthDate": "",
     "birthPlace": "",
-    "inn": "1234567890",
+    "inn": "9876543210",
     "name": "Общества с ограниченной ответственностью «Азбука»",
     "ogrn": "123454321234",
     "ogrnip": "",
@@ -6366,7 +6370,7 @@
    "applicantNameDative": "Иванову Ивану Ивановичу",
    "applicantNameGenitive": "Иванова Ивана Ивановича",
    "applicantNameInstrumental": "Ивановым Иваном Ивановичем",
-   "applicationDate": "22.06.2026",
+   "applicationDate": "29.06.2026",
    "caseNumber": "А53-22222/2024",
    "collaterals": [
     {
@@ -6394,7 +6398,7 @@
      "vin": "WP1AB2A27BLA52000"
     }
    ],
-   "companyInn": "1234567890",
+   "companyInn": "9876543210",
    "contractDate": "13.10.2022, 26.10.2022",
    "contractNumber": "5464646544646464646464564-24-1, 54646465400000000000-24-1",
    "courtDecisionDate": "13.12.2022",
@@ -6411,7 +6415,7 @@
    "entityType": "legal",
    "forfeit": "2 998,22",
    "forfeit15": "2 998,22",
-   "inn": "1234567890",
+   "inn": "9876543210",
    "interest": "326 798,44",
    "interest14": "326 798,44",
    "ipCollateralClaimAmount": "4 809 638,36",
@@ -6505,8 +6509,8 @@
     "penalty0071Value": 3054.69
    }
   ],
-  "rawTextLen": 8656,
-  "rawTextSha": "accbf0f6faf0a7e93490c98b61233e016fb049166ba00c099ced0dc06cf7e0f3",
+  "rawTextLen": 8657,
+  "rawTextSha": "73e9373e60e1da4d204e9219e493bd07fe3501125ec15ffd5d6be03c986b3710",
   "recommendedActs": {
    "collateralOption": "collateral_auto",
    "entityType": "legal",
@@ -6521,13 +6525,13 @@
  },
  "новые/без маркеров юр иниц заявл.docx": {
   "collaterals": [],
-  "confidence": 0.7,
+  "confidence": 1.0,
   "debtors": [
    {
     "address": "344111, г. Ростов-на-Дону, ул. Б.Садовая, д. 11, Литер А, пом. 111",
     "birthDate": "",
     "birthPlace": "",
-    "inn": "987654321",
+    "inn": "9876543201",
     "name": "Общества с ограниченной ответственностью «Азбука»",
     "ogrn": "123454321234",
     "ogrnip": "",
@@ -6545,12 +6549,14 @@
    "applicantNameInstrumental": "Обществом с ограниченной ответственностью «азбукой»",
    "applicationDate": "20.06.1991",
    "bankCommission": "0,00",
-   "companyInn": "987654321",
+   "caseNumber": "А53-22200/2026",
+   "companyInn": "9876543201",
    "contractDate": "21.12.2021",
    "contractNumber": "5221223241",
+   "courtName": "Арбитражный суд Ростовской области",
    "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
    "creditorInn": "7707083893",
-   "creditorName": "ПАО Сбербанк в лице филиала ",
+   "creditorName": "ПАО Сбербанк",
    "creditorOgrn": "1027700132195",
    "currentInterest36": "0,00",
    "currentInterestOverdue37": "0,00",
@@ -6560,7 +6566,7 @@
    "entityType": "legal",
    "forfeit": "3 315 899,08",
    "forfeit15": "3 315 899,08",
-   "inn": "987654321",
+   "inn": "9876543201",
    "interest": "55 943,97",
    "interest14": "55 943,97",
    "legalShortName": "Азбука",
@@ -6576,6 +6582,7 @@
    ],
    "ogrn": "123454321234",
    "other35": "0,00",
+   "penalties": "0,00",
    "ppStateDutyDate81": "25.11.2025",
    "principalDebt": "20 100 000,00",
    "principalDebt13": "20 100 000,00",
@@ -6592,7 +6599,7 @@
   "metadata": {
    "language": "ru",
    "pageCount": 4,
-   "wordCount": 706
+   "wordCount": 709
   },
   "obligations": [
    {
@@ -6602,8 +6609,8 @@
     "obligationType": "Кредитный договор"
    }
   ],
-  "rawTextLen": 5203,
-  "rawTextSha": "31bf04a0cd814ff3b2e302a74b3949ed3ff2aa13469487321220bd8a7e93f299",
+  "rawTextLen": 5245,
+  "rawTextSha": "2f5beb4113b1756a5a5c82f6103ec906ae80bdbd52c414a001283b1c414ff2b3",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "legal",
@@ -6618,7 +6625,7 @@
  },
  "новые/иниц фл.docx": {
   "collaterals": [],
-  "confidence": 0.7,
+  "confidence": 1.0,
   "debtors": [
    {
     "address": "344000, РОСТОВСКАЯ ОБЛАСТЬ, Г.РОСТОВ-НА-ДОНУ, УЛ. ОСЕНЯЯ, 288",
@@ -6644,12 +6651,14 @@
    "bankCommission": "0,00",
    "birthDate": "20.02.2002",
    "birthPlace": "С. КРАСНОВКА",
+   "caseNumber": "А18-3334/2023",
    "companyInn": "1234645745",
    "contractDate": "10.10.2010",
    "contractNumber": "500000000",
+   "courtName": "Арбитражный суд республики Ингушетия",
    "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
    "creditorInn": "7707083893",
-   "creditorName": "ПАО Сбербанк в лице филиала ",
+   "creditorName": "ПАО Сбербанк",
    "creditorOgrn": "1027700132195",
    "currentInterest36": "0,00",
    "currentInterestOverdue37": "0,00",
@@ -6663,6 +6672,7 @@
    "interest": "200 631,53",
    "interest14": "200 631,53",
    "loanDebt": "3 127 448,01",
+   "loanStateDuty17": "23 719,00",
    "obligationType": "кредитный договор",
    "obligations": [
     {
@@ -6673,6 +6683,7 @@
     }
    ],
    "other35": "0,00",
+   "penalties": "0,00",
    "ppStateDutyDate81": "31.10.2025",
    "principalDebt": "2 872 476,90",
    "principalDebt13": "2 872 476,90",
@@ -6680,14 +6691,14 @@
    "requirementsSum": "3 127 448,01",
    "sourceDocumentType": "rtk_application",
    "sroName": "ААУ “СОЮЗ”(адрес [99])",
-   "stateDuty": "23 719,00",
-   "stateDuty16": "23 719,00",
+   "stateDuty": "100 000,00",
+   "stateDuty16": "100 000,00",
    "totalDebt": "3 127 448,01"
   },
   "metadata": {
    "language": "ru",
-   "pageCount": 4,
-   "wordCount": 717
+   "pageCount": 5,
+   "wordCount": 733
   },
   "obligations": [
    {
@@ -6697,8 +6708,8 @@
     "obligationType": "Кредитный договор"
    }
   ],
-  "rawTextLen": 5292,
-  "rawTextSha": "20d7e91c42c65e81191f312e0764b9ec1405a890cb269a5cf7e9d24fda8b1d0c",
+  "rawTextLen": 5414,
+  "rawTextSha": "f1d733614e35bedfbfdd4f0a580aab78685b011456ec48ef3c9b233995dc0d83",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "individual",

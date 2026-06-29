@@ -70,6 +70,11 @@ def _is_excluded(rel: str) -> bool:
     _bn = os.path.basename(rel)
     if _bn.startswith("Исковое заявление") or _bn == "3 должника.docx":
         return True
+    # «КФХ ИНИИЦИИРОВАНИЕ …» — синтетические болванки-шаблоны (плейсхолдеры
+    # [13]/[14], фейковый счёт «…RRR…», итог не бьётся с маркером осн.долга) —
+    # не эталон, как и остальные КФХ-акты/болванки.
+    if "кфх" in _bn.lower() and "иниц" in _bn.lower():
+        return True
     return False
 
 
