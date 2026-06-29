@@ -1518,6 +1518,452 @@
   },
   "thirdParties": []
  },
+ "casebookWord/Заявление о включении в реестр требований кредиторов 3л.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "346884, Ростовская обл., г. Батайск, ул. Янтарная, д. 7",
+    "birthDate": "14.04.1974",
+    "birthPlace": "гор. Ростов-на-Дону",
+    "inn": "616709751152",
+    "name": "Горина Юлия Игоревна",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "118-781-995 07"
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "346884, Ростовская обл., г. Батайск, ул. Янтарная, д. 7",
+   "applicantName": "Горина Юлия Игоревна",
+   "applicantNameAccusative": "ФИНАНСОВОГО",
+   "applicantNameDative": "ФИНАНСОВОМУ",
+   "applicantNameGenitive": "ФИНАНСОВОГО",
+   "applicantNameInstrumental": "ФИНАНСОВЫМ",
+   "applicationDate": "17.10.1990",
+   "birthDate": "14.04.1974",
+   "birthPlace": "гор. Ростов-на-Дону",
+   "caseNumber": "А53-11230/2026",
+   "contractDate": "13.02.2023",
+   "contractNumber": "625/0055-0764407, V625/0055-0073261",
+   "courtDecisionDate": "20.05.2026",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "191144, г. Санкт-Петербург, пер. Дегтярный, д. 11-А",
+   "creditorInn": "7702070139",
+   "creditorName": "Банк ВТБ (публичное акционерное общество)",
+   "creditorOgrn": "1027739609391",
+   "debtAmount": "305 513,35",
+   "debtorName": "ФИНАНСОВЫЙ",
+   "entityType": "individual",
+   "forfeit": "1 310,75",
+   "forfeit15": "1 310,75",
+   "inn": "616709751152",
+   "interest": "0,00",
+   "interest14": "0,00",
+   "kommersantDate": "30.05.2026",
+   "legalShortName": "ФИНАНСОВЫЙ",
+   "loanDebt": "10 138",
+   "managerAddress": "344019, Ростовская обл., г. Ростов-на-Дону, пр-кт Шолохова, д. 34А, оф.З.2",
+   "managerInn": "615519848330",
+   "managerName": "Удодов Сергей Александрович",
+   "messageDate": "30.05.2026",
+   "messageNumber": "77240708355",
+   "obligationType": "кредитный договор",
+   "obligations": [
+    {
+     "contractDate": "27.05.2021",
+     "contractNumber": "625/0055-0764407",
+     "id": "obligation_11_2",
+     "obligationType": "Договор"
+    },
+    {
+     "contractDate": "13.02.2023",
+     "contractNumber": "V625/0055-0073261",
+     "id": "obligation_11_5",
+     "obligationType": "Договор"
+    }
+   ],
+   "penalties": "0,00",
+   "principalDebt": "304 202,60",
+   "principalDebt13": "304 202,60",
+   "procedureType": "observation",
+   "procedureTypeRaw": "реализации имущества гражданина",
+   "requirementsSum": "10 138,00",
+   "snils": "118-781-995 07",
+   "sourceDocumentType": "rtk_application",
+   "stateDuty": "10 138,00",
+   "stateDuty16": "10 138,00",
+   "totalDebt": "305 513,35"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 3,
+   "wordCount": 847
+  },
+  "obligations": [
+   {
+    "contractDate": "27.05.2021",
+    "contractNumber": "625/0055-0764407",
+    "id": "obligation_11_2",
+    "obligationType": "Договор"
+   },
+   {
+    "contractDate": "13.02.2023",
+    "contractNumber": "V625/0055-0073261",
+    "id": "obligation_11_5",
+    "obligationType": "Договор"
+   }
+  ],
+  "rawTextLen": 6915,
+  "rawTextSha": "9166cdea2a0d333d0811e5f4503de4f0d130b49b89a94b6f37896c31ed08c26a",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "legal",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization"
+   ]
+  },
+  "thirdParties": []
+ },
+ "casebookWord/Заявление о включении в реестр требований кредиторов АТАМУРАТОВ БОГДАН ЭРКИНБАЕВИЧ на 3 стр.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "РОССИЯ, 346050, РОСТОВСКАЯ, ТАРАСОВСКИЙ, П. ТАРАСОВСКИЙ, УЛ. ШКОЛЬНАЯ, Д. 1Б",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "",
+    "name": "АТАМУРАТОВ БОГДАН ЭРКИНБАЕВИЧ",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "РОССИЯ, 346050, РОСТОВСКАЯ, ТАРАСОВСКИЙ, П. ТАРАСОВСКИЙ, УЛ. ШКОЛЬНАЯ, Д. 1Б",
+   "applicantName": "АТАМУРАТОВ БОГДАН ЭРКИНБАЕВИЧ",
+   "applicantNameAccusative": "АТАМУРАТОВА БОГДАНА ЭРКИНБАЕВИЧА",
+   "applicantNameDative": "АТАМУРАТОВУ БОГДАНУ ЭРКИНБАЕВИЧУ",
+   "applicantNameGenitive": "АТАМУРАТОВА БОГДАНА ЭРКИНБАЕВИЧА",
+   "applicantNameInstrumental": "АТАМУРАТОВЫМ БОГДАНОМ ЭРКИНБАЕВИЧЕМ",
+   "applicationDate": "22.04.2024",
+   "caseNumber": "А53-11236/2026",
+   "contractDate": "22.04.2024, Не указана",
+   "contractNumber": "10050033429, 8963411620",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditInterestRate": "33,9",
+   "creditorAddress": "156000, Костромская обл., г. Кострома, ул. Советская, д. 58",
+   "creditorInn": "4401116480",
+   "creditorName": "ПАО «Совкомбанк»",
+   "creditorOgrn": "1144400000425",
+   "debtAmount": "285 423,75",
+   "debtorName": "АТАМУРАТОВ БОГДАН ЭРКИНБАЕВИЧ",
+   "entityType": "individual",
+   "forfeit": "1 798,93",
+   "forfeit15": "1 798,93",
+   "interest": "69 884,02",
+   "interest14": "69 884,02",
+   "loanDebt": "1 875,00",
+   "managerAddress": "344002, Российская Федерация, обл Ростовская, г Ростов-на-Дону, ул Станиславского, зд. 8а, оф. 104",
+   "managerName": "Срыбный Антон Станиславович",
+   "obligationType": "кредитный договор",
+   "obligations": [
+    {
+     "contractDate": "22.04.2024",
+     "contractNumber": "10050033429",
+     "id": "obligation_fallback_0",
+     "obligationType": "Кредитный договор"
+    },
+    {
+     "contractDate": "Не указана",
+     "contractNumber": "8963411620",
+     "id": "obligation_fallback_1",
+     "obligationType": "Кредитный договор"
+    }
+   ],
+   "penalties": "0,00",
+   "principalDebt": "213 740,80",
+   "principalDebt13": "213 740,80",
+   "requirementsSum": "9 636,00",
+   "sourceDocumentType": "rtk_application",
+   "stateDuty": "9 636,00",
+   "stateDuty16": "9 636,00",
+   "totalDebt": "285 423,75"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 1,
+   "wordCount": 974
+  },
+  "obligations": [
+   {
+    "contractDate": "22.04.2024",
+    "contractNumber": "10050033429",
+    "id": "obligation_fallback_0",
+    "obligationType": "Кредитный договор"
+   },
+   {
+    "contractDate": "Не указана",
+    "contractNumber": "8963411620",
+    "id": "obligation_fallback_1",
+    "obligationType": "Кредитный договор"
+   }
+  ],
+  "rawTextLen": 7460,
+  "rawTextSha": "f93219f72407f1b7f999d084fee6a6fa2644cb602d533d0b4bc6da0573a97422",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition"
+   ]
+  },
+  "thirdParties": []
+ },
+ "casebookWord/Заявление о включении в реестр требований кредиторов КЛИМОВ МАКСИМ ВЛАДИМИРОВИЧ на 3 стр.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "РОССИЯ, 346660, РОСТОВСКАЯ МАРТЫНОВСКИЙ, СЛ. БОЛЬШАЯ МАРТЫНОВКА, УЛ. СТЕПНАЯ, Д. 37, КВ. 2",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "",
+    "name": "КЛИМОВ МАКСИМ ВЛАДИМИРОВИЧ",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "РОССИЯ, 346660, РОСТОВСКАЯ МАРТЫНОВСКИЙ, СЛ. БОЛЬШАЯ МАРТЫНОВКА, УЛ. СТЕПНАЯ, Д. 37, КВ. 2",
+   "applicantName": "КЛИМОВ МАКСИМ ВЛАДИМИРОВИЧ",
+   "applicantNameAccusative": "КЛИМОВА МАКСИМА ВЛАДИМИРОВИЧА",
+   "applicantNameDative": "КЛИМОВУ МАКСИМУ ВЛАДИМИРОВИЧУ",
+   "applicantNameGenitive": "КЛИМОВА МАКСИМА ВЛАДИМИРОВИЧА",
+   "applicantNameInstrumental": "КЛИМОВЫМ МАКСИМОМ ВЛАДИМИРОВИЧЕМ",
+   "applicationDate": "05.05.2022",
+   "caseNumber": "А53-11015/2026",
+   "contractDate": "05.05.2022",
+   "contractNumber": "5448999116",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditInterestRate": "0",
+   "creditorAddress": "156000, Костромская обл., г. Кострома, ул. Советская, д. 58",
+   "creditorInn": "4401116480",
+   "creditorName": "ПАО «Совкомбанк»",
+   "creditorOgrn": "1144400000425",
+   "debtAmount": "53 476,48",
+   "debtorName": "КЛИМОВ МАКСИМ ВЛАДИМИРОВИЧ",
+   "entityType": "individual",
+   "forfeit": "2 606,73",
+   "forfeit15": "2 606,73",
+   "interest": "0,00",
+   "interest14": "0,00",
+   "loanDebt": "43 858,00",
+   "loanStateDuty17": "2 000,00",
+   "managerAddress": "344082, г. Ростов-на-Дону, а/я 2717",
+   "managerName": "Тесёлкин Дмитрий Сергеевич",
+   "obligationType": "кредитный договор",
+   "obligations": [
+    {
+     "contractDate": "05.05.2022",
+     "contractNumber": "5448999116",
+     "id": "obligation_fallback_0",
+     "obligationType": "Кредитный договор"
+    }
+   ],
+   "penalties": "0,00",
+   "principalDebt": "48 869,75",
+   "principalDebt13": "48 869,75",
+   "requirementsSum": "53 476,00",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "53 476,48"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 1,
+   "wordCount": 955
+  },
+  "obligations": [
+   {
+    "contractDate": "05.05.2022",
+    "contractNumber": "5448999116",
+    "id": "obligation_fallback_0",
+    "obligationType": "Кредитный договор"
+   }
+  ],
+  "rawTextLen": 7313,
+  "rawTextSha": "7aa014a983c64270740f7b8d47bb9a0215aca7761c1df77cf905c30b78b1ac1f",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition"
+   ]
+  },
+  "thirdParties": []
+ },
+ "casebookWord/Заявление о включении в реестр требований кредиторов__ЕЛИСЕЕНКО СЕРГЕЙ ВАСИЛЬЕВИЧ.4л.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "344034, обл Ростовская, г Ростов-на-Дону, пер Рыночный, д. 15",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "616803491568",
+    "name": "ЕЛИСЕЕНКО СЕРГЕЙ ВАСИЛЬЕВИЧ",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "07725793102"
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "344034, обл Ростовская, г Ростов-на-Дону, пер Рыночный, д. 15",
+   "applicantName": "ЕЛИСЕЕНКО СЕРГЕЙ ВАСИЛЬЕВИЧ",
+   "applicantNameAccusative": "ЕЛИСЕЕНКО СЕРГЕЯ ВАСИЛЬЕВИЧА",
+   "applicantNameDative": "ЕЛИСЕЕНКО СЕРГЕЮ ВАСИЛЬЕВИЧУ",
+   "applicantNameGenitive": "ЕЛИСЕЕНКО СЕРГЕЯ ВАСИЛЬЕВИЧА",
+   "applicantNameInstrumental": "ЕЛИСЕЕНКО СЕРГЕЕМ ВАСИЛЬЕВИЧЕМ",
+   "applicationDate": "20.05.1984",
+   "caseNumber": "А53-9893/2026",
+   "companyInn": "616803491568",
+   "contractNumber": "Структура",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "115432, г. Москва, проспект Андропова, д. 18, корп. 1",
+   "creditorInn": "7702045051",
+   "creditorName": "Публичное Акционерное Общество \"МТС-Банк\"",
+   "creditorOgrn": "1027739053704",
+   "debtAmount": "100 000,00",
+   "debtorName": "ЕЛИСЕЕНКО СЕРГЕЙ ВАСИЛЬЕВИЧ",
+   "entityType": "individual",
+   "forfeit": "0,00",
+   "forfeit15": "0,00",
+   "inn": "616803491568",
+   "interest": "28 854,66",
+   "interest14": "28 854,66",
+   "loanDebt": "100000",
+   "managerAddress": "350012, Краснодарский край, Краснодар, Красных Партизан, 77, а/я 4701",
+   "managerInn": "632107827106",
+   "managerName": "Ефимович Евгения Николаевна",
+   "penalties": "0,00",
+   "principalDebt": "71 145,34",
+   "principalDebt13": "71 145,34",
+   "requirementsSum": "100 000,00",
+   "snils": "07725793102",
+   "sourceDocumentType": "rtk_application",
+   "stateDuty": "5 000,00",
+   "stateDuty16": "5 000,00",
+   "totalDebt": "100 000,00"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 1,
+   "wordCount": 895
+  },
+  "obligations": [],
+  "rawTextLen": 7391,
+  "rawTextSha": "bffd00aea834eb0ec8faa83b51ae751758156f92e43f1c6d76c89c5f0ee661bc",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "casebookWord/Заявление о включении в реестр требований кредиторов__КУЧУРЯН ШОГИК АРМЕНОВНА.3л.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "346816, обл Ростовская, р-н Мясниковский, с Большие Салы, ул Крестьянская, д. 4Г",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "612204309548",
+    "name": "КУЧУРЯН ШОГИК АРМЕНОВНА",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "13517430235"
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "346816, обл Ростовская, р-н Мясниковский, с Большие Салы, ул Крестьянская, д. 4Г",
+   "applicantName": "КУЧУРЯН ШОГИК АРМЕНОВНА",
+   "applicantNameAccusative": "КУЧУРЯН ШОГИК АРМЕНОВНУ",
+   "applicantNameDative": "КУЧУРЯН ШОГИКУ АРМЕНОВНЕ",
+   "applicantNameGenitive": "КУЧУРЯН ШОГИКА АРМЕНОВНЫ",
+   "applicantNameInstrumental": "КУЧУРЯН ШОГИКОМ АРМЕНОВНОЙ",
+   "applicationDate": "29.05.1995",
+   "caseNumber": "А53-9866/2026",
+   "companyInn": "612204309548",
+   "contractNumber": "Структура",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "115432, г. Москва, проспект Андропова, д. 18, корп. 1",
+   "creditorInn": "7702045051",
+   "creditorName": "Публичное Акционерное Общество \"МТС-Банк\"",
+   "creditorOgrn": "1027739053704",
+   "debtAmount": "100 000,00",
+   "debtorName": "КУЧУРЯН ШОГИК АРМЕНОВНА",
+   "entityType": "individual",
+   "forfeit": "0,00",
+   "forfeit15": "0,00",
+   "inn": "612204309548",
+   "interest": "0,00",
+   "interest14": "0,00",
+   "loanDebt": "100000",
+   "managerAddress": "454092, г. Челябинск, а/я 9317",
+   "managerInn": "745111378257",
+   "managerName": "Данилова Аделя Ринатовна",
+   "penalties": "0,00",
+   "principalDebt": "100 000,00",
+   "principalDebt13": "100 000,00",
+   "requirementsSum": "100 000,00",
+   "snils": "13517430235",
+   "sourceDocumentType": "rtk_application",
+   "stateDuty": "5 000,00",
+   "stateDuty16": "5 000,00",
+   "totalDebt": "100 000,00"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 1,
+   "wordCount": 814
+  },
+  "obligations": [],
+  "rawTextLen": 6519,
+  "rawTextSha": "b2d01f41efa82edb74d626c9d3c0f41e72b6d4bfaad372301ef11828631140c3",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
  "casebookWord/Заявление о признании должника банкротом  АО  КОНЦЕРН  САРМАТ   (ИНН- 6123010803).docx": {
   "collaterals": [],
   "confidence": 1.0,
@@ -5895,427 +6341,6 @@
     "acceptance_definition",
     "final_observation",
     "final_competition"
-   ]
-  },
-  "thirdParties": []
- },
- "newDataset/Заявление о включении в реестр требований кредиторов 3л.docx": {
-  "collaterals": [],
-  "confidence": 1.0,
-  "debtors": [
-   {
-    "address": "346884, Ростовская обл., г. Батайск, ул. Янтарная, д. 7",
-    "birthDate": "14.04.1974",
-    "birthPlace": "гор. Ростов-на-Дону",
-    "inn": "616709751152",
-    "name": "Горина Юлия Игоревна",
-    "ogrn": "",
-    "ogrnip": "",
-    "snils": "118-781-995 07"
-   }
-  ],
-  "documentType": "rtk_application",
-  "entityType": "individual",
-  "fields": {
-   "applicantAddress": "346884, Ростовская обл., г. Батайск, ул. Янтарная, д. 7",
-   "applicantName": "Горина Юлия Игоревна",
-   "applicantNameAccusative": "ФИНАНСОВОГО",
-   "applicantNameDative": "ФИНАНСОВОМУ",
-   "applicantNameGenitive": "ФИНАНСОВОГО",
-   "applicantNameInstrumental": "ФИНАНСОВЫМ",
-   "applicationDate": "17.10.1990",
-   "birthDate": "14.04.1974",
-   "birthPlace": "гор. Ростов-на-Дону",
-   "caseNumber": "А53-11230/2026",
-   "contractDate": "13.02.2023",
-   "contractNumber": "625/0055-0764407, V625/0055-0073261",
-   "courtDecisionDate": "20.05.2026",
-   "courtName": "Арбитражный суд Ростовской области",
-   "creditorAddress": "191144, г. Санкт-Петербург, пер. Дегтярный, д. 11-А",
-   "creditorInn": "7702070139",
-   "creditorName": "Банк ВТБ (публичное акционерное общество)",
-   "creditorOgrn": "1027739609391",
-   "debtAmount": "305 513,35",
-   "debtorName": "ФИНАНСОВЫЙ",
-   "entityType": "individual",
-   "forfeit": "1 310,75",
-   "forfeit15": "1 310,75",
-   "inn": "616709751152",
-   "interest": "0,00",
-   "interest14": "0,00",
-   "kommersantDate": "30.05.2026",
-   "legalShortName": "ФИНАНСОВЫЙ",
-   "loanDebt": "10 138",
-   "managerAddress": "344019, Ростовская обл., г. Ростов-на-Дону, пр-кт Шолохова, д. 34А, оф.З.2",
-   "managerInn": "615519848330",
-   "managerName": "Удодов Сергей Александрович",
-   "messageDate": "30.05.2026",
-   "messageNumber": "77240708355",
-   "obligationType": "кредитный договор",
-   "obligations": [
-    {
-     "contractDate": "27.05.2021",
-     "contractNumber": "625/0055-0764407",
-     "id": "obligation_11_2",
-     "obligationType": "Договор"
-    },
-    {
-     "contractDate": "13.02.2023",
-     "contractNumber": "V625/0055-0073261",
-     "id": "obligation_11_5",
-     "obligationType": "Договор"
-    }
-   ],
-   "penalties": "0,00",
-   "principalDebt": "304 202,60",
-   "principalDebt13": "304 202,60",
-   "procedureType": "observation",
-   "procedureTypeRaw": "реализации имущества гражданина",
-   "requirementsSum": "10 138,00",
-   "snils": "118-781-995 07",
-   "sourceDocumentType": "rtk_application",
-   "stateDuty": "10 138,00",
-   "stateDuty16": "10 138,00",
-   "totalDebt": "305 513,35"
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 3,
-   "wordCount": 847
-  },
-  "obligations": [
-   {
-    "contractDate": "27.05.2021",
-    "contractNumber": "625/0055-0764407",
-    "id": "obligation_11_2",
-    "obligationType": "Договор"
-   },
-   {
-    "contractDate": "13.02.2023",
-    "contractNumber": "V625/0055-0073261",
-    "id": "obligation_11_5",
-    "obligationType": "Договор"
-   }
-  ],
-  "rawTextLen": 6915,
-  "rawTextSha": "9166cdea2a0d333d0811e5f4503de4f0d130b49b89a94b6f37896c31ed08c26a",
-  "recommendedActs": {
-   "collateralOption": "no_collateral",
-   "entityType": "legal",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization"
-   ]
-  },
-  "thirdParties": []
- },
- "newDataset/Заявление о включении в реестр требований кредиторов АТАМУРАТОВ БОГДАН ЭРКИНБАЕВИЧ на 3 стр.docx": {
-  "collaterals": [],
-  "confidence": 1.0,
-  "debtors": [
-   {
-    "address": "РОССИЯ, 346050, РОСТОВСКАЯ, ТАРАСОВСКИЙ, П. ТАРАСОВСКИЙ, УЛ. ШКОЛЬНАЯ, Д. 1Б",
-    "birthDate": "",
-    "birthPlace": "",
-    "inn": "",
-    "name": "АТАМУРАТОВ БОГДАН ЭРКИНБАЕВИЧ",
-    "ogrn": "",
-    "ogrnip": "",
-    "snils": ""
-   }
-  ],
-  "documentType": "rtk_application",
-  "entityType": "individual",
-  "fields": {
-   "applicantAddress": "РОССИЯ, 346050, РОСТОВСКАЯ, ТАРАСОВСКИЙ, П. ТАРАСОВСКИЙ, УЛ. ШКОЛЬНАЯ, Д. 1Б",
-   "applicantName": "АТАМУРАТОВ БОГДАН ЭРКИНБАЕВИЧ",
-   "applicantNameAccusative": "АТАМУРАТОВА БОГДАНА ЭРКИНБАЕВИЧА",
-   "applicantNameDative": "АТАМУРАТОВУ БОГДАНУ ЭРКИНБАЕВИЧУ",
-   "applicantNameGenitive": "АТАМУРАТОВА БОГДАНА ЭРКИНБАЕВИЧА",
-   "applicantNameInstrumental": "АТАМУРАТОВЫМ БОГДАНОМ ЭРКИНБАЕВИЧЕМ",
-   "applicationDate": "22.04.2024",
-   "caseNumber": "А53-11236/2026",
-   "contractDate": "22.04.2024, Не указана",
-   "contractNumber": "10050033429, 8963411620",
-   "courtName": "Арбитражный суд Ростовской области",
-   "creditInterestRate": "33,9",
-   "creditorAddress": "156000, Костромская обл., г. Кострома, ул. Советская, д. 58",
-   "creditorInn": "7707082843",
-   "creditorName": "ПАО «Совкомбанк»",
-   "creditorOgrn": "1027700137116",
-   "debtAmount": "9 636,00",
-   "debtorName": "АТАМУРАТОВ БОГДАН ЭРКИНБАЕВИЧ",
-   "entityType": "individual",
-   "forfeit": "1 656,88",
-   "forfeit15": "1 656,88",
-   "interest": "69 884,02",
-   "interest14": "69 884,02",
-   "loanDebt": "1 875,00",
-   "managerName": "Срыбный Антон Станиславович",
-   "obligationType": "кредитный договор",
-   "obligations": [
-    {
-     "contractDate": "22.04.2024",
-     "contractNumber": "10050033429",
-     "id": "obligation_fallback_0",
-     "obligationType": "Кредитный договор"
-    },
-    {
-     "contractDate": "Не указана",
-     "contractNumber": "8963411620",
-     "id": "obligation_fallback_1",
-     "obligationType": "Кредитный договор"
-    }
-   ],
-   "principalDebt": "146 945,00",
-   "principalDebt13": "146 945,00",
-   "requirementsSum": "9 636,00",
-   "sourceDocumentType": "rtk_application",
-   "totalDebt": "218 485,90"
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 1,
-   "wordCount": 974
-  },
-  "obligations": [
-   {
-    "contractDate": "22.04.2024",
-    "contractNumber": "10050033429",
-    "id": "obligation_fallback_0",
-    "obligationType": "Кредитный договор"
-   },
-   {
-    "contractDate": "Не указана",
-    "contractNumber": "8963411620",
-    "id": "obligation_fallback_1",
-    "obligationType": "Кредитный договор"
-   }
-  ],
-  "rawTextLen": 7460,
-  "rawTextSha": "f93219f72407f1b7f999d084fee6a6fa2644cb602d533d0b4bc6da0573a97422",
-  "recommendedActs": {
-   "collateralOption": "no_collateral",
-   "entityType": "individual",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition"
-   ]
-  },
-  "thirdParties": []
- },
- "newDataset/Заявление о включении в реестр требований кредиторов КЛИМОВ МАКСИМ ВЛАДИМИРОВИЧ на 3 стр.docx": {
-  "collaterals": [],
-  "confidence": 1.0,
-  "debtors": [
-   {
-    "address": "РОССИЯ, 346660, РОСТОВСКАЯ МАРТЫНОВСКИЙ, СЛ. БОЛЬШАЯ МАРТЫНОВКА, УЛ. СТЕПНАЯ, Д. 37, КВ. 2",
-    "birthDate": "",
-    "birthPlace": "",
-    "inn": "",
-    "name": "КЛИМОВ МАКСИМ ВЛАДИМИРОВИЧ",
-    "ogrn": "",
-    "ogrnip": "",
-    "snils": ""
-   }
-  ],
-  "documentType": "rtk_application",
-  "entityType": "individual",
-  "fields": {
-   "applicantAddress": "РОССИЯ, 346660, РОСТОВСКАЯ МАРТЫНОВСКИЙ, СЛ. БОЛЬШАЯ МАРТЫНОВКА, УЛ. СТЕПНАЯ, Д. 37, КВ. 2",
-   "applicantName": "КЛИМОВ МАКСИМ ВЛАДИМИРОВИЧ",
-   "applicantNameAccusative": "КЛИМОВА МАКСИМА ВЛАДИМИРОВИЧА",
-   "applicantNameDative": "КЛИМОВУ МАКСИМУ ВЛАДИМИРОВИЧУ",
-   "applicantNameGenitive": "КЛИМОВА МАКСИМА ВЛАДИМИРОВИЧА",
-   "applicantNameInstrumental": "КЛИМОВЫМ МАКСИМОМ ВЛАДИМИРОВИЧЕМ",
-   "applicationDate": "05.05.2022",
-   "caseNumber": "А53-11015/2026",
-   "contractDate": "05.05.2022",
-   "contractNumber": "5448999116",
-   "courtName": "Арбитражный суд Ростовской области",
-   "creditInterestRate": "0",
-   "creditorAddress": "156000, Костромская обл., г. Кострома, ул. Советская, д. 58",
-   "creditorInn": "7707082843",
-   "creditorName": "ПАО «Совкомбанк»",
-   "creditorOgrn": "1027700137116",
-   "debtAmount": "53 476,48",
-   "debtorName": "КЛИМОВ МАКСИМ ВЛАДИМИРОВИЧ",
-   "entityType": "individual",
-   "forfeit": "0,00",
-   "forfeit15": "0,00",
-   "interest": "0,00",
-   "interest14": "0,00",
-   "loanDebt": "43 858,00",
-   "loanStateDuty17": "2 000,00",
-   "managerAddress": "344082, г. Ростов-на-Дону, а/я 2717",
-   "managerName": "Тесёлкин Дмитрий Сергеевич",
-   "obligationType": "кредитный договор",
-   "obligations": [
-    {
-     "contractDate": "05.05.2022",
-     "contractNumber": "5448999116",
-     "id": "obligation_fallback_0",
-     "obligationType": "Кредитный договор"
-    }
-   ],
-   "penalties": "2 606,73",
-   "principalDebt": "48 869,75",
-   "principalDebt13": "48 869,75",
-   "requirementsSum": "53 476,00",
-   "sourceDocumentType": "rtk_application",
-   "stateDuty": "53 476,00",
-   "totalDebt": "53 476,48"
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 1,
-   "wordCount": 955
-  },
-  "obligations": [
-   {
-    "contractDate": "05.05.2022",
-    "contractNumber": "5448999116",
-    "id": "obligation_fallback_0",
-    "obligationType": "Кредитный договор"
-   }
-  ],
-  "rawTextLen": 7313,
-  "rawTextSha": "7aa014a983c64270740f7b8d47bb9a0215aca7761c1df77cf905c30b78b1ac1f",
-  "recommendedActs": {
-   "collateralOption": "no_collateral",
-   "entityType": "individual",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition"
-   ]
-  },
-  "thirdParties": []
- },
- "newDataset/Заявление о включении в реестр требований кредиторов__ЕЛИСЕЕНКО СЕРГЕЙ ВАСИЛЬЕВИЧ.4л.docx": {
-  "collaterals": [],
-  "confidence": 1.0,
-  "debtors": [
-   {
-    "address": "344034, обл Ростовская, г Ростов-на-Дону, пер Рыночный, д. 15",
-    "birthDate": "",
-    "birthPlace": "",
-    "inn": "616803491568",
-    "name": "ЕЛИСЕЕНКО СЕРГЕЙ ВАСИЛЬЕВИЧ",
-    "ogrn": "",
-    "ogrnip": "",
-    "snils": "07725793102"
-   }
-  ],
-  "documentType": "rtk_application",
-  "entityType": "individual",
-  "fields": {
-   "applicantAddress": "344034, обл Ростовская, г Ростов-на-Дону, пер Рыночный, д. 15",
-   "applicantName": "ЕЛИСЕЕНКО СЕРГЕЙ ВАСИЛЬЕВИЧ",
-   "applicantNameAccusative": "ЕЛИСЕЕНКО СЕРГЕЯ ВАСИЛЬЕВИЧА",
-   "applicantNameDative": "ЕЛИСЕЕНКО СЕРГЕЮ ВАСИЛЬЕВИЧУ",
-   "applicantNameGenitive": "ЕЛИСЕЕНКО СЕРГЕЯ ВАСИЛЬЕВИЧА",
-   "applicantNameInstrumental": "ЕЛИСЕЕНКО СЕРГЕЕМ ВАСИЛЬЕВИЧЕМ",
-   "applicationDate": "20.05.1984",
-   "caseNumber": "А53-9893/2026",
-   "companyInn": "616803491568",
-   "contractNumber": "Структура",
-   "courtName": "Арбитражный суд Ростовской области",
-   "creditorInn": "7702045051",
-   "creditorName": "Публичное Акционерное Общество \"МТС-",
-   "creditorOgrn": "1027739053704",
-   "debtAmount": "100 000,00",
-   "debtorName": "ЕЛИСЕЕНКО СЕРГЕЙ ВАСИЛЬЕВИЧ",
-   "entityType": "individual",
-   "inn": "616803491568",
-   "loanDebt": "100000",
-   "managerInn": "632107827106",
-   "managerName": "Ефимович Евгения Николаевна",
-   "requirementsSum": "100 000,00",
-   "snils": "07725793102",
-   "sourceDocumentType": "rtk_application",
-   "totalDebt": "100 000,00"
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 1,
-   "wordCount": 889
-  },
-  "obligations": [],
-  "rawTextLen": 7289,
-  "rawTextSha": "91af8ad15578fa42d1819f24da6920cd6d7cd16bf9ae9a82bc7be8803f5810dc",
-  "recommendedActs": {
-   "collateralOption": "no_collateral",
-   "entityType": "individual",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization",
-    "final_restructuring"
-   ]
-  },
-  "thirdParties": []
- },
- "newDataset/Заявление о включении в реестр требований кредиторов__КУЧУРЯН ШОГИК АРМЕНОВНА.3л.docx": {
-  "collaterals": [],
-  "confidence": 1.0,
-  "debtors": [
-   {
-    "address": "346816, обл Ростовская, р-н Мясниковский, с Большие Салы, ул Крестьянская, д. 4Г",
-    "birthDate": "",
-    "birthPlace": "",
-    "inn": "612204309548",
-    "name": "КУЧУРЯН ШОГИК АРМЕНОВНА",
-    "ogrn": "",
-    "ogrnip": "",
-    "snils": "13517430235"
-   }
-  ],
-  "documentType": "rtk_application",
-  "entityType": "individual",
-  "fields": {
-   "applicantAddress": "346816, обл Ростовская, р-н Мясниковский, с Большие Салы, ул Крестьянская, д. 4Г",
-   "applicantName": "КУЧУРЯН ШОГИК АРМЕНОВНА",
-   "applicantNameAccusative": "КУЧУРЯН ШОГИК АРМЕНОВНУ",
-   "applicantNameDative": "КУЧУРЯН ШОГИКУ АРМЕНОВНЕ",
-   "applicantNameGenitive": "КУЧУРЯН ШОГИКА АРМЕНОВНЫ",
-   "applicantNameInstrumental": "КУЧУРЯН ШОГИКОМ АРМЕНОВНОЙ",
-   "applicationDate": "29.05.1995",
-   "caseNumber": "А53-9866/2026",
-   "companyInn": "612204309548",
-   "contractNumber": "Структура",
-   "courtName": "Арбитражный суд Ростовской области",
-   "creditorInn": "7702045051",
-   "creditorName": "Публичное Акционерное Общество \"МТС-",
-   "creditorOgrn": "1027739053704",
-   "debtAmount": "100 000,00",
-   "debtorName": "КУЧУРЯН ШОГИК АРМЕНОВНА",
-   "entityType": "individual",
-   "inn": "612204309548",
-   "loanDebt": "100000",
-   "managerInn": "745111378257",
-   "managerName": "Данилова Аделя Ринатовна",
-   "requirementsSum": "100 000,00",
-   "snils": "13517430235",
-   "sourceDocumentType": "rtk_application",
-   "totalDebt": "100 000,00"
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 1,
-   "wordCount": 814
-  },
-  "obligations": [],
-  "rawTextLen": 6519,
-  "rawTextSha": "b2d01f41efa82edb74d626c9d3c0f41e72b6d4bfaad372301ef11828631140c3",
-  "recommendedActs": {
-   "collateralOption": "no_collateral",
-   "entityType": "individual",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization",
-    "final_restructuring"
    ]
   },
   "thirdParties": []

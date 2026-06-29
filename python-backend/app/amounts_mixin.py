@@ -501,9 +501,15 @@ class AmountsMixin:
 
         def classify(ph):
             ph = ph.lower()
-            if "штраф" in ph:
+            # штраф vs неустойка — по ВЕДУЩЕМУ (раннему) слову: «неустойки
+            # (штрафы, пени)» → неустойка, а «штрафные санкции» → штраф.
+            _sp = ph.find("штраф")
+            _np = min([p for p in (ph.find("неустой"), ph.find("пени")) if p != -1], default=-1)
+            if _sp != -1 and _np != -1:
+                return "forfeit" if _np < _sp else "penalty"
+            if _sp != -1:
                 return "penalty"
-            if "неустой" in ph or "пени" in ph:
+            if _np != -1:
                 return "forfeit"
             if "процент" in ph:
                 return "interest"
@@ -600,7 +606,7 @@ class AmountsMixin:
         verb_block_re = re.compile(
             r"(?:включить|установить|призна\w+[^.\n]{0,60}?включить)"
             r"[^.]{0,400}?(?:в\s*размере|вразмере|на\s+сумму)\s+" + NUM +
-            r"\s*руб[^\n]{0,40}?(?:из\s+котор\w+|в\s+том\s+числе)\s*:?",
+            r"\s*(?:руб\w*\.?)?[^\n]{0,40}?(?:из\s+котор\w+|в\s+том\s+числе)\s*:?",
             re.IGNORECASE,
         )
         vblocks = list(verb_block_re.finditer(text))

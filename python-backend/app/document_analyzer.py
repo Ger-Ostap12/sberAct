@@ -224,7 +224,12 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # Реквизиты кредитора: повтор ПОСЛЕ установки creditorName (фолбэк по
             # метке «Заявитель …» выставляет имя в _cleanup_party_artifacts, а первый
             # вызов на стр.170 мог отработать вхолостую при пустом creditorName).
-            if not extracted_fields.get("creditorInn") and not extracted_fields.get("creditorOgrn"):
+            if (not extracted_fields.get("creditorInn")
+                    and not extracted_fields.get("creditorOgrn")):
+                self._fill_creditor_requisites(extracted_fields, text)
+            # Реквизиты из документа уже есть, но адрес кредитора пуст — дозаполняем
+            # (адрес из блока кредитора или из реестра известных банков).
+            elif not extracted_fields.get("creditorAddress"):
                 self._fill_creditor_requisites(extracted_fields, text)
 
             # Списки должников и третьих лиц + дедуп
@@ -260,9 +265,26 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # ТОЛЬКО при найденной сигнатуре, не задевая остальной корпус.
             self._apply_stacked_finances(extracted_fields, text)
 
+            # Табличная разбивка задолженности («Структура задолженности | Значение |
+            # RUR» по нескольким договорам) — суммируется; гейт по сигнатуре таблицы
+            # и валидация суммы = «ОБЩАЯ ЗАДОЛЖЕННОСТЬ».
+            self._apply_table_breakdown_finances(extracted_fields, text)
+
+            # Имя кредитора, обрезанное на переносе строки внутри названия
+            # («…"МТС-» + «Банк"» ниже) — дотягиваем по тексту.
+            self._fix_truncated_creditor_name(extracted_fields, text)
+
+            # Адрес управляющего — фолбэк для многострочного «Адрес регистрации:»,
+            # когда ФИО и адрес на разных строках (общие паттерны не справляются).
+            self._fill_manager_address(extracted_fields, text)
+
             # Адрес не может содержать реквизиты (ИНН/ОГРН/ОГРНИП/СНИЛС/КПП) —
             # обрезаем хвост, а полностью мусорные адреса (без букв) убираем.
             self._sanitize_address_fields(extracted_fields)
+
+            # Банкротная госпошлина не должна совпадать с итогом/осн.долгом —
+            # это мусор (в документе отдельной банкротной госпошлины нет). Чистим.
+            self._clear_garbage_bankruptcy_duty(extracted_fields)
 
             # Ранее вынесенное решение другого суда (взыскание до банкротства).
             prior_decision = self._extract_prior_court_decision(text)
@@ -1302,6 +1324,153 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         r"КРЕДИТОР\s*:\s*\n\s*ДОЛЖНИК\s*:\s*\n\s*ФИНАНСОВ\w*\s*\n?\s*УПРАВЛЯЮЩ\w*\s*:",
         re.IGNORECASE,
     )
+
+    def _fix_truncated_creditor_name(self, fields: Dict[str, Any], text: str) -> None:
+        """Имя кредитора, обрезанное переносом строки внутри названия
+        («Публичное Акционерное Общество "МТС-\\nБанк"»), дотягиваем по тексту до
+        закрывающей кавычки."""
+        name = fields.get("creditorName")
+        if not name or not text:
+            return
+        base = name.rstrip()
+        # Триггер: имя кончается дефисом или открытой (непарной) кавычкой.
+        unbalanced = base.count('"') % 2 == 1 or base.count("«") > base.count("»")
+        if not (base.endswith("-") or unbalanced):
+            return
+        m = re.search(re.escape(base) + r"\s*\n?\s*([A-Za-zА-Яа-яЁё][^\n]*?[»\"])", text)
+        if not m:
+            return
+        tail = m.group(1).strip()
+        joiner = "" if base.endswith("-") else " "
+        fixed = re.sub(r"\s+", " ", (base + joiner + tail)).strip()
+        fields["creditorName"] = fixed
+
+    def _apply_table_breakdown_finances(self, fields: Dict[str, Any], text: str) -> None:
+        """Табличная разбивка задолженности: столбцы «Структура задолженности |
+        Значение | RUR» по одному/нескольким договорам (значения суммируются).
+        Гейт по сигнатуре таблицы; валидация суммы компонентов = «ОБЩАЯ
+        ЗАДОЛЖЕННОСТЬ»/итог, иначе ничего не перекрываем."""
+        if not text:
+            return
+        low = text.lower()
+        if "структура" not in low or "rur" not in low:
+            return
+        tm = re.search(
+            r"ОБЩАЯ\s+ЗАДОЛЖЕННОСТЬ[:\s]*(\d[\d   ]*(?:[.,]\d{1,2})?)",
+            text, re.IGNORECASE,
+        )
+        if not tm:
+            return
+        total = self._fin_amount(tm.group(1))
+        if total <= 0:
+            return
+        money = r"(\d[\d   ]*(?:[.,]\d{1,2})?)"
+        pr = it = fo = pen = ld = 0.0
+        n = 0
+        seen = set()  # таблица в тексте бывает задвоена — дедуп по (категория, значение)
+        for m in re.finditer(
+            r"(основн\w*\s+долг\w*|процент\w*|неустойк\w*|\bпени\b|штраф\w*|госпошлин\w*)"
+            r"\s*\n\s*" + money + r"\s*\n?\s*(?:RUR|руб)",
+            text, re.IGNORECASE,
+        ):
+            cat = m.group(1).lower()
+            val = self._fin_amount(m.group(2))
+            if val <= 0:
+                continue
+            _grp = ("forfeit" if ("неустой" in cat or "пени" in cat)
+                    else "penalty" if "штраф" in cat
+                    else "interest" if "процент" in cat
+                    else "loan_duty" if "госпошл" in cat
+                    else "principal")
+            if (_grp, round(val, 2)) in seen:
+                continue
+            seen.add((_grp, round(val, 2)))
+            if "штраф" in cat:
+                pen += val
+            elif "неустой" in cat or "пени" in cat:
+                fo += val
+            elif "процент" in cat:
+                it += val
+            elif "госпошл" in cat:
+                ld += val
+            else:
+                pr += val
+            n += 1
+        comp = pr + it + fo + pen + ld
+        if n == 0 or abs(comp - total) > 1.5:
+            return
+        fields["principalDebt"] = self._fin_fmt(pr)
+        fields["principalDebt13"] = fields["principalDebt"]
+        fields["interest"] = self._fin_fmt(it)
+        fields["interest14"] = fields["interest"]
+        fields["forfeit"] = self._fin_fmt(fo)
+        fields["forfeit15"] = fields["forfeit"]
+        fields["penalties"] = self._fin_fmt(pen)
+        if ld > 0:
+            fields["loanStateDuty17"] = self._fin_fmt(ld)
+        fields["totalDebt"] = self._fin_fmt(total)
+        fields["debtAmount"] = fields["totalDebt"]
+        # Банкротная госпошлина — «Взыскать … в размере NN (прописью) рублей».
+        gm = re.search(
+            r"(?:гос)?пошлин\w*[^\d]{0,120}?в\s*размере\s*" + money + r"\s*(?:\([^)]*\))?\s*руб",
+            text, re.IGNORECASE,
+        )
+        if gm:
+            duty = self._fin_fmt(self._fin_amount(gm.group(1)))
+            fields["stateDuty16"] = duty
+            fields["stateDuty"] = duty
+        logger.info(
+            "Финансы из таблицы: осн=%s проц=%s неуст=%s ссуд.гп=%s итог=%s"
+            % (fields["principalDebt"], fields["interest"], fields["forfeit"],
+               fields.get("loanStateDuty17"), fields["totalDebt"])
+        )
+
+    def _clear_garbage_bankruptcy_duty(self, fields: Dict[str, Any]) -> None:
+        """Банкротная госпошлина [16], совпавшая с итогом/осн.долгом — это мусор
+        (отдельной банкротной госпошлины в документе нет). Удаляем поле."""
+        amt = self._fin_amount
+        bankr = amt(fields.get("stateDuty16") or fields.get("stateDuty"))
+        if bankr <= 0:
+            return
+        total = amt(fields.get("totalDebt") or fields.get("debtAmount"))
+        principal = amt(fields.get("principalDebt") or fields.get("principalDebt13"))
+        if (total > 0 and abs(bankr - total) < 1) or (principal > 0 and abs(bankr - principal) < 1):
+            fields.pop("stateDuty16", None)
+            fields.pop("stateDuty", None)
+            logger.info("Удалена мусорная банкротная госпошлина (совпала с итогом/осн.долгом)")
+
+    def _fill_manager_address(self, fields: Dict[str, Any], text: str) -> None:
+        """Фолбэк адреса управляющего: «… управляющий: <ФИО, м.б. в 2 строки>
+        Адрес регистрации: <многострочный адрес>». Срабатывает только если адрес
+        ещё не найден; схлопывает переносы строк и обрезает реквизиты."""
+        if not text:
+            return
+        # Уже есть нормальный адрес (с индексом и без реквизитов) — не трогаем.
+        _ex = fields.get("managerAddress")
+        if _ex and re.search(r"\b\d{6}\b", _ex) and not re.search(r"\b(?:ИНН|СНИЛС|ОГРН|КПП)\b", _ex, re.IGNORECASE):
+            return
+        m = re.search(
+            r"(?:финансов\w+|временн\w+|конкурсн\w+|арбитражн\w+)\s+управляющ\w+"
+            r"[\s\S]{0,80}?адрес\s+регистрации[:\s]*([0-9]{6}[\s\S]{0,160}?)"
+            r"(?=\n\s*(?:Дело|Тел|Исх|ЗАЯВЛЕНИЕ|ИНН|ОГРН|СНИЛС|№)|\n\s*\n|$)",
+            text, re.IGNORECASE,
+        )
+        if not m:
+            # Без метки «Адрес регистрации»: адрес-индекс сразу после реквизитов
+            # управляющего («…управляющий: ФИО ИНН… СНИЛС…\n350012, …»).
+            m = re.search(
+                r"(?:финансов\w+|временн\w+|конкурсн\w+|арбитражн\w+)\s+управляющ\w+"
+                r"[\s\S]{0,120}?СНИЛС[^\n]*\n\s*([0-9]{6}[\s\S]{0,140}?)"
+                r"(?=\n\s*(?:Реквизиты|Дело|Тел|Исх|ЗАЯВЛЕНИЕ|ИНН|ОГРН|№|член)|\n\s*\n|$)",
+                text, re.IGNORECASE,
+            )
+        if not m:
+            return
+        addr = re.sub(r"\s+", " ", m.group(1)).strip()
+        addr = re.split(r"\b(?:ИНН|ОГРН|ОГРНИП|СНИЛС|КПП)\b", addr, flags=re.IGNORECASE)[0]
+        addr = addr.strip().rstrip(" ,;")
+        if re.search(r"[А-Яа-яЁё]{3}", addr):
+            fields["managerAddress"] = addr
 
     def _sanitize_address_fields(self, fields: Dict[str, Any]) -> None:
         """Адресные поля не должны содержать реквизиты (ИНН/ОГРН/ОГРНИП/СНИЛС/КПП):
