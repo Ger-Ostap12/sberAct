@@ -210,7 +210,14 @@ class AmountsMixin:
                 ):
                     continue
 
-                money_matches = re.findall(money_pattern, line)
+                # Убираем законодательные ссылки («ст. 333.37», «пп. 5», «п. 1»,
+                # «ч. 2 ст. 156»): иначе номер статьи (333.37 НК РФ — норма об
+                # освобождении физлица ОТ пошлины) принимается за сумму госпошлины.
+                line_no_refs = re.sub(
+                    r"\b(?:ст(?:атьи|атья|\.)|пп?\.|подпункт\w*|пункт\w*|части?|ч\.)\s*\d+(?:[.,]\d+)?",
+                    " ", line, flags=re.IGNORECASE,
+                )
+                money_matches = re.findall(money_pattern, line_no_refs)
                 if not money_matches:
                     continue
 
@@ -535,7 +542,21 @@ class AmountsMixin:
                     after_n += 1
                 if classify(win_before(i, m)):
                     before_n += 1
-            use_after = after_n >= before_n
+            if after_n != before_n:
+                use_after = after_n > before_n
+            else:
+                # Ничья: направление по позиции тире — «категория – ЧИСЛО»
+                # (before) против «ЧИСЛО руб – категория» (after). Для формата
+                # «категория-первая» (САРМАТ/КОЛОР) тире стоит ПЕРЕД числом.
+                da = db = 0
+                for i, m in ms:
+                    wb = win_before(i, m)
+                    wa = win_after(i, m)
+                    if re.search(r"[–\-]\s*$", wb) and classify(wb):
+                        db += 1
+                    if re.match(r"\s*(?:руб\w*\.?)?\s*[–\-]", wa) and classify(wa.split("\n", 1)[0]):
+                        da += 1
+                use_after = da >= db
             pr = it = fo = pen = ld = 0.0
             hits = 0
             seen = set()
@@ -593,8 +614,8 @@ class AmountsMixin:
                 wend = vblocks[idx + 1].start() if idx + 1 < len(vblocks) else len(text)
                 window = text[wstart:wend]
                 cw = re.search(
-                    r"\n\s*Приложени|также\s+прос|\bутвердить\b|\bвзыскать\b|"
-                    r"\bввести\b|призна\w+\s+(?:понесен|обоснов)",
+                    r"\n\s*Приложени|также\s+прос|\bутвердить|\bвзыскать|"
+                    r"\bустановить|\bввести|призна\w+\s+(?:понесен|обоснов)",
                     window, re.IGNORECASE,
                 )
                 if cw:
@@ -645,7 +666,7 @@ class AmountsMixin:
                 wb = re.search(
                     r"(?:нормативно|согласно\b|таким\s+образом|на\s+основани|"
                     r"в\s+соответствии|расч[её]т\s+задолжен|также\s+просим|"
-                    r"прос(?:им|ит)\s+суд|прошу\s+суд|\bвзыскать\b|"
+                    r"прос(?:им|ит)\s+суд|прошу\s+суд|\bвзыскать|\bустановить|"
                     r"залогов\w*\s+требовани|\n\s*\n)",
                     seg[30:], re.IGNORECASE,
                 )

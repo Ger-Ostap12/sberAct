@@ -216,6 +216,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # Косметика артефактов сторон: роль-суффикс «(заёмщик)», хвост метки в courtName, мусорный managerName
             self._cleanup_party_artifacts(extracted_fields, text)
 
+            # Формат ВТБ «реестр Nл»: метки КРЕДИТОР:/ДОЛЖНИК:/ФИН.УПРАВЛЯЮЩИЙ: идут
+            # стопкой, значения — ниже по порядку. Обычный разбор путает стороны —
+            # отдельный обработчик переустанавливает их (если сигнатура найдена).
+            self._apply_stacked_party_layout(extracted_fields, text)
+
             # Реквизиты кредитора: повтор ПОСЛЕ установки creditorName (фолбэк по
             # метке «Заявитель …» выставляет имя в _cleanup_party_artifacts, а первый
             # вызов на стр.170 мог отработать вхолостую при пустом creditorName).
@@ -249,6 +254,15 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # Финансы из просительной части (суммы по обязательствам) — перекрывают
             # обычную нормализацию, если в «просим суд: …включить…» найдены суммы.
             self._apply_prayer_finances(extracted_fields, text)
+
+            # Точечный разбор финансов формата ВТБ «реестр Nл» (сигнатура меток
+            # стопкой) — общий парсер этот лейаут не берёт; перекрывает результат
+            # ТОЛЬКО при найденной сигнатуре, не задевая остальной корпус.
+            self._apply_stacked_finances(extracted_fields, text)
+
+            # Адрес не может содержать реквизиты (ИНН/ОГРН/ОГРНИП/СНИЛС/КПП) —
+            # обрезаем хвост, а полностью мусорные адреса (без букв) убираем.
+            self._sanitize_address_fields(extracted_fields)
 
             # Ранее вынесенное решение другого суда (взыскание до банкротства).
             prior_decision = self._extract_prior_court_decision(text)
@@ -1174,6 +1188,203 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             return result
         return {}
 
+
+    def _apply_stacked_party_layout(self, fields: Dict[str, Any], text: str) -> None:
+        """Формат ВТБ «реестр Nл»: метки сторон идут СТОПКОЙ, значения — ниже.
+
+        Шапка выглядит так:
+            КРЕДИТОР:
+            ДОЛЖНИК:
+            ФИНАНСОВЫЙ
+            УПРАВЛЯЮЩИЙ:
+            Банк ВТБ (ПАО) … ОГРН … ИНН …            ← значение КРЕДИТОРА
+            Горина Юлия Игоревна … ИНН … адрес …      ← значение ДОЛЖНИКА
+            Удодов Сергей Александрович (ИНН …)        ← значение УПРАВЛЯЮЩЕГО
+
+        Обычный построчный разбор берёт метку «ФИНАНСОВЫЙ» за ФИО должника и
+        реквизиты банка — за должника. Здесь переустанавливаем стороны по порядку.
+        """
+        if not text:
+            return
+        sig = re.search(
+            r"КРЕДИТОР\s*:\s*\n\s*ДОЛЖНИК\s*:\s*\n\s*ФИНАНСОВ\w*\s*\n?\s*УПРАВЛЯЮЩ\w*\s*:",
+            text, re.IGNORECASE,
+        )
+        if not sig:
+            return
+        region = text[sig.end():]
+        cut = re.search(r"РАЗМЕР\s+ТРЕБОВАНИЙ|\bдело\s*№|\bЗАЯВЛЕНИЕ\b", region, re.IGNORECASE)
+        if cut:
+            region = region[:cut.start()]
+
+        # ФИО физлиц на отдельных строках — это начала блоков ДОЛЖНИК и УПРАВЛЯЮЩИЙ
+        # (кредитор-юрлицо идёт первым, до первого ФИО).
+        fio_re = re.compile(
+            r"(?m)^[ \t]*([А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+)[ \t]*$"
+        )
+        fios = list(fio_re.finditer(region))
+        if len(fios) < 2:
+            return
+
+        cred_block = region[: fios[0].start()]
+        debtor_block = region[fios[0].start(): fios[1].start()]
+        manager_block = region[fios[1].start():]
+
+        def _inn(s):
+            m = re.search(r"ИНН[:\s]*([0-9]{10,12})\b", s)
+            return m.group(1) if m else None
+
+        def _ogrn(s):
+            m = re.search(r"ОГРН[:\s]*([0-9]{13,15})\b", s)
+            return m.group(1) if m else None
+
+        # --- КРЕДИТОР (юрлицо) ---
+        cred_name = ""
+        for ln in cred_block.splitlines():
+            ln = ln.strip()
+            if ln:
+                cred_name = re.split(r"\s*-{3,}|\bОГРН\b|\bИНН\b", ln)[0].strip()
+                break
+        if cred_name:
+            fields["creditorName"] = cred_name
+        if _inn(cred_block):
+            fields["creditorInn"] = _inn(cred_block)
+        if _ogrn(cred_block):
+            fields["creditorOgrn"] = _ogrn(cred_block)
+        ca = re.search(
+            r"(?:Юридическ\w*\s+адрес|адрес)[:\s]*\n?\s*([0-9]{6}[^\n]+)",
+            cred_block, re.IGNORECASE,
+        )
+        if ca:
+            fields["creditorAddress"] = ca.group(1).strip()
+
+        # --- ДОЛЖНИК (физлицо) ---
+        fields["applicantName"] = fios[0].group(1).strip()
+        fields["entityType"] = "individual"
+        fields.pop("companyInn", None)
+        fields.pop("ogrn", None)
+        if _inn(debtor_block):
+            fields["inn"] = _inn(debtor_block)
+        bd = re.search(
+            r"Дата\s+рождения[:\s]*([0-3]?\d[.,][01]?\d[.,]\d{4})",
+            debtor_block, re.IGNORECASE,
+        )
+        if bd:
+            fields["birthDate"] = bd.group(1).replace(",", ".")
+        bp = re.search(r"Место\s+рождения[:\s]*([^\n]+)", debtor_block, re.IGNORECASE)
+        if bp:
+            fields["birthPlace"] = bp.group(1).strip().rstrip(" .,;")
+        da = re.search(
+            r"Адрес\s+(?:регистрации|проживания)?[:\s]*([0-9]{6}[^\n]+)",
+            debtor_block, re.IGNORECASE,
+        )
+        if da:
+            fields["applicantAddress"] = da.group(1).strip()
+
+        # --- ФИНАНСОВЫЙ УПРАВЛЯЮЩИЙ (физлицо) ---
+        fields["managerName"] = fios[1].group(1).strip()
+        if _inn(manager_block):
+            fields["managerInn"] = _inn(manager_block)
+        ma = re.search(r"(\b\d{6}\b\s*,[^\n]+(?:\n[^\n]+)?)", manager_block)
+        if ma:
+            addr = re.sub(r"\s*\n\s*", " ", ma.group(1)).strip().rstrip(" ,;")
+            addr = re.sub(r"\s*-{3,}\s*", " ", addr).strip()
+            fields["managerAddress"] = addr
+        else:
+            # Иначе остаётся мусор от общего разбора («…609391, ИНН 7702070139»).
+            fields.pop("managerAddress", None)
+        logger.info(
+            "Раскладка ВТБ (метки стопкой): должник=%s, кредитор=%s, управляющий=%s"
+            % (fields.get("applicantName"), fields.get("creditorName"), fields.get("managerName"))
+        )
+
+    _STACKED_SIG_RE = re.compile(
+        r"КРЕДИТОР\s*:\s*\n\s*ДОЛЖНИК\s*:\s*\n\s*ФИНАНСОВ\w*\s*\n?\s*УПРАВЛЯЮЩ\w*\s*:",
+        re.IGNORECASE,
+    )
+
+    def _sanitize_address_fields(self, fields: Dict[str, Any]) -> None:
+        """Адресные поля не должны содержать реквизиты (ИНН/ОГРН/ОГРНИП/СНИЛС/КПП):
+        обрезаем хвост по первому такому маркеру; если осмысленного адреса (букв)
+        не осталось — поле было мусором, удаляем."""
+        for k in ("applicantAddress", "creditorAddress", "managerAddress",
+                  "thirdPartyAddress", "debtorAddress"):
+            v = fields.get(k)
+            if not v or not isinstance(v, str):
+                continue
+            cleaned = re.split(
+                r"\b(?:ИНН|ОГРНИП|ОГРН|СНИЛС|КПП)\b", v, flags=re.IGNORECASE
+            )[0].strip().rstrip(" ,;-")
+            if not re.search(r"[А-Яа-яЁё]{3}", cleaned):
+                fields.pop(k, None)
+            elif cleaned != v:
+                fields[k] = cleaned
+
+    def _apply_stacked_finances(self, fields: Dict[str, Any], text: str) -> None:
+        """Финансы формата ВТБ «реестр Nл» (сигнатура меток стопкой).
+
+        Просительная: «…в общем размере TOTAL руб … из которых: – AMT руб – КАТ;
+        – AMT руб – КАТ». Госпошлина — в шапке «ГОСПОШЛИНА: NN руб» (банкротная,
+        в долг не входит). Срабатывает ТОЛЬКО при сигнатуре — не трогает общий парсер.
+        """
+        if not text or not self._STACKED_SIG_RE.search(text):
+            return
+        money = r"(\d[\d   ]*[.,]\d{2})"
+        # Разбивку берём из ПРОСИТЕЛЬНОЙ части («ПРОШУ:/ПРОСИТ:»), а не из тела,
+        # где есть отдельные разбивки по каждому обязательству.
+        _pr = re.search(r"\bПРОШУ\s*:|\bПРОСИТ\s*:", text, re.IGNORECASE)
+        search_text = text[_pr.start():] if _pr else text
+        pm = re.search(
+            r"в\s+(?:\w+\s+){0,2}размере\s*" + money + r"\s*руб[^\n]{0,80}?из\s+котор\w+\s*:?(.{0,500})",
+            search_text, re.IGNORECASE | re.DOTALL,
+        )
+        if not pm:
+            return
+        total = self._fin_amount(pm.group(1))
+        body = pm.group(2)
+        pr = it = fo = 0.0
+        found = False
+        for am in re.finditer(money + r"\s*руб[^–\-\n]*[–\-]\s*([^\n;]+)", body):
+            val = self._fin_amount(am.group(1))
+            lbl = am.group(2).lower()
+            if val <= 0:
+                continue
+            # «основной долг (кредит, проценты)» — это долг (скобки не делают его процентами).
+            if "неустой" in lbl or "пени" in lbl:
+                fo += val
+            elif "основн" in lbl or "долг" in lbl or "ссудн" in lbl:
+                pr += val
+            elif "процент" in lbl:
+                it += val
+            else:
+                continue
+            found = True
+        if not found:
+            return
+        comp_sum = pr + it + fo
+        if total <= 0 or abs(comp_sum - total) > 1.5:
+            # Разбивка не сошлась с общим размером — не перекрываем (страховка).
+            return
+        fields["principalDebt"] = self._fin_fmt(pr)
+        fields["principalDebt13"] = fields["principalDebt"]
+        fields["interest"] = self._fin_fmt(it)
+        fields["interest14"] = fields["interest"]
+        fields["forfeit"] = self._fin_fmt(fo)
+        fields["forfeit15"] = fields["forfeit"]
+        fields["penalties"] = self._fin_fmt(0.0)
+        fields["totalDebt"] = self._fin_fmt(total)
+        fields["debtAmount"] = fields["totalDebt"]
+        # Банкротная госпошлина из шапки «ГОСПОШЛИНА: NN руб».
+        gm = re.search(r"ГОСПОШЛИНА[:\s]*" + money + r"\s*руб", text, re.IGNORECASE)
+        if gm:
+            duty = self._fin_fmt(self._fin_amount(gm.group(1)))
+            fields["stateDuty16"] = duty
+            fields["stateDuty"] = duty
+        logger.info(
+            "Финансы ВТБ (стопка): осн=%s проц=%s неуст=%s итог=%s пошлина=%s"
+            % (fields["principalDebt"], fields["interest"], fields["forfeit"],
+               fields["totalDebt"], fields.get("stateDuty16"))
+        )
 
     def extract_fields(self, text: str, document_type: str) -> Dict[str, Any]:
         """

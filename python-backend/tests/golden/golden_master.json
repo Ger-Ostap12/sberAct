@@ -1228,6 +1228,296 @@
   },
   "thirdParties": []
  },
+ "casebookWord/Заявление о включении в РТК_СУЗАНСКАЯ ЛИДИЯ АЛЕКСЕЕВНА 5л.docx": {
+  "collaterals": [
+   {
+    "address": "Российская Федерация, Ростовская об-",
+    "brandModel": "",
+    "cadastralNumber": "",
+    "collateralType": "real_estate",
+    "collateralValue": "",
+    "description": "земельный участок, расположенный по адресу: Российская Федерация, Ростовская об-",
+    "id": "collateral-0",
+    "objectName": "Земельный участок",
+    "otherDescription": "",
+    "vin": ""
+   },
+   {
+    "address": "Ростовскаяобласть,Мясниковскийр-н,хЛенинакан",
+    "brandModel": "",
+    "cadastralNumber": "",
+    "collateralType": "real_estate",
+    "collateralValue": "",
+    "description": "дом,расположенныйпоадресу:Ростовскаяобласть,Мясниковскийр-н,хЛенинакан",
+    "id": "collateral-1",
+    "objectName": "Дом",
+    "otherDescription": "",
+    "vin": ""
+   }
+  ],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "Ростовская обл., Мясниковскиий район, х. Ленинакан, ул. 8-я линия, д. 88",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "",
+    "name": "СУЗАНСКАЯ ЛИДИЯ АЛЕКСЕЕВНА",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "Ростовская обл., Мясниковскиий район, х. Ленинакан, ул. 8-я линия, д. 88",
+   "applicantName": "СУЗАНСКАЯ ЛИДИЯ АЛЕКСЕЕВНА",
+   "applicantNameAccusative": "СУЗАНСКУЮ ЛИДИЮ АЛЕКСЕЕВНУ",
+   "applicantNameDative": "СУЗАНСКОЙ ЛИДИИ АЛЕКСЕЕВНЕ",
+   "applicantNameGenitive": "ВключитьтребованияПАОСбербанквтретьюочередьреестратребованийкредиторовСУЗАНСКОЙ ЛИДИИ АЛЕКСЕЕВНЫ",
+   "applicantNameInstrumental": "СУЗАНСКОЙ ЛИДИЕЙ АЛЕКСЕЕВНОЙ",
+   "applicationDate": "20.06.1991",
+   "caseNumber": "А53-11228/2026",
+   "collaterals": [
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "А53-11228/2026 СУЗАНСКАЯ ЛИДИЯАЛЕКСЕЕВНА",
+     "id": "collateral-0",
+     "objectName": "А53-11228/2026 СУЗАНСКАЯ ЛИДИЯАЛЕКСЕЕВНА",
+     "otherDescription": "",
+     "vin": ""
+    }
+   ],
+   "contractDate": "13.06.2024",
+   "contractNumber": "1383367, 2105586, напредоставлениевозобновляемойкредитнойлинии, аДолжникубылавыданамеждународнаякредитнаякарта, омипотеки, Договор_3",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
+   "creditorInn": "7707083893",
+   "creditorName": "ПАО Сбербанк",
+   "creditorOgrn": "1027700132195",
+   "debtAmount": "4 536 273,95",
+   "debtorName": "СУЗАНСКАЯ ЛИДИЯ АЛЕКСЕЕВНА",
+   "entityType": "individual",
+   "forfeit": "12 804,78",
+   "forfeit15": "12 804,78",
+   "interest": "190 140,59",
+   "interest14": "190 140,59",
+   "ipCollateralClaimAmount": "3 859 760,52",
+   "loanDebt": "4 536 273,95",
+   "managerAddress": "410004, обл. Саратовская, г Саратов, ул. им Чернышев-ского Н.Г., д 50А, оф. 506",
+   "managerName": "Рябинина Екатерина Сергеевна",
+   "messageDate": "29.04.2026",
+   "messageNumber": "22677177",
+   "mortgageCollateralDescription1221": "А53-11228/2026 СУЗАНСКАЯ ЛИДИЯАЛЕКСЕЕВНА",
+   "obligationType": "кредитный договор",
+   "obligations": [
+    {
+     "amount": "3 320 770,14",
+     "amountValue": 3320770.14,
+     "contractDate": "16.11.2022",
+     "contractNumber": "1383367",
+     "id": "obligation_1",
+     "isCollateral": true,
+     "issuedAmount": null,
+     "issuedAmountValue": 0.0,
+     "obligationType": "Договор залога",
+     "penalty0071": null,
+     "penalty0071Value": 0.0
+    },
+    {
+     "amount": "676 513,43",
+     "amountValue": 676513.43,
+     "contractDate": "02.08.2024",
+     "contractNumber": "2105586",
+     "id": "obligation_2",
+     "isCollateral": false,
+     "issuedAmount": "650 000,00",
+     "issuedAmountValue": 650000.0,
+     "obligationType": "Кредитный договор",
+     "penalty0071": null,
+     "penalty0071Value": 0.0
+    },
+    {
+     "amount": "538 990,38",
+     "amountValue": 538990.38,
+     "contractDate": "13.06.2024",
+     "contractNumber": "напредоставлениевозобновляемойкредитнойлинии",
+     "id": "obligation_3",
+     "isCollateral": true,
+     "issuedAmount": null,
+     "issuedAmountValue": 0.0,
+     "obligationType": "Договор залога",
+     "penalty0071": "21 401,75",
+     "penalty0071Value": 21401.75
+    }
+   ],
+   "obligationsTotalDebt": "4 536 273,95",
+   "penalties": "0,00",
+   "penalty0071": "21 401,75",
+   "principalDebt": "4 333 328,58",
+   "principalDebt13": "4 333 328,58",
+   "procedureType": "realization",
+   "procedureTypeRaw": "реализации имущества",
+   "requirementsSum": "4 536 273,95",
+   "sourceDocumentType": "rtk_application",
+   "stateDuty": "105 544,00",
+   "stateDuty16": "105 544,00",
+   "totalDebt": "4 536 273,95"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 5,
+   "wordCount": 1157
+  },
+  "obligations": [
+   {
+    "amount": "3 320 770,14",
+    "amountValue": 3320770.14,
+    "contractDate": "16.11.2022",
+    "contractNumber": "1383367",
+    "id": "obligation_1",
+    "isCollateral": true,
+    "issuedAmount": null,
+    "issuedAmountValue": 0.0,
+    "obligationType": "Договор залога",
+    "penalty0071": null,
+    "penalty0071Value": 0.0
+   },
+   {
+    "amount": "676 513,43",
+    "amountValue": 676513.43,
+    "contractDate": "02.08.2024",
+    "contractNumber": "2105586",
+    "id": "obligation_2",
+    "isCollateral": false,
+    "issuedAmount": "650 000,00",
+    "issuedAmountValue": 650000.0,
+    "obligationType": "Кредитный договор",
+    "penalty0071": null,
+    "penalty0071Value": 0.0
+   },
+   {
+    "amount": "538 990,38",
+    "amountValue": 538990.38,
+    "contractDate": "13.06.2024",
+    "contractNumber": "напредоставлениевозобновляемойкредитнойлинии",
+    "id": "obligation_3",
+    "isCollateral": true,
+    "issuedAmount": null,
+    "issuedAmountValue": 0.0,
+    "obligationType": "Договор залога",
+    "penalty0071": "21 401,75",
+    "penalty0071Value": 21401.75
+   }
+  ],
+  "rawTextLen": 12356,
+  "rawTextSha": "5f1ade37c2dbff20c5c4d6565833adcf87a528704544b5a46a34aab20d1e046a",
+  "recommendedActs": {
+   "collateralOption": "collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization",
+    "acceptance_no_motion_no_duty_collateral"
+   ]
+  },
+  "thirdParties": []
+ },
+ "casebookWord/Заявление о включении в реестр требований кредиторов  2 л.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "346311 РОССИЯ, РОСТОВСКАЯ ОБЛ., Г.ЗВЕРЕВО, УЛ. ОСТАШЕНКО, Д.7, КВ.30",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "614600107524",
+    "name": "Епифанова Людмила Николаевна",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "06127441839"
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "346311 РОССИЯ, РОСТОВСКАЯ ОБЛ., Г.ЗВЕРЕВО, УЛ. ОСТАШЕНКО, Д.7, КВ.30",
+   "applicantName": "Епифанова Людмила Николаевна",
+   "applicantNameAccusative": "Епифанову Людмилу Николаевну",
+   "applicantNameGenitive": "Епифановой Людмилы Николаевны",
+   "applicantNameInstrumental": "Епифановой Людмилой Николаевной",
+   "applicationDate": "16.05.2026",
+   "caseNumber": "А53-11012/2026",
+   "companyInn": "614600107524",
+   "contractDate": "Не указана",
+   "contractNumber": "0278146810",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "127287, г. Москва, ул. Хуторская 2-я, д. 38А, стр. 26",
+   "creditorInn": "7710140679",
+   "creditorName": "Акционерное общество «ТБанк»",
+   "creditorOgrn": "1027739642281",
+   "debtAmount": "37 490,52",
+   "debtorName": "Епифанова Людмила Николаевна",
+   "entityType": "individual",
+   "forfeit": "0,00",
+   "forfeit15": "0,00",
+   "inn": "614600107524",
+   "interest": "2 599,47",
+   "interest14": "2 599,47",
+   "loanDebt": "37 490,52",
+   "managerInn": "740706331908",
+   "managerName": "Галифинова Татьяна Сергеевна",
+   "obligationType": "кредитный договор",
+   "obligations": [
+    {
+     "contractDate": "Не указана",
+     "contractNumber": "0278146810",
+     "id": "obligation_fallback_0",
+     "obligationType": "Кредитный договор"
+    }
+   ],
+   "penalties": "194,86",
+   "principalDebt": "34 696,19",
+   "principalDebt13": "34 696,19",
+   "procedureTypeRaw": "банкротства гражданина",
+   "requirementsSum": "37 490,52",
+   "snils": "06127441839",
+   "sourceDocumentType": "rtk_application",
+   "stateDuty": "0,00",
+   "stateDuty16": "0,00",
+   "totalDebt": "37 490,52"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 765
+  },
+  "obligations": [
+   {
+    "contractDate": "Не указана",
+    "contractNumber": "0278146810",
+    "id": "obligation_fallback_0",
+    "obligationType": "Кредитный договор"
+   }
+  ],
+  "rawTextLen": 5945,
+  "rawTextSha": "b45247d908717bfaf5337d3f3e1409b733fa99ed59565990577799cd0a084121",
+  "recommendedActs": {
+   "collateralOption": "collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition"
+   ]
+  },
+  "thirdParties": []
+ },
  "casebookWord/Заявление о признании должника банкротом  АО  КОНЦЕРН  САРМАТ   (ИНН- 6123010803).docx": {
   "collaterals": [],
   "confidence": 1.0,
@@ -5609,314 +5899,26 @@
   },
   "thirdParties": []
  },
- "newDataset/Заявление о включении в РТК_СУЗАНСКАЯ ЛИДИЯ АЛЕКСЕЕВНА 5л.docx": {
-  "collaterals": [
-   {
-    "address": "Российская Федерация, Ростовская об-",
-    "brandModel": "",
-    "cadastralNumber": "",
-    "collateralType": "real_estate",
-    "collateralValue": "",
-    "description": "земельный участок, расположенный по адресу: Российская Федерация, Ростовская об-",
-    "id": "collateral-0",
-    "objectName": "Земельный участок",
-    "otherDescription": "",
-    "vin": ""
-   },
-   {
-    "address": "Ростовскаяобласть,Мясниковскийр-н,хЛенинакан",
-    "brandModel": "",
-    "cadastralNumber": "",
-    "collateralType": "real_estate",
-    "collateralValue": "",
-    "description": "дом,расположенныйпоадресу:Ростовскаяобласть,Мясниковскийр-н,хЛенинакан",
-    "id": "collateral-1",
-    "objectName": "Дом",
-    "otherDescription": "",
-    "vin": ""
-   }
-  ],
-  "confidence": 1.0,
-  "debtors": [
-   {
-    "address": "Ростовская обл., Мясниковскиий район, х. Ленинакан, ул. 8-я линия, д. 88",
-    "birthDate": "",
-    "birthPlace": "",
-    "inn": "",
-    "name": "СУЗАНСКАЯ ЛИДИЯ АЛЕКСЕЕВНА",
-    "ogrn": "",
-    "ogrnip": "",
-    "snils": ""
-   }
-  ],
-  "documentType": "rtk_application",
-  "entityType": "individual",
-  "fields": {
-   "applicantAddress": "Ростовская обл., Мясниковскиий район, х. Ленинакан, ул. 8-я линия, д. 88",
-   "applicantName": "СУЗАНСКАЯ ЛИДИЯ АЛЕКСЕЕВНА",
-   "applicantNameAccusative": "СУЗАНСКУЮ ЛИДИЮ АЛЕКСЕЕВНУ",
-   "applicantNameDative": "СУЗАНСКОЙ ЛИДИИ АЛЕКСЕЕВНЕ",
-   "applicantNameGenitive": "ВключитьтребованияПАОСбербанквтретьюочередьреестратребованийкредиторовСУЗАНСКОЙ ЛИДИИ АЛЕКСЕЕВНЫ",
-   "applicantNameInstrumental": "СУЗАНСКОЙ ЛИДИЕЙ АЛЕКСЕЕВНОЙ",
-   "applicationDate": "20.06.1991",
-   "caseNumber": "А53-11228/2026",
-   "collaterals": [
-    {
-     "address": "",
-     "brandModel": "",
-     "cadastralNumber": "",
-     "collateralType": "other",
-     "collateralValue": "",
-     "description": "А53-11228/2026 СУЗАНСКАЯ ЛИДИЯАЛЕКСЕЕВНА",
-     "id": "collateral-0",
-     "objectName": "А53-11228/2026 СУЗАНСКАЯ ЛИДИЯАЛЕКСЕЕВНА",
-     "otherDescription": "",
-     "vin": ""
-    }
-   ],
-   "contractDate": "13.06.2024",
-   "contractNumber": "1383367, 2105586, напредоставлениевозобновляемойкредитнойлинии, аДолжникубылавыданамеждународнаякредитнаякарта, омипотеки, Договор_3",
-   "courtName": "Арбитражный суд Ростовской области",
-   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
-   "creditorInn": "7707083893",
-   "creditorName": "ПАО Сбербанк",
-   "creditorOgrn": "1027700132195",
-   "debtAmount": "4 536 273,95",
-   "debtorName": "СУЗАНСКАЯ ЛИДИЯ АЛЕКСЕЕВНА",
-   "entityType": "individual",
-   "forfeit": "18 541,42",
-   "forfeit15": "18 541,42",
-   "interest": "188 175,16",
-   "interest14": "188 175,16",
-   "ipCollateralClaimAmount": "3 859 760,52",
-   "loanDebt": "4 536 273,95",
-   "loanStateDuty17": "105 544,00",
-   "managerAddress": "410004, обл. Саратовская, г Саратов, ул. им Чернышев-ского Н.Г., д 50А, оф. 506",
-   "managerName": "Рябинина Екатерина Сергеевна",
-   "messageDate": "29.04.2026",
-   "messageNumber": "22677177",
-   "mortgageCollateralDescription1221": "А53-11228/2026 СУЗАНСКАЯ ЛИДИЯАЛЕКСЕЕВНА",
-   "obligationType": "кредитный договор",
-   "obligations": [
-    {
-     "amount": "3 320 770,14",
-     "amountValue": 3320770.14,
-     "contractDate": "16.11.2022",
-     "contractNumber": "1383367",
-     "id": "obligation_1",
-     "isCollateral": true,
-     "issuedAmount": null,
-     "issuedAmountValue": 0.0,
-     "obligationType": "Договор залога",
-     "penalty0071": null,
-     "penalty0071Value": 0.0
-    },
-    {
-     "amount": "676 513,43",
-     "amountValue": 676513.43,
-     "contractDate": "02.08.2024",
-     "contractNumber": "2105586",
-     "id": "obligation_2",
-     "isCollateral": false,
-     "issuedAmount": "650 000,00",
-     "issuedAmountValue": 650000.0,
-     "obligationType": "Кредитный договор",
-     "penalty0071": null,
-     "penalty0071Value": 0.0
-    },
-    {
-     "amount": "538 990,38",
-     "amountValue": 538990.38,
-     "contractDate": "13.06.2024",
-     "contractNumber": "напредоставлениевозобновляемойкредитнойлинии",
-     "id": "obligation_3",
-     "isCollateral": true,
-     "issuedAmount": null,
-     "issuedAmountValue": 0.0,
-     "obligationType": "Договор залога",
-     "penalty0071": "21 401,75",
-     "penalty0071Value": 21401.75
-    }
-   ],
-   "obligationsTotalDebt": "4 536 273,95",
-   "penalty0071": "21 401,75",
-   "principalDebt": "4 333 328,58",
-   "principalDebt13": "4 333 328,58",
-   "procedureType": "realization",
-   "procedureTypeRaw": "реализации имущества",
-   "requirementsSum": "4 536 273,95",
-   "sourceDocumentType": "rtk_application",
-   "totalDebt": "4 536 273,95"
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 5,
-   "wordCount": 1157
-  },
-  "obligations": [
-   {
-    "amount": "3 320 770,14",
-    "amountValue": 3320770.14,
-    "contractDate": "16.11.2022",
-    "contractNumber": "1383367",
-    "id": "obligation_1",
-    "isCollateral": true,
-    "issuedAmount": null,
-    "issuedAmountValue": 0.0,
-    "obligationType": "Договор залога",
-    "penalty0071": null,
-    "penalty0071Value": 0.0
-   },
-   {
-    "amount": "676 513,43",
-    "amountValue": 676513.43,
-    "contractDate": "02.08.2024",
-    "contractNumber": "2105586",
-    "id": "obligation_2",
-    "isCollateral": false,
-    "issuedAmount": "650 000,00",
-    "issuedAmountValue": 650000.0,
-    "obligationType": "Кредитный договор",
-    "penalty0071": null,
-    "penalty0071Value": 0.0
-   },
-   {
-    "amount": "538 990,38",
-    "amountValue": 538990.38,
-    "contractDate": "13.06.2024",
-    "contractNumber": "напредоставлениевозобновляемойкредитнойлинии",
-    "id": "obligation_3",
-    "isCollateral": true,
-    "issuedAmount": null,
-    "issuedAmountValue": 0.0,
-    "obligationType": "Договор залога",
-    "penalty0071": "21 401,75",
-    "penalty0071Value": 21401.75
-   }
-  ],
-  "rawTextLen": 12356,
-  "rawTextSha": "5f1ade37c2dbff20c5c4d6565833adcf87a528704544b5a46a34aab20d1e046a",
-  "recommendedActs": {
-   "collateralOption": "collateral",
-   "entityType": "individual",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization",
-    "acceptance_no_motion_no_duty_collateral"
-   ]
-  },
-  "thirdParties": []
- },
- "newDataset/Заявление о включении в реестр требований кредиторов  2 л.docx": {
-  "collaterals": [],
-  "confidence": 1.0,
-  "debtors": [
-   {
-    "address": "346311 РОССИЯ, РОСТОВСКАЯ ОБЛ., Г.ЗВЕРЕВО, УЛ. ОСТАШЕНКО, Д.7, КВ.30",
-    "birthDate": "",
-    "birthPlace": "",
-    "inn": "614600107524",
-    "name": "Галифинова Татьяна Сергеевна",
-    "ogrn": "",
-    "ogrnip": "",
-    "snils": "06127441839"
-   }
-  ],
-  "documentType": "rtk_application",
-  "entityType": "individual",
-  "fields": {
-   "applicantAddress": "346311 РОССИЯ, РОСТОВСКАЯ ОБЛ., Г.ЗВЕРЕВО, УЛ. ОСТАШЕНКО, Д.7, КВ.30",
-   "applicantName": "Галифинова Татьяна Сергеевна",
-   "applicantNameAccusative": "Галифинову Татьяну Сергеевну",
-   "applicantNameGenitive": "Галифиновой Татьяны Сергеевны",
-   "applicantNameInstrumental": "Галифиновой Татьяной Сергеевной",
-   "applicationDate": "16.05.2026",
-   "caseNumber": "А53-11012/2026",
-   "companyInn": "614600107524",
-   "contractDate": "Не указана",
-   "contractNumber": "0278146810",
-   "courtName": "Арбитражный суд Ростовской области",
-   "creditorAddress": "127287, г. Москва, ул. Хуторская 2-я, д. 38А, стр. 26",
-   "creditorInn": "7710140679",
-   "creditorName": "Акционерное общество «ТБанк»",
-   "creditorOgrn": "1027739642281",
-   "debtAmount": "37 490,52",
-   "debtorName": "Галифинова Татьяна Сергеевна",
-   "entityType": "individual",
-   "forfeit": "0,00",
-   "forfeit15": "0,00",
-   "inn": "614600107524",
-   "interest": "2 599,47",
-   "interest14": "2 599,47",
-   "loanDebt": "37 490,52",
-   "managerInn": "740706331908",
-   "managerName": "Галифинова Татьяна Сергеевна",
-   "obligationType": "кредитный договор",
-   "obligations": [
-    {
-     "contractDate": "Не указана",
-     "contractNumber": "0278146810",
-     "id": "obligation_fallback_0",
-     "obligationType": "Кредитный договор"
-    }
-   ],
-   "penalties": "194,86",
-   "principalDebt": "34 696,19",
-   "principalDebt13": "34 696,19",
-   "procedureTypeRaw": "банкротства гражданина",
-   "requirementsSum": "37 490,52",
-   "snils": "06127441839",
-   "sourceDocumentType": "rtk_application",
-   "stateDuty": "333,37",
-   "stateDuty16": "333,37",
-   "totalDebt": "37 490,52"
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 2,
-   "wordCount": 765
-  },
-  "obligations": [
-   {
-    "contractDate": "Не указана",
-    "contractNumber": "0278146810",
-    "id": "obligation_fallback_0",
-    "obligationType": "Кредитный договор"
-   }
-  ],
-  "rawTextLen": 5945,
-  "rawTextSha": "b45247d908717bfaf5337d3f3e1409b733fa99ed59565990577799cd0a084121",
-  "recommendedActs": {
-   "collateralOption": "collateral",
-   "entityType": "individual",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition"
-   ]
-  },
-  "thirdParties": []
- },
  "newDataset/Заявление о включении в реестр требований кредиторов 3л.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
    {
-    "address": "346884, Ростовская обл., г. Батайск, ул. Янтарная, д. 7 Удодов Сергей Александрович (",
+    "address": "346884, Ростовская обл., г. Батайск, ул. Янтарная, д. 7",
     "birthDate": "14.04.1974",
     "birthPlace": "гор. Ростов-на-Дону",
-    "inn": "7702070139",
-    "name": "ФИНАНСОВЫЙ",
-    "ogrn": "1027739609391",
+    "inn": "616709751152",
+    "name": "Горина Юлия Игоревна",
+    "ogrn": "",
     "ogrnip": "",
     "snils": "118-781-995 07"
    }
   ],
   "documentType": "rtk_application",
-  "entityType": "legal",
+  "entityType": "individual",
   "fields": {
-   "applicantAddress": "346884, Ростовская обл., г. Батайск, ул. Янтарная, д. 7 Удодов Сергей Александрович (",
-   "applicantName": "ФИНАНСОВЫЙ",
+   "applicantAddress": "346884, Ростовская обл., г. Батайск, ул. Янтарная, д. 7",
+   "applicantName": "Горина Юлия Игоревна",
    "applicantNameAccusative": "ФИНАНСОВОГО",
    "applicantNameDative": "ФИНАНСОВОМУ",
    "applicantNameGenitive": "ФИНАНСОВОГО",
@@ -5925,24 +5927,28 @@
    "birthDate": "14.04.1974",
    "birthPlace": "гор. Ростов-на-Дону",
    "caseNumber": "А53-11230/2026",
-   "companyInn": "7702070139",
    "contractDate": "13.02.2023",
    "contractNumber": "625/0055-0764407, V625/0055-0073261",
    "courtDecisionDate": "20.05.2026",
    "courtName": "Арбитражный суд Ростовской области",
-   "debtAmount": "16 874,07",
+   "creditorAddress": "191144, г. Санкт-Петербург, пер. Дегтярный, д. 11-А",
+   "creditorInn": "7702070139",
+   "creditorName": "Банк ВТБ (публичное акционерное общество)",
+   "creditorOgrn": "1027739609391",
+   "debtAmount": "305 513,35",
    "debtorName": "ФИНАНСОВЫЙ",
-   "entityType": "legal",
-   "forfeit": "302,42",
-   "forfeit15": "302,42",
-   "inn": "7702070139",
-   "interest": "228,32",
-   "interest14": "228,32",
+   "entityType": "individual",
+   "forfeit": "1 310,75",
+   "forfeit15": "1 310,75",
+   "inn": "616709751152",
+   "interest": "0,00",
+   "interest14": "0,00",
    "kommersantDate": "30.05.2026",
    "legalShortName": "ФИНАНСОВЫЙ",
    "loanDebt": "10 138",
-   "managerAddress": "609391, ИНН 7702070139",
-   "managerName": "Банк ВТБ",
+   "managerAddress": "344019, Ростовская обл., г. Ростов-на-Дону, пр-кт Шолохова, д. 34А, оф.З.2",
+   "managerInn": "615519848330",
+   "managerName": "Удодов Сергей Александрович",
    "messageDate": "30.05.2026",
    "messageNumber": "77240708355",
    "obligationType": "кредитный договор",
@@ -5960,21 +5966,22 @@
      "obligationType": "Договор"
     }
    ],
-   "ogrn": "1027739609391",
    "penalties": "0,00",
-   "principalDebt": "16 343,33",
-   "principalDebt13": "16 343,33",
+   "principalDebt": "304 202,60",
+   "principalDebt13": "304 202,60",
    "procedureType": "observation",
    "procedureTypeRaw": "реализации имущества гражданина",
    "requirementsSum": "10 138,00",
    "snils": "118-781-995 07",
    "sourceDocumentType": "rtk_application",
-   "totalDebt": "16 874,07"
+   "stateDuty": "10 138,00",
+   "stateDuty16": "10 138,00",
+   "totalDebt": "305 513,35"
   },
   "metadata": {
    "language": "ru",
    "pageCount": 3,
-   "wordCount": 845
+   "wordCount": 847
   },
   "obligations": [
    {
@@ -5990,8 +5997,8 @@
     "obligationType": "Договор"
    }
   ],
-  "rawTextLen": 6913,
-  "rawTextSha": "714062b8e3f1e484f3e02c7b894542d250d4d568bf1da23afbfa5970650f200a",
+  "rawTextLen": 6915,
+  "rawTextSha": "9166cdea2a0d333d0811e5f4503de4f0d130b49b89a94b6f37896c31ed08c26a",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "legal",
@@ -6222,7 +6229,6 @@
    "entityType": "individual",
    "inn": "616803491568",
    "loanDebt": "100000",
-   "managerAddress": "632107827106, СНИЛС 07725793102",
    "managerInn": "632107827106",
    "managerName": "Ефимович Евгения Николаевна",
    "requirementsSum": "100 000,00",
@@ -6287,7 +6293,6 @@
    "entityType": "individual",
    "inn": "612204309548",
    "loanDebt": "100000",
-   "managerAddress": "745111378257, СНИЛС 13517430235",
    "managerInn": "745111378257",
    "managerName": "Данилова Аделя Ринатовна",
    "requirementsSum": "100 000,00",
@@ -6348,17 +6353,16 @@
    "contractNumber": "KK-7779566277817, 59742084-ДО-РОС-23, цессии",
    "courtDecisionDate": "27.04.2026",
    "courtName": "Арбитражный суд Ростовской области",
-   "debtAmount": "75 445,80",
+   "debtAmount": "1 201 910,33",
    "debtorName": "ФИНАНСОВЫЙ",
    "entityType": "legal",
-   "forfeit": "2 743,00",
-   "forfeit15": "2 743,00",
+   "forfeit": "21 333,41",
+   "forfeit15": "21 333,41",
    "inn": "7702070139",
-   "interest": "22 740,77",
-   "interest14": "22 740,77",
+   "interest": "0,00",
+   "interest14": "0,00",
    "legalShortName": "ФИНАНСОВЫЙ",
    "loanDebt": "30 529",
-   "managerAddress": "609391, ИНН 7702070139",
    "managerName": "Банк ВТБ",
    "messageDate": "28.04.2026",
    "messageNumber": "22660261",
@@ -6379,14 +6383,16 @@
    ],
    "ogrn": "1027739609391",
    "penalties": "0,00",
-   "principalDebt": "49 962,03",
-   "principalDebt13": "49 962,03",
+   "principalDebt": "1 180 576,92",
+   "principalDebt13": "1 180 576,92",
    "procedureType": "observation",
    "procedureTypeRaw": "реализации имущества гражданина",
    "requirementsSum": "30 529,00",
    "snils": "112-979-523 77",
    "sourceDocumentType": "rtk_application",
-   "totalDebt": "75 445,80"
+   "stateDuty": "30 529,00",
+   "stateDuty16": "30 529,00",
+   "totalDebt": "1 201 910,33"
   },
   "metadata": {
    "language": "ru",
