@@ -1241,8 +1241,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
         # ФИО физлиц на отдельных строках — это начала блоков ДОЛЖНИК и УПРАВЛЯЮЩИЙ
         # (кредитор-юрлицо идёт первым, до первого ФИО).
+        # ФИО физлица в начале строки; после него допускается «(ИНН …)» или
+        # конец строки («Тимченко Павел Иванович (ИНН …)» и «Анисимов Роман Сергеевич»).
         fio_re = re.compile(
-            r"(?m)^[ \t]*([А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+)[ \t]*$"
+            r"(?m)^[ \t]*([А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+)[ \t]*(?=\(|\n|$)"
         )
         fios = list(fio_re.finditer(region))
         if len(fios) < 2:
@@ -1296,12 +1298,17 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         bp = re.search(r"Место\s+рождения[:\s]*([^\n]+)", debtor_block, re.IGNORECASE)
         if bp:
             fields["birthPlace"] = bp.group(1).strip().rstrip(" .,;")
+        # Адрес должника может быть и без индекса («Ростовская обл., г. Шахты, …»),
+        # и многострочным — берём всё после метки «Адрес …:» до конца блока.
         da = re.search(
-            r"Адрес\s+(?:регистрации|проживания)?[:\s]*([0-9]{6}[^\n]+)",
+            r"Адрес\s+(?:регистрации|проживания|места\s+жительства)?\s*:\s*([\s\S]+)",
             debtor_block, re.IGNORECASE,
         )
         if da:
-            fields["applicantAddress"] = da.group(1).strip()
+            addr = re.sub(r"\s+", " ", da.group(1)).strip().rstrip(" ,;")
+            addr = re.split(r"\b(?:ИНН|ОГРН|СНИЛС|КПП)\b", addr, flags=re.IGNORECASE)[0].strip().rstrip(" ,;")
+            if re.search(r"[А-Яа-яЁё]{3}", addr):
+                fields["applicantAddress"] = addr
 
         # --- ФИНАНСОВЫЙ УПРАВЛЯЮЩИЙ (физлицо) ---
         fields["managerName"] = fios[1].group(1).strip()
@@ -2209,7 +2216,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         applicant_clean = None
         if applicant_name_raw:
             # Отклоняем значения, которые явно являются описанием процедуры, а не именем должника
-            if re.search(r"^[а-яё]\s+введена\s+процедура|^введена\s+процедура|процедура\s+наблюдения", applicant_name_raw, re.IGNORECASE):
+            if re.search(r"^[а-яё]\s+введена\s+процедура|^введена\s+процедура|процедура\s+наблюдения|соответствует\s+признак|признак\w*\s+банкрот", applicant_name_raw, re.IGNORECASE):
                 applicant_name_raw = None
         if applicant_name_raw:
             applicant_clean = re.sub(r"\[.*?\]", "", applicant_name_raw)
