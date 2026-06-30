@@ -348,7 +348,7 @@ class ObligationsMixin:
             if 1 <= d <= 31 and 1 <= mo <= 12 and 1900 <= y <= 2100:
                 return f"{d:02d}.{mo:02d}.{y}"
             return None
-        m = re.match(r"«?\s*(\d{1,2})\s*»?\s+([а-яё]+)\s+(\d{4})", s, re.IGNORECASE)
+        m = re.match(r'[«"“]?\s*(\d{1,2})\s*[»"”]?\s+([а-яё]+)\s+(\d{4})', s, re.IGNORECASE)
         if m:
             d, word, y = int(m.group(1)), m.group(2).lower(), int(m.group(3))
             mo = next((v for k, v in self._RU_MONTHS.items() if word.startswith(k)), None)
@@ -407,7 +407,7 @@ class ObligationsMixin:
         # заёмщика) исключаем, оставляем поручительства (на должника).
         if debtor_is_borrower is None:
             debtor_is_borrower = self._debtor_is_borrower(text, debtor_words)
-        _date = r"[0-3]?\d[.,][01]?\d[.,]\d{4}|«?\s*[0-3]?\d\s*»?\s+[а-яё]+\s+\d{4}"
+        _date = r'[0-3]?\d[.,][01]?\d[.,]\d{4}|[«"“]?\s*[0-3]?\d\s*[»"”]?\s+[а-яё]+\s+\d{4}'
         rx = re.compile(
             r"((?:договор\w*\s+)?кредитн\w+\s+карт\w*|кредитн\w+\s+договор\w*|"
             r"договор\w*\s+потребительск\w+\s+кредит\w*|"
@@ -472,6 +472,56 @@ class ObligationsMixin:
                 continue
             obj = {
                 "id": f"obligation_p_{len(res)}",
+                "contractNumber": num,
+                "contractDate": date or "Не указана",
+                "obligationType": typ,
+            }
+            by_num[num] = obj
+            res.append(obj)
+        return res
+
+    def _extract_obligations_table(self, text, debtor_is_borrower=True):
+        """Табличный формат (МТС-Банк и т.п.): столбец «Номер договора» со
+        строками «<НОМЕР> от <ДАТА>». Номер не предварён словом-типом и содержит
+        слэши (0004491788/13/06/24), поэтому ни канонический экстрактор, ни старый
+        fallback (берёт только чисто цифровые) его не видят. Гейт — заголовок
+        таблицы «Номер договора». Тип берём на уровне документа (фраза «кредитным
+        договорам» → Кредитный договор). Кредитные берём, только если должник —
+        заёмщик (этот формат и есть кредит на должника)."""
+        if not text or not re.search(r"номер\s+договора", text, re.IGNORECASE):
+            return []
+        if not debtor_is_borrower:
+            return []
+        typ = ("Кредитная карта" if re.search(r"кредитн\w+\s+карт", text, re.I)
+               else "Кредитный договор" if re.search(r"кредитн\w+\s+договор", text, re.I)
+               else "Договор займа" if re.search(r"договор\w*\s+займа|\bзайм", text, re.I)
+               else "Договор")
+        _date = r"[0-3]?\d[.,][01]?\d[.,]\d{4}"
+        res, by_num = [], {}
+        for m in re.finditer(
+            r"(?:№\s*)?([0-9A-ZА-ЯЁ][0-9A-ZА-ЯЁ/.\-]{4,39})\s+от\s*\n?\s*(" + _date + r")",
+            text, re.IGNORECASE,
+        ):
+            num = m.group(1).strip(" .,;/")
+            # Номер договора всегда содержит цифру (отсекает слова-ложные срабат.
+            # «закона от 26.10.2002» из-за IGNORECASE по буквенному классу).
+            if not re.search(r"\d", num):
+                continue
+            if not self._is_valid_contract_number(num):
+                continue
+            if num.isdigit() and len(num) >= 15:  # расчётный/корр. счёт, не договор
+                continue
+            ctx = text[max(0, m.start() - 40):m.start()].lower()
+            if any(w in ctx for w in ("дело", "закон", "приказ", "пошлин",
+                                      "поручени", "счет", "счёт")):
+                continue
+            date = self._normalize_obl_date(m.group(2))
+            if num in by_num:
+                if date and by_num[num]["contractDate"] == "Не указана":
+                    by_num[num]["contractDate"] = date
+                continue
+            obj = {
+                "id": f"obligation_t_{len(res)}",
                 "contractNumber": num,
                 "contractDate": date or "Не указана",
                 "obligationType": typ,
@@ -552,7 +602,13 @@ class ObligationsMixin:
             if primary:
                 obligations.extend(primary)
             else:
-                self._parse_obligations_fallback(extracted_fields, text, obligations)
+                # Табличный формат «Номер договора | … | RUR» (МТС-Банк и т.п.) —
+                # номер голый, без слова-типа; обычные паттерны его не видят.
+                table = self._extract_obligations_table(text, _debtor_is_borrower)
+                if table:
+                    obligations.extend(table)
+                else:
+                    self._parse_obligations_fallback(extracted_fields, text, obligations)
 
         # Убираем дубликаты обязательств
         unique_obligations = []

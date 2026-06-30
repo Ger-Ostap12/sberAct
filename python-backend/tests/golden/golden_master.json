@@ -3122,7 +3122,7 @@
    "applicantNameInstrumental": "АТАМУРАТОВЫМ БОГДАНОМ ЭРКИНБАЕВИЧЕМ",
    "applicationDate": "22.04.2024",
    "caseNumber": "А53-11236/2026",
-   "contractDate": "22.04.2024, Не указана",
+   "contractDate": "22.04.2024, 28.09.2023",
    "contractNumber": "10050033429, 8963411620",
    "courtName": "Арбитражный суд Ростовской области",
    "creditInterestRate": "33,9",
@@ -3149,7 +3149,7 @@
      "obligationType": "Кредитный договор"
     },
     {
-     "contractDate": "Не указана",
+     "contractDate": "28.09.2023",
      "contractNumber": "8963411620",
      "id": "obligation_p_1",
      "obligationType": "Кредитный договор"
@@ -3177,7 +3177,7 @@
     "obligationType": "Кредитный договор"
    },
    {
-    "contractDate": "Не указана",
+    "contractDate": "28.09.2023",
     "contractNumber": "8963411620",
     "id": "obligation_p_1",
     "obligationType": "Кредитный договор"
@@ -3308,7 +3308,8 @@
    "applicationDate": "20.05.1984",
    "caseNumber": "А53-9893/2026",
    "companyInn": "616803491568",
-   "contractNumber": "Структура",
+   "contractDate": "13.06.2024, 10.08.2025",
+   "contractNumber": "Структура, 0004491788/13/06/24, 0003943524/10/08/25",
    "courtName": "Арбитражный суд Ростовской области",
    "creditorAddress": "115432, г. Москва, проспект Андропова, д. 18, корп. 1",
    "creditorInn": "7702045051",
@@ -3326,6 +3327,20 @@
    "managerAddress": "350012, Краснодарский край, Краснодар, Красных Партизан, 77, а/я 4701",
    "managerInn": "632107827106",
    "managerName": "Ефимович Евгения Николаевна",
+   "obligations": [
+    {
+     "contractDate": "13.06.2024",
+     "contractNumber": "0004491788/13/06/24",
+     "id": "obligation_t_0",
+     "obligationType": "Кредитный договор"
+    },
+    {
+     "contractDate": "10.08.2025",
+     "contractNumber": "0003943524/10/08/25",
+     "id": "obligation_t_1",
+     "obligationType": "Кредитный договор"
+    }
+   ],
    "penalties": "0,00",
    "principalDebt": "71 145,34",
    "principalDebt13": "71 145,34",
@@ -3341,7 +3356,20 @@
    "pageCount": 1,
    "wordCount": 895
   },
-  "obligations": [],
+  "obligations": [
+   {
+    "contractDate": "13.06.2024",
+    "contractNumber": "0004491788/13/06/24",
+    "id": "obligation_t_0",
+    "obligationType": "Кредитный договор"
+   },
+   {
+    "contractDate": "10.08.2025",
+    "contractNumber": "0003943524/10/08/25",
+    "id": "obligation_t_1",
+    "obligationType": "Кредитный договор"
+   }
+  ],
   "rawTextLen": 7391,
   "rawTextSha": "bffd00aea834eb0ec8faa83b51ae751758156f92e43f1c6d76c89c5f0ee661bc",
   "recommendedActs": {
@@ -3383,7 +3411,8 @@
    "applicationDate": "29.05.1995",
    "caseNumber": "А53-9866/2026",
    "companyInn": "612204309548",
-   "contractNumber": "Структура",
+   "contractDate": "17.12.2025",
+   "contractNumber": "Структура, ПНН438237/810/25",
    "courtName": "Арбитражный суд Ростовской области",
    "creditorAddress": "115432, г. Москва, проспект Андропова, д. 18, корп. 1",
    "creditorInn": "7702045051",
@@ -3401,6 +3430,14 @@
    "managerAddress": "454092, г. Челябинск, а/я 9317",
    "managerInn": "745111378257",
    "managerName": "Данилова Аделя Ринатовна",
+   "obligations": [
+    {
+     "contractDate": "17.12.2025",
+     "contractNumber": "ПНН438237/810/25",
+     "id": "obligation_t_0",
+     "obligationType": "Кредитный договор"
+    }
+   ],
    "penalties": "0,00",
    "principalDebt": "100 000,00",
    "principalDebt13": "100 000,00",
@@ -3416,7 +3453,14 @@
    "pageCount": 1,
    "wordCount": 814
   },
-  "obligations": [],
+  "obligations": [
+   {
+    "contractDate": "17.12.2025",
+    "contractNumber": "ПНН438237/810/25",
+    "id": "obligation_t_0",
+    "obligationType": "Кредитный договор"
+   }
+  ],
   "rawTextLen": 6519,
   "rawTextSha": "b2d01f41efa82edb74d626c9d3c0f41e72b6d4bfaad372301ef11828631140c3",
   "recommendedActs": {
