@@ -3729,6 +3729,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         context_pattern = rf'.{{0,100}}{re.escape(contract_number)}.{{0,100}}'
         context_match = re.search(context_pattern, text, re.IGNORECASE)
 
+        local_type = 'Договор'
         if context_match:
             context = context_match.group(0).lower()
             # Сравниваем по основам слов, т.к. в тексте склонённые формы
@@ -3738,21 +3739,37 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # только по явной формулировке, а не по любому упоминанию «залог».
             # 2 самых частых типа — кредитный договор и кредитная карта.
             if 'карт' in context and ('кредит' in context or 'эмисси' in context):
-                return 'Кредитная карта'
+                local_type = 'Кредитная карта'
             elif 'кредитн' in context:
-                return 'Кредитный договор'
+                local_type = 'Кредитный договор'
             elif 'займ' in context:
-                return 'Договор займа'
+                local_type = 'Договор займа'
             elif 'поручительств' in context:
-                return 'Договор поручительства'
+                local_type = 'Договор поручительства'
             elif 'договор залога' in context or 'договора залога' in context or 'договором залога' in context:
-                return 'Договор залога'
+                local_type = 'Договор залога'
             elif 'ссуд' in context:
-                return 'Договор ссуды'
-            else:
-                return 'Договор'
+                local_type = 'Договор ссуды'
 
-        return 'Договор'
+        # Если по локальному контексту тип не уточнён (договор назван просто
+        # «договор» — форма Совкомбанка), берём явное поле «Вид обязательства:
+        # <Кредит/Заём/Поручительство>» из документа.
+        if local_type == 'Договор':
+            vm = re.search(
+                r'вид\s+обязательств\w*[:\s]*\n?\s*([A-Za-zА-Яа-яЁё]+)',
+                text, re.IGNORECASE)
+            if vm:
+                v = vm.group(1).lower()
+                if 'кредит' in v:
+                    local_type = 'Кредитный договор'
+                elif 'залог' in v:
+                    local_type = 'Договор залога'
+                elif v.startswith('за'):  # заём / займ
+                    local_type = 'Договор займа'
+                elif 'поручит' in v:
+                    local_type = 'Договор поручительства'
+
+        return local_type
 
     def calculate_confidence(self, document_type: Optional[str], extracted_fields: Dict[str, str], text: str) -> float:
         """

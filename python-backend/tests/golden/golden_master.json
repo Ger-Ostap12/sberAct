@@ -2413,7 +2413,7 @@
      "contractDate": "02.04.2025",
      "contractNumber": "12434716027",
      "id": "obligation_11_1",
-     "obligationType": "Договор"
+     "obligationType": "Кредитный договор"
     }
    ],
    "penalties": "157,58",
@@ -2435,7 +2435,7 @@
     "contractDate": "02.04.2025",
     "contractNumber": "12434716027",
     "id": "obligation_11_1",
-    "obligationType": "Договор"
+    "obligationType": "Кредитный договор"
    }
   ],
   "rawTextLen": 5050,
@@ -2498,7 +2498,7 @@
      "contractDate": "27.12.2019",
      "contractNumber": "2646489807",
      "id": "obligation_11_1",
-     "obligationType": "Договор"
+     "obligationType": "Кредитный договор"
     }
    ],
    "penalties": "47,83",
@@ -2520,7 +2520,7 @@
     "contractDate": "27.12.2019",
     "contractNumber": "2646489807",
     "id": "obligation_11_1",
-    "obligationType": "Договор"
+    "obligationType": "Кредитный договор"
    }
   ],
   "rawTextLen": 5068,
