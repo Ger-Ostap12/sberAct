@@ -8,7 +8,7 @@ clean_extracted_value (DocumentGenerator). Поведение 1-в-1 под gen-
 """
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH

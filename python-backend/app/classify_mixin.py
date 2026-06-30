@@ -8,6 +8,36 @@ logger = logging.getLogger(__name__)
 
 class ClassifyMixin:
 
+    def _detect_ip_debtor_name(self, text: str) -> bool:
+        """Есть ли в тексте явное указание «ИП ФИО» в имени должника/ответчика.
+
+        Логика 1-в-1 с проверкой внутри classify_document (строгие паттерны +
+        контекстный fallback). Вынесено, чтобы переиспользовать в
+        _maybe_upgrade_to_observation_collateral без дублирования паттернов.
+        """
+        ip_name_patterns = [
+            r"должник[:\s]+\n\s*ИП\s+[А-ЯЁ]",
+            r"ответчик[:\s]+\n\s*ИП\s+[А-ЯЁ]",
+            r"должник[:\s]+ИП\s+[А-ЯЁ]",
+            r"ответчик[:\s]+ИП\s+[А-ЯЁ]",
+            r"должник[:\s]*\n[^\n]*ИП\s+[А-ЯЁ]",  # Более гибкий паттерн
+            r"ответчик[:\s]*\n[^\n]*ИП\s+[А-ЯЁ]",  # Более гибкий паттерн
+        ]
+        has_ip_name = any(re.search(pattern, text, re.IGNORECASE | re.MULTILINE) for pattern in ip_name_patterns)
+
+        # Дополнительная проверка: "ИП ФИО" в контексте должника/ответчика/заемщика
+        if not has_ip_name:
+            ip_in_context = re.search(
+                r"(?:должник|ответчик|заемщик)[^.]{0,200}?ИП\s+[А-ЯЁ][А-ЯЁа-яё\s]{5,50}",
+                text,
+                re.IGNORECASE | re.MULTILINE,
+            )
+            if ip_in_context:
+                has_ip_name = True
+                logger.info("Найдено 'ИП' в контексте должника/ответчика")
+
+        return has_ip_name
+
     def classify_document(self, text: str) -> str:
         """
         Классифицирует тип документа на основе содержимого

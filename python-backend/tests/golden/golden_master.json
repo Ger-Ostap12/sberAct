@@ -1,117 +1,84 @@
 {
- "andro/без маркеров юр иниц заявл.docx": {
-  "collaterals": [],
-  "confidence": 1.0,
+ "Заявления на проверку/Зайцев В.В._заявление.docx": {
+  "collaterals": [
+   {
+    "address": "",
+    "brandModel": "",
+    "cadastralNumber": "",
+    "collateralType": "auto",
+    "collateralValue": "",
+    "description": "Автомобиль грузовой УА3 3741, 1987 года выпуска, адрес: 346630, Ростовская обл., г. Семикаракорск, ул. М.И. Левченко, 46. Дата отчуждения 20.04.2023 г",
+    "id": "collateral-0",
+    "objectName": "1987 г.в.",
+    "otherDescription": "",
+    "vin": ""
+   }
+  ],
+  "confidence": 0.95,
   "debtors": [
    {
-    "address": "344111, г. Ростов-на-Дону, ул. Б.Садовая, д. 11, Литер А, пом. 111",
+    "address": "344002, г. Ростов-на-Дону",
     "birthDate": "",
     "birthPlace": "",
-    "inn": "987654321",
-    "name": "Общества с ограниченной ответственностью «Азбука»",
-    "ogrn": "123454321234",
-    "ogrnip": "",
+    "inn": "",
+    "name": "МинФин России Арбитражны",
+    "ogrn": "",
+    "ogrnip": "318619600149696",
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
-  "entityType": "legal",
+  "documentType": "initiation_physical",
+  "entityType": "ip",
   "fields": {
-   "applicantAddress": "344111, г. Ростов-на-Дону, ул. Б.Садовая, д. 11, Литер А, пом. 111",
-   "applicantName": "Общества с ограниченной ответственностью «Азбука»",
-   "applicantNameAccusative": "Общество с ограниченного ответственность «азбуку»",
-   "applicantNameDative": "Обществу с ограниченной ответственности «азбуке»",
-   "applicantNameGenitive": "Елабуга ул Голубевича",
-   "applicantNameInstrumental": "Обществом с ограниченной ответственностью «азбукой»",
-   "applicationDate": "20.06.1991",
-   "bankCommission": "0,00",
-   "caseNumber": "А53-12200/2026",
-   "companyInn": "987654321",
-   "contractDate": "21.12.2021",
-   "contractNumber": "5221223241",
+   "applicantAddress": "344002, г. Ростов-на-Дону",
+   "applicantName": "МинФин России Арбитражны",
+   "applicantNameAccusative": "МинФина Россию Арбитражных",
+   "applicantNameDative": "МинФину России Арбитражным",
+   "applicantNameGenitive": "ЗАЙЦЕВА ВИТАЛИЯ ВЛАДИМИРОВИЧА",
+   "applicantNameInstrumental": "МинФиным Россией Арбитражными",
+   "applicationDate": "29.05.2004",
    "courtName": "Арбитражный суд Ростовской области",
-   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
-   "creditorInn": "7707083893",
-   "creditorName": "ПАО Сбербанк",
-   "creditorOgrn": "1027700132195",
-   "currentInterest36": "0,00",
-   "currentInterestOverdue37": "0,00",
-   "debtAmount": "23 471 843,05",
-   "debtSnapshotDate88": "16.04.2020",
-   "debtorName": "Азбука",
-   "entityType": "legal",
-   "forfeit": "3 315 899,08",
-   "forfeit15": "3 315 899,08",
-   "inn": "987654321",
-   "interest": "55 943,97",
-   "interest14": "55 943,97",
-   "legalShortName": "Азбука",
-   "loanDebt": "23 471 843,05",
-   "obligationType": "кредитный договор",
-   "obligations": [
-    {
-     "contractDate": "21.12.2021",
-     "contractNumber": "5221223241",
-     "id": "obligation_11_0",
-     "obligationType": "Кредитный договор"
-    }
-   ],
-   "ogrn": "123454321234",
-   "other35": "0,00",
-   "ppStateDutyDate81": "25.11.2025",
-   "principalDebt": "20 100 000,00",
-   "principalDebt13": "20 100 000,00",
-   "priorAmount": "12 313,00",
-   "priorCaseNumber": "2-2523/2025",
-   "priorCourtName": "Ворошиловским районным судом г.Ростова-на-Дону",
-   "priorDecisionDate": "23.06.2025",
-   "procedureType": "observation",
-   "procedureTypeRaw": "наблюдение",
-   "registrationDate": "20.06.1991",
-   "requirementsSum": "23 471 843,05",
-   "sourceDocumentType": "rtk_application",
-   "sroName": "ААУ “СОЮЗ” (адрес 13321 г",
-   "stateDuty": "156 147,00",
-   "stateDuty16": "156 147,00",
-   "totalDebt": "23 471 843,05"
+   "creditorName": "а в делах о банкротстве и в процедурах банкротства» от 29.05.2004 № 257, ст. 53, 125, 126,222, 223, 224 АРК РФ",
+   "debtAmount": "298 892,00",
+   "debtorName": "ЗАЙЦЕВ ВИТАЛИЙ ВЛАДИМИРОВИЧ",
+   "entityType": "ip",
+   "forfeit": "2 121 308,66",
+   "loanDebt": "298 892,00",
+   "ogrnip": "318619600149696",
+   "requirementsSum": "298 892,00",
+   "sourceDocumentType": "initiation_physical",
+   "stateDuty": "707,00",
+   "totalDebt": "298 892,00"
   },
   "metadata": {
    "language": "ru",
    "pageCount": 4,
-   "wordCount": 742
+   "wordCount": 2090
   },
-  "obligations": [
-   {
-    "contractDate": "21.12.2021",
-    "contractNumber": "5221223241",
-    "id": "obligation_11_0",
-    "obligationType": "Кредитный договор"
-   }
-  ],
-  "rawTextLen": 5520,
-  "rawTextSha": "3e13a3e33a16fac94e3d5d1a7634ec1f08f9056397bb0049e8c4910b3b243836",
+  "obligations": [],
+  "rawTextLen": 15417,
+  "rawTextSha": "b1ffd5bf5836c93408666378d190dbe7b836079d6798c1a99a04d669144e276d",
   "recommendedActs": {
    "collateralOption": "no_collateral",
-   "entityType": "legal",
+   "entityType": "ip",
    "recommendedActIds": [
-    "final_rtk_inclusion",
+    "final_realization",
     "acceptance_definition",
-    "final_observation",
-    "final_competition"
+    "final_restructuring"
    ]
   },
   "thirdParties": []
  },
- "andro/иниц фл.docx": {
+ "Заявления на проверку/Заявление РТК Богачева.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
    {
-    "address": "344000, РОСТОВСКАЯ ОБЛАСТЬ, Г.РОСТОВ-НА-ДОНУ, УЛ. ОСЕНЯЯ, 288",
-    "birthDate": "20.02.2002",
-    "birthPlace": "С. КРАСНОВКА",
-    "inn": "1234645745",
-    "name": "КРУПНЫЙ ИГОРЬ ФЕДОРОВИЧ",
+    "address": "ул. 2-я Краснодарская, 149/5, кв. 43 г. Ростов-на-Дону, 344091",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "",
+    "name": "Богачева Анна Михайловна",
     "ogrn": "",
     "ogrnip": "",
     "snils": ""
@@ -120,75 +87,42 @@
   "documentType": "rtk_application",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "344000, РОСТОВСКАЯ ОБЛАСТЬ, Г.РОСТОВ-НА-ДОНУ, УЛ. ОСЕНЯЯ, 288",
-   "applicantName": "КРУПНЫЙ ИГОРЬ ФЕДОРОВИЧ",
-   "applicantNameAccusative": "КРУПНОГО ИГОРЯ ФЁДОРОВИЧА",
-   "applicantNameDative": "КРУПНОМУ ИГОРЮ ФЁДОРОВИЧУ",
-   "applicantNameGenitive": "КРУПНОГО ИГОРЯ ФЕДОРОВИЧА",
-   "applicantNameInstrumental": "КРУПНЫМ ИГОРЕМ ФЁДОРОВИЧЕМ",
-   "applicationDate": "20.06.1991",
-   "bankCommission": "0,00",
-   "birthDate": "20.02.2002",
-   "birthPlace": "С. КРАСНОВКА",
-   "caseNumber": "А53-12200/2026",
-   "companyInn": "1234645745",
-   "contractDate": "10.10.2010",
-   "contractNumber": "500000000",
+   "applicantAddress": "ул. 2-я Краснодарская, 149/5, кв. 43 г. Ростов-на-Дону, 344091",
+   "applicantName": "Богачева Анна Михайловна",
+   "applicantNameAccusative": "Богачёву Анну Михайловну",
+   "applicantNameDative": "Богачёвой Анне Михайловне",
+   "applicantNameGenitive": "Богачевой Анны Михайловны",
+   "applicantNameInstrumental": "Богачёвой Анной Михайловной",
+   "applicationDate": "04.09.2025",
+   "caseNumber": "А53-31358/2025",
+   "courtDecisionDate": "04.09.2025",
    "courtName": "Арбитражный суд Ростовской области",
-   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
-   "creditorInn": "7707083893",
-   "creditorName": "ПАО Сбербанк",
-   "creditorOgrn": "1027700132195",
-   "currentInterest36": "0,00",
-   "currentInterestOverdue37": "0,00",
-   "debtAmount": "3 127 448,01",
-   "debtSnapshotDate88": "21.12.2025",
-   "debtorName": "КРУПНЫЙ ИГОРЬ ФЕДОРОВИЧ",
+   "creditorName": "ФНС России",
+   "debtAmount": "4 590,95",
+   "debtorName": "Богачева Анна Михайловна",
    "entityType": "individual",
-   "forfeit": "30 620,58",
-   "forfeit15": "30 620,58",
-   "inn": "1234645745",
-   "interest": "200 631,53",
-   "interest14": "200 631,53",
-   "loanDebt": "3 127 448,01",
-   "loanStateDuty17": "23 719,00",
-   "obligationType": "кредитный договор",
-   "obligations": [
-    {
-     "contractDate": "10.10.2010",
-     "contractNumber": "500000000",
-     "id": "obligation_11_0",
-     "obligationType": "Кредитный договор"
-    }
-   ],
-   "other35": "0,00",
+   "forfeit": "90,87",
+   "forfeit15": "90,87",
+   "interest": "0,00",
+   "interest14": "0,00",
+   "loanDebt": "4 590,95",
+   "managerName": "Бубнова Светлана Васильевна",
+   "messageDate": "02.12.2025",
    "penalties": "0,00",
-   "ppStateDutyDate81": "31.10.2025",
-   "principalDebt": "2 872 476,90",
-   "principalDebt13": "2 872 476,90",
-   "registrationDate": "20.06.1991",
-   "requirementsSum": "3 127 448,01",
+   "principalDebt": "4 500,08",
+   "principalDebt13": "4 500,08",
+   "requirementsSum": "4 590,95",
    "sourceDocumentType": "rtk_application",
-   "sroName": "ААУ “СОЮЗ”(адрес [99])",
-   "stateDuty": "23 719,00",
-   "stateDuty16": "23 719,00",
-   "totalDebt": "3 127 448,01"
+   "totalDebt": "4 590,95"
   },
   "metadata": {
    "language": "ru",
-   "pageCount": 5,
-   "wordCount": 729
+   "pageCount": 2,
+   "wordCount": 673
   },
-  "obligations": [
-   {
-    "contractDate": "10.10.2010",
-    "contractNumber": "500000000",
-    "id": "obligation_11_0",
-    "obligationType": "Кредитный договор"
-   }
-  ],
-  "rawTextLen": 5407,
-  "rawTextSha": "21684719e00aad971354c7eb14ba3b83ddae133078b28ca6fa47a8eeb979edc8",
+  "obligations": [],
+  "rawTextLen": 5182,
+  "rawTextSha": "3970af9e7a7aaf575d42036d03b4888bc74f51485b38bd63119a4cdebae06927",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "individual",
@@ -200,7 +134,692 @@
   },
   "thirdParties": []
  },
- "casebookWord/!Заявление о вкл в ртк.docx": {
+ "Заявления на проверку/Заявление РТК Бузнякова Е В.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "пер Рязанова, 31, х Елкин, Багаевский р-н, 346621",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "",
+    "name": "ФНС России",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "пер Рязанова, 31, х Елкин, Багаевский р-н, 346621",
+   "applicantName": "ФНС России",
+   "applicantNameAccusative": "ФНС Россию",
+   "applicantNameDative": "ФНС России",
+   "applicantNameGenitive": "Бузняковой Елены Васильевны",
+   "applicantNameInstrumental": "ФНС Россией",
+   "applicationDate": "10.02.2026",
+   "caseNumber": "А53-3438/2026",
+   "courtDecisionDate": "17.03.2026",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorName": "ФНС России",
+   "debtAmount": "5 334 382 026,00",
+   "debtorName": "Бузнякова Елена Васильевна",
+   "efirsbPublicationDate": "20.03.2026",
+   "entityType": "individual",
+   "forfeit": "450,00",
+   "loanDebt": "А53-3438/2026",
+   "managerName": "Лифанова Дарья Александровна",
+   "messageDate": "20.03.2026",
+   "penalties": "2,79",
+   "principalDebt": "452,79",
+   "principalDebt13": "452,79",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "902,79"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 1,
+   "wordCount": 724
+  },
+  "obligations": [],
+  "rawTextLen": 5649,
+  "rawTextSha": "b7a54aee5fe003b588e8f2fddc366842cdf46b67aec682a1a7f4168481613611",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Заявления на проверку/Заявление РТК Воробьева С.М.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "ул. Орбитальная, д.90, к.67 г. Ростов-на-Дону, 344114",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "",
+    "name": "ФНС России",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "ул. Орбитальная, д.90, к.67 г. Ростов-на-Дону, 344114",
+   "applicantName": "ФНС России",
+   "applicantNameAccusative": "ФНС Россию",
+   "applicantNameDative": "ФНС России",
+   "applicantNameGenitive": "Воробьевой Светланы Михайловны",
+   "applicantNameInstrumental": "ФНС Россией",
+   "applicationDate": "23.10.2025",
+   "caseNumber": "А53-30857/2025",
+   "contractDate": "26.08.2025, 11.02.2026",
+   "contractNumber": "224597118, 002566",
+   "courtDecisionDate": "30.01.2026",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorName": "ФНС России",
+   "debtAmount": "55 393,70",
+   "debtorName": "Воробьева Светлана Михайловна",
+   "efirsbPublicationDate": "02.02.2026",
+   "entityType": "individual",
+   "forfeit": "80,00",
+   "loanDebt": "55 393,70",
+   "managerName": "Васильев Николай Иванович",
+   "messageDate": "02.02.2026",
+   "obligations": [
+    {
+     "contractDate": "26.08.2025",
+     "contractNumber": "224597118",
+     "id": "obligation_fallback_0",
+     "obligationType": "Договор"
+    },
+    {
+     "contractDate": "11.02.2026",
+     "contractNumber": "002566",
+     "id": "obligation_fallback_1",
+     "obligationType": "Договор"
+    }
+   ],
+   "penalties": "193 303,80",
+   "principalDebt": "255 825,84",
+   "principalDebt13": "255 825,84",
+   "requirementsSum": "55 393,70",
+   "sourceDocumentType": "rtk_application",
+   "stateDuty": "55 393,70",
+   "totalDebt": "255 905,84"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 1164
+  },
+  "obligations": [
+   {
+    "contractDate": "26.08.2025",
+    "contractNumber": "224597118",
+    "id": "obligation_fallback_0",
+    "obligationType": "Договор"
+   },
+   {
+    "contractDate": "11.02.2026",
+    "contractNumber": "002566",
+    "id": "obligation_fallback_1",
+    "obligationType": "Договор"
+   }
+  ],
+  "rawTextLen": 9036,
+  "rawTextSha": "fd80ff50735871e9e944d582b86202f5d5bdabc9f03963fc91b4b812dcf3937e",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Заявления на проверку/Заявление РТК Мишунин И.А..docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "ул. Садовая, д. 28, п. Двуречье Кагальницкий р-н, Ростовская область 347704",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "",
+    "name": "Мишунин Иван Александрович",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "ул. Садовая, д. 28, п. Двуречье Кагальницкий р-н, Ростовская область 347704",
+   "applicantName": "Мишунин Иван Александрович",
+   "applicantNameAccusative": "Мишунина Ивана Александровича",
+   "applicantNameDative": "Мишунину Ивану Александровичу",
+   "applicantNameGenitive": "Мишунина Ивана Александровича",
+   "applicantNameInstrumental": "Мишуниным Иваном Александровичем",
+   "applicationDate": "09.10.2025",
+   "caseNumber": "А53-31320/2025",
+   "contractDate": "26.08.2023",
+   "contractNumber": "235759037",
+   "courtDecisionDate": "09.10.2025",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorName": "ФНС России",
+   "debtorName": "Мишунин Иван Александрович",
+   "entityType": "individual",
+   "loanDebt": "26,00",
+   "managerName": "Котова Елена Сергеевна",
+   "messageDate": "15.12.2025",
+   "obligations": [
+    {
+     "contractDate": "26.08.2023",
+     "contractNumber": "235759037",
+     "id": "obligation_fallback_0",
+     "obligationType": "Договор"
+    }
+   ],
+   "penalties": "253,99",
+   "principalDebt": "24 314,99",
+   "principalDebt13": "24 314,99",
+   "procedureType": "restructuring",
+   "procedureTypeRaw": "реструктуризации долгов гражданина",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "24 314,99"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 1,
+   "wordCount": 646
+  },
+  "obligations": [
+   {
+    "contractDate": "26.08.2023",
+    "contractNumber": "235759037",
+    "id": "obligation_fallback_0",
+    "obligationType": "Договор"
+   }
+  ],
+  "rawTextLen": 5071,
+  "rawTextSha": "bfbcb70ad2f265871af0c5633b27c89e2fd31af0d75ae161db430bc9a521ef46",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Заявления на проверку/Заявление РТК Мурадьян М.Е.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "ул. Баумана, 20, кв. 15 г. Ростов-на-Дону, 344002",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "",
+    "name": "ФНС России",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "ул. Баумана, 20, кв. 15 г. Ростов-на-Дону, 344002",
+   "applicantName": "ФНС России",
+   "applicantNameAccusative": "ФНС Россию",
+   "applicantNameDative": "ФНС России",
+   "applicantNameGenitive": "Мурадьян Максима Евгеньевича",
+   "applicantNameInstrumental": "ФНС Россией",
+   "applicationDate": "03.10.2025",
+   "caseNumber": "А53-31612/2025",
+   "contractDate": "26.08.2025",
+   "contractNumber": "265604384",
+   "courtDecisionDate": "03.10.2025",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorName": "ФНС России",
+   "debtAmount": "300,00",
+   "debtorName": "Мурадьян Максим Евгеньевич",
+   "efirsbPublicationDate": "05.02.2026",
+   "entityType": "individual",
+   "forfeit": "91,00",
+   "loanDebt": "300,00",
+   "managerName": "Гутников Кирилл Александрович",
+   "messageDate": "05.02.2026",
+   "obligations": [
+    {
+     "contractDate": "26.08.2025",
+     "contractNumber": "265604384",
+     "id": "obligation_fallback_0",
+     "obligationType": "Договор"
+    }
+   ],
+   "penalties": "32 637,91",
+   "principalDebt": "187 348,68",
+   "principalDebt13": "187 348,68",
+   "requirementsSum": "300,00",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "187 439,68"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 3,
+   "wordCount": 1715
+  },
+  "obligations": [
+   {
+    "contractDate": "26.08.2025",
+    "contractNumber": "265604384",
+    "id": "obligation_fallback_0",
+    "obligationType": "Договор"
+   }
+  ],
+  "rawTextLen": 13358,
+  "rawTextSha": "76a2b447e31197cbe44d3e0822ba86c38abb84f80cd6f3c58f50f6c0c4e17c47",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Заявления на проверку/Заявление на 6 л. в 1 экз.docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "26, г. Сальск, Сальский р-н., Ростовская обл., 347636 Наименование налога",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "615308542625",
+    "name": "Карагезова ЛИЛИЯ АРКАДЬЕВНА",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "26, г. Сальск, Сальский р-н., Ростовская обл., 347636 Наименование налога",
+   "applicantName": "Карагезова ЛИЛИЯ АРКАДЬЕВНА",
+   "applicantNameAccusative": "Карагезову ЛИЛИЮ АРКАДЬЕВНУ",
+   "applicantNameDative": "Карагезовой ЛИЛИИ АРКАДЬЕВНЕ",
+   "applicantNameGenitive": "Каргезововой ЛИЛИИ АРКАДЬЕВНЫ",
+   "applicantNameInstrumental": "Карагезовой ЛИЛИЕЙ АРКАДЬЕВНОЙ",
+   "applicationDate": "26.08.2825",
+   "courtName": "Арбитражный суд Ростовской области",
+   "debtAmount": "208 472,00",
+   "debtSnapshotDate88": "26.08.2025",
+   "debtorName": "Карагезова ЛИЛИЯ АРКАДЬЕВНА",
+   "entityType": "individual",
+   "forfeit": "0,00",
+   "inn": "615308542625",
+   "loanDebt": "208472",
+   "requirementsSum": "208 472,00",
+   "sourceDocumentType": "rtk_application",
+   "sroName": "АССОЦИАЦИЯ «МОСКОВСКАЯ САМОРЕГУЛИРУЕМАЯ ОРГАНИЗАЦИЯ ПРОФЕССИОНАЛЬНЫХ АРБИТРАЖНЫХ УПРАВЛЯЮЩИХ»",
+   "stateDuty": "2 608,00",
+   "stateDuty16": "2 608,00",
+   "totalDebt": "208 472,00"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 3,
+   "wordCount": 1446
+  },
+  "obligations": [],
+  "rawTextLen": 11170,
+  "rawTextSha": "204a30881c5c3ac7570ba01e38998bacf1f7731b22c9bff82a0ffa46d6e3dea3",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Заявления на проверку/Заявление о включении в ртк  Артемов И.Г..docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "для корреспонденции: пр.Ермака, 104, г. Новочеркасск, 346400 Колос Екатерина Александровна",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "",
+    "name": "Артемов Игорь Геннадьевич",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "для корреспонденции: пр.Ермака, 104, г. Новочеркасск, 346400 Колос Екатерина Александровна",
+   "applicantName": "Артемов Игорь Геннадьевич",
+   "applicantNameAccusative": "Артемова Игоря Геннадьевича",
+   "applicantNameDative": "Артемову Игорю Геннадьевичу",
+   "applicantNameGenitive": "Артемова Игоря Геннадьевича",
+   "applicantNameInstrumental": "Артемовым Игорем Геннадьевичем",
+   "applicationDate": "30.01.2026",
+   "contractDate": "18.09.2025",
+   "contractNumber": "138906027",
+   "courtDecisionDate": "26.02.2026",
+   "courtName": "Арбитражный суд Ростовской области",
+   "debtAmount": "34 104 315,00",
+   "debtorName": "Артемов Игорь Геннадьевич",
+   "efirsbPublicationDate": "04.03.2026",
+   "entityType": "individual",
+   "forfeit": "35,00",
+   "loanDebt": "35,00",
+   "messageDate": "04.03.2026",
+   "obligations": [
+    {
+     "contractDate": "18.09.2025",
+     "contractNumber": "138906027",
+     "id": "obligation_fallback_0",
+     "obligationType": "Договор"
+    }
+   ],
+   "penalties": "24,35",
+   "requirementsSum": "34 104 315,00",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "34 104 315,00"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 954
+  },
+  "obligations": [
+   {
+    "contractDate": "18.09.2025",
+    "contractNumber": "138906027",
+    "id": "obligation_fallback_0",
+    "obligationType": "Договор"
+   }
+  ],
+  "rawTextLen": 7332,
+  "rawTextSha": "a854803a8da341feb8e4fb60e5bc0520c2a0b2c2882d525e1866b5848c8113fa",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Заявления на проверку/Заявление о включении в ртк  Геворгян К.В..docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "должника направлены налоговые уведомления № 224670153 от 26.08.2025. До настоящего времени задолженность не уплачена. Руководствуясь ст. ст. 71, 100, 213.8 Федерального закона от 26.10.2002 № 127-Ф3 «О несостоятельности (",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "610304071535",
+    "name": "Геворкян Ксения Валериевна",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "должника направлены налоговые уведомления № 224670153 от 26.08.2025. До настоящего времени задолженность не уплачена. Руководствуясь ст. ст. 71, 100, 213.8 Федерального закона от 26.10.2002 № 127-Ф3 «О несостоятельности (",
+   "applicantName": "Геворкян Ксения Валериевна",
+   "applicantNameAccusative": "Геворкян Ксению Валериевну",
+   "applicantNameDative": "Геворкян Ксении Валериевне",
+   "applicantNameGenitive": "Геворгян Ксении Валериевны",
+   "applicantNameInstrumental": "Геворкян Ксенией Валериевной",
+   "applicationDate": "30.12.2025",
+   "contractDate": "26.08.2025",
+   "contractNumber": "224670153",
+   "courtDecisionDate": "03.03.2026",
+   "courtName": "Арбитражный суд Ростовской области",
+   "debtorName": "Геворкян Ксения Валериевна",
+   "efirsbPublicationDate": "05.03.2026",
+   "entityType": "individual",
+   "forfeit": "71,00",
+   "inn": "610304071535",
+   "loanDebt": "71,00",
+   "managerAddress": "344082, Ростовская область",
+   "managerName": "Тесёлкин Дмитрий Сергеевич",
+   "messageDate": "05.03.2026",
+   "obligations": [
+    {
+     "contractDate": "26.08.2025",
+     "contractNumber": "224670153",
+     "id": "obligation_fallback_0",
+     "obligationType": "Договор"
+    }
+   ],
+   "penalties": "15,71",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "71,00"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 1,
+   "wordCount": 926
+  },
+  "obligations": [
+   {
+    "contractDate": "26.08.2025",
+    "contractNumber": "224670153",
+    "id": "obligation_fallback_0",
+    "obligationType": "Договор"
+   }
+  ],
+  "rawTextLen": 7244,
+  "rawTextSha": "4aed2e13c34ca925bc8592448db216ed4b73916527ecb52d413a790dd7d96fcd",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Заявления на проверку/ФНС Заявление (1).docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "346404, Россия, Ростовская обл, Новочеркасск г, Флерова А.Ф. ул, 4, кв. 66",
+    "birthDate": "02.02.1982",
+    "birthPlace": "ГОР. НОВОЧЕРКАССК",
+    "inn": "615014390786",
+    "name": "Бирюкова Елена Андреевна",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "063-843-816 80"
+   }
+  ],
+  "documentType": "initiation_physical",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "346404, Россия, Ростовская обл, Новочеркасск г, Флерова А.Ф. ул, 4, кв. 66",
+   "applicantName": "Бирюкова Елена Андреевна",
+   "applicantNameAccusative": "Бирюкову Елену Андреевну",
+   "applicantNameDative": "Бирюковой Елене Андреевне",
+   "applicantNameGenitive": "Бирюковой Елены Андреевны",
+   "applicantNameInstrumental": "Бирюковой Еленой Андреевной",
+   "applicationDate": "02.02.1982",
+   "birthDate": "02.02.1982",
+   "birthPlace": "ГОР. НОВОЧЕРКАССК",
+   "companyInn": "615014390786",
+   "contractDate": "Не указана",
+   "contractNumber": "15399, 13754",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorName": "ФНС России в лице Межрайонной ИФНС России № 4 по Республике Башкортостан",
+   "debtAmount": "5 631 934,26",
+   "debtSnapshotDate88": "08.04.2026",
+   "debtorName": "Бирюкова Елена Андреевна",
+   "entityType": "individual",
+   "forfeit": "595 911,64",
+   "forfeit15": "595 911,64",
+   "inn": "615014390786",
+   "interest": "0,00",
+   "interest14": "0,00",
+   "loanDebt": "08.04.2026",
+   "obligations": [
+    {
+     "contractDate": "Не указана",
+     "contractNumber": "15399",
+     "id": "obligation_fallback_0",
+     "obligationType": "Договор"
+    },
+    {
+     "contractDate": "Не указана",
+     "contractNumber": "13754",
+     "id": "obligation_fallback_1",
+     "obligationType": "Договор"
+    }
+   ],
+   "penalties": "23 478,88",
+   "principalDebt": "5 012 543,74",
+   "principalDebt13": "5 012 543,74",
+   "requirementsSum": "8,04",
+   "snils": "063-843-816 80",
+   "sourceDocumentType": "initiation_physical",
+   "totalDebt": "5 631 934,26"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 3,
+   "wordCount": 1551
+  },
+  "obligations": [
+   {
+    "contractDate": "Не указана",
+    "contractNumber": "15399",
+    "id": "obligation_fallback_0",
+    "obligationType": "Договор"
+   },
+   {
+    "contractDate": "Не указана",
+    "contractNumber": "13754",
+    "id": "obligation_fallback_1",
+    "obligationType": "Договор"
+   }
+  ],
+  "rawTextLen": 11791,
+  "rawTextSha": "e7f5ba073cec5e20cb47c68d01136bee5f557bf75194e6d7fdb602b73c2dd21f",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Заявления на проверку/Чернов Николай Николаевич_95.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "должника и приложены к заявлению. Руководствуясь 71, 100, 213.24 Закона о",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "615014093624",
+    "name": "Чернов Николай Николаевич",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "должника и приложены к заявлению. Руководствуясь 71, 100, 213.24 Закона о",
+   "applicantName": "Чернов Николай Николаевич",
+   "applicantNameAccusative": "Чернова Николая Николаевича",
+   "applicantNameDative": "Чернову Николаю Николаевичу",
+   "applicantNameGenitive": "Чернова Николая Николаевича",
+   "applicantNameInstrumental": "Черновым Николаем Николаевичем",
+   "applicationDate": "06.04.2026",
+   "caseNumber": "А53-4124/2026",
+   "companyInn": "615014093624",
+   "courtDecisionDate": "06.04.2026",
+   "courtName": "Арбитражный суд Ростовской области",
+   "debtAmount": "54 558,94",
+   "debtorName": "Чернов Николай Николаевич",
+   "entityType": "individual",
+   "forfeit": "2 631,84",
+   "inn": "615014093624",
+   "kommersantDate": "18.04.2026",
+   "loanDebt": "54558,94",
+   "managerName": "Березина Марина Вячеславовна",
+   "penalties": "2 631,84",
+   "principalDebt": "51 927,10",
+   "principalDebt13": "51 927,10",
+   "procedureType": "realization",
+   "procedureTypeRaw": "реализации имущества гражданина",
+   "requirementsSum": "54 558,94",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "54 558,94"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 4,
+   "wordCount": 1259
+  },
+  "obligations": [],
+  "rawTextLen": 9682,
+  "rawTextSha": "e82c0944e5289ea89ae3c1184b4d27927603c26828210ce0be82c35f0b1f28ab",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Правильные заявления/!Заявление о вкл в ртк.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -227,8 +846,8 @@
    "applicationDate": "16.07.2001",
    "birthDate": "01.06.1975",
    "caseNumber": "А53-11468/2026",
-   "contractDate": "28.04.2026, Не указана",
-   "contractNumber": "22642774, 2448593955, 2189627513",
+   "contractDate": "21.09.2023, 30.03.2023, 17.02.2023",
+   "contractNumber": "2448593955, 2189627513, 43600-P-414780",
    "courtDecisionDate": "23.04.2026",
    "courtName": "Арбитражный суд Ростовской области",
    "creditorInn": "7744000912",
@@ -246,22 +865,22 @@
    "messageDate": "28.04.2026",
    "obligations": [
     {
-     "contractDate": "28.04.2026",
-     "contractNumber": "22642774",
-     "id": "obligation_fallback_0",
-     "obligationType": "Договор"
-    },
-    {
-     "contractDate": "Не указана",
+     "contractDate": "21.09.2023",
      "contractNumber": "2448593955",
-     "id": "obligation_fallback_1",
-     "obligationType": "Договор"
+     "id": "obligation_p_0",
+     "obligationType": "Кредитный договор"
     },
     {
-     "contractDate": "Не указана",
+     "contractDate": "30.03.2023",
      "contractNumber": "2189627513",
-     "id": "obligation_fallback_2",
-     "obligationType": "Договор"
+     "id": "obligation_p_1",
+     "obligationType": "Кредитный договор"
+    },
+    {
+     "contractDate": "17.02.2023",
+     "contractNumber": "43600-P-414780",
+     "id": "obligation_p_2",
+     "obligationType": "Кредитный договор"
     }
    ],
    "penalties": "0,00",
@@ -283,22 +902,22 @@
   },
   "obligations": [
    {
-    "contractDate": "28.04.2026",
-    "contractNumber": "22642774",
-    "id": "obligation_fallback_0",
-    "obligationType": "Договор"
-   },
-   {
-    "contractDate": "Не указана",
+    "contractDate": "21.09.2023",
     "contractNumber": "2448593955",
-    "id": "obligation_fallback_1",
-    "obligationType": "Договор"
+    "id": "obligation_p_0",
+    "obligationType": "Кредитный договор"
    },
    {
-    "contractDate": "Не указана",
+    "contractDate": "30.03.2023",
     "contractNumber": "2189627513",
-    "id": "obligation_fallback_2",
-    "obligationType": "Договор"
+    "id": "obligation_p_1",
+    "obligationType": "Кредитный договор"
+   },
+   {
+    "contractDate": "17.02.2023",
+    "contractNumber": "43600-P-414780",
+    "id": "obligation_p_2",
+    "obligationType": "Кредитный договор"
    }
   ],
   "rawTextLen": 6818,
@@ -315,7 +934,458 @@
   },
   "thirdParties": []
  },
- "casebookWord/main_Заявление о включении в РТК - 2 л.docx": {
+ "Правильные заявления/1.docx": {
+  "collaterals": [
+   {
+    "address": "Ростовская область, Мясниковский р-н, х Ленинаван, ул Пушкина, д 150Х",
+    "brandModel": "",
+    "cadastralNumber": "61:25:0600401:212121",
+    "collateralType": "real_estate",
+    "collateralValue": "",
+    "description": "дом, расположенный по адресу: Ростовская область, Мясниковский р-н, х Ленинаван, ул Пушкина, д 150Х, 61:25:0600401:212121",
+    "id": "collateral-0",
+    "objectName": "Дом",
+    "otherDescription": "",
+    "vin": ""
+   },
+   {
+    "address": "",
+    "brandModel": "Porshe Cayenne",
+    "cadastralNumber": "",
+    "collateralType": "auto",
+    "collateralValue": "100000",
+    "description": "Автомобиль, марка: Porshe, модель: Cayenne, год выпуска: 2011, VIN: WP1AB2A27BLA52000, залоговой стоимостью 100000 рублей. Грз АБ123Ф 123 2011 г.в",
+    "id": "collateral-1",
+    "objectName": "Porshe Cayenne, 2011 г.в., гос. знак АБ123Ф123",
+    "otherDescription": "",
+    "vin": "WP1AB2A27BLA52000"
+   },
+   {
+    "address": "",
+    "brandModel": "BMW",
+    "cadastralNumber": "",
+    "collateralType": "auto",
+    "collateralValue": "100000",
+    "description": "Автомобиль, марка: BMW,, год выпуска: 2011, VIN: WP2AB2A28BLA67000, залоговой стоимостью 100000 рублей",
+    "id": "collateral-2",
+    "objectName": "BMW, 2011 г.в.",
+    "otherDescription": "",
+    "vin": "WP2AB2A28BLA67000"
+   }
+  ],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "344111, г. Ростов-на-Дону, ул. Б.Садовая, д. 11, Литер А, пом. 111",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "9876543210",
+    "name": "Общества с ограниченной ответственностью «Азбука»",
+    "ogrn": "123454321234",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "competition_collateral",
+  "entityType": "legal",
+  "fields": {
+   "applicantAddress": "344111, г. Ростов-на-Дону, ул. Б.Садовая, д. 11, Литер А, пом. 111",
+   "applicantName": "Общества с ограниченной ответственностью «Азбука»",
+   "applicantNameAccusative": "Иванова Ивана Ивановича",
+   "applicantNameDative": "Иванову Ивану Ивановичу",
+   "applicantNameGenitive": "Иванова Ивана Ивановича",
+   "applicantNameInstrumental": "Ивановым Иваном Ивановичем",
+   "applicationDate": "29.06.2026",
+   "caseNumber": "А53-22222/2024",
+   "collaterals": [
+    {
+     "address": "Ростовская область, Мясниковский р-н, х Ленинаван, ул Пушкина, д 150Х",
+     "brandModel": "",
+     "cadastralNumber": "61:25:0600401:212121",
+     "collateralType": "real_estate",
+     "collateralValue": "",
+     "description": "дом, расположенный по адресу: Ростовская область, Мясниковский р-н, х Ленинаван, ул Пушкина, д 150Х, 61:25:0600401:212121.",
+     "id": "collateral-0",
+     "objectName": "Дом",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "Porshe Cayenne",
+     "cadastralNumber": "",
+     "collateralType": "auto",
+     "collateralValue": "100000",
+     "description": "- Автомобиль, марка: Porshe, модель: Cayenne, год выпуска: 2011, VIN: WP1AB2A27BLA52000, залоговой стоимостью 100000 рублей. Грз АБ123Ф 123 2011 г.в.",
+     "id": "collateral-1",
+     "objectName": "Porshe Cayenne, 2011 г.в., гос. знак АБ123Ф123",
+     "otherDescription": "",
+     "vin": "WP1AB2A27BLA52000"
+    }
+   ],
+   "companyInn": "9876543210",
+   "contractDate": "13.10.2022, 26.10.2022",
+   "contractNumber": "5464646544646464646464564-24-1, 54646465400000000000-24-1",
+   "courtDecisionDate": "13.12.2022",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditInterestRate": "11,1",
+   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
+   "creditorInn": "7707083893",
+   "creditorName": "ПАО Сбербанк в лице филиала - Юго-Западный Банк ПАО Сбербанк",
+   "creditorOgrn": "1027700132195",
+   "debtAmount": "19 619 276,72",
+   "debtSnapshotDate88": "11.07.2024",
+   "debtorName": "Общества с ограниченной ответственностью «Азбука»",
+   "efirsbPublicationDate": "22.11.2022",
+   "entityType": "legal",
+   "forfeit": "2 998,22",
+   "forfeit15": "2 998,22",
+   "inn": "9876543210",
+   "interest": "326 798,44",
+   "interest14": "326 798,44",
+   "ipCollateralClaimAmount": "4 809 638,36",
+   "ipCollateralContractDate": "01.10.2024",
+   "ipCollateralContractNumber": "1155555",
+   "legalShortName": "Азбука",
+   "loanDebt": "19 619 276,7",
+   "managerAddress": "444444, КАЛИНИНГРАДСКАЯ ОБЛАСТЬ, Г. КАЛИНИНГРАД, А/Я 1986.",
+   "managerName": "Иванов Иван Иванович",
+   "messageDate": "22.11.2022",
+   "messageNumber": "154154154",
+   "mortgageCollateralDescription1221": "- дом, расположенный по адресу: Ростовская область, Мясниковский р-н, х Ленинаван, ул Пушкина, д 150Х, 61:25:0600401:212121.",
+   "mortgageDebtorName": "Азбука",
+   "mortgageDebtorNameDative": "Азбуке",
+   "mortgageInterestRate113": "11,1",
+   "obligationType": "кредитный договор",
+   "obligations": [
+    {
+     "amount": "4 809 638,36",
+     "amountValue": 4809638.36,
+     "contractDate": "13.10.2022",
+     "contractNumber": "5464646544646464646464564-24-1",
+     "id": "obligation_1",
+     "isCollateral": true,
+     "issuedAmount": "5 000 000,00",
+     "issuedAmountValue": 5000000.0,
+     "obligationType": "Кредитный договор",
+     "penalty0071": "56,47",
+     "penalty0071Value": 56.47
+    },
+    {
+     "amount": "14 809 638,36",
+     "amountValue": 14809638.36,
+     "contractDate": "26.10.2022",
+     "contractNumber": "54646465400000000000-24-1",
+     "id": "obligation_2",
+     "isCollateral": true,
+     "issuedAmount": "15 000 000,00",
+     "issuedAmountValue": 15000000.0,
+     "obligationType": "Кредитный договор",
+     "penalty0071": "3 054,69",
+     "penalty0071Value": 3054.69
+    }
+   ],
+   "obligationsTotalDebt": "19 619 276,72",
+   "ogrn": "123454321234",
+   "penalties": "0,00",
+   "penalty0071": "3 111,16",
+   "physicalHasCollateral": "true",
+   "principalDebt": "19 289 480,06",
+   "principalDebt13": "19 289 480,06",
+   "procedureType": "observation",
+   "procedureTypeRaw": "конкурсного производства",
+   "registrationDate": "20.06.1991",
+   "requirementsSum": "19 619 276,70",
+   "sourceDocumentType": "competition_collateral",
+   "stateDuty": "53 048,00",
+   "stateDuty16": "53 048,00",
+   "totalDebt": "19 619 276,72"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 4,
+   "wordCount": 1153
+  },
+  "obligations": [
+   {
+    "amount": "4 809 638,36",
+    "amountValue": 4809638.36,
+    "contractDate": "13.10.2022",
+    "contractNumber": "5464646544646464646464564-24-1",
+    "id": "obligation_1",
+    "isCollateral": true,
+    "issuedAmount": "5 000 000,00",
+    "issuedAmountValue": 5000000.0,
+    "obligationType": "Кредитный договор",
+    "penalty0071": "56,47",
+    "penalty0071Value": 56.47
+   },
+   {
+    "amount": "14 809 638,36",
+    "amountValue": 14809638.36,
+    "contractDate": "26.10.2022",
+    "contractNumber": "54646465400000000000-24-1",
+    "id": "obligation_2",
+    "isCollateral": true,
+    "issuedAmount": "15 000 000,00",
+    "issuedAmountValue": 15000000.0,
+    "obligationType": "Кредитный договор",
+    "penalty0071": "3 054,69",
+    "penalty0071Value": 3054.69
+   }
+  ],
+  "rawTextLen": 8657,
+  "rawTextSha": "73e9373e60e1da4d204e9219e493bd07fe3501125ec15ffd5d6be03c986b3710",
+  "recommendedActs": {
+   "collateralOption": "collateral_auto",
+   "entityType": "legal",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_competition",
+    "acceptance_no_motion_no_duty_collateral"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Правильные заявления/2 3х лица.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "003002, Кунжутная область, Кунжут-на-Бублике, ул. Клювдина, д.1",
+    "birthDate": "01.01.1912",
+    "birthPlace": "",
+    "inn": "001023012301",
+    "name": "ЗУБЕНКО МИХАИЛ ПЕТРОВИЧ",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "000-011-011-11"
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "003002, Кунжутная область, Кунжут-на-Бублике, ул. Клювдина, д.1",
+   "applicantName": "ЗУБЕНКО МИХАИЛ ПЕТРОВИЧ",
+   "applicantNameAccusative": "ЗУБЕНКО МИХАИЛА ПЕТРОВИЧА",
+   "applicantNameDative": "ЗУБЕНКО МИХАИЛУ ПЕТРОВИЧУ",
+   "applicantNameGenitive": "ЗУБЕНКО МИХАИЛА ПЕТРОВИЧА",
+   "applicantNameInstrumental": "ЗУБЕНКО МИХАИЛОМ ПЕТРОВИЧЕМ",
+   "applicationDate": "26.06.2026",
+   "birthDate": "01.01.1912",
+   "caseNumber": "А99-12345/2025",
+   "companyInn": "001023012301",
+   "contractDate": "01.02.1783, 30.12.1783, 16.11.1783, 25.11.1783, 14.08.1783",
+   "contractNumber": "050505050, 0205045464506, 000606068680608, 060656506056068, 050505450540504504",
+   "courtDecisionDate": "17.06.2025",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditInterestRate": "39",
+   "creditPenaltyRate": "39.0",
+   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
+   "creditorInn": "7707083893",
+   "creditorName": "ПАО Сбербанк",
+   "creditorOgrn": "1027700132195",
+   "debtAmount": "9 148,36",
+   "debtSnapshotDate88": "17.06.2025",
+   "debtorName": "ЗУБЕНКО МИХАИЛ ПЕТРОВИЧ",
+   "efirsbPublicationDate": "01.02.1883",
+   "entityType": "individual",
+   "forfeit": "209,88",
+   "forfeit15": "209,88",
+   "inn": "001023012301",
+   "interest": "1 222,11",
+   "interest14": "1 222,11",
+   "loanDebt": "2 449 211,19",
+   "managerAddress": "004506, Бубликовая область, Бублик-на-Бублике, ул. Куркумовая, д.1",
+   "managerName": "КАРИМОВ РУЛОН ОБОЕВИЧ",
+   "messageDate": "01.02.1883",
+   "messageNumber": "0008008",
+   "obligationType": "кредитный договор",
+   "obligations": [
+    {
+     "amount": "9 148,36",
+     "amountValue": 9148.36,
+     "contractDate": "01.02.1783",
+     "contractNumber": "050505050",
+     "id": "obligation_1",
+     "isCollateral": false,
+     "issuedAmount": "10 000,00",
+     "issuedAmountValue": 10000.0,
+     "obligationType": "Кредитный договор",
+     "penalty0071": null,
+     "penalty0071Value": 0.0
+    },
+    {
+     "amount": "180 478,36",
+     "amountValue": 180478.36,
+     "contractDate": "30.12.1783",
+     "contractNumber": "0205045464506",
+     "id": "obligation_2",
+     "isCollateral": false,
+     "issuedAmount": "300 000,00",
+     "issuedAmountValue": 300000.0,
+     "obligationType": "Кредитный договор",
+     "penalty0071": null,
+     "penalty0071Value": 0.0
+    },
+    {
+     "amount": "1 387 682,65",
+     "amountValue": 1387682.65,
+     "contractDate": "16.11.1783",
+     "contractNumber": "000606068680608",
+     "id": "obligation_3",
+     "isCollateral": false,
+     "issuedAmount": "1 200 000,00",
+     "issuedAmountValue": 1200000.0,
+     "obligationType": "Кредитный договор",
+     "penalty0071": null,
+     "penalty0071Value": 0.0
+    },
+    {
+     "amount": "230 966,91",
+     "amountValue": 230966.91,
+     "contractDate": "25.11.1783",
+     "contractNumber": "060656506056068",
+     "id": "obligation_4",
+     "isCollateral": false,
+     "issuedAmount": "193 000,00",
+     "issuedAmountValue": 193000.0,
+     "obligationType": "Кредитный договор",
+     "penalty0071": null,
+     "penalty0071Value": 0.0
+    },
+    {
+     "amount": "640 934,91",
+     "amountValue": 640934.91,
+     "contractDate": "14.08.1783",
+     "contractNumber": "050505450540504504",
+     "id": "obligation_5",
+     "isCollateral": false,
+     "issuedAmount": "1 000 000,00",
+     "issuedAmountValue": 1000000.0,
+     "obligationType": "Кредитный договор",
+     "penalty0071": null,
+     "penalty0071Value": 0.0
+    }
+   ],
+   "obligationsTotalDebt": "2 449 211,19",
+   "penalties": "0,00",
+   "principalDebt": "7 716,37",
+   "principalDebt13": "7 716,37",
+   "procedureType": "restructuring",
+   "procedureTypeRaw": "реструктуризации долгов",
+   "registrationDate": "20.06.1991",
+   "requirementsSum": "2 449 211,19",
+   "snils": "000-011-011-11",
+   "sourceDocumentType": "rtk_application",
+   "sroName": "ААУ «АЛЬЯНС»",
+   "thirdPartyAddress": "021007, Тульская область, Кунжут-на-Бублике, ул. Клювдина, д.3",
+   "thirdPartyBirthDate": "19.05.2005",
+   "thirdPartyInn": "222222212301",
+   "thirdPartyName": "ТОЛСТОЙ ЛЕВ НИКОЛАЕВИЧ",
+   "thirdPartySnils": "111-222-222-11",
+   "totalDebt": "9 148,36"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 10,
+   "wordCount": 2235
+  },
+  "obligations": [
+   {
+    "amount": "9 148,36",
+    "amountValue": 9148.36,
+    "contractDate": "01.02.1783",
+    "contractNumber": "050505050",
+    "id": "obligation_1",
+    "isCollateral": false,
+    "issuedAmount": "10 000,00",
+    "issuedAmountValue": 10000.0,
+    "obligationType": "Кредитный договор",
+    "penalty0071": null,
+    "penalty0071Value": 0.0
+   },
+   {
+    "amount": "180 478,36",
+    "amountValue": 180478.36,
+    "contractDate": "30.12.1783",
+    "contractNumber": "0205045464506",
+    "id": "obligation_2",
+    "isCollateral": false,
+    "issuedAmount": "300 000,00",
+    "issuedAmountValue": 300000.0,
+    "obligationType": "Кредитный договор",
+    "penalty0071": null,
+    "penalty0071Value": 0.0
+   },
+   {
+    "amount": "1 387 682,65",
+    "amountValue": 1387682.65,
+    "contractDate": "16.11.1783",
+    "contractNumber": "000606068680608",
+    "id": "obligation_3",
+    "isCollateral": false,
+    "issuedAmount": "1 200 000,00",
+    "issuedAmountValue": 1200000.0,
+    "obligationType": "Кредитный договор",
+    "penalty0071": null,
+    "penalty0071Value": 0.0
+   },
+   {
+    "amount": "230 966,91",
+    "amountValue": 230966.91,
+    "contractDate": "25.11.1783",
+    "contractNumber": "060656506056068",
+    "id": "obligation_4",
+    "isCollateral": false,
+    "issuedAmount": "193 000,00",
+    "issuedAmountValue": 193000.0,
+    "obligationType": "Кредитный договор",
+    "penalty0071": null,
+    "penalty0071Value": 0.0
+   },
+   {
+    "amount": "640 934,91",
+    "amountValue": 640934.91,
+    "contractDate": "14.08.1783",
+    "contractNumber": "050505450540504504",
+    "id": "obligation_5",
+    "isCollateral": false,
+    "issuedAmount": "1 000 000,00",
+    "issuedAmountValue": 1000000.0,
+    "obligationType": "Кредитный договор",
+    "penalty0071": null,
+    "penalty0071Value": 0.0
+   }
+  ],
+  "rawTextLen": 17394,
+  "rawTextSha": "1a6c50d64d0dee51b2f666976148e437e41d5f679ba35db73ac335cf516af375",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": [
+   {
+    "address": "021007, Тульская область, Кунжут-на-Бублике, ул. Клювдина, д.3 Д.Р 19.05.2005",
+    "birthDate": "19.05.2005",
+    "name": "ТОЛСТОЙ ЛЕВ НИКОЛАЕВИЧ"
+   },
+   {
+    "address": "021007, Тульская область, Кунжут-на-Бублике, ул. Клювдина, д.3",
+    "birthDate": "12.11.1999",
+    "inn": "222222212301",
+    "name": "ИВАНОВ ЛЕВ ИВАНОВИЧ",
+    "snils": "111-222-222-11"
+   }
+  ]
+ },
+ "Правильные заявления/main_Заявление о включении в РТК - 2 л.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -361,7 +1431,7 @@
     {
      "contractDate": "06.10.2025",
      "contractNumber": "0437689812",
-     "id": "obligation_fallback_0",
+     "id": "obligation_p_0",
      "obligationType": "Договор займа"
     }
    ],
@@ -381,7 +1451,7 @@
    {
     "contractDate": "06.10.2025",
     "contractNumber": "0437689812",
-    "id": "obligation_fallback_0",
+    "id": "obligation_p_0",
     "obligationType": "Договор займа"
    }
   ],
@@ -398,194 +1468,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявл о б-ве Форте Пром Стил.docx": {
-  "collaterals": [],
-  "confidence": 1.0,
-  "debtors": [
-   {
-    "address": "346404, Ростовская область, гор.Новочеркасск, Харьковское шоссе, д.10",
-    "birthDate": "",
-    "birthPlace": "",
-    "inn": "3461063590",
-    "name": "ООО «Форте Пром Стил ГМБХ»",
-    "ogrn": "1183443007659",
-    "ogrnip": "",
-    "snils": ""
-   }
-  ],
-  "documentType": "rtk_application",
-  "entityType": "legal",
-  "fields": {
-   "applicantAddress": "346404, Ростовская область, гор.Новочеркасск, Харьковское шоссе, д.10",
-   "applicantName": "ООО «Форте Пром Стил ГМБХ»",
-   "applicantNameAccusative": "ООО «форт Пром Стившего ГМБХ»",
-   "applicantNameDative": "ООО «форту Прому Стившему ГМБХАМ»",
-   "applicantNameGenitive": "ООО «форта Прома Стившего ГМБХ»",
-   "applicantNameInstrumental": "ООО «фортом Промом Стившим ГМБХАМИ»",
-   "applicationDate": "29.04.2026",
-   "caseNumber": "А53-12200/2026",
-   "companyInn": "3461063590",
-   "contractDate": "Не указана",
-   "contractNumber": "35137957",
-   "courtDecisionDate": "08.04.2026",
-   "courtName": "Арбитражный суд Ростовской области",
-   "creditorAddress": "115054, г. Москва, вн.тер.г. Муниципальный Округ Замоскворечье, наб Космодамианская, д. 52, стр. 7",
-   "creditorInn": "7708397772",
-   "creditorName": "АО «Экспобанк»",
-   "creditorOgrn": "1217700369083",
-   "debtAmount": "1 871 897 982,82",
-   "debtSnapshotDate88": "27.04.2026",
-   "debtorName": "Форте Пром Стил ГМБХ",
-   "entityType": "legal",
-   "forfeit": "0,00",
-   "forfeit15": "0,00",
-   "inn": "3461063590",
-   "interest": "406 884 376,83",
-   "interest14": "406 884 376,83",
-   "legalShortName": "Форте Пром Стил ГМБХ",
-   "loanDebt": "1 871 897 982,82",
-   "obligationType": "Кредитный договор",
-   "obligations": [
-    {
-     "contractDate": "Не указана",
-     "contractNumber": "35137957",
-     "id": "obligation_fallback_0",
-     "obligationType": "Договор"
-    }
-   ],
-   "ogrn": "1183443007659",
-   "penalties": "0,00",
-   "principalDebt": "1 465 013 605,99",
-   "principalDebt13": "1 465 013 605,99",
-   "procedureType": "observation",
-   "procedureTypeRaw": "наблюдение",
-   "requirementsSum": "1 871 897 982,82",
-   "sourceDocumentType": "rtk_application",
-   "stateDuty": "5 017 245,00",
-   "stateDuty16": "5 017 245,00",
-   "totalDebt": "1 871 897 982,82"
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 5,
-   "wordCount": 4570
-  },
-  "obligations": [
-   {
-    "contractDate": "Не указана",
-    "contractNumber": "35137957",
-    "id": "obligation_fallback_0",
-    "obligationType": "Договор"
-   }
-  ],
-  "rawTextLen": 34627,
-  "rawTextSha": "7527da42ecc2f57fc94830cb9b8d979079f9c229ca164cb225176e6d731cc499",
-  "recommendedActs": {
-   "collateralOption": "no_collateral",
-   "entityType": "legal",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_observation",
-    "final_competition"
-   ]
-  },
-  "thirdParties": []
- },
- "casebookWord/Заявл о б-ве Форте Пром.docx": {
-  "collaterals": [],
-  "confidence": 1.0,
-  "debtors": [
-   {
-    "address": "346404, Ростовская область гор.Новочеркасск, Харьковское шоссе, д.10, офис 27",
-    "birthDate": "",
-    "birthPlace": "",
-    "inn": "3448049188",
-    "name": "ООО «Форте Пром ГМБХ»",
-    "ogrn": "1103461000455",
-    "ogrnip": "",
-    "snils": ""
-   }
-  ],
-  "documentType": "rtk_application",
-  "entityType": "legal",
-  "fields": {
-   "applicantAddress": "346404, Ростовская область гор.Новочеркасск, Харьковское шоссе, д.10, офис 27",
-   "applicantName": "ООО «Форте Пром ГМБХ»",
-   "applicantNameAccusative": "ООО «форт Пром ГМБХ»",
-   "applicantNameDative": "ООО «форту Прому ГМБХАМ»",
-   "applicantNameGenitive": "ООО «форта Прома ГМБХ»",
-   "applicantNameInstrumental": "ООО «фортом Промом ГМБХАМИ»",
-   "applicationDate": "29.04.2026",
-   "caseNumber": "А53-12198/2026",
-   "companyInn": "3448049188",
-   "contractDate": "Не указана",
-   "contractNumber": "35138337",
-   "courtDecisionDate": "07.04.2026",
-   "courtName": "Арбитражный суд Ростовской области",
-   "creditorInn": "7708397772",
-   "creditorName": "АО «Экспобанк»",
-   "creditorOgrn": "1217700369083",
-   "debtAmount": "1 871 897 982,82",
-   "debtSnapshotDate88": "27.04.2026",
-   "debtorName": "Форте Пром ГМБХ",
-   "entityType": "legal",
-   "forfeit": "0,00",
-   "forfeit15": "0,00",
-   "inn": "3448049188",
-   "interest": "406 884 376,83",
-   "interest14": "406 884 376,83",
-   "legalShortName": "Форте Пром ГМБХ",
-   "loanDebt": "1 871 897 982,82",
-   "obligationType": "Кредитный договор",
-   "obligations": [
-    {
-     "contractDate": "Не указана",
-     "contractNumber": "35138337",
-     "id": "obligation_fallback_0",
-     "obligationType": "Договор"
-    }
-   ],
-   "ogrn": "1103461000455",
-   "penalties": "0,00",
-   "principalDebt": "1 465 013 605,99",
-   "principalDebt13": "1 465 013 605,99",
-   "procedureType": "observation",
-   "procedureTypeRaw": "наблюдение",
-   "requirementsSum": "1 871 897 982,82",
-   "sourceDocumentType": "rtk_application",
-   "stateDuty": "5 017 245,00",
-   "stateDuty16": "5 017 245,00",
-   "totalDebt": "1 871 897 982,82"
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 5,
-   "wordCount": 4564
-  },
-  "obligations": [
-   {
-    "contractDate": "Не указана",
-    "contractNumber": "35138337",
-    "id": "obligation_fallback_0",
-    "obligationType": "Договор"
-   }
-  ],
-  "rawTextLen": 34526,
-  "rawTextSha": "9d339092e02d70020e085b194cc3596c005bfd5b7ef077a033d5ff72b9971505",
-  "recommendedActs": {
-   "collateralOption": "no_collateral",
-   "entityType": "legal",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_observation",
-    "final_competition"
-   ]
-  },
-  "thirdParties": []
- },
- "casebookWord/Заявление АО Альфа-Банк о признании банкротом ООО Форте Пром Стил ГМбХ.docx": {
+ "Правильные заявления/Альфа тест настоящий.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -612,8 +1495,8 @@
    "applicationDate": "17.12.2020",
    "caseNumber": "А53-12200/2026",
    "companyInn": "3461063590",
-   "contractDate": "17.12.2020, 27.03.2026",
-   "contractNumber": "03820, 34855431",
+   "contractDate": "17.12.2020, 09.07.2021, 15.12.2023, 30.06.2021, 31.03.2022, 29.11.2024, 23.12.2024",
+   "contractNumber": "03820P006, 03ZE1P006, 0BOP1P007, 03XS5P006, 05LK7P006, 0HF94P006, 0HHW2P006",
    "courtName": "Арбитражный суд Ростовской области",
    "creditPenaltyRate": "0,2",
    "creditorAddress": "107078, г. Москва, ул. Каланчевская, д. 27",
@@ -636,15 +1519,447 @@
    "obligations": [
     {
      "contractDate": "17.12.2020",
-     "contractNumber": "03820",
-     "id": "obligation_fallback_0",
-     "obligationType": "Кредитный договор"
+     "contractNumber": "03820P006",
+     "id": "obligation_p_0",
+     "obligationType": "Договор поручительства"
     },
     {
-     "contractDate": "27.03.2026",
-     "contractNumber": "34855431",
-     "id": "obligation_fallback_1",
-     "obligationType": "Договор"
+     "contractDate": "09.07.2021",
+     "contractNumber": "03ZE1P006",
+     "id": "obligation_p_1",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "15.12.2023",
+     "contractNumber": "0BOP1P007",
+     "id": "obligation_p_2",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "30.06.2021",
+     "contractNumber": "03XS5P006",
+     "id": "obligation_p_3",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "31.03.2022",
+     "contractNumber": "05LK7P006",
+     "id": "obligation_p_4",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "29.11.2024",
+     "contractNumber": "0HF94P006",
+     "id": "obligation_p_5",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "23.12.2024",
+     "contractNumber": "0HHW2P006",
+     "id": "obligation_p_6",
+     "obligationType": "Договор поручительства"
+    }
+   ],
+   "ogrn": "1183443007659",
+   "penalties": "0,00",
+   "principalDebt": "3 977 344 345,76",
+   "principalDebt13": "3 977 344 345,76",
+   "procedureType": "observation",
+   "procedureTypeRaw": "наблюдение",
+   "requirementsSum": "2 549 999 707,35",
+   "sourceDocumentType": "rtk_application",
+   "stateDuty": "5 100 000,00",
+   "stateDuty16": "5 100 000,00",
+   "totalDebt": "4 593 842 279,40"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 22,
+   "wordCount": 10283
+  },
+  "obligations": [
+   {
+    "contractDate": "17.12.2020",
+    "contractNumber": "03820P006",
+    "id": "obligation_p_0",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "09.07.2021",
+    "contractNumber": "03ZE1P006",
+    "id": "obligation_p_1",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "15.12.2023",
+    "contractNumber": "0BOP1P007",
+    "id": "obligation_p_2",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "30.06.2021",
+    "contractNumber": "03XS5P006",
+    "id": "obligation_p_3",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "31.03.2022",
+    "contractNumber": "05LK7P006",
+    "id": "obligation_p_4",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "29.11.2024",
+    "contractNumber": "0HF94P006",
+    "id": "obligation_p_5",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "23.12.2024",
+    "contractNumber": "0HHW2P006",
+    "id": "obligation_p_6",
+    "obligationType": "Договор поручительства"
+   }
+  ],
+  "rawTextLen": 77793,
+  "rawTextSha": "22b65fcc19731dc6999ae43c0c4244716961883151eea931f0803e804a136275",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "legal",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_observation",
+    "final_competition"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Правильные заявления/Заявл о б-ве Форте Пром Стил.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "346404, Ростовская область, гор.Новочеркасск, Харьковское шоссе, д.10",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "3461063590",
+    "name": "ООО «Форте Пром Стил ГМБХ»",
+    "ogrn": "1183443007659",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "legal",
+  "fields": {
+   "applicantAddress": "346404, Ростовская область, гор.Новочеркасск, Харьковское шоссе, д.10",
+   "applicantName": "ООО «Форте Пром Стил ГМБХ»",
+   "applicantNameAccusative": "ООО «форт Пром Стившего ГМБХ»",
+   "applicantNameDative": "ООО «форту Прому Стившему ГМБХАМ»",
+   "applicantNameGenitive": "ООО «форта Прома Стившего ГМБХ»",
+   "applicantNameInstrumental": "ООО «фортом Промом Стившим ГМБХАМИ»",
+   "applicationDate": "29.04.2026",
+   "caseNumber": "А53-12200/2026",
+   "companyInn": "3461063590",
+   "contractDate": "06.03.2025, 31.03.2025, 22.05.2025",
+   "contractNumber": "1/25/016-40-ПЮЛ/1, 6/25/016-40-ПЮЛ/1, 13/25/016-40-ПЮЛ/1",
+   "courtDecisionDate": "08.04.2026",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "115054, г. Москва, вн.тер.г. Муниципальный Округ Замоскворечье, наб Космодамианская, д. 52, стр. 7",
+   "creditorInn": "7708397772",
+   "creditorName": "АО «Экспобанк»",
+   "creditorOgrn": "1217700369083",
+   "debtAmount": "1 871 897 982,82",
+   "debtSnapshotDate88": "27.04.2026",
+   "debtorName": "Форте Пром Стил ГМБХ",
+   "entityType": "legal",
+   "forfeit": "0,00",
+   "forfeit15": "0,00",
+   "inn": "3461063590",
+   "interest": "406 884 376,83",
+   "interest14": "406 884 376,83",
+   "legalShortName": "Форте Пром Стил ГМБХ",
+   "loanDebt": "1 871 897 982,82",
+   "obligationType": "Кредитный договор",
+   "obligations": [
+    {
+     "contractDate": "06.03.2025",
+     "contractNumber": "1/25/016-40-ПЮЛ/1",
+     "id": "obligation_p_0",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "31.03.2025",
+     "contractNumber": "6/25/016-40-ПЮЛ/1",
+     "id": "obligation_p_1",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "22.05.2025",
+     "contractNumber": "13/25/016-40-ПЮЛ/1",
+     "id": "obligation_p_2",
+     "obligationType": "Договор поручительства"
+    }
+   ],
+   "ogrn": "1183443007659",
+   "penalties": "0,00",
+   "principalDebt": "1 465 013 605,99",
+   "principalDebt13": "1 465 013 605,99",
+   "procedureType": "observation",
+   "procedureTypeRaw": "наблюдение",
+   "requirementsSum": "1 871 897 982,82",
+   "sourceDocumentType": "rtk_application",
+   "stateDuty": "5 017 245,00",
+   "stateDuty16": "5 017 245,00",
+   "totalDebt": "1 871 897 982,82"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 5,
+   "wordCount": 4570
+  },
+  "obligations": [
+   {
+    "contractDate": "06.03.2025",
+    "contractNumber": "1/25/016-40-ПЮЛ/1",
+    "id": "obligation_p_0",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "31.03.2025",
+    "contractNumber": "6/25/016-40-ПЮЛ/1",
+    "id": "obligation_p_1",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "22.05.2025",
+    "contractNumber": "13/25/016-40-ПЮЛ/1",
+    "id": "obligation_p_2",
+    "obligationType": "Договор поручительства"
+   }
+  ],
+  "rawTextLen": 34627,
+  "rawTextSha": "7527da42ecc2f57fc94830cb9b8d979079f9c229ca164cb225176e6d731cc499",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "legal",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_observation",
+    "final_competition"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Правильные заявления/Заявл о б-ве Форте Пром.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "346404, Ростовская область гор.Новочеркасск, Харьковское шоссе, д.10, офис 27",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "3448049188",
+    "name": "ООО «Форте Пром ГМБХ»",
+    "ogrn": "1103461000455",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "legal",
+  "fields": {
+   "applicantAddress": "346404, Ростовская область гор.Новочеркасск, Харьковское шоссе, д.10, офис 27",
+   "applicantName": "ООО «Форте Пром ГМБХ»",
+   "applicantNameAccusative": "ООО «форт Пром ГМБХ»",
+   "applicantNameDative": "ООО «форту Прому ГМБХАМ»",
+   "applicantNameGenitive": "ООО «форта Прома ГМБХ»",
+   "applicantNameInstrumental": "ООО «фортом Промом ГМБХАМИ»",
+   "applicationDate": "29.04.2026",
+   "caseNumber": "А53-12198/2026",
+   "companyInn": "3448049188",
+   "contractDate": "06.03.2025, 31.03.2025, 22.05.2025",
+   "contractNumber": "1/25/016-40-ПЮЛ/4, 6/25/016-40-ПЮЛ/4, 13/25/016-40-ПЮЛ/4",
+   "courtDecisionDate": "07.04.2026",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorInn": "7708397772",
+   "creditorName": "АО «Экспобанк»",
+   "creditorOgrn": "1217700369083",
+   "debtAmount": "1 871 897 982,82",
+   "debtSnapshotDate88": "27.04.2026",
+   "debtorName": "Форте Пром ГМБХ",
+   "entityType": "legal",
+   "forfeit": "0,00",
+   "forfeit15": "0,00",
+   "inn": "3448049188",
+   "interest": "406 884 376,83",
+   "interest14": "406 884 376,83",
+   "legalShortName": "Форте Пром ГМБХ",
+   "loanDebt": "1 871 897 982,82",
+   "obligationType": "Кредитный договор",
+   "obligations": [
+    {
+     "contractDate": "06.03.2025",
+     "contractNumber": "1/25/016-40-ПЮЛ/4",
+     "id": "obligation_p_0",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "31.03.2025",
+     "contractNumber": "6/25/016-40-ПЮЛ/4",
+     "id": "obligation_p_1",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "22.05.2025",
+     "contractNumber": "13/25/016-40-ПЮЛ/4",
+     "id": "obligation_p_2",
+     "obligationType": "Договор поручительства"
+    }
+   ],
+   "ogrn": "1103461000455",
+   "penalties": "0,00",
+   "principalDebt": "1 465 013 605,99",
+   "principalDebt13": "1 465 013 605,99",
+   "procedureType": "observation",
+   "procedureTypeRaw": "наблюдение",
+   "requirementsSum": "1 871 897 982,82",
+   "sourceDocumentType": "rtk_application",
+   "stateDuty": "5 017 245,00",
+   "stateDuty16": "5 017 245,00",
+   "totalDebt": "1 871 897 982,82"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 5,
+   "wordCount": 4564
+  },
+  "obligations": [
+   {
+    "contractDate": "06.03.2025",
+    "contractNumber": "1/25/016-40-ПЮЛ/4",
+    "id": "obligation_p_0",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "31.03.2025",
+    "contractNumber": "6/25/016-40-ПЮЛ/4",
+    "id": "obligation_p_1",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "22.05.2025",
+    "contractNumber": "13/25/016-40-ПЮЛ/4",
+    "id": "obligation_p_2",
+    "obligationType": "Договор поручительства"
+   }
+  ],
+  "rawTextLen": 34526,
+  "rawTextSha": "9d339092e02d70020e085b194cc3596c005bfd5b7ef077a033d5ff72b9971505",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "legal",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_observation",
+    "final_competition"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Правильные заявления/Заявление АО Альфа-Банк о признании банкротом ООО Форте Пром Стил ГМбХ.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "346404, Ростовская область, г. Новочеркасск, Харьковское ш., д. 10",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "3461063590",
+    "name": "ООО «Форте Пром Стил ГмбХ»",
+    "ogrn": "1183443007659",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "legal",
+  "fields": {
+   "applicantAddress": "346404, Ростовская область, г. Новочеркасск, Харьковское ш., д. 10",
+   "applicantName": "ООО «Форте Пром Стил ГмбХ»",
+   "applicantNameAccusative": "ООО «Форте Пром Стил ГмбХ»",
+   "applicantNameDative": "ООО «Форте Пром Стил ГмбХ»",
+   "applicantNameGenitive": "ООО «Форте Пром Стил ГмбХ»",
+   "applicantNameInstrumental": "ООО «Форте Пром Стил ГмбХ»",
+   "applicationDate": "17.12.2020",
+   "caseNumber": "А53-12200/2026",
+   "companyInn": "3461063590",
+   "contractDate": "17.12.2020, 09.07.2021, 15.12.2023, 30.06.2021, 31.03.2022, 29.11.2024, 23.12.2024",
+   "contractNumber": "03820P006, 03ZE1P006, 0BOP1P007, 03XS5P006, 05LK7P006, 0HF94P006, 0HHW2P006",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditPenaltyRate": "0,2",
+   "creditorAddress": "107078, г. Москва, ул. Каланчевская, д. 27",
+   "creditorInn": "7728168971",
+   "creditorName": "АО «АЛЬФА-БАНК»",
+   "creditorOgrn": "1027700067328",
+   "debtAmount": "4 593 842 279,40",
+   "debtSnapshotDate88": "08.04.2026",
+   "debtorName": "Форте Пром Стил ГмбХ",
+   "entityType": "legal",
+   "forfeit": "616 497 933,64",
+   "forfeit15": "616 497 933,64",
+   "inn": "3461063590",
+   "interest": "0,00",
+   "interest14": "0,00",
+   "legalShortName": "Форте Пром Стил ГмбХ",
+   "loanDebt": "2 549 999 707,35",
+   "messageDate": "27.03.2026",
+   "messageNumber": "34855431",
+   "obligations": [
+    {
+     "contractDate": "17.12.2020",
+     "contractNumber": "03820P006",
+     "id": "obligation_p_0",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "09.07.2021",
+     "contractNumber": "03ZE1P006",
+     "id": "obligation_p_1",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "15.12.2023",
+     "contractNumber": "0BOP1P007",
+     "id": "obligation_p_2",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "30.06.2021",
+     "contractNumber": "03XS5P006",
+     "id": "obligation_p_3",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "31.03.2022",
+     "contractNumber": "05LK7P006",
+     "id": "obligation_p_4",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "29.11.2024",
+     "contractNumber": "0HF94P006",
+     "id": "obligation_p_5",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "23.12.2024",
+     "contractNumber": "0HHW2P006",
+     "id": "obligation_p_6",
+     "obligationType": "Договор поручительства"
     }
    ],
    "ogrn": "1183443007659",
@@ -667,15 +1982,45 @@
   "obligations": [
    {
     "contractDate": "17.12.2020",
-    "contractNumber": "03820",
-    "id": "obligation_fallback_0",
-    "obligationType": "Кредитный договор"
+    "contractNumber": "03820P006",
+    "id": "obligation_p_0",
+    "obligationType": "Договор поручительства"
    },
    {
-    "contractDate": "27.03.2026",
-    "contractNumber": "34855431",
-    "id": "obligation_fallback_1",
-    "obligationType": "Договор"
+    "contractDate": "09.07.2021",
+    "contractNumber": "03ZE1P006",
+    "id": "obligation_p_1",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "15.12.2023",
+    "contractNumber": "0BOP1P007",
+    "id": "obligation_p_2",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "30.06.2021",
+    "contractNumber": "03XS5P006",
+    "id": "obligation_p_3",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "31.03.2022",
+    "contractNumber": "05LK7P006",
+    "id": "obligation_p_4",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "29.11.2024",
+    "contractNumber": "0HF94P006",
+    "id": "obligation_p_5",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "23.12.2024",
+    "contractNumber": "0HHW2P006",
+    "id": "obligation_p_6",
+    "obligationType": "Договор поручительства"
    }
   ],
   "rawTextLen": 77806,
@@ -692,7 +2037,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление на включение требований в РТК_ДОЛАКОВ 3л.docx": {
+ "Правильные заявления/Заявление на включение требований в РТК_ДОЛАКОВ 3л.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -802,7 +2147,157 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление о включении в РТК А53-10433-2026  3 стр.docx": {
+ "Правильные заявления/Заявление на включение требований в РТК_ИП.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "346885, Ставоропольский край, ул Лютикова,36",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "616618617784",
+    "name": "ИП Кукусик Никита Никитич",
+    "ogrn": "",
+    "ogrnip": "321619600010822",
+    "snils": ""
+   }
+  ],
+  "documentType": "ip_enforcement_restructuring",
+  "entityType": "ip",
+  "fields": {
+   "applicantAddress": "346885, Ставоропольский край, ул Лютикова,36",
+   "applicantName": "ИП Кукусик Никита Никитич",
+   "applicantNameAccusative": "ИП Кукусик Никиту Никитича",
+   "applicantNameDative": "ИП Кукусику Никите Никитичу",
+   "applicantNameGenitive": "ИП Кукусика Никиты Никитича",
+   "applicantNameInstrumental": "ИП Кукусиком Никитой Никитичем",
+   "applicationDate": "31.10.2025",
+   "caseNumber": "А53-864665656586564/2025",
+   "contractDate": "26.10.2002",
+   "contractNumber": "616311312132144-24-1",
+   "courtDecisionDate": "12.08.2025",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditAmount": "5 000 000",
+   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
+   "creditorInn": "7707083893",
+   "creditorName": "Сбербанк России",
+   "creditorOgrn": "1027700132195",
+   "debtAmount": "17 941 964,92",
+   "debtorName": "ИП Кукусик Никита Никитич",
+   "entityType": "ip",
+   "forfeit": "58 827,10",
+   "forfeit15": "58 827,10",
+   "interest": "1 930 691,97",
+   "interest14": "1 930 691,97",
+   "ipCollateralClaimAmount": "17 941 964,92",
+   "ipHasCollateral": "false",
+   "kommersantDate": "23.08.2025",
+   "loanDebt": "4 983 440,00",
+   "managerAddress": "344000, Г. РОСТОВ-НА-ДОНУ, А/Я, 987987928727671",
+   "managerName": "КРЮКИДЗЕ КАПИТАН РАФИКОВИЧ",
+   "messageNumber": "54646464645464646465445464646",
+   "obligationType": "кредитный договор",
+   "obligations": [
+    {
+     "amount": "0,00",
+     "amountValue": 0.0,
+     "contractDate": "24.04.2024",
+     "contractNumber": "5464646544646464646464564-24-1",
+     "id": "obligation_1",
+     "isCollateral": false,
+     "issuedAmount": "5 000 000,00",
+     "issuedAmountValue": 5000000.0,
+     "obligationType": "Кредитный договор",
+     "penalty0071": null,
+     "penalty0071Value": 0.0
+    },
+    {
+     "amount": "0,00",
+     "amountValue": 0.0,
+     "contractDate": "26.02.2024",
+     "contractNumber": "616311312132144-24-1",
+     "id": "obligation_2",
+     "isCollateral": false,
+     "issuedAmount": "8 000 000,00",
+     "issuedAmountValue": 8000000.0,
+     "obligationType": "Кредитный договор",
+     "penalty0071": null,
+     "penalty0071Value": 0.0
+    }
+   ],
+   "penalties": "0,00",
+   "principalDebt": "15 952 445,85",
+   "principalDebt13": "15 952 445,85",
+   "registrationDate": "20.06.1991",
+   "requirementsSum": "17 941 964,92",
+   "sourceDocumentType": "ip_enforcement_restructuring",
+   "stateDuty": "302 210,00",
+   "stateDuty16": "302 210,00",
+   "thirdPartyAddress": "346885, Ростовская область, Краснодар, Лютикова,999",
+   "thirdPartyInn": "616618617784",
+   "thirdPartyName": "ИП ЖЕЛЬТЕНЬКИЙ КАРИМ ОБОЕВИЧ",
+   "totalDebt": "17 941 964,92"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 5,
+   "wordCount": 1000
+  },
+  "obligations": [
+   {
+    "amount": "0,00",
+    "amountValue": 0.0,
+    "contractDate": "24.04.2024",
+    "contractNumber": "5464646544646464646464564-24-1",
+    "id": "obligation_1",
+    "isCollateral": false,
+    "issuedAmount": "5 000 000,00",
+    "issuedAmountValue": 5000000.0,
+    "obligationType": "Кредитный договор",
+    "penalty0071": null,
+    "penalty0071Value": 0.0
+   },
+   {
+    "amount": "0,00",
+    "amountValue": 0.0,
+    "contractDate": "26.02.2024",
+    "contractNumber": "616311312132144-24-1",
+    "id": "obligation_2",
+    "isCollateral": false,
+    "issuedAmount": "8 000 000,00",
+    "issuedAmountValue": 8000000.0,
+    "obligationType": "Кредитный договор",
+    "penalty0071": null,
+    "penalty0071Value": 0.0
+   }
+  ],
+  "rawTextLen": 7621,
+  "rawTextSha": "e6ffdbfc73248b98212a07a8b575e92116ea034f7378aeb4845a9e30988f745b",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "ip",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": [
+   {
+    "address": "346885, Ростовская область, Краснодар, Лютикова,999",
+    "inn": "616618617784",
+    "name": "ИП ЖЕЛЬТЕНЬКИЙ КАРИМ ОБОЕВИЧ",
+    "ogrn": "321619600010822"
+   },
+   {
+    "inn": "123546849797",
+    "name": "ООО “КУКУ”",
+    "ogrn": "6549494961961"
+   }
+  ]
+ },
+ "Правильные заявления/Заявление о включении в РТК А53-10433-2026  3 стр.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -887,7 +2382,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление о включении в РТК А53-10932-2026  3 стр.docx": {
+ "Правильные заявления/Заявление о включении в РТК А53-10932-2026  3 стр.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -972,7 +2467,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление о включении в РТК_ПИСКОВА ТАТЬЯНА НИКОЛАЕВНА 4л.docx": {
+ "Правильные заявления/Заявление о включении в РТК_ПИСКОВА ТАТЬЯНА НИКОЛАЕВНА 4л.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -1132,7 +2627,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление о включении в РТК_СУЗАНСКАЯ ЛИДИЯ АЛЕКСЕЕВНА 5л.docx": {
+ "Правильные заявления/Заявление о включении в РТК_СУЗАНСКАЯ ЛИДИЯ АЛЕКСЕЕВНА 5л.docx": {
   "collaterals": [
    {
     "address": "Российская Федерация, Ростовская об-",
@@ -1229,7 +2724,7 @@
      "isCollateral": true,
      "issuedAmount": null,
      "issuedAmountValue": 0.0,
-     "obligationType": "Договор залога",
+     "obligationType": "Кредитный договор",
      "penalty0071": null,
      "penalty0071Value": 0.0
     },
@@ -1255,7 +2750,7 @@
      "isCollateral": true,
      "issuedAmount": null,
      "issuedAmountValue": 0.0,
-     "obligationType": "Договор залога",
+     "obligationType": "Договор",
      "penalty0071": "21 401,75",
      "penalty0071Value": 21401.75
     }
@@ -1288,7 +2783,7 @@
     "isCollateral": true,
     "issuedAmount": null,
     "issuedAmountValue": 0.0,
-    "obligationType": "Договор залога",
+    "obligationType": "Кредитный договор",
     "penalty0071": null,
     "penalty0071Value": 0.0
    },
@@ -1314,7 +2809,7 @@
     "isCollateral": true,
     "issuedAmount": null,
     "issuedAmountValue": 0.0,
-    "obligationType": "Договор залога",
+    "obligationType": "Договор",
     "penalty0071": "21 401,75",
     "penalty0071Value": 21401.75
    }
@@ -1333,7 +2828,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление о включении в реестр требований кредиторов  2 л.docx": {
+ "Правильные заявления/Заявление о включении в реестр требований кредиторов  2 л.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -1382,7 +2877,7 @@
     {
      "contractDate": "Не указана",
      "contractNumber": "0278146810",
-     "id": "obligation_fallback_0",
+     "id": "obligation_p_0",
      "obligationType": "Кредитный договор"
     }
    ],
@@ -1406,7 +2901,7 @@
    {
     "contractDate": "Не указана",
     "contractNumber": "0278146810",
-    "id": "obligation_fallback_0",
+    "id": "obligation_p_0",
     "obligationType": "Кредитный договор"
    }
   ],
@@ -1422,7 +2917,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление о включении в реестр требований кредиторов 3л.docx": {
+ "Правильные заявления/Заявление о включении в реестр требований кредиторов 3л.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -1479,14 +2974,14 @@
     {
      "contractDate": "27.05.2021",
      "contractNumber": "625/0055-0764407",
-     "id": "obligation_11_2",
-     "obligationType": "Договор"
+     "id": "obligation_p_0",
+     "obligationType": "Кредитный договор"
     },
     {
      "contractDate": "13.02.2023",
      "contractNumber": "V625/0055-0073261",
-     "id": "obligation_11_5",
-     "obligationType": "Договор"
+     "id": "obligation_p_1",
+     "obligationType": "Кредитный договор"
     }
    ],
    "penalties": "0,00",
@@ -1510,14 +3005,14 @@
    {
     "contractDate": "27.05.2021",
     "contractNumber": "625/0055-0764407",
-    "id": "obligation_11_2",
-    "obligationType": "Договор"
+    "id": "obligation_p_0",
+    "obligationType": "Кредитный договор"
    },
    {
     "contractDate": "13.02.2023",
     "contractNumber": "V625/0055-0073261",
-    "id": "obligation_11_5",
-    "obligationType": "Договор"
+    "id": "obligation_p_1",
+    "obligationType": "Кредитный договор"
    }
   ],
   "rawTextLen": 6915,
@@ -1533,7 +3028,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление о включении в реестр требований кредиторов АТАМУРАТОВ БОГДАН ЭРКИНБАЕВИЧ на 3 стр.docx": {
+ "Правильные заявления/Заявление о включении в реестр требований кредиторов АТАМУРАТОВ БОГДАН ЭРКИНБАЕВИЧ на 3 стр.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -1582,13 +3077,13 @@
     {
      "contractDate": "22.04.2024",
      "contractNumber": "10050033429",
-     "id": "obligation_fallback_0",
+     "id": "obligation_p_0",
      "obligationType": "Кредитный договор"
     },
     {
      "contractDate": "Не указана",
      "contractNumber": "8963411620",
-     "id": "obligation_fallback_1",
+     "id": "obligation_p_1",
      "obligationType": "Кредитный договор"
     }
    ],
@@ -1610,13 +3105,13 @@
    {
     "contractDate": "22.04.2024",
     "contractNumber": "10050033429",
-    "id": "obligation_fallback_0",
+    "id": "obligation_p_0",
     "obligationType": "Кредитный договор"
    },
    {
     "contractDate": "Не указана",
     "contractNumber": "8963411620",
-    "id": "obligation_fallback_1",
+    "id": "obligation_p_1",
     "obligationType": "Кредитный договор"
    }
   ],
@@ -1632,7 +3127,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление о включении в реестр требований кредиторов КЛИМОВ МАКСИМ ВЛАДИМИРОВИЧ на 3 стр.docx": {
+ "Правильные заявления/Заявление о включении в реестр требований кредиторов КЛИМОВ МАКСИМ ВЛАДИМИРОВИЧ на 3 стр.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -1682,7 +3177,7 @@
     {
      "contractDate": "05.05.2022",
      "contractNumber": "5448999116",
-     "id": "obligation_fallback_0",
+     "id": "obligation_p_0",
      "obligationType": "Кредитный договор"
     }
    ],
@@ -1702,7 +3197,7 @@
    {
     "contractDate": "05.05.2022",
     "contractNumber": "5448999116",
-    "id": "obligation_fallback_0",
+    "id": "obligation_p_0",
     "obligationType": "Кредитный договор"
    }
   ],
@@ -1718,7 +3213,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление о включении в реестр требований кредиторов__ЕЛИСЕЕНКО СЕРГЕЙ ВАСИЛЬЕВИЧ.4л.docx": {
+ "Правильные заявления/Заявление о включении в реестр требований кредиторов__ЕЛИСЕЕНКО СЕРГЕЙ ВАСИЛЬЕВИЧ.4л.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -1793,7 +3288,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление о включении в реестр требований кредиторов__КУЧУРЯН ШОГИК АРМЕНОВНА.3л.docx": {
+ "Правильные заявления/Заявление о включении в реестр требований кредиторов__КУЧУРЯН ШОГИК АРМЕНОВНА.3л.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -1868,7 +3363,130 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление о признании должника банкротом  АО  КОНЦЕРН  САРМАТ   (ИНН- 6123010803).docx": {
+ "Правильные заявления/Заявление о включении требований Банка ВТБ (ПАО) в реестр требований кредиторов должника 3л.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "Ростовская обл., г. Шахты, ул. Успенского, д. 4",
+    "birthDate": "09.09.1988",
+    "birthPlace": "гор. Шахты Ростовской обл",
+    "inn": "615523169349",
+    "name": "Анисимов Роман Сергеевич",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "112-979-523 77"
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "Ростовская обл., г. Шахты, ул. Успенского, д. 4",
+   "applicantName": "Анисимов Роман Сергеевич",
+   "applicantNameAccusative": "ФИНАНСОВОГО",
+   "applicantNameDative": "ФИНАНСОВОМУ",
+   "applicantNameGenitive": "ФИНАНСОВОГО",
+   "applicantNameInstrumental": "ФИНАНСОВЫМ",
+   "applicationDate": "17.10.1990",
+   "birthDate": "09.09.1988",
+   "birthPlace": "гор. Шахты Ростовской обл",
+   "caseNumber": "А53-10111/2026",
+   "contractDate": "30.07.2025, 15.08.2023, 12.01.2024",
+   "contractNumber": "KK-7779566277817, 59742084-ДО-РОС-23, цессии, 4-24/Ц-01",
+   "courtDecisionDate": "27.04.2026",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "191144, г. Санкт-Петербург, пер. Дегтярный, д. 11-А",
+   "creditorInn": "7702070139",
+   "creditorName": "Банк ВТБ (публичное акционерное общество)",
+   "creditorOgrn": "1027739609391",
+   "debtAmount": "1 201 910,33",
+   "debtorName": "ФИНАНСОВЫЙ",
+   "entityType": "individual",
+   "forfeit": "21 333,41",
+   "forfeit15": "21 333,41",
+   "inn": "615523169349",
+   "interest": "0,00",
+   "interest14": "0,00",
+   "legalShortName": "ФИНАНСОВЫЙ",
+   "loanDebt": "30 529",
+   "managerAddress": "344029, обл Ростовская, г. Ростов-на-Дону, ул. 1-й Конной Армии, д. 23/10, офис 31",
+   "managerInn": "616602539072",
+   "managerName": "Тимченко Павел Иванович",
+   "messageDate": "28.04.2026",
+   "messageNumber": "22660261",
+   "obligationType": "кредитный договор",
+   "obligations": [
+    {
+     "contractDate": "30.07.2025",
+     "contractNumber": "KK-7779566277817",
+     "id": "obligation_p_0",
+     "obligationType": "Кредитный договор"
+    },
+    {
+     "contractDate": "15.08.2023",
+     "contractNumber": "59742084-ДО-РОС-23",
+     "id": "obligation_p_1",
+     "obligationType": "Кредитный договор"
+    },
+    {
+     "contractDate": "12.01.2024",
+     "contractNumber": "4-24/Ц-01",
+     "id": "obligation_p_2",
+     "obligationType": "Кредитный договор"
+    }
+   ],
+   "penalties": "0,00",
+   "principalDebt": "1 180 576,92",
+   "principalDebt13": "1 180 576,92",
+   "procedureType": "observation",
+   "procedureTypeRaw": "реализации имущества гражданина",
+   "requirementsSum": "30 529,00",
+   "snils": "112-979-523 77",
+   "sourceDocumentType": "rtk_application",
+   "stateDuty": "30 529,00",
+   "stateDuty16": "30 529,00",
+   "totalDebt": "1 201 910,33"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 1253
+  },
+  "obligations": [
+   {
+    "contractDate": "30.07.2025",
+    "contractNumber": "KK-7779566277817",
+    "id": "obligation_p_0",
+    "obligationType": "Кредитный договор"
+   },
+   {
+    "contractDate": "15.08.2023",
+    "contractNumber": "59742084-ДО-РОС-23",
+    "id": "obligation_p_1",
+    "obligationType": "Кредитный договор"
+   },
+   {
+    "contractDate": "12.01.2024",
+    "contractNumber": "4-24/Ц-01",
+    "id": "obligation_p_2",
+    "obligationType": "Кредитный договор"
+   }
+  ],
+  "rawTextLen": 9838,
+  "rawTextSha": "eadbbfc6b0a50f4055af3da50f07dc0f6752cfe0c8a198c30f514f435a72efbd",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "legal",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Правильные заявления/Заявление о признании должника банкротом  АО  КОНЦЕРН  САРМАТ   (ИНН- 6123010803).docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -1945,7 +3563,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление о признании должника банкротом  ООО  КОЛОР   (ИНН- 6123013561).docx": {
+ "Правильные заявления/Заявление о признании должника банкротом  ООО  КОЛОР   (ИНН- 6123013561).docx": {
   "collaterals": [],
   "confidence": 0.85,
   "debtors": [
@@ -2052,7 +3670,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление о признании должника банкротом  ФЛ ОМЕЛЯНЧУК ЕВГЕНИЙ АЛЕКСЕЕВИЧ.docx": {
+ "Правильные заявления/Заявление о признании должника банкротом  ФЛ ОМЕЛЯНЧУК ЕВГЕНИЙ АЛЕКСЕЕВИЧ.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -2156,7 +3774,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление о признании должника банкротом ДАВЫДЕНКО КРИСТИНА СТАНИСЛАВОВНА.docx": {
+ "Правильные заявления/Заявление о признании должника банкротом ДАВЫДЕНКО КРИСТИНА СТАНИСЛАВОВНА.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -2340,7 +3958,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление о признании должника банкротом ИП БАЗОВ ГЕОРГИЙ НИКОЛАЕВИЧ (ИНН- 616506698400).docx": {
+ "Правильные заявления/Заявление о признании должника банкротом ИП БАЗОВ ГЕОРГИЙ НИКОЛАЕВИЧ (ИНН- 616506698400).docx": {
   "collaterals": [],
   "confidence": 0.95,
   "debtors": [
@@ -2387,6 +4005,20 @@
    "ipHasCollateral": "false",
    "loanDebt": "21681376,81",
    "obligationType": "Кредитный договор",
+   "obligations": [
+    {
+     "contractDate": "Не указана",
+     "contractNumber": "616506698400-25-2",
+     "id": "obligation_p_0",
+     "obligationType": "Кредитный договор"
+    },
+    {
+     "contractDate": "Не указана",
+     "contractNumber": "616506698400-25-1",
+     "id": "obligation_p_1",
+     "obligationType": "Кредитный договор"
+    }
+   ],
    "ogrnip": "317619600232839",
    "penalties": "0,00",
    "principalDebt": "19 966 873,26",
@@ -2404,7 +4036,20 @@
    "pageCount": 4,
    "wordCount": 643
   },
-  "obligations": [],
+  "obligations": [
+   {
+    "contractDate": "Не указана",
+    "contractNumber": "616506698400-25-2",
+    "id": "obligation_p_0",
+    "obligationType": "Кредитный договор"
+   },
+   {
+    "contractDate": "Не указана",
+    "contractNumber": "616506698400-25-1",
+    "id": "obligation_p_1",
+    "obligationType": "Кредитный договор"
+   }
+  ],
   "rawTextLen": 7304,
   "rawTextSha": "d212b4083a46c80bd9018c43b33ab410f3dff3910ead083c074111c8b07676ac",
   "recommendedActs": {
@@ -2418,7 +4063,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление о признании должника банкротом ИП ПОЛЯКОВ ДМИТРИЙ ВЛАДИМИРОВИЧ (ИНН- 616270139617.docx": {
+ "Правильные заявления/Заявление о признании должника банкротом ИП ПОЛЯКОВ ДМИТРИЙ ВЛАДИМИРОВИЧ (ИНН- 616270139617.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -2524,7 +4169,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление о признании должника банкротом Песня 9л.docx": {
+ "Правильные заявления/Заявление о признании должника банкротом Песня 9л.docx": {
   "collaterals": [
    {
     "address": "Ростовская область, г. Волгодонск, ул. Ленина, д. 22, кв. 5",
@@ -2610,7 +4255,7 @@
      "isCollateral": true,
      "issuedAmount": null,
      "issuedAmountValue": 0.0,
-     "obligationType": "Договор залога",
+     "obligationType": "Кредитный договор",
      "penalty0071": null,
      "penalty0071Value": 0.0
     },
@@ -2766,7 +4411,7 @@
      "isCollateral": true,
      "issuedAmount": null,
      "issuedAmountValue": 0.0,
-     "obligationType": "Договор залога",
+     "obligationType": "Договор",
      "penalty0071": "0,31",
      "penalty0071Value": 0.31
     }
@@ -2800,7 +4445,7 @@
     "isCollateral": true,
     "issuedAmount": null,
     "issuedAmountValue": 0.0,
-    "obligationType": "Договор залога",
+    "obligationType": "Кредитный договор",
     "penalty0071": null,
     "penalty0071Value": 0.0
    },
@@ -2956,7 +4601,7 @@
     "isCollateral": true,
     "issuedAmount": null,
     "issuedAmountValue": 0.0,
-    "obligationType": "Договор залога",
+    "obligationType": "Договор",
     "penalty0071": "0,31",
     "penalty0071Value": 0.31
    }
@@ -2974,7 +4619,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление о признании должника несостоятельным (банкротом) Перспектива.docx": {
+ "Правильные заявления/Заявление о признании должника несостоятельным (банкротом) Перспектива.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -3002,7 +4647,7 @@
    "caseNumber": "А53-12189/2026",
    "companyInn": "7701887506",
    "contractDate": "21.06.2024, 19.05.2023, 16.01.2024, 06.12.2022, 17.01.2024, 10.04.2025, 21.09.2022",
-   "contractNumber": "невозобновляемой, а-2, а-3, а-4, а-5, а-6, а-7, а-8",
+   "contractNumber": "UZH/PR/03261/24, UZH/PR/02581/23, UZH/PR/00023/24, UZH/PR/03675/22, UZH/PR/00012/24, UZH/PR/00588/25, UZH/PR/02217/22",
    "courtName": "Арбитражный суд Ростовской области",
    "creditPenaltyRate": "0,05",
    "creditorAddress": "127287, г. Москва, ул. 2-я Хуторская, д. 38а, стр. 26",
@@ -3022,51 +4667,45 @@
    "obligations": [
     {
      "contractDate": "21.06.2024",
-     "contractNumber": "невозобновляемой",
-     "id": "obligation_11_1",
-     "obligationType": "Кредитный договор"
-    },
-    {
-     "contractDate": "21.06.2024",
-     "contractNumber": "а-2",
-     "id": "obligation_11_2",
-     "obligationType": "Договор"
+     "contractNumber": "UZH/PR/03261/24",
+     "id": "obligation_p_0",
+     "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "19.05.2023",
-     "contractNumber": "а-3",
-     "id": "obligation_11_4",
-     "obligationType": "Договор"
+     "contractNumber": "UZH/PR/02581/23",
+     "id": "obligation_p_1",
+     "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "16.01.2024",
-     "contractNumber": "а-4",
-     "id": "obligation_11_6",
-     "obligationType": "Договор"
+     "contractNumber": "UZH/PR/00023/24",
+     "id": "obligation_p_2",
+     "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "06.12.2022",
-     "contractNumber": "а-5",
-     "id": "obligation_11_8",
-     "obligationType": "Договор"
+     "contractNumber": "UZH/PR/03675/22",
+     "id": "obligation_p_3",
+     "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "17.01.2024",
-     "contractNumber": "а-6",
-     "id": "obligation_11_10",
-     "obligationType": "Договор"
+     "contractNumber": "UZH/PR/00012/24",
+     "id": "obligation_p_4",
+     "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "10.04.2025",
-     "contractNumber": "а-7",
-     "id": "obligation_11_12",
-     "obligationType": "Договор"
+     "contractNumber": "UZH/PR/00588/25",
+     "id": "obligation_p_5",
+     "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "21.09.2022",
-     "contractNumber": "а-8",
-     "id": "obligation_11_14",
-     "obligationType": "Договор"
+     "contractNumber": "UZH/PR/02217/22",
+     "id": "obligation_p_6",
+     "obligationType": "Договор поручительства"
     }
    ],
    "ogrn": "1107746649625",
@@ -3089,51 +4728,45 @@
   "obligations": [
    {
     "contractDate": "21.06.2024",
-    "contractNumber": "невозобновляемой",
-    "id": "obligation_11_1",
-    "obligationType": "Кредитный договор"
-   },
-   {
-    "contractDate": "21.06.2024",
-    "contractNumber": "а-2",
-    "id": "obligation_11_2",
-    "obligationType": "Договор"
+    "contractNumber": "UZH/PR/03261/24",
+    "id": "obligation_p_0",
+    "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "19.05.2023",
-    "contractNumber": "а-3",
-    "id": "obligation_11_4",
-    "obligationType": "Договор"
+    "contractNumber": "UZH/PR/02581/23",
+    "id": "obligation_p_1",
+    "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "16.01.2024",
-    "contractNumber": "а-4",
-    "id": "obligation_11_6",
-    "obligationType": "Договор"
+    "contractNumber": "UZH/PR/00023/24",
+    "id": "obligation_p_2",
+    "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "06.12.2022",
-    "contractNumber": "а-5",
-    "id": "obligation_11_8",
-    "obligationType": "Договор"
+    "contractNumber": "UZH/PR/03675/22",
+    "id": "obligation_p_3",
+    "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "17.01.2024",
-    "contractNumber": "а-6",
-    "id": "obligation_11_10",
-    "obligationType": "Договор"
+    "contractNumber": "UZH/PR/00012/24",
+    "id": "obligation_p_4",
+    "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "10.04.2025",
-    "contractNumber": "а-7",
-    "id": "obligation_11_12",
-    "obligationType": "Договор"
+    "contractNumber": "UZH/PR/00588/25",
+    "id": "obligation_p_5",
+    "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "21.09.2022",
-    "contractNumber": "а-8",
-    "id": "obligation_11_14",
-    "obligationType": "Договор"
+    "contractNumber": "UZH/PR/02217/22",
+    "id": "obligation_p_6",
+    "obligationType": "Договор поручительства"
    }
   ],
   "rawTextLen": 35141,
@@ -3150,7 +4783,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление о признании должника несостоятельным (банкротом) Форте Пром ГМБХ.docx": {
+ "Правильные заявления/Заявление о признании должника несостоятельным (банкротом) Форте Пром ГМБХ.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -3177,8 +4810,8 @@
    "applicationDate": "26.10.2002",
    "caseNumber": "А53-12198/2026",
    "companyInn": "3448049188",
-   "contractDate": "07.03.2023, 17.01.2024, 16.01.2024, 06.12.2022, 21.06.2024, 10.04.2025, 21.09.2022, 20.12.2023, 26.12.2025",
-   "contractNumber": "невозобновляемой, а-3, а-4, а-5, а-6, а-7, а-8, а-9, а-1, залога, а-2, уневозобновляемой",
+   "contractDate": "17.01.2024, 16.01.2024, 06.12.2022, 21.06.2024, 10.04.2025, 21.09.2022",
+   "contractNumber": "UZH/PR/00120/24, UZH/PR/00025/24, UZH/PR/03677/22, UZH/PR/03260/24, UZH/PR/00014/24, UZH/PR/00590/25, UZH/PR/02219/22",
    "courtName": "Арбитражный суд Ростовской области",
    "creditPenaltyRate": "0,05",
    "creditorAddress": "127287, г. Москва, ул. 2-я Хуторская, д. 38а, стр. 26",
@@ -3204,76 +4837,46 @@
    "mortgagePrincipalAmount11": "7 978 449,85",
    "obligations": [
     {
-     "contractDate": "07.03.2023",
-     "contractNumber": "невозобновляемой",
-     "id": "obligation_11_0",
-     "obligationType": "Кредитный договор"
-    },
-    {
      "contractDate": "17.01.2024",
-     "contractNumber": "а-3",
-     "id": "obligation_11_3",
-     "obligationType": "Договор"
+     "contractNumber": "UZH/PR/00120/24",
+     "id": "obligation_p_0",
+     "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "16.01.2024",
-     "contractNumber": "а-4",
-     "id": "obligation_11_5",
-     "obligationType": "Договор"
+     "contractNumber": "UZH/PR/00025/24",
+     "id": "obligation_p_1",
+     "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "06.12.2022",
-     "contractNumber": "а-5",
-     "id": "obligation_11_7",
-     "obligationType": "Договор"
+     "contractNumber": "UZH/PR/03677/22",
+     "id": "obligation_p_2",
+     "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "21.06.2024",
-     "contractNumber": "а-6",
-     "id": "obligation_11_9",
-     "obligationType": "Договор"
+     "contractNumber": "UZH/PR/03260/24",
+     "id": "obligation_p_3",
+     "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "17.01.2024",
-     "contractNumber": "а-7",
-     "id": "obligation_11_11",
-     "obligationType": "Договор"
+     "contractNumber": "UZH/PR/00014/24",
+     "id": "obligation_p_4",
+     "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "10.04.2025",
-     "contractNumber": "а-8",
-     "id": "obligation_11_13",
-     "obligationType": "Договор"
+     "contractNumber": "UZH/PR/00590/25",
+     "id": "obligation_p_5",
+     "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "21.09.2022",
-     "contractNumber": "а-9",
-     "id": "obligation_11_15",
-     "obligationType": "Договор"
-    },
-    {
-     "contractDate": "20.12.2023",
-     "contractNumber": "а-1",
-     "id": "obligation_11_16",
-     "obligationType": "Договор"
-    },
-    {
-     "contractDate": "26.12.2025",
-     "contractNumber": "залога",
-     "id": "obligation_11_19",
-     "obligationType": "Договор залога"
-    },
-    {
-     "contractDate": "26.12.2025",
-     "contractNumber": "а-2",
-     "id": "obligation_11_20",
-     "obligationType": "Договор"
-    },
-    {
-     "contractDate": "06.12.2022",
-     "contractNumber": "уневозобновляемой",
-     "id": "obligation_11_49",
-     "obligationType": "Кредитный договор"
+     "contractNumber": "UZH/PR/02219/22",
+     "id": "obligation_p_6",
+     "obligationType": "Договор поручительства"
     }
    ],
    "ogrn": "1103461000455",
@@ -3296,76 +4899,46 @@
   },
   "obligations": [
    {
-    "contractDate": "07.03.2023",
-    "contractNumber": "невозобновляемой",
-    "id": "obligation_11_0",
-    "obligationType": "Кредитный договор"
-   },
-   {
     "contractDate": "17.01.2024",
-    "contractNumber": "а-3",
-    "id": "obligation_11_3",
-    "obligationType": "Договор"
+    "contractNumber": "UZH/PR/00120/24",
+    "id": "obligation_p_0",
+    "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "16.01.2024",
-    "contractNumber": "а-4",
-    "id": "obligation_11_5",
-    "obligationType": "Договор"
+    "contractNumber": "UZH/PR/00025/24",
+    "id": "obligation_p_1",
+    "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "06.12.2022",
-    "contractNumber": "а-5",
-    "id": "obligation_11_7",
-    "obligationType": "Договор"
+    "contractNumber": "UZH/PR/03677/22",
+    "id": "obligation_p_2",
+    "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "21.06.2024",
-    "contractNumber": "а-6",
-    "id": "obligation_11_9",
-    "obligationType": "Договор"
+    "contractNumber": "UZH/PR/03260/24",
+    "id": "obligation_p_3",
+    "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "17.01.2024",
-    "contractNumber": "а-7",
-    "id": "obligation_11_11",
-    "obligationType": "Договор"
+    "contractNumber": "UZH/PR/00014/24",
+    "id": "obligation_p_4",
+    "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "10.04.2025",
-    "contractNumber": "а-8",
-    "id": "obligation_11_13",
-    "obligationType": "Договор"
+    "contractNumber": "UZH/PR/00590/25",
+    "id": "obligation_p_5",
+    "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "21.09.2022",
-    "contractNumber": "а-9",
-    "id": "obligation_11_15",
-    "obligationType": "Договор"
-   },
-   {
-    "contractDate": "20.12.2023",
-    "contractNumber": "а-1",
-    "id": "obligation_11_16",
-    "obligationType": "Договор"
-   },
-   {
-    "contractDate": "26.12.2025",
-    "contractNumber": "залога",
-    "id": "obligation_11_19",
-    "obligationType": "Договор залога"
-   },
-   {
-    "contractDate": "26.12.2025",
-    "contractNumber": "а-2",
-    "id": "obligation_11_20",
-    "obligationType": "Договор"
-   },
-   {
-    "contractDate": "06.12.2022",
-    "contractNumber": "уневозобновляемой",
-    "id": "obligation_11_49",
-    "obligationType": "Кредитный договор"
+    "contractNumber": "UZH/PR/02219/22",
+    "id": "obligation_p_6",
+    "obligationType": "Договор поручительства"
    }
   ],
   "rawTextLen": 43879,
@@ -3382,7 +4955,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление о признании должника несостоятельным (банкротом) Форте Пром Стил.docx": {
+ "Правильные заявления/Заявление о признании должника несостоятельным (банкротом) Форте Пром Стил.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -3409,8 +4982,8 @@
    "applicationDate": "26.10.2002",
    "caseNumber": "А53-12200/2026",
    "companyInn": "3461063590",
-   "contractDate": "21.06.2024, 23.10.2025, 10.10.2024, 06.12.2022",
-   "contractNumber": "невозобновляемой, а-2, а-3, а-4, а-5, а-6, а-7, а-8, а-9, а-1, уневозобновляемой",
+   "contractDate": "23.10.2025",
+   "contractNumber": "UZH/PR/02510/25, UZH/PR/02442/25, UZH/PR/02477/25, UZH/PR/02479/25, UZH/PR/02486/25, UZH/PR/02498/25, UZH/PR/02491/25, UZH/PR/02508/25",
    "courtName": "Арбитражный суд Ростовской области",
    "creditPenaltyRate": "0,05",
    "creditorAddress": "127287, г. Москва, ул. 2-я Хуторская, д. 38а, стр. 26",
@@ -3434,70 +5007,52 @@
    "mortgagePrincipalAmount11": "6243 169,90",
    "obligations": [
     {
-     "contractDate": "21.06.2024",
-     "contractNumber": "невозобновляемой",
-     "id": "obligation_11_0",
-     "obligationType": "Кредитный договор"
+     "contractDate": "23.10.2025",
+     "contractNumber": "UZH/PR/02510/25",
+     "id": "obligation_p_0",
+     "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "23.10.2025",
-     "contractNumber": "а-2",
-     "id": "obligation_11_2",
-     "obligationType": "Договор"
+     "contractNumber": "UZH/PR/02442/25",
+     "id": "obligation_p_1",
+     "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "23.10.2025",
-     "contractNumber": "а-3",
-     "id": "obligation_11_4",
-     "obligationType": "Договор"
+     "contractNumber": "UZH/PR/02477/25",
+     "id": "obligation_p_2",
+     "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "23.10.2025",
-     "contractNumber": "а-4",
-     "id": "obligation_11_6",
-     "obligationType": "Договор"
+     "contractNumber": "UZH/PR/02479/25",
+     "id": "obligation_p_3",
+     "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "23.10.2025",
-     "contractNumber": "а-5",
-     "id": "obligation_11_8",
-     "obligationType": "Договор"
+     "contractNumber": "UZH/PR/02486/25",
+     "id": "obligation_p_4",
+     "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "23.10.2025",
-     "contractNumber": "а-6",
-     "id": "obligation_11_10",
-     "obligationType": "Договор"
+     "contractNumber": "UZH/PR/02498/25",
+     "id": "obligation_p_5",
+     "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "23.10.2025",
-     "contractNumber": "а-7",
-     "id": "obligation_11_12",
-     "obligationType": "Договор"
+     "contractNumber": "UZH/PR/02491/25",
+     "id": "obligation_p_6",
+     "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "23.10.2025",
-     "contractNumber": "а-8",
-     "id": "obligation_11_14",
-     "obligationType": "Договор"
-    },
-    {
-     "contractDate": "23.10.2025",
-     "contractNumber": "а-9",
-     "id": "obligation_11_16",
-     "obligationType": "Договор"
-    },
-    {
-     "contractDate": "10.10.2024",
-     "contractNumber": "а-1",
-     "id": "obligation_11_17",
-     "obligationType": "Договор"
-    },
-    {
-     "contractDate": "06.12.2022",
-     "contractNumber": "уневозобновляемой",
-     "id": "obligation_11_54",
-     "obligationType": "Кредитный договор"
+     "contractNumber": "UZH/PR/02508/25",
+     "id": "obligation_p_7",
+     "obligationType": "Договор поручительства"
     }
    ],
    "ogrn": "1183443007659",
@@ -3520,74 +5075,56 @@
   },
   "obligations": [
    {
-    "contractDate": "21.06.2024",
-    "contractNumber": "невозобновляемой",
-    "id": "obligation_11_0",
-    "obligationType": "Кредитный договор"
+    "contractDate": "23.10.2025",
+    "contractNumber": "UZH/PR/02510/25",
+    "id": "obligation_p_0",
+    "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "23.10.2025",
-    "contractNumber": "а-2",
-    "id": "obligation_11_2",
-    "obligationType": "Договор"
+    "contractNumber": "UZH/PR/02442/25",
+    "id": "obligation_p_1",
+    "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "23.10.2025",
-    "contractNumber": "а-3",
-    "id": "obligation_11_4",
-    "obligationType": "Договор"
+    "contractNumber": "UZH/PR/02477/25",
+    "id": "obligation_p_2",
+    "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "23.10.2025",
-    "contractNumber": "а-4",
-    "id": "obligation_11_6",
-    "obligationType": "Договор"
+    "contractNumber": "UZH/PR/02479/25",
+    "id": "obligation_p_3",
+    "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "23.10.2025",
-    "contractNumber": "а-5",
-    "id": "obligation_11_8",
-    "obligationType": "Договор"
+    "contractNumber": "UZH/PR/02486/25",
+    "id": "obligation_p_4",
+    "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "23.10.2025",
-    "contractNumber": "а-6",
-    "id": "obligation_11_10",
-    "obligationType": "Договор"
+    "contractNumber": "UZH/PR/02498/25",
+    "id": "obligation_p_5",
+    "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "23.10.2025",
-    "contractNumber": "а-7",
-    "id": "obligation_11_12",
-    "obligationType": "Договор"
+    "contractNumber": "UZH/PR/02491/25",
+    "id": "obligation_p_6",
+    "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "23.10.2025",
-    "contractNumber": "а-8",
-    "id": "obligation_11_14",
-    "obligationType": "Договор"
-   },
-   {
-    "contractDate": "23.10.2025",
-    "contractNumber": "а-9",
-    "id": "obligation_11_16",
-    "obligationType": "Договор"
-   },
-   {
-    "contractDate": "10.10.2024",
-    "contractNumber": "а-1",
-    "id": "obligation_11_17",
-    "obligationType": "Договор"
-   },
-   {
-    "contractDate": "06.12.2022",
-    "contractNumber": "уневозобновляемой",
-    "id": "obligation_11_54",
-    "obligationType": "Кредитный договор"
+    "contractNumber": "UZH/PR/02508/25",
+    "id": "obligation_p_7",
+    "obligationType": "Договор поручительства"
    }
   ],
-  "rawTextLen": 40823,
-  "rawTextSha": "fb117e977eb799ab77aa769b90f8e0e42a0990d62d288ee5493d16786750bfeb",
+  "rawTextLen": 40822,
+  "rawTextSha": "e8ad8a79477d815b8058b42f4280008c8aa20930e7fab4495a466fdbfb3a956e",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "legal",
@@ -3600,7 +5137,157 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление.docx": {
+ "Правильные заявления/Заявление о признании должника несостоятельным (банкротом) Форте Хоум.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "344002, Ростовская обл., г. Ростов-На-Дону, ул. Красноармейская, д. 142 к. 50 офис 321",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "6163076960",
+    "name": "Форте Хоум ГмбХ",
+    "ogrn": "1066163001222",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "initiation_legal",
+  "entityType": "legal",
+  "fields": {
+   "applicantAddress": "344002, Ростовская обл., г. Ростов-На-Дону, ул. Красноармейская, д. 142 к. 50 офис 321",
+   "applicantName": "Форте Хоум ГмбХ",
+   "applicantNameGenitive": "Должника процедуру наблюдения",
+   "applicationDate": "26.10.2002",
+   "caseNumber": "А53-10405/2026",
+   "companyInn": "6163076960",
+   "contractDate": "21.06.2024, 07.03.2023, 19.05.2023, 17.01.2024, 16.01.2024, 06.12.2022",
+   "contractNumber": "UZH/PR/03262/24, UZH/PR/01102/23, UZH/PR/02584/23, UZH/PR/00118/24, UZH/PR/00022/24, UZH/PR/03674/22",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditPenaltyRate": "0,05",
+   "creditorAddress": "127287, г. Москва, ул. 2-я Хуторская, д. 38а, стр. 26",
+   "creditorInn": "7710140679",
+   "creditorName": "Акционерное общество «ТБАНК»",
+   "creditorOgrn": "1027739642281",
+   "debtAmount": "5 032 544 855,59",
+   "debtorName": "имеет неисполненные денежные",
+   "entityType": "legal",
+   "forfeit": "51 072 996,85",
+   "forfeit15": "51 072 996,85",
+   "inn": "6163076960",
+   "interest": "518 326 017,27",
+   "interest14": "518 326 017,27",
+   "legalShortName": "имеет неисполненные денежные",
+   "loanDebt": "1 400 000 000,00",
+   "obligations": [
+    {
+     "contractDate": "21.06.2024",
+     "contractNumber": "UZH/PR/03262/24",
+     "id": "obligation_p_0",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "07.03.2023",
+     "contractNumber": "UZH/PR/01102/23",
+     "id": "obligation_p_1",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "19.05.2023",
+     "contractNumber": "UZH/PR/02584/23",
+     "id": "obligation_p_2",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "17.01.2024",
+     "contractNumber": "UZH/PR/00118/24",
+     "id": "obligation_p_3",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "16.01.2024",
+     "contractNumber": "UZH/PR/00022/24",
+     "id": "obligation_p_4",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "06.12.2022",
+     "contractNumber": "UZH/PR/03674/22",
+     "id": "obligation_p_5",
+     "obligationType": "Договор поручительства"
+    }
+   ],
+   "ogrn": "1066163001222",
+   "penalties": "0,00",
+   "principalDebt": "4 463 145 841,47",
+   "principalDebt13": "4 463 145 841,47",
+   "procedureType": "observation",
+   "procedureTypeRaw": "наблюдение",
+   "requirementsSum": "1 400 000 000,00",
+   "sourceDocumentType": "initiation_legal",
+   "sroName": "\"Содействие\" ОГРН 1025700780071",
+   "stateDuty": "5 100 000,00",
+   "stateDuty16": "5 100 000,00",
+   "totalDebt": "5 032 544 855,59"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 7,
+   "wordCount": 4952
+  },
+  "obligations": [
+   {
+    "contractDate": "21.06.2024",
+    "contractNumber": "UZH/PR/03262/24",
+    "id": "obligation_p_0",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "07.03.2023",
+    "contractNumber": "UZH/PR/01102/23",
+    "id": "obligation_p_1",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "19.05.2023",
+    "contractNumber": "UZH/PR/02584/23",
+    "id": "obligation_p_2",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "17.01.2024",
+    "contractNumber": "UZH/PR/00118/24",
+    "id": "obligation_p_3",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "16.01.2024",
+    "contractNumber": "UZH/PR/00022/24",
+    "id": "obligation_p_4",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "06.12.2022",
+    "contractNumber": "UZH/PR/03674/22",
+    "id": "obligation_p_5",
+    "obligationType": "Договор поручительства"
+   }
+  ],
+  "rawTextLen": 37657,
+  "rawTextSha": "46a31d2e9ca77cf119e3f88c4fd2fed6d6cc46d9f0f922fdf0433a56494fac2a",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "legal",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_observation",
+    "final_competition"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Правильные заявления/Заявление.docx": {
   "collaterals": [],
   "confidence": 0.85,
   "debtors": [
@@ -3625,7 +5312,8 @@
    "applicantNameGenitive": "Долгова Рашида Умаровича",
    "applicantNameInstrumental": "Долговым Рашидом Умаровичем",
    "applicationDate": "16.02.2024",
-   "contractNumber": "У625/0055-0143478, V625/0055-0143478",
+   "contractDate": "Не указана",
+   "contractNumber": "У625/0055-0143478, V625/0055-0143478, Уб25/00550143478, Погашение",
    "courtName": "Арбитражный суд республики Ингушетия",
    "creditorAddress": "191144, г. Санкт-Петербург, Дегтярный переулок, д. 11, лит. А",
    "creditorInn": "7702070139",
@@ -3641,6 +5329,32 @@
    "interest14": "80 727,56",
    "loanDebt": "1 022 416,77",
    "obligationType": "Кредитный договор",
+   "obligations": [
+    {
+     "contractDate": "Не указана",
+     "contractNumber": "V625/0055-0143478",
+     "id": "obligation_p_0",
+     "obligationType": "Кредитный договор"
+    },
+    {
+     "contractDate": "Не указана",
+     "contractNumber": "У625/0055-0143478",
+     "id": "obligation_p_1",
+     "obligationType": "Кредитный договор"
+    },
+    {
+     "contractDate": "Не указана",
+     "contractNumber": "Уб25/00550143478",
+     "id": "obligation_p_2",
+     "obligationType": "Кредитный договор"
+    },
+    {
+     "contractDate": "Не указана",
+     "contractNumber": "Погашение",
+     "id": "obligation_p_3",
+     "obligationType": "Кредитный договор"
+    }
+   ],
    "penalties": "0,00",
    "principalDebt": "928 123,69",
    "principalDebt13": "928 123,69",
@@ -3654,7 +5368,32 @@
    "pageCount": 2,
    "wordCount": 1176
   },
-  "obligations": [],
+  "obligations": [
+   {
+    "contractDate": "Не указана",
+    "contractNumber": "V625/0055-0143478",
+    "id": "obligation_p_0",
+    "obligationType": "Кредитный договор"
+   },
+   {
+    "contractDate": "Не указана",
+    "contractNumber": "У625/0055-0143478",
+    "id": "obligation_p_1",
+    "obligationType": "Кредитный договор"
+   },
+   {
+    "contractDate": "Не указана",
+    "contractNumber": "Уб25/00550143478",
+    "id": "obligation_p_2",
+    "obligationType": "Кредитный договор"
+   },
+   {
+    "contractDate": "Не указана",
+    "contractNumber": "Погашение",
+    "id": "obligation_p_3",
+    "obligationType": "Кредитный договор"
+   }
+  ],
   "rawTextLen": 8913,
   "rawTextSha": "f367822e7a93f4dccf81da0ba1847353524a61ceac3f9c5cf8b0fef5343f23a7",
   "recommendedActs": {
@@ -3668,7 +5407,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/Заявление_Базов Георгий Николаевич_20.docx": {
+ "Правильные заявления/Заявление_Базов Георгий Николаевич_20.docx": {
   "collaterals": [],
   "confidence": 0.95,
   "debtors": [
@@ -3736,103 +5475,107 @@
   },
   "thirdParties": []
  },
- "casebookWord/ФНС Заявление (1).docx": {
+ "Правильные заявления/без маркеров юр иниц заявл.docx": {
   "collaterals": [],
-  "confidence": 0.95,
+  "confidence": 1.0,
   "debtors": [
    {
-    "address": "346404, Россия, Ростовская обл, Новочеркасск г, Флерова А.Ф. ул, 4, кв. 66",
-    "birthDate": "02.02.1982",
-    "birthPlace": "ГОР. НОВОЧЕРКАССК",
-    "inn": "615014390786",
-    "name": "Бирюкова Елена Андреевна",
-    "ogrn": "",
+    "address": "344111, г. Ростов-на-Дону, ул. Б.Садовая, д. 11, Литер А, пом. 111",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "9876543201",
+    "name": "Общества с ограниченной ответственностью «Азбука»",
+    "ogrn": "123454321234",
     "ogrnip": "",
-    "snils": "063-843-816 80"
+    "snils": ""
    }
   ],
-  "documentType": "initiation_physical",
-  "entityType": "individual",
+  "documentType": "rtk_application",
+  "entityType": "legal",
   "fields": {
-   "applicantAddress": "346404, Россия, Ростовская обл, Новочеркасск г, Флерова А.Ф. ул, 4, кв. 66",
-   "applicantName": "Бирюкова Елена Андреевна",
-   "applicantNameAccusative": "Бирюкову Елену Андреевну",
-   "applicantNameDative": "Бирюковой Елене Андреевне",
-   "applicantNameGenitive": "Бирюковой Елены Андреевны",
-   "applicantNameInstrumental": "Бирюковой Еленой Андреевной",
-   "applicationDate": "02.02.1982",
-   "birthDate": "02.02.1982",
-   "birthPlace": "ГОР. НОВОЧЕРКАССК",
-   "companyInn": "615014390786",
-   "contractDate": "Не указана",
-   "contractNumber": "15399, 13754",
+   "applicantAddress": "344111, г. Ростов-на-Дону, ул. Б.Садовая, д. 11, Литер А, пом. 111",
+   "applicantName": "Общества с ограниченной ответственностью «Азбука»",
+   "applicantNameAccusative": "Общество с ограниченного ответственность «азбуку»",
+   "applicantNameDative": "Обществу с ограниченной ответственности «азбуке»",
+   "applicantNameGenitive": "Елабуга ул Голубевича",
+   "applicantNameInstrumental": "Обществом с ограниченной ответственностью «азбукой»",
+   "applicationDate": "20.06.1991",
+   "bankCommission": "0,00",
+   "caseNumber": "А53-22200/2026",
+   "companyInn": "9876543201",
+   "contractDate": "21.12.2021",
+   "contractNumber": "5221223241",
    "courtName": "Арбитражный суд Ростовской области",
-   "creditorName": "ФНС России в лице Межрайонной ИФНС России № 4 по Республике Башкортостан",
-   "debtAmount": "5 631 934,26",
-   "debtSnapshotDate88": "08.04.2026",
-   "debtorName": "Бирюкова Елена Андреевна",
-   "entityType": "individual",
-   "forfeit": "595 911,64",
-   "forfeit15": "595 911,64",
-   "inn": "615014390786",
-   "interest": "0,00",
-   "interest14": "0,00",
-   "loanDebt": "08.04.2026",
+   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
+   "creditorInn": "7707083893",
+   "creditorName": "ПАО Сбербанк",
+   "creditorOgrn": "1027700132195",
+   "currentInterest36": "0,00",
+   "currentInterestOverdue37": "0,00",
+   "debtAmount": "23 471 843,05",
+   "debtSnapshotDate88": "16.04.2020",
+   "debtorName": "Азбука",
+   "entityType": "legal",
+   "forfeit": "3 315 899,08",
+   "forfeit15": "3 315 899,08",
+   "inn": "9876543201",
+   "interest": "55 943,97",
+   "interest14": "55 943,97",
+   "legalShortName": "Азбука",
+   "loanDebt": "23 471 843,05",
+   "obligationType": "кредитный договор",
    "obligations": [
     {
-     "contractDate": "Не указана",
-     "contractNumber": "15399",
-     "id": "obligation_fallback_0",
-     "obligationType": "Договор"
-    },
-    {
-     "contractDate": "Не указана",
-     "contractNumber": "13754",
-     "id": "obligation_fallback_1",
-     "obligationType": "Договор"
+     "contractDate": "21.12.2021",
+     "contractNumber": "5221223241",
+     "id": "obligation_p_0",
+     "obligationType": "Кредитный договор"
     }
    ],
-   "penalties": "23 478,88",
-   "principalDebt": "5 012 543,74",
-   "principalDebt13": "5 012 543,74",
-   "requirementsSum": "8,04",
-   "snils": "063-843-816 80",
-   "sourceDocumentType": "initiation_physical",
-   "totalDebt": "5 631 934,26"
+   "ogrn": "123454321234",
+   "other35": "0,00",
+   "penalties": "0,00",
+   "ppStateDutyDate81": "25.11.2025",
+   "principalDebt": "20 100 000,00",
+   "principalDebt13": "20 100 000,00",
+   "procedureType": "observation",
+   "procedureTypeRaw": "наблюдение",
+   "registrationDate": "20.06.1991",
+   "requirementsSum": "23 471 843,05",
+   "sourceDocumentType": "rtk_application",
+   "sroName": "ААУ “СОЮЗ” (адрес 13321 г",
+   "stateDuty": "156 147,00",
+   "stateDuty16": "156 147,00",
+   "totalDebt": "23 471 843,05"
   },
   "metadata": {
    "language": "ru",
-   "pageCount": 3,
-   "wordCount": 1551
+   "pageCount": 4,
+   "wordCount": 709
   },
   "obligations": [
    {
-    "contractDate": "Не указана",
-    "contractNumber": "15399",
-    "id": "obligation_fallback_0",
-    "obligationType": "Договор"
-   },
-   {
-    "contractDate": "Не указана",
-    "contractNumber": "13754",
-    "id": "obligation_fallback_1",
-    "obligationType": "Договор"
+    "contractDate": "21.12.2021",
+    "contractNumber": "5221223241",
+    "id": "obligation_p_0",
+    "obligationType": "Кредитный договор"
    }
   ],
-  "rawTextLen": 11791,
-  "rawTextSha": "e7f5ba073cec5e20cb47c68d01136bee5f557bf75194e6d7fdb602b73c2dd21f",
+  "rawTextLen": 5238,
+  "rawTextSha": "03756fbbb38df3e0f0a11526c8086751d0b038ae8c53390df8509f09a7132cf9",
   "recommendedActs": {
    "collateralOption": "no_collateral",
-   "entityType": "individual",
+   "entityType": "legal",
    "recommendedActIds": [
     "final_rtk_inclusion",
     "acceptance_definition",
-    "final_restructuring"
+    "final_observation",
+    "final_competition"
    ]
   },
   "thirdParties": []
  },
- "casebookWord/заявление о банкротстве Форте Пром Стил ГМБХ.docx": {
+ "Правильные заявления/заявление о банкротстве Форте Пром Стил ГМБХ.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -3859,7 +5602,7 @@
    "applicationDate": "14.05.2025",
    "companyInn": "3461063590",
    "contractDate": "14.05.2025",
-   "contractNumber": "КЛ-25/1472",
+   "contractNumber": "КЛ-25/1472, П-25/1472/1482",
    "courtName": "Арбитражный суд Ростовской области",
    "creditorName": "ББР Банк",
    "debtAmount": "1 000 000 000,00",
@@ -3875,9 +5618,9 @@
    "obligations": [
     {
      "contractDate": "14.05.2025",
-     "contractNumber": "КЛ-25/1472",
-     "id": "obligation_11_0",
-     "obligationType": "Кредитный договор"
+     "contractNumber": "П-25/1472/1482",
+     "id": "obligation_p_0",
+     "obligationType": "Договор поручительства"
     }
    ],
    "ogrn": "1183443007659",
@@ -3896,9 +5639,9 @@
   "obligations": [
    {
     "contractDate": "14.05.2025",
-    "contractNumber": "КЛ-25/1472",
-    "id": "obligation_11_0",
-    "obligationType": "Кредитный договор"
+    "contractNumber": "П-25/1472/1482",
+    "id": "obligation_p_0",
+    "obligationType": "Договор поручительства"
    }
   ],
   "rawTextLen": 9119,
@@ -3915,7 +5658,117 @@
   },
   "thirdParties": []
  },
- "casebookWord/набл Заявление о признании должника банкротом ООО  СПН ТРАК.docx": {
+ "Правильные заявления/иниц фл.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "344000, РОСТОВСКАЯ ОБЛАСТЬ, Г.РОСТОВ-НА-ДОНУ, УЛ. ОСЕНЯЯ, 288",
+    "birthDate": "20.02.2002",
+    "birthPlace": "С. КРАСНОВКА",
+    "inn": "1234645745",
+    "name": "КРУПНЫЙ ИГОРЬ ФЕДОРОВИЧ",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "344000, РОСТОВСКАЯ ОБЛАСТЬ, Г.РОСТОВ-НА-ДОНУ, УЛ. ОСЕНЯЯ, 288",
+   "applicantName": "КРУПНЫЙ ИГОРЬ ФЕДОРОВИЧ",
+   "applicantNameAccusative": "КРУПНОГО ИГОРЯ ФЁДОРОВИЧА",
+   "applicantNameDative": "КРУПНОМУ ИГОРЮ ФЁДОРОВИЧУ",
+   "applicantNameGenitive": "КРУПНОГО ИГОРЯ ФЕДОРОВИЧА",
+   "applicantNameInstrumental": "КРУПНЫМ ИГОРЕМ ФЁДОРОВИЧЕМ",
+   "applicationDate": "20.06.1991",
+   "bankCommission": "0,00",
+   "birthDate": "20.02.2002",
+   "birthPlace": "С. КРАСНОВКА",
+   "caseNumber": "А18-3334/2023",
+   "companyInn": "1234645745",
+   "contractDate": "10.10.2010, 15.11.2023",
+   "contractNumber": "500000000, 6142027383-23-2П01",
+   "courtName": "Арбитражный суд республики Ингушетия",
+   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
+   "creditorInn": "7707083893",
+   "creditorName": "ПАО Сбербанк",
+   "creditorOgrn": "1027700132195",
+   "currentInterest36": "0,00",
+   "currentInterestOverdue37": "0,00",
+   "debtAmount": "3 127 448,01",
+   "debtSnapshotDate88": "21.12.2025",
+   "debtorName": "КРУПНЫЙ ИГОРЬ ФЕДОРОВИЧ",
+   "entityType": "individual",
+   "forfeit": "30 620,58",
+   "forfeit15": "30 620,58",
+   "inn": "1234645745",
+   "interest": "200 631,53",
+   "interest14": "200 631,53",
+   "loanDebt": "3 127 448,01",
+   "loanStateDuty17": "23 719,00",
+   "obligationType": "кредитный договор",
+   "obligations": [
+    {
+     "contractDate": "10.10.2010",
+     "contractNumber": "500000000",
+     "id": "obligation_p_0",
+     "obligationType": "Кредитный договор"
+    },
+    {
+     "contractDate": "15.11.2023",
+     "contractNumber": "6142027383-23-2П01",
+     "id": "obligation_p_1",
+     "obligationType": "Договор поручительства"
+    }
+   ],
+   "other35": "0,00",
+   "penalties": "0,00",
+   "ppStateDutyDate81": "31.10.2025",
+   "principalDebt": "2 872 476,90",
+   "principalDebt13": "2 872 476,90",
+   "registrationDate": "20.06.1991",
+   "requirementsSum": "3 127 448,01",
+   "sourceDocumentType": "rtk_application",
+   "sroName": "ААУ “СОЮЗ”(адрес [99])",
+   "stateDuty": "100 000,00",
+   "stateDuty16": "100 000,00",
+   "totalDebt": "3 127 448,01"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 5,
+   "wordCount": 733
+  },
+  "obligations": [
+   {
+    "contractDate": "10.10.2010",
+    "contractNumber": "500000000",
+    "id": "obligation_p_0",
+    "obligationType": "Кредитный договор"
+   },
+   {
+    "contractDate": "15.11.2023",
+    "contractNumber": "6142027383-23-2П01",
+    "id": "obligation_p_1",
+    "obligationType": "Договор поручительства"
+   }
+  ],
+  "rawTextLen": 5414,
+  "rawTextSha": "f1d733614e35bedfbfdd4f0a580aab78685b011456ec48ef3c9b233995dc0d83",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Правильные заявления/набл Заявление о признании должника банкротом ООО  СПН ТРАК.docx": {
   "collaterals": [
    {
     "address": "",
@@ -5982,7 +7835,7 @@
      "isCollateral": true,
      "issuedAmount": null,
      "issuedAmountValue": 0.0,
-     "obligationType": "Договор залога",
+     "obligationType": "Кредитный договор",
      "penalty0071": "51 378,35",
      "penalty0071Value": 51378.35
     }
@@ -6017,7 +7870,7 @@
     "isCollateral": true,
     "issuedAmount": null,
     "issuedAmountValue": 0.0,
-    "obligationType": "Договор залога",
+    "obligationType": "Кредитный договор",
     "penalty0071": "51 378,35",
     "penalty0071Value": 51378.35
    }
@@ -6036,7 +7889,7 @@
   },
   "thirdParties": []
  },
- "casebookWord/наблюдение Заявление о признании должника банкротом ООО  ТМД.docx": {
+ "Правильные заявления/наблюдение Заявление о признании должника банкротом ООО  ТМД.docx": {
   "collaterals": [
    {
     "address": "",
@@ -6249,501 +8102,7 @@
   },
   "thirdParties": []
  },
- "Альфа тест настоящий.docx": {
-  "collaterals": [],
-  "confidence": 1.0,
-  "debtors": [
-   {
-    "address": "346404, Ростовская область, г. Новочеркасск, Харьковское ш., д. 10",
-    "birthDate": "",
-    "birthPlace": "",
-    "inn": "3461063590",
-    "name": "ООО «Форте Пром Стил ГмбХ»",
-    "ogrn": "1183443007659",
-    "ogrnip": "",
-    "snils": ""
-   }
-  ],
-  "documentType": "rtk_application",
-  "entityType": "legal",
-  "fields": {
-   "applicantAddress": "346404, Ростовская область, г. Новочеркасск, Харьковское ш., д. 10",
-   "applicantName": "ООО «Форте Пром Стил ГмбХ»",
-   "applicantNameAccusative": "ООО «Форте Пром Стил ГмбХ»",
-   "applicantNameDative": "ООО «Форте Пром Стил ГмбХ»",
-   "applicantNameGenitive": "ООО «Форте Пром Стил ГмбХ»",
-   "applicantNameInstrumental": "ООО «Форте Пром Стил ГмбХ»",
-   "applicationDate": "17.12.2020",
-   "caseNumber": "А53-12200/2026",
-   "companyInn": "3461063590",
-   "contractDate": "17.12.2020, 27.03.2026",
-   "contractNumber": "03820, 34855431",
-   "courtName": "Арбитражный суд Ростовской области",
-   "creditPenaltyRate": "0,2",
-   "creditorAddress": "107078, г. Москва, ул. Каланчевская, д. 27",
-   "creditorInn": "7728168971",
-   "creditorName": "АО «АЛЬФА-БАНК»",
-   "creditorOgrn": "1027700067328",
-   "debtAmount": "4 593 842 279,40",
-   "debtSnapshotDate88": "08.04.2026",
-   "debtorName": "Форте Пром Стил ГмбХ",
-   "entityType": "legal",
-   "forfeit": "616 497 933,64",
-   "forfeit15": "616 497 933,64",
-   "inn": "3461063590",
-   "interest": "0,00",
-   "interest14": "0,00",
-   "legalShortName": "Форте Пром Стил ГмбХ",
-   "loanDebt": "2 549 999 707,35",
-   "messageDate": "27.03.2026",
-   "messageNumber": "34855431",
-   "obligations": [
-    {
-     "contractDate": "17.12.2020",
-     "contractNumber": "03820",
-     "id": "obligation_fallback_0",
-     "obligationType": "Кредитный договор"
-    },
-    {
-     "contractDate": "27.03.2026",
-     "contractNumber": "34855431",
-     "id": "obligation_fallback_1",
-     "obligationType": "Договор"
-    }
-   ],
-   "ogrn": "1183443007659",
-   "penalties": "0,00",
-   "principalDebt": "3 977 344 345,76",
-   "principalDebt13": "3 977 344 345,76",
-   "procedureType": "observation",
-   "procedureTypeRaw": "наблюдение",
-   "requirementsSum": "2 549 999 707,35",
-   "sourceDocumentType": "rtk_application",
-   "stateDuty": "5 100 000,00",
-   "stateDuty16": "5 100 000,00",
-   "totalDebt": "4 593 842 279,40"
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 22,
-   "wordCount": 10283
-  },
-  "obligations": [
-   {
-    "contractDate": "17.12.2020",
-    "contractNumber": "03820",
-    "id": "obligation_fallback_0",
-    "obligationType": "Кредитный договор"
-   },
-   {
-    "contractDate": "27.03.2026",
-    "contractNumber": "34855431",
-    "id": "obligation_fallback_1",
-    "obligationType": "Договор"
-   }
-  ],
-  "rawTextLen": 77793,
-  "rawTextSha": "22b65fcc19731dc6999ae43c0c4244716961883151eea931f0803e804a136275",
-  "recommendedActs": {
-   "collateralOption": "no_collateral",
-   "entityType": "legal",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_observation",
-    "final_competition"
-   ]
-  },
-  "thirdParties": []
- },
- "Заявление на включение требований в РТК_ИП.docx": {
-  "collaterals": [],
-  "confidence": 1.0,
-  "debtors": [
-   {
-    "address": "346885, Ставоропольский край, ул Лютикова,36",
-    "birthDate": "",
-    "birthPlace": "",
-    "inn": "616618617784",
-    "name": "ИП Кукусик Никита Никитич",
-    "ogrn": "",
-    "ogrnip": "321619600010822",
-    "snils": ""
-   }
-  ],
-  "documentType": "ip_enforcement_restructuring",
-  "entityType": "ip",
-  "fields": {
-   "applicantAddress": "346885, Ставоропольский край, ул Лютикова,36",
-   "applicantName": "ИП Кукусик Никита Никитич",
-   "applicantNameAccusative": "ИП Кукусик Никиту Никитича",
-   "applicantNameDative": "ИП Кукусику Никите Никитичу",
-   "applicantNameGenitive": "ИП Кукусика Никиты Никитича",
-   "applicantNameInstrumental": "ИП Кукусиком Никитой Никитичем",
-   "applicationDate": "31.10.2025",
-   "caseNumber": "А53-864665656586564/2025",
-   "contractDate": "26.10.2002",
-   "contractNumber": "616311312132144-24-1",
-   "courtDecisionDate": "12.08.2025",
-   "courtName": "Арбитражный суд Ростовской области",
-   "creditAmount": "5 000 000",
-   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
-   "creditorInn": "7707083893",
-   "creditorName": "Сбербанк России",
-   "creditorOgrn": "1027700132195",
-   "debtAmount": "17 941 964,92",
-   "debtorName": "ИП Кукусик Никита Никитич",
-   "entityType": "ip",
-   "forfeit": "58 827,10",
-   "forfeit15": "58 827,10",
-   "interest": "1 930 691,97",
-   "interest14": "1 930 691,97",
-   "ipCollateralClaimAmount": "17 941 964,92",
-   "ipHasCollateral": "false",
-   "kommersantDate": "23.08.2025",
-   "loanDebt": "4 983 440,00",
-   "managerAddress": "344000, Г. РОСТОВ-НА-ДОНУ, А/Я, 987987928727671",
-   "managerName": "КРЮКИДЗЕ КАПИТАН РАФИКОВИЧ",
-   "messageNumber": "54646464645464646465445464646",
-   "obligationType": "кредитный договор",
-   "obligations": [
-    {
-     "amount": "0,00",
-     "amountValue": 0.0,
-     "contractDate": "24.04.2024",
-     "contractNumber": "5464646544646464646464564-24-1",
-     "id": "obligation_1",
-     "isCollateral": false,
-     "issuedAmount": "5 000 000,00",
-     "issuedAmountValue": 5000000.0,
-     "obligationType": "Кредитный договор",
-     "penalty0071": null,
-     "penalty0071Value": 0.0
-    },
-    {
-     "amount": "0,00",
-     "amountValue": 0.0,
-     "contractDate": "26.02.2024",
-     "contractNumber": "616311312132144-24-1",
-     "id": "obligation_2",
-     "isCollateral": false,
-     "issuedAmount": "8 000 000,00",
-     "issuedAmountValue": 8000000.0,
-     "obligationType": "Кредитный договор",
-     "penalty0071": null,
-     "penalty0071Value": 0.0
-    }
-   ],
-   "penalties": "0,00",
-   "principalDebt": "15 952 445,85",
-   "principalDebt13": "15 952 445,85",
-   "registrationDate": "20.06.1991",
-   "requirementsSum": "17 941 964,92",
-   "sourceDocumentType": "ip_enforcement_restructuring",
-   "stateDuty": "302 210,00",
-   "stateDuty16": "302 210,00",
-   "thirdPartyAddress": "346885, Ростовская область, Краснодар, Лютикова,999",
-   "thirdPartyInn": "616618617784",
-   "thirdPartyName": "ИП ЖЕЛЬТЕНЬКИЙ КАРИМ ОБОЕВИЧ",
-   "totalDebt": "17 941 964,92"
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 5,
-   "wordCount": 1000
-  },
-  "obligations": [
-   {
-    "amount": "0,00",
-    "amountValue": 0.0,
-    "contractDate": "24.04.2024",
-    "contractNumber": "5464646544646464646464564-24-1",
-    "id": "obligation_1",
-    "isCollateral": false,
-    "issuedAmount": "5 000 000,00",
-    "issuedAmountValue": 5000000.0,
-    "obligationType": "Кредитный договор",
-    "penalty0071": null,
-    "penalty0071Value": 0.0
-   },
-   {
-    "amount": "0,00",
-    "amountValue": 0.0,
-    "contractDate": "26.02.2024",
-    "contractNumber": "616311312132144-24-1",
-    "id": "obligation_2",
-    "isCollateral": false,
-    "issuedAmount": "8 000 000,00",
-    "issuedAmountValue": 8000000.0,
-    "obligationType": "Кредитный договор",
-    "penalty0071": null,
-    "penalty0071Value": 0.0
-   }
-  ],
-  "rawTextLen": 7621,
-  "rawTextSha": "e6ffdbfc73248b98212a07a8b575e92116ea034f7378aeb4845a9e30988f745b",
-  "recommendedActs": {
-   "collateralOption": "no_collateral",
-   "entityType": "ip",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization",
-    "final_restructuring"
-   ]
-  },
-  "thirdParties": [
-   {
-    "address": "346885, Ростовская область, Краснодар, Лютикова,999",
-    "inn": "616618617784",
-    "name": "ИП ЖЕЛЬТЕНЬКИЙ КАРИМ ОБОЕВИЧ",
-    "ogrn": "321619600010822"
-   },
-   {
-    "inn": "123546849797",
-    "name": "ООО “КУКУ”",
-    "ogrn": "6549494961961"
-   }
-  ]
- },
- "заяв реструктуризация/2 3х лица.docx": {
-  "collaterals": [],
-  "confidence": 1.0,
-  "debtors": [
-   {
-    "address": "003002, Кунжутная область, Кунжут-на-Бублике, ул. Клювдина, д.1",
-    "birthDate": "01.01.1912",
-    "birthPlace": "",
-    "inn": "001023012301",
-    "name": "ЗУБЕНКО МИХАИЛ ПЕТРОВИЧ",
-    "ogrn": "",
-    "ogrnip": "",
-    "snils": "000-011-011-11"
-   }
-  ],
-  "documentType": "rtk_application",
-  "entityType": "individual",
-  "fields": {
-   "applicantAddress": "003002, Кунжутная область, Кунжут-на-Бублике, ул. Клювдина, д.1",
-   "applicantName": "ЗУБЕНКО МИХАИЛ ПЕТРОВИЧ",
-   "applicantNameAccusative": "ЗУБЕНКО МИХАИЛА ПЕТРОВИЧА",
-   "applicantNameDative": "ЗУБЕНКО МИХАИЛУ ПЕТРОВИЧУ",
-   "applicantNameGenitive": "ЗУБЕНКО МИХАИЛА ПЕТРОВИЧА",
-   "applicantNameInstrumental": "ЗУБЕНКО МИХАИЛОМ ПЕТРОВИЧЕМ",
-   "applicationDate": "26.06.2026",
-   "birthDate": "01.01.1912",
-   "caseNumber": "А99-12345/2025",
-   "companyInn": "001023012301",
-   "contractDate": "01.02.1783, 30.12.1783, 16.11.1783, 25.11.1783, 14.08.1783",
-   "contractNumber": "050505050, 0205045464506, 000606068680608, 060656506056068, 050505450540504504",
-   "courtDecisionDate": "17.06.2025",
-   "courtName": "Арбитражный суд Ростовской области",
-   "creditInterestRate": "39",
-   "creditPenaltyRate": "39.0",
-   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
-   "creditorInn": "7707083893",
-   "creditorName": "ПАО Сбербанк",
-   "creditorOgrn": "1027700132195",
-   "debtAmount": "9 148,36",
-   "debtSnapshotDate88": "17.06.2025",
-   "debtorName": "ЗУБЕНКО МИХАИЛ ПЕТРОВИЧ",
-   "efirsbPublicationDate": "01.02.1883",
-   "entityType": "individual",
-   "forfeit": "209,88",
-   "forfeit15": "209,88",
-   "inn": "001023012301",
-   "interest": "1 222,11",
-   "interest14": "1 222,11",
-   "loanDebt": "2 449 211,19",
-   "managerAddress": "004506, Бубликовая область, Бублик-на-Бублике, ул. Куркумовая, д.1",
-   "managerName": "КАРИМОВ РУЛОН ОБОЕВИЧ",
-   "messageDate": "01.02.1883",
-   "messageNumber": "0008008",
-   "obligationType": "кредитный договор",
-   "obligations": [
-    {
-     "amount": "9 148,36",
-     "amountValue": 9148.36,
-     "contractDate": "01.02.1783",
-     "contractNumber": "050505050",
-     "id": "obligation_1",
-     "isCollateral": false,
-     "issuedAmount": "10 000,00",
-     "issuedAmountValue": 10000.0,
-     "obligationType": "Кредитный договор",
-     "penalty0071": null,
-     "penalty0071Value": 0.0
-    },
-    {
-     "amount": "180 478,36",
-     "amountValue": 180478.36,
-     "contractDate": "30.12.1783",
-     "contractNumber": "0205045464506",
-     "id": "obligation_2",
-     "isCollateral": false,
-     "issuedAmount": "300 000,00",
-     "issuedAmountValue": 300000.0,
-     "obligationType": "Кредитный договор",
-     "penalty0071": null,
-     "penalty0071Value": 0.0
-    },
-    {
-     "amount": "1 387 682,65",
-     "amountValue": 1387682.65,
-     "contractDate": "16.11.1783",
-     "contractNumber": "000606068680608",
-     "id": "obligation_3",
-     "isCollateral": false,
-     "issuedAmount": "1 200 000,00",
-     "issuedAmountValue": 1200000.0,
-     "obligationType": "Кредитный договор",
-     "penalty0071": null,
-     "penalty0071Value": 0.0
-    },
-    {
-     "amount": "230 966,91",
-     "amountValue": 230966.91,
-     "contractDate": "25.11.1783",
-     "contractNumber": "060656506056068",
-     "id": "obligation_4",
-     "isCollateral": false,
-     "issuedAmount": "193 000,00",
-     "issuedAmountValue": 193000.0,
-     "obligationType": "Кредитный договор",
-     "penalty0071": null,
-     "penalty0071Value": 0.0
-    },
-    {
-     "amount": "640 934,91",
-     "amountValue": 640934.91,
-     "contractDate": "14.08.1783",
-     "contractNumber": "050505450540504504",
-     "id": "obligation_5",
-     "isCollateral": false,
-     "issuedAmount": "1 000 000,00",
-     "issuedAmountValue": 1000000.0,
-     "obligationType": "Кредитный договор",
-     "penalty0071": null,
-     "penalty0071Value": 0.0
-    }
-   ],
-   "obligationsTotalDebt": "2 449 211,19",
-   "penalties": "0,00",
-   "principalDebt": "7 716,37",
-   "principalDebt13": "7 716,37",
-   "procedureType": "restructuring",
-   "procedureTypeRaw": "реструктуризации долгов",
-   "registrationDate": "20.06.1991",
-   "requirementsSum": "2 449 211,19",
-   "snils": "000-011-011-11",
-   "sourceDocumentType": "rtk_application",
-   "sroName": "ААУ «АЛЬЯНС»",
-   "thirdPartyAddress": "021007, Тульская область, Кунжут-на-Бублике, ул. Клювдина, д.3",
-   "thirdPartyBirthDate": "19.05.2005",
-   "thirdPartyInn": "222222212301",
-   "thirdPartyName": "ТОЛСТОЙ ЛЕВ НИКОЛАЕВИЧ",
-   "thirdPartySnils": "111-222-222-11",
-   "totalDebt": "9 148,36"
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 10,
-   "wordCount": 2235
-  },
-  "obligations": [
-   {
-    "amount": "9 148,36",
-    "amountValue": 9148.36,
-    "contractDate": "01.02.1783",
-    "contractNumber": "050505050",
-    "id": "obligation_1",
-    "isCollateral": false,
-    "issuedAmount": "10 000,00",
-    "issuedAmountValue": 10000.0,
-    "obligationType": "Кредитный договор",
-    "penalty0071": null,
-    "penalty0071Value": 0.0
-   },
-   {
-    "amount": "180 478,36",
-    "amountValue": 180478.36,
-    "contractDate": "30.12.1783",
-    "contractNumber": "0205045464506",
-    "id": "obligation_2",
-    "isCollateral": false,
-    "issuedAmount": "300 000,00",
-    "issuedAmountValue": 300000.0,
-    "obligationType": "Кредитный договор",
-    "penalty0071": null,
-    "penalty0071Value": 0.0
-   },
-   {
-    "amount": "1 387 682,65",
-    "amountValue": 1387682.65,
-    "contractDate": "16.11.1783",
-    "contractNumber": "000606068680608",
-    "id": "obligation_3",
-    "isCollateral": false,
-    "issuedAmount": "1 200 000,00",
-    "issuedAmountValue": 1200000.0,
-    "obligationType": "Кредитный договор",
-    "penalty0071": null,
-    "penalty0071Value": 0.0
-   },
-   {
-    "amount": "230 966,91",
-    "amountValue": 230966.91,
-    "contractDate": "25.11.1783",
-    "contractNumber": "060656506056068",
-    "id": "obligation_4",
-    "isCollateral": false,
-    "issuedAmount": "193 000,00",
-    "issuedAmountValue": 193000.0,
-    "obligationType": "Кредитный договор",
-    "penalty0071": null,
-    "penalty0071Value": 0.0
-   },
-   {
-    "amount": "640 934,91",
-    "amountValue": 640934.91,
-    "contractDate": "14.08.1783",
-    "contractNumber": "050505450540504504",
-    "id": "obligation_5",
-    "isCollateral": false,
-    "issuedAmount": "1 000 000,00",
-    "issuedAmountValue": 1000000.0,
-    "obligationType": "Кредитный договор",
-    "penalty0071": null,
-    "penalty0071Value": 0.0
-   }
-  ],
-  "rawTextLen": 17394,
-  "rawTextSha": "1a6c50d64d0dee51b2f666976148e437e41d5f679ba35db73ac335cf516af375",
-  "recommendedActs": {
-   "collateralOption": "no_collateral",
-   "entityType": "individual",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
-   ]
-  },
-  "thirdParties": [
-   {
-    "address": "021007, Тульская область, Кунжут-на-Бублике, ул. Клювдина, д.3 Д.Р 19.05.2005",
-    "birthDate": "19.05.2005",
-    "name": "ТОЛСТОЙ ЛЕВ НИКОЛАЕВИЧ"
-   },
-   {
-    "address": "021007, Тульская область, Кунжут-на-Бублике, ул. Клювдина, д.3",
-    "birthDate": "12.11.1999",
-    "inn": "222222212301",
-    "name": "ИВАНОВ ЛЕВ ИВАНОВИЧ",
-    "snils": "111-222-222-11"
-   }
-  ]
- },
- "заяв реструктуризация/одно обяз реструктур.docx": {
+ "Правильные заявления/одно обяз реструктур.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -6865,7 +8224,7 @@
    }
   ]
  },
- "заяв реструктуризация/реструктуризация заявление 2 обяз.docx": {
+ "Правильные заявления/реструктуризация заявление 2 обяз.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -7014,7 +8373,7 @@
    }
   ]
  },
- "заяв реструктуризация/реструктуризация заявление несколько обяз.docx": {
+ "Правильные заявления/реструктуризация заявление несколько обяз.docx": {
   "collaterals": [],
   "confidence": 1.0,
   "debtors": [
@@ -7239,417 +8598,5 @@
     "name": "ТОЛСТОЙ ЛЕВ НИКОЛАЕВИЧ"
    }
   ]
- },
- "новые/1.docx": {
-  "collaterals": [
-   {
-    "address": "Ростовская область, Мясниковский р-н, х Ленинаван, ул Пушкина, д 150Х",
-    "brandModel": "",
-    "cadastralNumber": "61:25:0600401:212121",
-    "collateralType": "real_estate",
-    "collateralValue": "",
-    "description": "дом, расположенный по адресу: Ростовская область, Мясниковский р-н, х Ленинаван, ул Пушкина, д 150Х, 61:25:0600401:212121",
-    "id": "collateral-0",
-    "objectName": "Дом",
-    "otherDescription": "",
-    "vin": ""
-   },
-   {
-    "address": "",
-    "brandModel": "Porshe Cayenne",
-    "cadastralNumber": "",
-    "collateralType": "auto",
-    "collateralValue": "100000",
-    "description": "Автомобиль, марка: Porshe, модель: Cayenne, год выпуска: 2011, VIN: WP1AB2A27BLA52000, залоговой стоимостью 100000 рублей. Грз АБ123Ф 123 2011 г.в",
-    "id": "collateral-1",
-    "objectName": "Porshe Cayenne, 2011 г.в., гос. знак АБ123Ф123",
-    "otherDescription": "",
-    "vin": "WP1AB2A27BLA52000"
-   },
-   {
-    "address": "",
-    "brandModel": "BMW",
-    "cadastralNumber": "",
-    "collateralType": "auto",
-    "collateralValue": "100000",
-    "description": "Автомобиль, марка: BMW,, год выпуска: 2011, VIN: WP2AB2A28BLA67000, залоговой стоимостью 100000 рублей",
-    "id": "collateral-2",
-    "objectName": "BMW, 2011 г.в.",
-    "otherDescription": "",
-    "vin": "WP2AB2A28BLA67000"
-   }
-  ],
-  "confidence": 1.0,
-  "debtors": [
-   {
-    "address": "344111, г. Ростов-на-Дону, ул. Б.Садовая, д. 11, Литер А, пом. 111",
-    "birthDate": "",
-    "birthPlace": "",
-    "inn": "9876543210",
-    "name": "Общества с ограниченной ответственностью «Азбука»",
-    "ogrn": "123454321234",
-    "ogrnip": "",
-    "snils": ""
-   }
-  ],
-  "documentType": "competition_collateral",
-  "entityType": "legal",
-  "fields": {
-   "applicantAddress": "344111, г. Ростов-на-Дону, ул. Б.Садовая, д. 11, Литер А, пом. 111",
-   "applicantName": "Общества с ограниченной ответственностью «Азбука»",
-   "applicantNameAccusative": "Иванова Ивана Ивановича",
-   "applicantNameDative": "Иванову Ивану Ивановичу",
-   "applicantNameGenitive": "Иванова Ивана Ивановича",
-   "applicantNameInstrumental": "Ивановым Иваном Ивановичем",
-   "applicationDate": "29.06.2026",
-   "caseNumber": "А53-22222/2024",
-   "collaterals": [
-    {
-     "address": "Ростовская область, Мясниковский р-н, х Ленинаван, ул Пушкина, д 150Х",
-     "brandModel": "",
-     "cadastralNumber": "61:25:0600401:212121",
-     "collateralType": "real_estate",
-     "collateralValue": "",
-     "description": "дом, расположенный по адресу: Ростовская область, Мясниковский р-н, х Ленинаван, ул Пушкина, д 150Х, 61:25:0600401:212121.",
-     "id": "collateral-0",
-     "objectName": "Дом",
-     "otherDescription": "",
-     "vin": ""
-    },
-    {
-     "address": "",
-     "brandModel": "Porshe Cayenne",
-     "cadastralNumber": "",
-     "collateralType": "auto",
-     "collateralValue": "100000",
-     "description": "- Автомобиль, марка: Porshe, модель: Cayenne, год выпуска: 2011, VIN: WP1AB2A27BLA52000, залоговой стоимостью 100000 рублей. Грз АБ123Ф 123 2011 г.в.",
-     "id": "collateral-1",
-     "objectName": "Porshe Cayenne, 2011 г.в., гос. знак АБ123Ф123",
-     "otherDescription": "",
-     "vin": "WP1AB2A27BLA52000"
-    }
-   ],
-   "companyInn": "9876543210",
-   "contractDate": "13.10.2022, 26.10.2022",
-   "contractNumber": "5464646544646464646464564-24-1, 54646465400000000000-24-1",
-   "courtDecisionDate": "13.12.2022",
-   "courtName": "Арбитражный суд Ростовской области",
-   "creditInterestRate": "11,1",
-   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
-   "creditorInn": "7707083893",
-   "creditorName": "ПАО Сбербанк в лице филиала - Юго-Западный Банк ПАО Сбербанк",
-   "creditorOgrn": "1027700132195",
-   "debtAmount": "19 619 276,72",
-   "debtSnapshotDate88": "11.07.2024",
-   "debtorName": "Общества с ограниченной ответственностью «Азбука»",
-   "efirsbPublicationDate": "22.11.2022",
-   "entityType": "legal",
-   "forfeit": "2 998,22",
-   "forfeit15": "2 998,22",
-   "inn": "9876543210",
-   "interest": "326 798,44",
-   "interest14": "326 798,44",
-   "ipCollateralClaimAmount": "4 809 638,36",
-   "ipCollateralContractDate": "01.10.2024",
-   "ipCollateralContractNumber": "1155555",
-   "legalShortName": "Азбука",
-   "loanDebt": "19 619 276,7",
-   "managerAddress": "444444, КАЛИНИНГРАДСКАЯ ОБЛАСТЬ, Г. КАЛИНИНГРАД, А/Я 1986.",
-   "managerName": "Иванов Иван Иванович",
-   "messageDate": "22.11.2022",
-   "messageNumber": "154154154",
-   "mortgageCollateralDescription1221": "- дом, расположенный по адресу: Ростовская область, Мясниковский р-н, х Ленинаван, ул Пушкина, д 150Х, 61:25:0600401:212121.",
-   "mortgageDebtorName": "Азбука",
-   "mortgageDebtorNameDative": "Азбуке",
-   "mortgageInterestRate113": "11,1",
-   "obligationType": "кредитный договор",
-   "obligations": [
-    {
-     "amount": "4 809 638,36",
-     "amountValue": 4809638.36,
-     "contractDate": "13.10.2022",
-     "contractNumber": "5464646544646464646464564-24-1",
-     "id": "obligation_1",
-     "isCollateral": true,
-     "issuedAmount": "5 000 000,00",
-     "issuedAmountValue": 5000000.0,
-     "obligationType": "Договор залога",
-     "penalty0071": "56,47",
-     "penalty0071Value": 56.47
-    },
-    {
-     "amount": "14 809 638,36",
-     "amountValue": 14809638.36,
-     "contractDate": "26.10.2022",
-     "contractNumber": "54646465400000000000-24-1",
-     "id": "obligation_2",
-     "isCollateral": true,
-     "issuedAmount": "15 000 000,00",
-     "issuedAmountValue": 15000000.0,
-     "obligationType": "Договор залога",
-     "penalty0071": "3 054,69",
-     "penalty0071Value": 3054.69
-    }
-   ],
-   "obligationsTotalDebt": "19 619 276,72",
-   "ogrn": "123454321234",
-   "penalties": "0,00",
-   "penalty0071": "3 111,16",
-   "physicalHasCollateral": "true",
-   "principalDebt": "19 289 480,06",
-   "principalDebt13": "19 289 480,06",
-   "procedureType": "observation",
-   "procedureTypeRaw": "конкурсного производства",
-   "registrationDate": "20.06.1991",
-   "requirementsSum": "19 619 276,70",
-   "sourceDocumentType": "competition_collateral",
-   "stateDuty": "53 048,00",
-   "stateDuty16": "53 048,00",
-   "totalDebt": "19 619 276,72"
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 4,
-   "wordCount": 1153
-  },
-  "obligations": [
-   {
-    "amount": "4 809 638,36",
-    "amountValue": 4809638.36,
-    "contractDate": "13.10.2022",
-    "contractNumber": "5464646544646464646464564-24-1",
-    "id": "obligation_1",
-    "isCollateral": true,
-    "issuedAmount": "5 000 000,00",
-    "issuedAmountValue": 5000000.0,
-    "obligationType": "Договор залога",
-    "penalty0071": "56,47",
-    "penalty0071Value": 56.47
-   },
-   {
-    "amount": "14 809 638,36",
-    "amountValue": 14809638.36,
-    "contractDate": "26.10.2022",
-    "contractNumber": "54646465400000000000-24-1",
-    "id": "obligation_2",
-    "isCollateral": true,
-    "issuedAmount": "15 000 000,00",
-    "issuedAmountValue": 15000000.0,
-    "obligationType": "Договор залога",
-    "penalty0071": "3 054,69",
-    "penalty0071Value": 3054.69
-   }
-  ],
-  "rawTextLen": 8657,
-  "rawTextSha": "73e9373e60e1da4d204e9219e493bd07fe3501125ec15ffd5d6be03c986b3710",
-  "recommendedActs": {
-   "collateralOption": "collateral_auto",
-   "entityType": "legal",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_competition",
-    "acceptance_no_motion_no_duty_collateral"
-   ]
-  },
-  "thirdParties": []
- },
- "новые/без маркеров юр иниц заявл.docx": {
-  "collaterals": [],
-  "confidence": 1.0,
-  "debtors": [
-   {
-    "address": "344111, г. Ростов-на-Дону, ул. Б.Садовая, д. 11, Литер А, пом. 111",
-    "birthDate": "",
-    "birthPlace": "",
-    "inn": "9876543201",
-    "name": "Общества с ограниченной ответственностью «Азбука»",
-    "ogrn": "123454321234",
-    "ogrnip": "",
-    "snils": ""
-   }
-  ],
-  "documentType": "rtk_application",
-  "entityType": "legal",
-  "fields": {
-   "applicantAddress": "344111, г. Ростов-на-Дону, ул. Б.Садовая, д. 11, Литер А, пом. 111",
-   "applicantName": "Общества с ограниченной ответственностью «Азбука»",
-   "applicantNameAccusative": "Общество с ограниченного ответственность «азбуку»",
-   "applicantNameDative": "Обществу с ограниченной ответственности «азбуке»",
-   "applicantNameGenitive": "Елабуга ул Голубевича",
-   "applicantNameInstrumental": "Обществом с ограниченной ответственностью «азбукой»",
-   "applicationDate": "20.06.1991",
-   "bankCommission": "0,00",
-   "caseNumber": "А53-22200/2026",
-   "companyInn": "9876543201",
-   "contractDate": "21.12.2021",
-   "contractNumber": "5221223241",
-   "courtName": "Арбитражный суд Ростовской области",
-   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
-   "creditorInn": "7707083893",
-   "creditorName": "ПАО Сбербанк",
-   "creditorOgrn": "1027700132195",
-   "currentInterest36": "0,00",
-   "currentInterestOverdue37": "0,00",
-   "debtAmount": "23 471 843,05",
-   "debtSnapshotDate88": "16.04.2020",
-   "debtorName": "Азбука",
-   "entityType": "legal",
-   "forfeit": "3 315 899,08",
-   "forfeit15": "3 315 899,08",
-   "inn": "9876543201",
-   "interest": "55 943,97",
-   "interest14": "55 943,97",
-   "legalShortName": "Азбука",
-   "loanDebt": "23 471 843,05",
-   "obligationType": "кредитный договор",
-   "obligations": [
-    {
-     "contractDate": "21.12.2021",
-     "contractNumber": "5221223241",
-     "id": "obligation_11_0",
-     "obligationType": "Кредитный договор"
-    }
-   ],
-   "ogrn": "123454321234",
-   "other35": "0,00",
-   "penalties": "0,00",
-   "ppStateDutyDate81": "25.11.2025",
-   "principalDebt": "20 100 000,00",
-   "principalDebt13": "20 100 000,00",
-   "procedureType": "observation",
-   "procedureTypeRaw": "наблюдение",
-   "registrationDate": "20.06.1991",
-   "requirementsSum": "23 471 843,05",
-   "sourceDocumentType": "rtk_application",
-   "sroName": "ААУ “СОЮЗ” (адрес 13321 г",
-   "stateDuty": "156 147,00",
-   "stateDuty16": "156 147,00",
-   "totalDebt": "23 471 843,05"
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 4,
-   "wordCount": 709
-  },
-  "obligations": [
-   {
-    "contractDate": "21.12.2021",
-    "contractNumber": "5221223241",
-    "id": "obligation_11_0",
-    "obligationType": "Кредитный договор"
-   }
-  ],
-  "rawTextLen": 5245,
-  "rawTextSha": "2f5beb4113b1756a5a5c82f6103ec906ae80bdbd52c414a001283b1c414ff2b3",
-  "recommendedActs": {
-   "collateralOption": "no_collateral",
-   "entityType": "legal",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_observation",
-    "final_competition"
-   ]
-  },
-  "thirdParties": []
- },
- "новые/иниц фл.docx": {
-  "collaterals": [],
-  "confidence": 1.0,
-  "debtors": [
-   {
-    "address": "344000, РОСТОВСКАЯ ОБЛАСТЬ, Г.РОСТОВ-НА-ДОНУ, УЛ. ОСЕНЯЯ, 288",
-    "birthDate": "20.02.2002",
-    "birthPlace": "С. КРАСНОВКА",
-    "inn": "1234645745",
-    "name": "КРУПНЫЙ ИГОРЬ ФЕДОРОВИЧ",
-    "ogrn": "",
-    "ogrnip": "",
-    "snils": ""
-   }
-  ],
-  "documentType": "rtk_application",
-  "entityType": "individual",
-  "fields": {
-   "applicantAddress": "344000, РОСТОВСКАЯ ОБЛАСТЬ, Г.РОСТОВ-НА-ДОНУ, УЛ. ОСЕНЯЯ, 288",
-   "applicantName": "КРУПНЫЙ ИГОРЬ ФЕДОРОВИЧ",
-   "applicantNameAccusative": "КРУПНОГО ИГОРЯ ФЁДОРОВИЧА",
-   "applicantNameDative": "КРУПНОМУ ИГОРЮ ФЁДОРОВИЧУ",
-   "applicantNameGenitive": "КРУПНОГО ИГОРЯ ФЕДОРОВИЧА",
-   "applicantNameInstrumental": "КРУПНЫМ ИГОРЕМ ФЁДОРОВИЧЕМ",
-   "applicationDate": "20.06.1991",
-   "bankCommission": "0,00",
-   "birthDate": "20.02.2002",
-   "birthPlace": "С. КРАСНОВКА",
-   "caseNumber": "А18-3334/2023",
-   "companyInn": "1234645745",
-   "contractDate": "10.10.2010",
-   "contractNumber": "500000000",
-   "courtName": "Арбитражный суд республики Ингушетия",
-   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
-   "creditorInn": "7707083893",
-   "creditorName": "ПАО Сбербанк",
-   "creditorOgrn": "1027700132195",
-   "currentInterest36": "0,00",
-   "currentInterestOverdue37": "0,00",
-   "debtAmount": "3 127 448,01",
-   "debtSnapshotDate88": "21.12.2025",
-   "debtorName": "КРУПНЫЙ ИГОРЬ ФЕДОРОВИЧ",
-   "entityType": "individual",
-   "forfeit": "30 620,58",
-   "forfeit15": "30 620,58",
-   "inn": "1234645745",
-   "interest": "200 631,53",
-   "interest14": "200 631,53",
-   "loanDebt": "3 127 448,01",
-   "loanStateDuty17": "23 719,00",
-   "obligationType": "кредитный договор",
-   "obligations": [
-    {
-     "contractDate": "10.10.2010",
-     "contractNumber": "500000000",
-     "id": "obligation_11_0",
-     "obligationType": "Кредитный договор"
-    }
-   ],
-   "other35": "0,00",
-   "penalties": "0,00",
-   "ppStateDutyDate81": "31.10.2025",
-   "principalDebt": "2 872 476,90",
-   "principalDebt13": "2 872 476,90",
-   "registrationDate": "20.06.1991",
-   "requirementsSum": "3 127 448,01",
-   "sourceDocumentType": "rtk_application",
-   "sroName": "ААУ “СОЮЗ”(адрес [99])",
-   "stateDuty": "100 000,00",
-   "stateDuty16": "100 000,00",
-   "totalDebt": "3 127 448,01"
-  },
-  "metadata": {
-   "language": "ru",
-   "pageCount": 5,
-   "wordCount": 733
-  },
-  "obligations": [
-   {
-    "contractDate": "10.10.2010",
-    "contractNumber": "500000000",
-    "id": "obligation_11_0",
-    "obligationType": "Кредитный договор"
-   }
-  ],
-  "rawTextLen": 5414,
-  "rawTextSha": "f1d733614e35bedfbfdd4f0a580aab78685b011456ec48ef3c9b233995dc0d83",
-  "recommendedActs": {
-   "collateralOption": "no_collateral",
-   "entityType": "individual",
-   "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
-   ]
-  },
-  "thirdParties": []
  }
 }

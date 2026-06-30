@@ -135,7 +135,7 @@ class ObligationsMixin:
                 'id': f'obligation_{obligation_num}',
                 'contractNumber': contract_number,
                 'contractDate': contract_date,
-                'obligationType': 'Договор залога' if is_collateral_obligation else detected_type,
+                'obligationType': detected_type,
                 'amount': obligation_amount,
                 'amountValue': obligation_amount_value,
                 'issuedAmount': issued_amount if issued_amount else None,
@@ -332,6 +332,120 @@ class ObligationsMixin:
             obligations.append(obligation)
             logger.info(f"Найдено обязательство из блока {num}: {obligation}")
 
+    _RU_MONTHS = {
+        "январ": 1, "феврал": 2, "март": 3, "апрел": 4, "ма": 5, "июн": 6,
+        "июл": 7, "август": 8, "сентябр": 9, "октябр": 10, "ноябр": 11, "декабр": 12,
+    }
+
+    def _normalize_obl_date(self, s):
+        """«21 сентября 2023 г.» / «17.02.2023» → «17.02.2023» (или None)."""
+        if not s:
+            return None
+        s = s.strip()
+        m = re.match(r"(\d{1,2})[.,](\d{1,2})[.,](\d{4})", s)
+        if m:
+            d, mo, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            if 1 <= d <= 31 and 1 <= mo <= 12 and 1900 <= y <= 2100:
+                return f"{d:02d}.{mo:02d}.{y}"
+            return None
+        m = re.match(r"«?\s*(\d{1,2})\s*»?\s+([а-яё]+)\s+(\d{4})", s, re.IGNORECASE)
+        if m:
+            d, word, y = int(m.group(1)), m.group(2).lower(), int(m.group(3))
+            mo = next((v for k, v in self._RU_MONTHS.items() if word.startswith(k)), None)
+            if mo and 1 <= d <= 31 and 1900 <= y <= 2100:
+                return f"{d:02d}.{mo:02d}.{y}"
+        return None
+
+    @staticmethod
+    def _entity_words(name):
+        """Значимые слова наименования (без орг-формы/кавычек) для сравнения сторон."""
+        s = (name or "").lower()
+        s = re.sub(r"[«»\"'(),.]", " ", s)
+        s = re.sub(
+            r"\b(ооо|оао|зао|пао|ао|общество|с|ограниченной|ответственностью|"
+            r"гмбх|gmbh|публичное|акционерное|компания|фирма|имени)\b", " ", s)
+        return [w for w in s.split() if len(w) >= 3]
+
+    def _extract_obligations_primary(self, text, debtor_name=None):
+        """Чистое извлечение обязательств по канону «<тип договора> … №NUM … от DATE».
+        Поддерживает: слова между типом и №, номера с буквами, даты прописью.
+        Отсекает «объявление о банкротстве»/«судебный приказ».
+
+        ВАЖНО (заявления о банкротстве поручителя): кредитный договор/соглашение
+        берём в обязательства, только если ЗАЁМЩИК = должник; если заёмщик другой
+        (напр. кредит на иное ЮЛ, а должник лишь поручитель) — кредитный пропускаем.
+        Договоры поручительства (они на должника) берём всегда."""
+        debtor_words = self._entity_words(debtor_name)
+        # Заёмщик документа («<ЮЛ> (далее – Заёмщик)») объявляется один раз. Если он
+        # ОТЛИЧАЕТСЯ от должника — это банкротство поручителя: все кредитные договоры
+        # (на заёмщика) исключаем, оставляем только поручительства (на должника).
+        _bg = re.search(
+            r"[«\"]([^»\"]{3,70})[»\"]\s*\(\s*далее[^)]{0,40}?за[ёе]мщик",
+            text, re.IGNORECASE)
+        borrower_g = set(self._entity_words(_bg.group(1))) if _bg else set()
+        debtor_is_borrower = (not borrower_g) or (
+            len(borrower_g & set(debtor_words)) >= len(borrower_g))
+        _date = r"[0-3]?\d[.,][01]?\d[.,]\d{4}|«?\s*[0-3]?\d\s*»?\s+[а-яё]+\s+\d{4}"
+        rx = re.compile(
+            r"((?:договор\w*\s+)?кредитн\w+\s+карт\w*|кредитн\w+\s+договор\w*|"
+            r"договор\w*\s+потребительск\w+\s+кредит\w*|"
+            r"потребительск\w+\s+кредит\w*|договор\w*\s+займа?|займ\w*|"
+            r"договор\w*\s+поручительств\w*|эмиссионн\w+\s+контракт\w*|"
+            r"договор\w*\s+ипотек\w*|кредитн\w+\s+соглашени\w*)"
+            r"[^№\n]{0,80}?№\s*([A-Za-zА-ЯЁ0-9/.\-]{3,40}?)(?=\s*от\s+\d|[\s,;.)\]]|$)"
+            r"(?:[^.\n]{0,40}?от\s+(" + _date + r"))?",
+            re.IGNORECASE,
+        )
+        res, by_num = [], {}
+        for m in rx.finditer(text):
+            kind = m.group(1).lower()
+            num = (m.group(2) or "").strip(" .,;")
+            ctx = text[max(0, m.start() - 30):m.start()].lower()
+            if "объявлен" in ctx or ("судебн" in ctx and "приказ" in ctx):
+                continue
+            if not self._is_valid_contract_number(num):
+                continue
+            # Отсев плейсхолдеров-болванок («03XX7L», «5221RRRR241R») — повтор БУКВ
+            # (цифровые повторы вроде «500000000» допускаем, это реальные номера).
+            if re.search(r"(?i)XX|([A-Za-zА-Яа-яЁё])\1{3,}", num):
+                continue
+            is_surety = "поручит" in kind
+            # Кредит/соглашение берём, только если заёмщик = должник (иначе должник —
+            # лишь поручитель по чужому кредиту). Поручительства — всегда.
+            # Кредит на чужого заёмщика (должник — поручитель) пропускаем.
+            if not is_surety and debtor_words and not debtor_is_borrower:
+                continue
+            date = self._normalize_obl_date(m.group(3))
+            if not date:
+                # Номер мог встречаться дважды (тело без даты + просительная с датой) —
+                # ищем «<num> … от DATE» по ВСЕМУ тексту.
+                dm = re.search(
+                    re.escape(num) + r"[^.\n]{0,40}?от\s+(" + _date + r")",
+                    text, re.IGNORECASE,
+                )
+                if dm:
+                    date = self._normalize_obl_date(dm.group(1))
+            typ = ("Кредитная карта" if "карт" in kind
+                   else "Кредитный договор" if "кредит" in kind
+                   else "Договор займа" if "займ" in kind
+                   else "Договор поручительства" if "поручит" in kind
+                   else "Кредитная карта" if "эмиссион" in kind
+                   else "Договор ипотеки" if "ипотек" in kind
+                   else "Договор")
+            if num in by_num:
+                if date and by_num[num]["contractDate"] == "Не указана":
+                    by_num[num]["contractDate"] = date
+                continue
+            obj = {
+                "id": f"obligation_p_{len(res)}",
+                "contractNumber": num,
+                "contractDate": date or "Не указана",
+                "obligationType": typ,
+            }
+            by_num[num] = obj
+            res.append(obj)
+        return res
+
     def extract_obligations(self, text: str, extracted_fields: Dict[str, str] = None) -> List[Dict[str, str]]:
         """
         Извлекает отдельные обязательства из текста
@@ -378,10 +492,17 @@ class ObligationsMixin:
         # Разбор блоков «Обязательство N:»
         self._parse_obligation_blocks(extracted_fields, text, obligations, obligation_blocks)
 
-        # Если не нашли блоки "Обязательство X:", попробуем альтернативные паттерны
+        # Если не нашли блоки "Обязательство X:", сначала чистый канонический
+        # экстрактор («<тип договора> №NUM от DATE»), и лишь если он пуст —
+        # старые гибкие паттерны.
         if not obligations:
-            # Фолбэк-разбор обязательств (гибкие паттерны)
-            self._parse_obligations_fallback(extracted_fields, text, obligations)
+            _debtor = (extracted_fields.get("applicantName")
+                       or extracted_fields.get("debtorName"))
+            primary = self._extract_obligations_primary(text, _debtor)
+            if primary:
+                obligations.extend(primary)
+            else:
+                self._parse_obligations_fallback(extracted_fields, text, obligations)
 
         # Убираем дубликаты обязательств
         unique_obligations = []

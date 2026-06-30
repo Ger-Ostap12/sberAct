@@ -2685,6 +2685,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                             entity_type == "legal" or \
                             (extracted_fields.get("procedureType") or "").lower() == "observation"
 
+            # Не повышаем до observation_collateral, если в тексте есть явное «ИП ФИО»
+            # в имени должника (та же проверка, что и при первичной классификации).
+            has_ip_name = self._detect_ip_debtor_name(text)
+
             if entity_type == "legal" and has_collateral and is_observation and not has_ip_name:
                 document_type = "observation_collateral"
                 logger.info("Определен тип документа: observation_collateral (Наблюдение с залогом для ЮЛ после извлечения полей)")
@@ -3729,12 +3733,20 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             context = context_match.group(0).lower()
             # Сравниваем по основам слов, т.к. в тексте склонённые формы
             # («кредитному договору», «договора залога», «займа»).
-            if 'залог' in context:
-                return 'Договор залога'
+            # Тип определяет САМ договор: «кредитный договор» с обеспечением
+            # остаётся кредитным (залог — отдельный блок). «Договор залога» —
+            # только по явной формулировке, а не по любому упоминанию «залог».
+            # 2 самых частых типа — кредитный договор и кредитная карта.
+            if 'карт' in context and ('кредит' in context or 'эмисси' in context):
+                return 'Кредитная карта'
             elif 'кредитн' in context:
                 return 'Кредитный договор'
             elif 'займ' in context:
                 return 'Договор займа'
+            elif 'поручительств' in context:
+                return 'Договор поручительства'
+            elif 'договор залога' in context or 'договора залога' in context or 'договором залога' in context:
+                return 'Договор залога'
             elif 'ссуд' in context:
                 return 'Договор ссуды'
             else:
