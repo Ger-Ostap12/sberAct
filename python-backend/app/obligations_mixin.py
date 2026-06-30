@@ -366,7 +366,33 @@ class ObligationsMixin:
             r"гмбх|gmbh|публичное|акционерное|компания|фирма|имени)\b", " ", s)
         return [w for w in s.split() if len(w) >= 3]
 
-    def _extract_obligations_primary(self, text, debtor_name=None):
+    @staticmethod
+    def _stem_match(a, b):
+        """Совпадение слов по основе (первые 5 букв) — устойчиво к падежам
+        («БАЗОВ»↔«БАЗОВЫМ», «ГЕОРГИЙ»↔«ГЕОРГИЕМ»)."""
+        return len(a) >= 4 and len(b) >= 4 and a[:5] == b[:5]
+
+    def _debtor_is_borrower(self, text, debtor_words):
+        """True, если должник = ЗАЁМЩИК документа (или «(далее – Заёмщик)» нет).
+        False — если заёмщик ОТЛИЧАЕТСЯ от должника (должник — поручитель)."""
+        if not debtor_words:
+            return True
+        m = re.search(r"\(\s*далее[^)]{0,40}?за[ёе]мщик", text, re.IGNORECASE)
+        if not m:
+            return True
+        seg = re.sub(r"\s+", " ", text[max(0, m.start() - 70): m.start()])
+        bw = self._entity_words(seg)
+        if not bw:
+            return True
+        matched = sum(1 for d in debtor_words
+                      if any(self._stem_match(d, b) for b in bw))
+        return matched >= max(1, len(debtor_words) - 1)
+
+    def _is_surety_bankruptcy(self, text, debtor_name):
+        """True, если должник — ПОРУЧИТЕЛЬ (заёмщик документа ≠ должник)."""
+        return not self._debtor_is_borrower(text, self._entity_words(debtor_name))
+
+    def _extract_obligations_primary(self, text, debtor_name=None, debtor_is_borrower=None):
         """Чистое извлечение обязательств по канону «<тип договора> … №NUM … от DATE».
         Поддерживает: слова между типом и №, номера с буквами, даты прописью.
         Отсекает «объявление о банкротстве»/«судебный приказ».
@@ -374,17 +400,13 @@ class ObligationsMixin:
         ВАЖНО (заявления о банкротстве поручителя): кредитный договор/соглашение
         берём в обязательства, только если ЗАЁМЩИК = должник; если заёмщик другой
         (напр. кредит на иное ЮЛ, а должник лишь поручитель) — кредитный пропускаем.
-        Договоры поручительства (они на должника) берём всегда."""
+        Договоры поручительства (они на должника) берём всегда. Признак
+        debtor_is_borrower считается на ПОЛНОМ тексте (передаётся снаружи)."""
         debtor_words = self._entity_words(debtor_name)
-        # Заёмщик документа («<ЮЛ> (далее – Заёмщик)») объявляется один раз. Если он
-        # ОТЛИЧАЕТСЯ от должника — это банкротство поручителя: все кредитные договоры
-        # (на заёмщика) исключаем, оставляем только поручительства (на должника).
-        _bg = re.search(
-            r"[«\"]([^»\"]{3,70})[»\"]\s*\(\s*далее[^)]{0,40}?за[ёе]мщик",
-            text, re.IGNORECASE)
-        borrower_g = set(self._entity_words(_bg.group(1))) if _bg else set()
-        debtor_is_borrower = (not borrower_g) or (
-            len(borrower_g & set(debtor_words)) >= len(borrower_g))
+        # Если должник — ПОРУЧИТЕЛЬ (заёмщик документа ≠ должник), кредитные (на
+        # заёмщика) исключаем, оставляем поручительства (на должника).
+        if debtor_is_borrower is None:
+            debtor_is_borrower = self._debtor_is_borrower(text, debtor_words)
         _date = r"[0-3]?\d[.,][01]?\d[.,]\d{4}|«?\s*[0-3]?\d\s*»?\s+[а-яё]+\s+\d{4}"
         rx = re.compile(
             r"((?:договор\w*\s+)?кредитн\w+\s+карт\w*|кредитн\w+\s+договор\w*|"
@@ -405,9 +427,10 @@ class ObligationsMixin:
                 continue
             if not self._is_valid_contract_number(num):
                 continue
-            # Отсев плейсхолдеров-болванок («03XX7L», «5221RRRR241R») — повтор БУКВ
-            # (цифровые повторы вроде «500000000» допускаем, это реальные номера).
-            if re.search(r"(?i)XX|([A-Za-zА-Яа-яЁё])\1{3,}", num):
+            # Отсев плейсхолдеров-болванок («5221RRRR241R») — 3+ одинаковых БУКВ
+            # подряд. «XX» (2) допускаем: «03XX7P006» — реальный номер Альфы.
+            # Цифровые повторы («500000000») тоже допускаем — это реальные номера.
+            if re.search(r"([A-Za-zА-Яа-яЁё])\1{2,}", num):
                 continue
             is_surety = "поручит" in kind
             # Кредит/соглашение берём, только если заёмщик = должник (иначе должник —
@@ -425,6 +448,17 @@ class ObligationsMixin:
                 )
                 if dm:
                     date = self._normalize_obl_date(dm.group(1))
+            if not date:
+                # Формат «<DATE> <стороны> заключили <тип> №NUM» — дата стоит ПЕРЕД
+                # типом (напр. поручительства Сбербанка по ИП: «…по Договору
+                # 24.04.2024 ПАО … заключили договор поручительства №…»). Берём
+                # ближайшую дату слева, но только если сегмент кончается «заключил…»
+                # — это надёжный якорь даты заключения, а не случайной даты в тексте.
+                pre = text[max(0, m.start() - 200):m.start()]
+                if re.search(r"заключ\w*\s*$", pre):
+                    bm = re.findall(r"(" + _date + r")", pre)
+                    if bm:
+                        date = self._normalize_obl_date(bm[-1])
             typ = ("Кредитная карта" if "карт" in kind
                    else "Кредитный договор" if "кредит" in kind
                    else "Договор займа" if "займ" in kind
@@ -455,6 +489,14 @@ class ObligationsMixin:
         obligations = []
         obligation_patterns = []  # Инициализация на случай альтернативного поиска
 
+        # Признак «должник = заёмщик» считаем на ПОЛНОМ тексте (до обрезки ниже):
+        # обрезка по «Заявление» может удалить объявление «(далее – Заёмщик)».
+        # ДОЛЖНИК — это debtorName (в «Заявление <Банк> о признании банкротом …»
+        # applicantName = заявитель-кредитор, НЕ должник). Берём debtorName первым.
+        _debtor0 = (extracted_fields.get("debtorName")
+                    or extracted_fields.get("applicantName"))
+        _debtor_is_borrower = self._debtor_is_borrower(text, self._entity_words(_debtor0))
+
         # Находим позицию начала заявления (после "Заявление", "Исковое заявление" и т.п.)
         # Обязательства должны извлекаться только после этого места
         statement_keywords = [
@@ -479,6 +521,15 @@ class ObligationsMixin:
             text = text[statement_start_pos:]
             logger.info(f"Текст обрезан до позиции {statement_start_pos}, длина нового текста: {len(text)}")
 
+        # Банкротство ПОРУЧИТЕЛЯ: обязательства должника — договоры поручительства
+        # (на него), а не кредитные (на заёмщика). Берём их чистым экстрактором,
+        # минуя блок-парсер (он вытащил бы кредитный договор заёмщика).
+        if not _debtor_is_borrower:
+            primary = self._extract_obligations_primary(
+                text, _debtor0, debtor_is_borrower=False)
+            if primary:
+                return self._dedupe_obligations(primary)
+
         # Ищем блоки "Обязательство №X" или "Обязательство X:" где X - номер
         # Приоритет: сначала ищем с №, потом без
         obligation_blocks = re.findall(r'Обязательство\s*№\s*(\d+)[:\s]*(.*?)(?=Обязательство\s*№\s*\d+[:\s]*|$)', text, re.DOTALL | re.IGNORECASE)
@@ -496,9 +547,8 @@ class ObligationsMixin:
         # экстрактор («<тип договора> №NUM от DATE»), и лишь если он пуст —
         # старые гибкие паттерны.
         if not obligations:
-            _debtor = (extracted_fields.get("applicantName")
-                       or extracted_fields.get("debtorName"))
-            primary = self._extract_obligations_primary(text, _debtor)
+            primary = self._extract_obligations_primary(
+                text, _debtor0, debtor_is_borrower=_debtor_is_borrower)
             if primary:
                 obligations.extend(primary)
             else:

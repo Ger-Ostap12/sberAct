@@ -1495,8 +1495,8 @@
    "applicationDate": "17.12.2020",
    "caseNumber": "А53-12200/2026",
    "companyInn": "3461063590",
-   "contractDate": "17.12.2020, 09.07.2021, 15.12.2023, 30.06.2021, 31.03.2022, 29.11.2024, 23.12.2024",
-   "contractNumber": "03820P006, 03ZE1P006, 0BOP1P007, 03XS5P006, 05LK7P006, 0HF94P006, 0HHW2P006",
+   "contractDate": "17.12.2020, 06.07.2021, 09.07.2021, 15.12.2023, 30.06.2021, 08.07.2021, 28.06.2021, 31.03.2022, 29.11.2024, 23.12.2024",
+   "contractNumber": "03820P006, 03XX7P006, 03ZE1P006, 0BOP1P007, 03XS5P006, 03XX6P007, 03XX5P006, 03XX4P006, 05LK7P006, 0HF94P006, 0HHW2P006",
    "courtName": "Арбитражный суд Ростовской области",
    "creditPenaltyRate": "0,2",
    "creditorAddress": "107078, г. Москва, ул. Каланчевская, д. 27",
@@ -1524,39 +1524,63 @@
      "obligationType": "Договор поручительства"
     },
     {
+     "contractDate": "06.07.2021",
+     "contractNumber": "03XX7P006",
+     "id": "obligation_p_1",
+     "obligationType": "Договор поручительства"
+    },
+    {
      "contractDate": "09.07.2021",
      "contractNumber": "03ZE1P006",
-     "id": "obligation_p_1",
+     "id": "obligation_p_2",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "15.12.2023",
      "contractNumber": "0BOP1P007",
-     "id": "obligation_p_2",
+     "id": "obligation_p_3",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "30.06.2021",
      "contractNumber": "03XS5P006",
-     "id": "obligation_p_3",
+     "id": "obligation_p_4",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "08.07.2021",
+     "contractNumber": "03XX6P007",
+     "id": "obligation_p_5",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "06.07.2021",
+     "contractNumber": "03XX5P006",
+     "id": "obligation_p_6",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "28.06.2021",
+     "contractNumber": "03XX4P006",
+     "id": "obligation_p_7",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "31.03.2022",
      "contractNumber": "05LK7P006",
-     "id": "obligation_p_4",
+     "id": "obligation_p_8",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "29.11.2024",
      "contractNumber": "0HF94P006",
-     "id": "obligation_p_5",
+     "id": "obligation_p_9",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "23.12.2024",
      "contractNumber": "0HHW2P006",
-     "id": "obligation_p_6",
+     "id": "obligation_p_10",
      "obligationType": "Договор поручительства"
     }
    ],
@@ -1585,39 +1609,63 @@
     "obligationType": "Договор поручительства"
    },
    {
+    "contractDate": "06.07.2021",
+    "contractNumber": "03XX7P006",
+    "id": "obligation_p_1",
+    "obligationType": "Договор поручительства"
+   },
+   {
     "contractDate": "09.07.2021",
     "contractNumber": "03ZE1P006",
-    "id": "obligation_p_1",
+    "id": "obligation_p_2",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "15.12.2023",
     "contractNumber": "0BOP1P007",
-    "id": "obligation_p_2",
+    "id": "obligation_p_3",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "30.06.2021",
     "contractNumber": "03XS5P006",
-    "id": "obligation_p_3",
+    "id": "obligation_p_4",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "08.07.2021",
+    "contractNumber": "03XX6P007",
+    "id": "obligation_p_5",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "06.07.2021",
+    "contractNumber": "03XX5P006",
+    "id": "obligation_p_6",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "28.06.2021",
+    "contractNumber": "03XX4P006",
+    "id": "obligation_p_7",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "31.03.2022",
     "contractNumber": "05LK7P006",
-    "id": "obligation_p_4",
+    "id": "obligation_p_8",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "29.11.2024",
     "contractNumber": "0HF94P006",
-    "id": "obligation_p_5",
+    "id": "obligation_p_9",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "23.12.2024",
     "contractNumber": "0HHW2P006",
-    "id": "obligation_p_6",
+    "id": "obligation_p_10",
     "obligationType": "Договор поручительства"
    }
   ],
@@ -1834,7 +1882,7 @@
   "metadata": {
    "language": "ru",
    "pageCount": 5,
-   "wordCount": 4564
+   "wordCount": 4565
   },
   "obligations": [
    {
@@ -1856,8 +1904,8 @@
     "obligationType": "Договор поручительства"
    }
   ],
-  "rawTextLen": 34526,
-  "rawTextSha": "9d339092e02d70020e085b194cc3596c005bfd5b7ef077a033d5ff72b9971505",
+  "rawTextLen": 34527,
+  "rawTextSha": "72552e53a90ddec2db2edcf14117189cc8cc38a9ed3f6053a305a85ded15725a",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "legal",
@@ -1897,8 +1945,8 @@
    "applicationDate": "17.12.2020",
    "caseNumber": "А53-12200/2026",
    "companyInn": "3461063590",
-   "contractDate": "17.12.2020, 09.07.2021, 15.12.2023, 30.06.2021, 31.03.2022, 29.11.2024, 23.12.2024",
-   "contractNumber": "03820P006, 03ZE1P006, 0BOP1P007, 03XS5P006, 05LK7P006, 0HF94P006, 0HHW2P006",
+   "contractDate": "17.12.2020, 06.07.2021, 09.07.2021, 15.12.2023, 30.06.2021, 08.07.2021, 28.06.2021, 31.03.2022, 29.11.2024, 23.12.2024",
+   "contractNumber": "03820P006, 03XX7P006, 03ZE1P006, 0BOP1P007, 03XS5P006, 03XX6P007, 03XX5P006, 03XX4P006, 05LK7P006, 0HF94P006, 0HHW2P006",
    "courtName": "Арбитражный суд Ростовской области",
    "creditPenaltyRate": "0,2",
    "creditorAddress": "107078, г. Москва, ул. Каланчевская, д. 27",
@@ -1926,39 +1974,63 @@
      "obligationType": "Договор поручительства"
     },
     {
+     "contractDate": "06.07.2021",
+     "contractNumber": "03XX7P006",
+     "id": "obligation_p_1",
+     "obligationType": "Договор поручительства"
+    },
+    {
      "contractDate": "09.07.2021",
      "contractNumber": "03ZE1P006",
-     "id": "obligation_p_1",
+     "id": "obligation_p_2",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "15.12.2023",
      "contractNumber": "0BOP1P007",
-     "id": "obligation_p_2",
+     "id": "obligation_p_3",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "30.06.2021",
      "contractNumber": "03XS5P006",
-     "id": "obligation_p_3",
+     "id": "obligation_p_4",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "08.07.2021",
+     "contractNumber": "03XX6P007",
+     "id": "obligation_p_5",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "06.07.2021",
+     "contractNumber": "03XX5P006",
+     "id": "obligation_p_6",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "28.06.2021",
+     "contractNumber": "03XX4P006",
+     "id": "obligation_p_7",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "31.03.2022",
      "contractNumber": "05LK7P006",
-     "id": "obligation_p_4",
+     "id": "obligation_p_8",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "29.11.2024",
      "contractNumber": "0HF94P006",
-     "id": "obligation_p_5",
+     "id": "obligation_p_9",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "23.12.2024",
      "contractNumber": "0HHW2P006",
-     "id": "obligation_p_6",
+     "id": "obligation_p_10",
      "obligationType": "Договор поручительства"
     }
    ],
@@ -1987,39 +2059,63 @@
     "obligationType": "Договор поручительства"
    },
    {
+    "contractDate": "06.07.2021",
+    "contractNumber": "03XX7P006",
+    "id": "obligation_p_1",
+    "obligationType": "Договор поручительства"
+   },
+   {
     "contractDate": "09.07.2021",
     "contractNumber": "03ZE1P006",
-    "id": "obligation_p_1",
+    "id": "obligation_p_2",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "15.12.2023",
     "contractNumber": "0BOP1P007",
-    "id": "obligation_p_2",
+    "id": "obligation_p_3",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "30.06.2021",
     "contractNumber": "03XS5P006",
-    "id": "obligation_p_3",
+    "id": "obligation_p_4",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "08.07.2021",
+    "contractNumber": "03XX6P007",
+    "id": "obligation_p_5",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "06.07.2021",
+    "contractNumber": "03XX5P006",
+    "id": "obligation_p_6",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "28.06.2021",
+    "contractNumber": "03XX4P006",
+    "id": "obligation_p_7",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "31.03.2022",
     "contractNumber": "05LK7P006",
-    "id": "obligation_p_4",
+    "id": "obligation_p_8",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "29.11.2024",
     "contractNumber": "0HF94P006",
-    "id": "obligation_p_5",
+    "id": "obligation_p_9",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "23.12.2024",
     "contractNumber": "0HHW2P006",
-    "id": "obligation_p_6",
+    "id": "obligation_p_10",
     "obligationType": "Договор поручительства"
    }
   ],
@@ -2199,30 +2295,16 @@
    "obligationType": "кредитный договор",
    "obligations": [
     {
-     "amount": "0,00",
-     "amountValue": 0.0,
      "contractDate": "24.04.2024",
-     "contractNumber": "5464646544646464646464564-24-1",
-     "id": "obligation_1",
-     "isCollateral": false,
-     "issuedAmount": "5 000 000,00",
-     "issuedAmountValue": 5000000.0,
-     "obligationType": "Кредитный договор",
-     "penalty0071": null,
-     "penalty0071Value": 0.0
+     "contractNumber": "5464646544646464646464564-24-1П01",
+     "id": "obligation_p_0",
+     "obligationType": "Договор поручительства"
     },
     {
-     "amount": "0,00",
-     "amountValue": 0.0,
      "contractDate": "26.02.2024",
-     "contractNumber": "616311312132144-24-1",
-     "id": "obligation_2",
-     "isCollateral": false,
-     "issuedAmount": "8 000 000,00",
-     "issuedAmountValue": 8000000.0,
-     "obligationType": "Кредитный договор",
-     "penalty0071": null,
-     "penalty0071Value": 0.0
+     "contractNumber": "616311312132144-24-1П01",
+     "id": "obligation_p_1",
+     "obligationType": "Договор поручительства"
     }
    ],
    "penalties": "0,00",
@@ -2245,30 +2327,16 @@
   },
   "obligations": [
    {
-    "amount": "0,00",
-    "amountValue": 0.0,
     "contractDate": "24.04.2024",
-    "contractNumber": "5464646544646464646464564-24-1",
-    "id": "obligation_1",
-    "isCollateral": false,
-    "issuedAmount": "5 000 000,00",
-    "issuedAmountValue": 5000000.0,
-    "obligationType": "Кредитный договор",
-    "penalty0071": null,
-    "penalty0071Value": 0.0
+    "contractNumber": "5464646544646464646464564-24-1П01",
+    "id": "obligation_p_0",
+    "obligationType": "Договор поручительства"
    },
    {
-    "amount": "0,00",
-    "amountValue": 0.0,
     "contractDate": "26.02.2024",
-    "contractNumber": "616311312132144-24-1",
-    "id": "obligation_2",
-    "isCollateral": false,
-    "issuedAmount": "8 000 000,00",
-    "issuedAmountValue": 8000000.0,
-    "obligationType": "Кредитный договор",
-    "penalty0071": null,
-    "penalty0071Value": 0.0
+    "contractNumber": "616311312132144-24-1П01",
+    "id": "obligation_p_1",
+    "obligationType": "Договор поручительства"
    }
   ],
   "rawTextLen": 7621,
@@ -2854,7 +2922,7 @@
    "applicationDate": "16.05.2026",
    "caseNumber": "А53-11012/2026",
    "companyInn": "614600107524",
-   "contractDate": "Не указана",
+   "contractDate": "07.02.2024",
    "contractNumber": "0278146810",
    "courtName": "Арбитражный суд Ростовской области",
    "creditorAddress": "127287, г. Москва, ул. Хуторская 2-я, д. 38А, стр. 26",
@@ -2875,7 +2943,7 @@
    "obligationType": "кредитный договор",
    "obligations": [
     {
-     "contractDate": "Не указана",
+     "contractDate": "07.02.2024",
      "contractNumber": "0278146810",
      "id": "obligation_p_0",
      "obligationType": "Кредитный договор"
@@ -2899,7 +2967,7 @@
   },
   "obligations": [
    {
-    "contractDate": "Не указана",
+    "contractDate": "07.02.2024",
     "contractNumber": "0278146810",
     "id": "obligation_p_0",
     "obligationType": "Кредитный договор"
