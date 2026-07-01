@@ -92,6 +92,18 @@ def snapshot_one(analyzer, generator, rel_path: str) -> Dict[str, Any]:
     except Exception as exc:
         return {"__error__": f"analyze {type(exc).__name__}: {exc}"}
 
+    # ВАЖНО: фронт (DocumentPreview.tsx) шлёт в generate() ПЛОСКИЕ данные —
+    # разворачивает analyze()['fields'] в top-level + sourceDocumentType + obligations.
+    # Без этого generate() читает пустой top-level и рендерит акты без сумм/сторон.
+    # Тест обязан повторять реальный путь фронта, иначе не проверяет генерацию.
+    _fields = data.get("fields") or {}
+    gen_data = {
+        **_fields,
+        "sourceDocumentType": _fields.get("sourceDocumentType")
+        or data.get("sourceDocumentType") or data.get("documentType"),
+        "obligations": data.get("obligations") or _fields.get("obligations") or [],
+    }
+
     # Каждый прогон — в свежий temp-каталог, чтобы не мусорить generated/.
     with tempfile.TemporaryDirectory() as tmp:
         from pathlib import Path
@@ -99,7 +111,7 @@ def snapshot_one(analyzer, generator, rel_path: str) -> Dict[str, Any]:
         generator.generated_dir = Path(tmp)
         try:
             with freeze_now():
-                res = generator.generate("", data)
+                res = generator.generate("", gen_data)
         except Exception as exc:
             return {"__error__": f"generate {type(exc).__name__}: {exc}"}
 
