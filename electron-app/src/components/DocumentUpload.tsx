@@ -11,10 +11,11 @@ import {
 } from '@mui/material';
 import { CloudUpload as UploadIcon, Description as FileIcon } from '@mui/icons-material';
 import { useDropzone } from 'react-dropzone';
-import { DocumentData } from '../types';
+import { DocumentData, AnalysisResult } from '../types';
+import { analyzeDocument, selectFile, hasElectronAPI } from '../services/electronApi';
 
 interface DocumentUploadProps {
-  onDocumentUploaded: (data: DocumentData, analysisResult?: any) => void;
+  onDocumentUploaded: (data: DocumentData, analysisResult?: AnalysisResult) => void;
 }
 
 const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded }) => {
@@ -40,17 +41,12 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded }) =
 
     try {
       // Анализируем документ через Electron API
-      const api = (window as any).electronAPI;
-      if (!api || typeof api.analyzeDocument !== 'function') {
-        console.error('electronAPI is not available');
+      if (!hasElectronAPI()) {
         setError('Внутренняя ошибка: electronAPI не инициализирован');
         setIsAnalyzing(false);
         return;
       }
-      const analysisResult = await api.analyzeDocument(file);
-      console.log('DocumentUpload: analysis result:', analysisResult);
-      console.log('DocumentUpload: analysisResult.success:', analysisResult.success);
-      console.log('DocumentUpload: analysisResult.data:', analysisResult.data);
+      const analysisResult = await analyzeDocument(file);
 
       if (analysisResult.success) {
         const documentData: DocumentData = {
@@ -60,7 +56,6 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded }) =
           uploadDate: new Date()
         };
 
-        console.log('DocumentUpload: calling onDocumentUploaded with:', { documentData, analysisResult });
         onDocumentUploaded(documentData, analysisResult);
       } else {
         setError(analysisResult.error || 'Ошибка при анализе документа');
@@ -84,19 +79,17 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded }) =
 
   const handleManualUpload = async () => {
     try {
-      const api = (window as any).electronAPI;
-      if (!api) {
+      if (!hasElectronAPI()) {
         setError('Electron preload не инициализирован');
         return;
       }
-      const filePath = await api.selectFile();
+      const filePath = await selectFile();
       if (filePath) {
         // Сразу запускаем анализ по выбранному пути
         setIsAnalyzing(true);
         setError(null);
 
-        const analysisResult = await api.analyzeDocument(filePath);
-        console.log('DocumentUpload: analysis result (manual):', analysisResult);
+        const analysisResult = await analyzeDocument(filePath);
 
         if (analysisResult.success) {
           const fileName = filePath.split(/[\\/]/).pop() || 'document.docx';

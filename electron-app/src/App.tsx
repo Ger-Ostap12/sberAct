@@ -5,8 +5,9 @@ import { LocalOffer as DocumentIcon, BugReport as DevToolsIcon } from '@mui/icon
 import DocumentUpload from './components/DocumentUpload';
 import DocumentAnalysis from './components/DocumentAnalysis';
 import DocumentPreview from './components/DocumentPreview';
-import { DocumentData, TemplateType, ExtractedData } from './types';
+import { DocumentData, TemplateType, ExtractedData, AnalysisResult } from './types';
 import { pickTemplate } from './templates';
+import { toggleDevTools } from './services/electronApi';
 
 const theme = createTheme({
   palette: {
@@ -53,15 +54,10 @@ function App() {
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateType | null>(null);
   const [generatedDocument, setGeneratedDocument] = useState<string | null>(null);
 
-  const handleDocumentUploaded = (data: DocumentData, analysisResult?: any) => {
-    console.log('App: handleDocumentUploaded called with:', { data, analysisResult });
+  const handleDocumentUploaded = (data: DocumentData, analysisResult?: AnalysisResult) => {
     setDocumentData(data);
-    if (analysisResult && analysisResult.data) {
-      console.log('App: setting extractedData to:', analysisResult.data);
-      console.log('App: obligations in analysisResult.data:', analysisResult.data.obligations);
+    if (analysisResult?.data) {
       setExtractedData(analysisResult.data);
-    } else {
-      console.log('App: no analysisResult.data, analysisResult:', analysisResult);
     }
     setCurrentStep('analysis');
   };
@@ -86,13 +82,7 @@ function App() {
   };
 
   const handleOpenDevTools = () => {
-    if ((window as any).electronAPI && typeof (window as any).electronAPI.toggleDevTools === 'function') {
-      (window as any).electronAPI.toggleDevTools();
-    } else if ((window as any).openDevTools && typeof (window as any).openDevTools === 'function') {
-      (window as any).openDevTools();
-    } else {
-      console.warn('DevTools API not available');
-    }
+    toggleDevTools();
   };
 
   const renderCurrentStep = () => {

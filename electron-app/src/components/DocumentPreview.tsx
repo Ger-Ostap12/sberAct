@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Box,
   Card,
@@ -24,6 +24,8 @@ import {
   Description as DocumentIcon
 } from '@mui/icons-material';
 import { ExtractedData, SelectedAct, TemplateType } from '../types';
+import { useGenerateDocument } from '../features/preview/hooks/useGenerateDocument';
+import { useDownloadDocument } from '../features/preview/hooks/useDownloadDocument';
 
 interface DocumentPreviewProps {
   extractedData: ExtractedData;
@@ -40,192 +42,16 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   onBack,
   onNewDocument
 }) => {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadMessage, setDownloadMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [generationResult, setGenerationResult] = useState<{
-    success: boolean;
-    documentId?: string;
-    documentPath?: string;
-    documents?: any;
-    documentIds?: string[];
-    count?: number;
-    error?: string;
-  } | null>(null);
+  // Логика генерации/скачивания вынесена в хуки фичи preview (см. features/preview/hooks).
+  const { isGenerating, generationResult, generate } = useGenerateDocument(
+    extractedData,
+    selectedTemplate,
+    onDocumentGenerated
+  );
+  const { isDownloading, downloadMessage, download, dismissMessage } = useDownloadDocument();
 
-  const handleGenerateDocument = async () => {
-    try {
-      setIsGenerating(true);
-      setGenerationResult(null);
-
-      // Генерируем документ через Electron API
-      if (!extractedData || !extractedData.fields) {
-        throw new Error('Нет данных для генерации документа');
-      }
-
-      if (!selectedTemplate) {
-        throw new Error('Не выбран шаблон документа');
-      }
-
-      // Подготавливаем данные для генерации, включая obligations
-      console.log('DocumentPreview: extractedData:', extractedData);
-      console.log('DocumentPreview: extractedData.fields:', extractedData.fields);
-      console.log('DocumentPreview: extractedData.obligations:', extractedData.obligations);
-      console.log('DocumentPreview: type of obligations:', typeof extractedData.obligations);
-
-      const generationData = {
-        ...extractedData.fields,
-        // sourceDocumentType из полей анализа (если есть) приоритетнее, чтобы не терять корректную классификацию
-        sourceDocumentType: (extractedData.fields as any)?.sourceDocumentType || extractedData.documentType,
-        obligations: extractedData.obligations || []
-      };
-
-      console.log('DocumentPreview: generating document with:', {
-        template_type: selectedTemplate.id,
-        data: generationData
-      });
-      console.log('DocumentPreview: generationData.obligations:', generationData.obligations);
-
-      const generationResult = await (window as any).electronAPI.generateDocument({
-        template_type: selectedTemplate.id,
-        data: generationData
-      });
-
-      if (generationResult.success) {
-        // Проверяем, генерируется ли один документ или несколько
-        if (generationResult.documents && generationResult.document_ids) {
-          // Генерируется несколько документов
-          setGenerationResult({
-            success: true,
-            documents: generationResult.documents,
-            documentIds: generationResult.document_ids,
-            count: generationResult.count
-          });
-          console.log('Generated multiple documents:', generationResult.documents);
-        } else {
-          // Генерируется один документ (старый формат)
-          setGenerationResult({
-            success: true,
-            documentId: generationResult.document_id,
-            documentPath: generationResult.file_path
-          });
-          onDocumentGenerated(generationResult.file_path);
-        }
-      } else {
-        // Показываем конкретное сообщение об ошибке из API
-        setGenerationResult({
-          success: false,
-          error: generationResult.error || 'Ошибка при генерации документа'
-        });
-        return;
-      }
-    } catch (err: any) {
-      console.error('Error generating document:', err);
-      setGenerationResult({
-        success: false,
-        error: err?.message || err?.error || 'Ошибка при генерации документа'
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleDownloadDocument = async () => {
-    setIsDownloading(true);
-    setDownloadMessage(null);
-
-    try {
-      // Проверяем доступность Electron API
-      console.log('[DocumentPreview] Checking Electron API availability...');
-      console.log('[DocumentPreview] window.electronAPI exists:', !!(window as any).electronAPI);
-
-      if (!(window as any).electronAPI) {
-        console.error('[DocumentPreview] Electron API is not available!');
-        throw new Error('Electron API не доступен. Убедитесь, что приложение запущено в Electron.');
-      }
-
-      console.log('[DocumentPreview] Electron API methods:', Object.keys((window as any).electronAPI));
-      console.log('[DocumentPreview] downloadAllDocuments exists:', !!(window as any).electronAPI.downloadAllDocuments);
-      console.log('[DocumentPreview] downloadAllDocuments type:', typeof (window as any).electronAPI.downloadAllDocuments);
-
-      if (!(window as any).electronAPI.downloadAllDocuments) {
-        console.error('[DocumentPreview] downloadAllDocuments method is missing!');
-        throw new Error('Метод downloadAllDocuments не доступен в Electron API.');
-      }
-
-      if (generationResult?.documentIds && generationResult.documentIds.length > 0) {
-        console.log('[DocumentPreview] ========== STARTING DOWNLOAD ==========');
-        console.log('[DocumentPreview] Downloading documents with IDs:', generationResult.documentIds);
-        console.log('[DocumentPreview] Electron API object:', (window as any).electronAPI);
-        console.log('[DocumentPreview] downloadAllDocuments function:', (window as any).electronAPI.downloadAllDocuments);
-        console.log('[DocumentPreview] downloadAllDocuments type:', typeof (window as any).electronAPI.downloadAllDocuments);
-        console.log('[DocumentPreview] Calling Electron API downloadAllDocuments...');
-
-        // Проверяем, что метод действительно функция перед вызовом
-        if (typeof (window as any).electronAPI.downloadAllDocuments !== 'function') {
-          console.error('[DocumentPreview] ERROR: downloadAllDocuments is not a function!');
-          console.error('[DocumentPreview] Available methods:', Object.keys((window as any).electronAPI));
-          throw new Error('Метод downloadAllDocuments не является функцией. Возможно, используется fallback web-api.js');
-        }
-
-        // Скачиваем все документы через Electron API
-        const downloadResult = await (window as any).electronAPI.downloadAllDocuments({
-          document_ids: generationResult.documentIds.join(','),
-          download_path: '' // Пустой путь - будет показан диалог выбора места сохранения
-        });
-
-        console.log('[DocumentPreview] ========== DOWNLOAD COMPLETE ==========');
-
-        console.log('[DocumentPreview] Download result:', downloadResult);
-
-        if (downloadResult.success) {
-          const filePath = downloadResult.filePath;
-          console.log('[DocumentPreview] Documents downloaded successfully to:', filePath);
-
-          // Показываем сообщение об успехе
-          setDownloadMessage({
-            type: 'success',
-            text: filePath
-              ? `Документы успешно сохранены в: ${filePath}`
-              : 'Документы успешно скачаны в папку загрузок'
-          });
-        } else {
-          throw new Error(downloadResult.error || 'Ошибка скачивания документов');
-        }
-      } else if (generationResult?.documentId) {
-        console.log('Downloading single document with ID:', generationResult.documentId);
-        console.log('Using Electron API:', typeof (window as any).electronAPI.downloadDocument);
-        // Скачиваем один документ через Electron API
-        const downloadResult = await (window as any).electronAPI.downloadDocument(
-          generationResult.documentId
-        );
-
-        if (downloadResult.success) {
-          console.log('Document downloaded successfully to:', downloadResult.filePath);
-          setDownloadMessage({
-            type: 'success',
-            text: `Документ успешно сохранен в: ${downloadResult.filePath || 'выбранную папку'}`
-          });
-        } else {
-          throw new Error(downloadResult.error || 'Ошибка скачивания документа');
-        }
-      } else {
-        throw new Error('Нет доступных документов для скачивания');
-      }
-    } catch (err: any) {
-      console.error('Error downloading document:', err);
-      setDownloadMessage({
-        type: 'error',
-        text: err?.message || 'Ошибка при скачивании документа'
-      });
-    } finally {
-      setIsDownloading(false);
-      // Автоматически скрываем сообщение через 5 секунд
-      setTimeout(() => {
-        setDownloadMessage(null);
-      }, 5000);
-    }
-  };
+  const handleGenerateDocument = generate;
+  const handleDownloadDocument = () => download(generationResult);
 
   const getFieldValue = (fieldName: string) => {
     return extractedData.fields[fieldName] || 'Не указано';
@@ -1249,7 +1075,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
                   <Alert
                     severity={downloadMessage.type}
                     sx={{ mb: 2 }}
-                    onClose={() => setDownloadMessage(null)}
+                    onClose={dismissMessage}
                   >
                     {downloadMessage.text}
                   </Alert>
