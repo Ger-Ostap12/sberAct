@@ -659,17 +659,24 @@ class ObligationsMixin:
                 else:
                     self._parse_obligations_fallback(extracted_fields, text, obligations)
 
-        # Убираем дубликаты обязательств
+        # Убираем дубликаты обязательств. Один номер часто встречается с разными
+        # разделителями (OCR грязных выписок: «У625/0055-0143478» и «У625/00550143478»)
+        # — дедупим по номеру БЕЗ разделителей, оставляя первое (более каноничное,
+        # с дефисами) представление и дотягивая дату, если у первого её не было.
         unique_obligations = []
-        seen_contracts = set()
+        seen_norm: Dict[str, Dict[str, str]] = {}
 
         for obligation in obligations:
-            contract_key = f"{obligation['contractNumber']}_{obligation['contractDate']}"
-            if contract_key not in seen_contracts:
+            key = re.sub(r"[\s/\-.]", "", obligation.get("contractNumber", "")).lower()
+            if key not in seen_norm:
+                seen_norm[key] = obligation
                 unique_obligations.append(obligation)
-                seen_contracts.add(contract_key)
             else:
-                logger.info(f"Пропускаем дубликат: {obligation['contractNumber']}")
+                prev = seen_norm[key]
+                if (prev.get("contractDate") in (None, "", "Не указана")
+                        and obligation.get("contractDate") not in (None, "", "Не указана")):
+                    prev["contractDate"] = obligation["contractDate"]
+                logger.info(f"Пропускаем дубль-вариант: {obligation['contractNumber']}")
 
         obligations = unique_obligations
 
@@ -763,6 +770,11 @@ class ObligationsMixin:
         if any(word in lower for word in ["считается", "поручительства", "фз", "а99", "0008008"]):
             return False
         digits_only = re.sub(r"\D", "", num_clean)
+        # Номер договора ВСЕГДА содержит хотя бы одну цифру. Чисто буквенное
+        # («Погашение», «Договор») — это не номер (OCR грязных выписок: «…договору
+        # № Погашение обязательств по…»).
+        if not digits_only:
+            return False
         has_letters = bool(re.search(r"[A-Za-zА-Яа-яЁё]", num_clean))
         # Для чисто цифровых номеров ужесточаем критерий: короткие значения
         # (например, "168") чаще всего не являются номером договора.

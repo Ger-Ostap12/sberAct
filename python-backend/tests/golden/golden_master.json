@@ -7830,8 +7830,8 @@
    "applicantNameGenitive": "Долгова Рашида Умаровича",
    "applicantNameInstrumental": "Долговым Рашидом Умаровичем",
    "applicationDate": "16.02.2024",
-   "contractDate": "04.08.2023, Не указана",
-   "contractNumber": "У625/0055-0143478, V625/0055-0143478, Уб25/00550143478, Погашение",
+   "contractDate": "04.08.2023",
+   "contractNumber": "У625/0055-0143478, V625/0055-0143478",
    "courtName": "Арбитражный суд республики Ингушетия",
    "creditorAddress": "191144, г. Санкт-Петербург, Дегтярный переулок, д. 11, лит. А",
    "creditorInn": "7702070139",
@@ -7850,26 +7850,8 @@
    "obligations": [
     {
      "contractDate": "04.08.2023",
-     "contractNumber": "V625/0055-0143478",
-     "id": "obligation_p_0",
-     "obligationType": "Кредитный договор"
-    },
-    {
-     "contractDate": "Не указана",
      "contractNumber": "У625/0055-0143478",
-     "id": "obligation_p_1",
-     "obligationType": "Кредитный договор"
-    },
-    {
-     "contractDate": "04.08.2023",
-     "contractNumber": "Уб25/00550143478",
-     "id": "obligation_p_2",
-     "obligationType": "Кредитный договор"
-    },
-    {
-     "contractDate": "Не указана",
-     "contractNumber": "Погашение",
-     "id": "obligation_p_3",
+     "id": "obligation_p_0",
      "obligationType": "Кредитный договор"
     }
    ],
@@ -7889,31 +7871,13 @@
   "obligations": [
    {
     "contractDate": "04.08.2023",
-    "contractNumber": "V625/0055-0143478",
-    "id": "obligation_p_0",
-    "obligationType": "Кредитный договор"
-   },
-   {
-    "contractDate": "Не указана",
     "contractNumber": "У625/0055-0143478",
-    "id": "obligation_p_1",
-    "obligationType": "Кредитный договор"
-   },
-   {
-    "contractDate": "04.08.2023",
-    "contractNumber": "Уб25/00550143478",
-    "id": "obligation_p_2",
-    "obligationType": "Кредитный договор"
-   },
-   {
-    "contractDate": "Не указана",
-    "contractNumber": "Погашение",
-    "id": "obligation_p_3",
+    "id": "obligation_p_0",
     "obligationType": "Кредитный договор"
    }
   ],
   "rawTextLen": 8913,
-  "rawTextSha": "f367822e7a93f4dccf81da0ba1847353524a61ceac3f9c5cf8b0fef5343f23a7",
+  "rawTextSha": "39fecbbb4c6c06113b4bc03b035f347bd68ca06435886b8721e1c4e98fd7c73d",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "individual",
