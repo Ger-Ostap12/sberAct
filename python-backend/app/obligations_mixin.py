@@ -305,6 +305,16 @@ class ObligationsMixin:
             if not self._is_valid_contract_number(contract_number):
                 continue
 
+            # Не добавляем повтор уже найденного договора. Этот проход из-за
+            # IGNORECASE ловит «грязный» вариант «…-2о» (потерянный пробел приклеил
+            # предлог «о» к «…-2»). Сравниваем по номеру без хвостовой строчной
+            # буквы — тогда «…-2о» опознаётся как дубль «…-2».
+            def _obl_key(s):
+                return re.sub(r"[а-яё]$", "", (s or "").strip().lower())
+            if any(_obl_key(contract_number) == _obl_key(o.get("contractNumber"))
+                   for o in obligations):
+                continue
+
             # Ищем дату в блоке - более гибкие паттерны
             date_patterns = [
                 r'от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})',
@@ -439,6 +449,12 @@ class ObligationsMixin:
                                 text[m.end(2):m.end(2) + 20])
                 if cont:
                     num += cont.group(1)
+            # «№…-2о предоставлении…»: потерянный пробел (pdf2docx) приклеил предлог
+            # «о» к номеру. Если номер кончается на «о», а дальше пробел+слово — это
+            # предлог, отсекаем (реальные номера так не оканчиваются). После отсечки
+            # «…-2о» схлопывается в уже найденный «…-2».
+            if num.endswith("о") and re.match(r"\s+[а-яё]{3,}", text[m.end(2):m.end(2) + 10]):
+                num = num[:-1]
             ctx = text[max(0, m.start() - 30):m.start()].lower()
             if "объявлен" in ctx or ("судебн" in ctx and "приказ" in ctx):
                 continue
