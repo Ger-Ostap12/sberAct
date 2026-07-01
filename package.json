@@ -5,7 +5,7 @@
   "main": "electron-app/main.js",
   "scripts": {
     "dev": "concurrently \"npm run dev:react\" \"npm run dev:electron\"",
-    "dev:react": "cd electron-app && npm run start",
+    "dev:react": "cross-env BROWSER=none npm --prefix electron-app start",
     "dev:electron": "wait-on http://localhost:3000 && electron .",
     "build": "cd electron-app && npm run build",
     "dist:linux": "electron-builder --linux",
@@ -62,6 +62,7 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
+    "cross-env": "^10.1.0",
     "electron": "^38.0.0",
     "electron-builder": "^24.13.3",
     "wait-on": "^7.2.0"
