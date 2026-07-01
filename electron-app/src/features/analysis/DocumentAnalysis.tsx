@@ -35,6 +35,8 @@ import { formatJudgeName } from '../../shared/lib/judges';
 import { formatAmount } from '../../shared/lib/amounts';
 import { extractCollateralData } from '../../shared/lib/collateral';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../shared/styles/formStyles';
+import { buildSubmitData } from './lib/buildSubmitData';
+import ObligationsSection from './sections/ObligationsSection';
 
 interface DocumentAnalysisProps {
   documentData: DocumentData;
@@ -135,7 +137,6 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     if (selectedActs.length > 0 && analysisResult && !recommendationsApplied) {
       const recommendedActs = (analysisResult as any).recommendedActs;
       if (recommendedActs) {
-        console.log('DocumentAnalysis: applying recommendations:', recommendedActs);
 
         // Устанавливаем рекомендуемый тип лица
         if (recommendedActs.entityType) {
@@ -162,7 +163,6 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
               ...act,
               selected: recommendedActs.recommendedActIds!.includes(act.id)
             }));
-            console.log('DocumentAnalysis: applied recommended acts:', recommendedActs.recommendedActIds);
             return updatedActs;
           });
         }
@@ -176,7 +176,6 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (isAnalyzing) {
-        console.log('DocumentAnalysis: timeout reached, stopping analysis');
         setIsAnalyzing(false);
         setError('Превышено время ожидания анализа документа');
       }
@@ -188,12 +187,9 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   useEffect(() => {
     // Анализ уже выполнен в DocumentUpload, данные переданы через props
     if (documentData) {
-      console.log('DocumentAnalysis: documentData received:', documentData);
 
       if (propExtractedData) {
         // Используем данные, переданные через props
-        console.log('DocumentAnalysis: received extractedData:', propExtractedData);
-        console.log('DocumentAnalysis: obligations from extractedData:', propExtractedData.obligations);
 
         // Устанавливаем полный analysisResult с obligations
         const defaultCollateral = (): Collateral => ({
@@ -234,7 +230,6 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
 
               // Извлекаем адрес и кадастровый номер из описания конкретного предмета залога
               const extractedData = extractCollateralData(itemDescription);
-              console.log(`DocumentAnalysis: извлеченные данные из описания залога ${idx + 1}:`, extractedData);
 
               const finalType = (collateral.collateralType || detectedType) as CollateralType;
               const isOther = finalType === 'other';
@@ -258,7 +253,6 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
               id: collateral.id || `collateral-${idx}`
             };
           });
-          console.log(`DocumentAnalysis: обработано ${initialCollaterals.length} предметов залога из backend`);
         } else if (mortgageCollateralDescription) {
           // Если нет массива collaterals, но есть описание предмета залога, создаем один залог с этим описанием
           // (это fallback для старых данных или случаев, когда backend не разбил на несколько предметов)
@@ -275,7 +269,6 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
 
           // Извлекаем адрес и кадастровый номер из описания
           const extractedData = extractCollateralData(mortgageCollateralDescription);
-          console.log('DocumentAnalysis: извлеченные данные из описания залога:', extractedData);
 
           const collateral: Collateral = {
             ...defaultCollateral(),
@@ -286,7 +279,6 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
             cadastralNumber: extractedData.cadastralNumber || ''
           };
           initialCollaterals = [collateral];
-          console.log('DocumentAnalysis: создан залог из mortgageCollateralDescription1221:', collateral);
         } else {
           // Залога нет — блок остаётся пустым (без записей).
           // Пользователь может добавить залог вручную кнопкой «Добавить залог».
@@ -351,19 +343,15 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           thirdParties: initialThirdParties,
           debtors: initialDebtors
         };
-        console.log('DocumentAnalysis: setting full analysisResult:', fullAnalysisResult);
-        console.log('DocumentAnalysis: obligations in fullAnalysisResult:', fullAnalysisResult.obligations);
         setAnalysisResult(fullAnalysisResult);
 
         const fields = propExtractedData.fields || {};
-        console.log('DocumentAnalysis: fields from extractedData:', fields);
 
         // Устанавливаем статичные значения и фильтруем undefined
         const cleanFields: Record<string, string> = {};
         Object.keys(fields).forEach(key => {
           if (fields[key] !== undefined && fields[key] !== null) {
             cleanFields[key] = String(fields[key]);
-            console.log(`DocumentAnalysis: setting field ${key} = ${cleanFields[key]}`);
           }
         });
         // Название суда берётся из документа (courtName), без хардкода — суд
@@ -394,15 +382,12 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         if (cleanFields.loanDebt && !cleanFields.principalDebt) {
           cleanFields.principalDebt = cleanFields.loanDebt;
         }
-        console.log('DocumentAnalysis: cleanFields after processing:', cleanFields);
         setEditedFields(cleanFields);
         setIsAnalyzing(false);
       } else {
         // Fallback: получаем данные из electronAPI
-        console.log('DocumentAnalysis: no propExtractedData, trying electronAPI');
         const extractedData = (window as any).electronAPI?.getExtractedData();
         if (extractedData) {
-          console.log('DocumentAnalysis: got data from electronAPI:', extractedData);
           setAnalysisResult(extractedData);
 
 
@@ -417,12 +402,10 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           // creditorName берется из извлеченных данных (маркер [987])
           setEditedFields(cleanFields);
         } else {
-          console.log('DocumentAnalysis: no data from electronAPI either');
         }
         setIsAnalyzing(false);
       }
     } else {
-      console.log('DocumentAnalysis: no documentData');
       setIsAnalyzing(false);
     }
   }, [documentData, propExtractedData]);
@@ -514,6 +497,13 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   const removeObligation = (index: number) => {
     if (!analysisResult) return;
     const updated = (analysisResult.obligations || []).filter((_, i) => i !== index);
+    setAnalysisResult({ ...analysisResult, obligations: updated });
+  };
+
+  const updateObligation = (index: number, patch: Partial<Obligation>) => {
+    if (!analysisResult) return;
+    const updated = [...(analysisResult.obligations || [])];
+    updated[index] = { ...updated[index], ...patch };
     setAnalysisResult({ ...analysisResult, obligations: updated });
   };
 
@@ -618,89 +608,19 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   };
 
   const handleContinue = () => {
-    if (analysisResult) {
-      // Определяем финальный тип лица: выбранный пользователем или автоматически определенный
-      const finalEntityType: 'individual' | 'legal' = entityType
-        ? (entityType === 'ip' || entityType === 'kfh' ? 'individual' : (entityType === 'legal' ? 'legal' : 'individual'))
-        : (analysisResult.entityType || 'individual');
-
-      // Объединяем извлеченные данные с отредактированными полями
-      // Приоритет у отредактированных полей
-      const updatedData: ExtractedData = {
-        ...analysisResult,
-        // Используем выбранный пользователем тип лица (с преобразованием для совместимости)
-        entityType: finalEntityType,
-        fields: {
-          ...analysisResult.fields,
-          ...editedFields,
-          // Сохраняем выбранные параметры в полях для передачи (оригинальный выбор пользователя)
-          selectedEntityType: entityType || undefined,
-          selectedCollateralOption: collateralOption || undefined,
-          selectedDebtorStatus: debtorStatus || undefined,
-          selectedActsIds: selectedActs.filter(a => a.selected).map(a => a.id).join(',') || undefined,
-          selectedActsData: JSON.stringify(selectedActs.filter(a => a.selected)) || undefined
-        },
-        collaterals: analysisResult.collaterals || [],
-        thirdParties: analysisResult.thirdParties || [],
-        debtors: analysisResult.debtors || []
-      };
-
-      // Преобразуем ФИО судьи в формат "Фамилия И.О."
-      if (updatedData.fields && updatedData.fields.judge) {
-        updatedData.fields.judge = formatJudgeName(updatedData.fields.judge);
-        console.log('DocumentAnalysis: преобразовано ФИО судьи:', updatedData.fields.judge);
-      }
-
-      // Убеждаемся, что все суммы передаются корректно
-      // Синхронизируем loanDebt и principalDebt перед отправкой
-      if (updatedData.fields) {
-        if (updatedData.fields.loanDebt && !updatedData.fields.principalDebt) {
-          updatedData.fields.principalDebt = updatedData.fields.loanDebt;
-          updatedData.fields.principalDebt13 = updatedData.fields.loanDebt;
-        } else if (updatedData.fields.principalDebt && !updatedData.fields.loanDebt) {
-          updatedData.fields.loanDebt = updatedData.fields.principalDebt;
-        }
-
-        // Синхронизируем другие поля сумм
-        if (updatedData.fields.interest && !updatedData.fields.interest14) {
-          updatedData.fields.interest14 = updatedData.fields.interest;
-        }
-        if (updatedData.fields.interest14 && !updatedData.fields.interest) {
-          updatedData.fields.interest = updatedData.fields.interest14;
-        }
-
-        if (updatedData.fields.forfeit && !updatedData.fields.forfeit15) {
-          updatedData.fields.forfeit15 = updatedData.fields.forfeit;
-        }
-        if (updatedData.fields.forfeit15 && !updatedData.fields.forfeit) {
-          updatedData.fields.forfeit = updatedData.fields.forfeit15;
-        }
-
-        if (updatedData.fields.penalties && !updatedData.fields.forfeit15) {
-          updatedData.fields.forfeit15 = updatedData.fields.penalties;
-          updatedData.fields.forfeit = updatedData.fields.penalties;
-        }
-
-        if (updatedData.fields.stateDuty && !updatedData.fields.stateDuty16) {
-          updatedData.fields.stateDuty16 = updatedData.fields.stateDuty;
-        }
-        if (updatedData.fields.stateDuty16 && !updatedData.fields.stateDuty) {
-          updatedData.fields.stateDuty = updatedData.fields.stateDuty16;
-        }
-      }
-
-      console.log('DocumentAnalysis: sending updated data:', updatedData);
-      console.log('DocumentAnalysis: editedFields:', editedFields);
-      console.log('DocumentAnalysis: updatedData.fields:', updatedData.fields);
-      console.log('DocumentAnalysis: creditorName in updatedData.fields:', updatedData.fields?.creditorName);
-      console.log('DocumentAnalysis: inn in updatedData.fields:', updatedData.fields?.inn);
-      console.log('DocumentAnalysis: loanDebt in updatedData.fields:', updatedData.fields?.loanDebt);
-      console.log('DocumentAnalysis: principalDebt in updatedData.fields:', updatedData.fields?.principalDebt);
-      console.log('DocumentAnalysis: stateDuty in updatedData.fields:', updatedData.fields?.stateDuty);
-      console.log('DocumentAnalysis: judge in updatedData.fields:', updatedData.fields?.judge);
-      console.log('DocumentAnalysis: date in updatedData.fields:', updatedData.fields?.date);
-      onAnalysisComplete(updatedData);
-    }
+    if (!analysisResult) return;
+    // Подготовка итоговых данных (ФИО судьи, синхронизация сумм, выбор пользователя)
+    // вынесена в чистую функцию buildSubmitData (features/analysis/lib) — покрыта тестами.
+    onAnalysisComplete(
+      buildSubmitData({
+        analysisResult,
+        editedFields,
+        entityType,
+        collateralOption,
+        debtorStatus,
+        selectedActs,
+      })
+    );
   };
 
 
@@ -2070,93 +1990,12 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
 
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
               {/* Блок обязательств */}
-              <Box sx={{ ...BLOCK_BOX_SX, mt: 3, width: '100%' }}>
-                <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
-                    Обязательства
-                  </Typography>
-                {(analysisResult?.obligations || []).map((obligation: Obligation, index: number) => (
-                    <Card key={obligation.id} sx={{ mb: 2, p: 2, border: '1px solid #e0e0e0' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                        Обязательство {index + 1}
-                      </Typography>
-                      <IconButton
-                        size="small"
-                        onClick={() => removeObligation(index)}
-                        aria-label="Удалить обязательство"
-                        sx={{ color: 'text.secondary' }}
-                      >
-                        <CloseIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                      <Grid container spacing={2}>
-                        <Grid item xs={12}>
-                        <Box sx={LABEL_OVERLAP_BOX}>
-                          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Номер договора:</Typography>
-                          <TextField
-                            fullWidth
-                            value={obligation.contractNumber || ''}
-                            multiline
-                            onChange={(e) => {
-                              const updatedObligations = [...(analysisResult.obligations || [])];
-                              updatedObligations[index] = { ...obligation, contractNumber: e.target.value };
-                              setAnalysisResult({ ...analysisResult, obligations: updatedObligations });
-                            }}
-                            size="small"
-                            margin="dense"
-                          />
-                        </Box>
-                        </Grid>
-                        <Grid item xs={12} sm={4}>
-                        <Box sx={LABEL_OVERLAP_BOX}>
-                          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата договора:</Typography>
-                          <TextField
-                            fullWidth
-                            type="date"
-                            value={toInputDate(obligation.contractDate)}
-                            onChange={(e) => {
-                              const updatedObligations = [...(analysisResult.obligations || [])];
-                              updatedObligations[index] = { ...obligation, contractDate: fromInputDate(e.target.value) };
-                              setAnalysisResult({ ...analysisResult, obligations: updatedObligations });
-                            }}
-                            size="small"
-                            margin="dense"
-                            InputLabelProps={{
-                              shrink: true,
-                            }}
-                          />
-                        </Box>
-                        </Grid>
-                        <Grid item xs={12}>
-                        <Box sx={LABEL_OVERLAP_BOX}>
-                          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Тип обязательства:</Typography>
-                          <TextField
-                            fullWidth
-                            value={obligation.obligationType || ''}
-                            multiline
-                            onChange={(e) => {
-                              const updatedObligations = [...(analysisResult.obligations || [])];
-                              updatedObligations[index] = { ...obligation, obligationType: e.target.value };
-                              setAnalysisResult({ ...analysisResult, obligations: updatedObligations });
-                            }}
-                            size="small"
-                            margin="dense"
-                          />
-                        </Box>
-                        </Grid>
-                      </Grid>
-                    </Card>
-                  ))}
-                <Button
-                  startIcon={<AddIcon />}
-                  onClick={addObligation}
-                  variant="outlined"
-                  size="small"
-                  sx={{ mt: 1 }}
-                >
-                  Добавить обязательство
-                </Button>
-                </Box>
+              <ObligationsSection
+                obligations={analysisResult?.obligations || []}
+                onUpdate={updateObligation}
+                onAdd={addObligation}
+                onRemove={removeObligation}
+              />
                 </Grid>
 
                 {/* Залог */}
