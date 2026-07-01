@@ -3027,16 +3027,51 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
 
 
+    # Типы ТС (многословные — раньше однословных, чтобы «грузовой тягач» не срезался
+    # до «грузовой»). «автомобиль» тут НЕ тип, а метка предмета — не берём.
+    _VEHICLE_TYPE_RE = (
+        r"седельн\w+\s+тягач\w*|грузов\w+\s+тягач\w*|бортов\w+\s+грузов\w+|"
+        r"грузов\w+|легков\w+|полуприцеп\w*|прицеп\w*|тягач\w*|автобус\w*|"
+        r"самосвал\w*|фургон\w*|мотоцикл\w*|трактор\w*|экскаватор\w*|погрузчик\w*"
+    )
+
+    def _extract_vehicle_type(self, desc: str) -> Optional[str]:
+        """Вид ТС (грузовой/полуприцеп/прицеп/тягач/…) для наименования залога-авто."""
+        m = re.search(r"(" + self._VEHICLE_TYPE_RE + r")", desc, re.IGNORECASE)
+        if m:
+            t = re.sub(r"\s+", " ", m.group(1).strip().lower())
+            return t[0].upper() + t[1:]
+        return None
+
     def _extract_collateral_brand_model(self, desc: str) -> Optional[str]:
-        """Извлекает марку и модель авто из описания залога."""
-        mk = re.search(r"марк[аиуе]\s*[:：]?\s*([A-Za-zА-Яа-яЁё0-9\- ]{1,30}?)\s*(?=[,;.]|модель|год|vin|кузов|$)", desc, re.IGNORECASE)
-        md = re.search(r"модел[ьи]\s*[:：]?\s*([A-Za-zА-Яа-яЁё0-9\- ]{1,30}?)\s*(?=[,;.]|год|vin|кузов|рама|$)", desc, re.IGNORECASE)
+        """Марка+модель авто. Поддержка меток «Марка/Модель [ТС]:» и OCR «Мо дель»."""
+        d = re.sub(r"мо\s+дель", "модель", desc, flags=re.IGNORECASE)  # OCR-склейка
+        mk = re.search(r"марк[аиуе](?:\s*тс)?\s*[:：]\s*([A-Za-zА-Яа-яЁё0-9\- ]{1,30}?)\s*(?=[,;.]|модел|год|vin|кузов|$)", d, re.IGNORECASE)
+        md = re.search(r"модел[ьи](?:\s*тс)?\s*[:：]\s*([A-Za-zА-Яа-яЁё0-9\- ]{1,30}?)\s*(?=[,;.]|год|vin|кузов|рама|$)", d, re.IGNORECASE)
         parts = []
         if mk and mk.group(1).strip():
             parts.append(mk.group(1).strip())
         if md and md.group(1).strip():
             parts.append(md.group(1).strip())
         return " ".join(parts) or None
+
+    def _extract_freeform_make_model(self, desc: str, vtype: Optional[str], year: Optional[str]) -> Optional[str]:
+        """Марка/модель без меток: «…, Грузовой ИЖ 27175 2009.» → «ИЖ 27175».
+        Берём текст сразу после вида ТС до года/знака препинания."""
+        if not vtype:
+            return None
+        m = re.search(
+            re.escape(vtype) + r"\s+([A-Za-zА-Яа-яЁё][A-Za-zА-Яа-яЁё0-9\- ]{1,40}?)"
+            r"(?=\s*(?:19\d{2}|20[0-3]\d)\b|[,;.]|$)",
+            desc, re.IGNORECASE,
+        )
+        if not m:
+            return None
+        s = re.sub(r"\s+", " ", m.group(1)).strip()
+        # Не марка, если это метка или сам вид ТС.
+        if not s or re.match(r"(?i)марк|модел|vin|год|тс\b", s):
+            return None
+        return s
 
     def _extract_collateral_address(self, desc: str) -> Optional[str]:
         """Извлекает ПОЛНЫЙ адрес объекта недвижимости из описания залога.
@@ -3062,11 +3097,16 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         return addr if len(addr) >= 6 else None
 
     def _extract_car_year(self, desc: str) -> Optional[str]:
-        """Год выпуска авто: «год выпуска: 2011» или «2011 г.в.» / «2011 года выпуска»."""
-        m = re.search(r"год\w*\s+выпуска\s*[:：]?\s*(\d{4})", desc, re.IGNORECASE)
+        """Год выпуска авто: «год выпуска: 2011», «Год: 2020», «Год выпуска ТС: 1992»,
+        «2011 г.в.» / «2011 года выпуска» либо хвостовой год «ИЖ 27175 2009.»."""
+        m = re.search(r"год\w*(?:\s+выпуска)?(?:\s*тс)?\s*[:：]?\s*(19\d{2}|20[0-3]\d)", desc, re.IGNORECASE)
         if m:
             return m.group(1)
-        m = re.search(r"\b(\d{4})\s*(?:г\.?\s*в\.?|года?\s+выпуска)", desc, re.IGNORECASE)
+        m = re.search(r"\b(19\d{2}|20[0-3]\d)\s*(?:г\.?\s*в\.?|года?\s+выпуска)", desc, re.IGNORECASE)
+        if m:
+            return m.group(1)
+        # Хвостовой год в свободном описании: «…ИЖ 27175 2009.» (без метки/«г.в.»).
+        m = re.search(r"(?<!\d)(19\d{2}|20[0-3]\d)(?!\d)\s*[.;,]?\s*$", desc.strip())
         if m:
             return m.group(1)
         return None
@@ -3298,27 +3338,30 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             vin = re.search(r"(?:VIN\s*[:：]?\s*)?\b([A-HJ-NPR-Z0-9]{17})\b", desc, re.IGNORECASE)
             if vin:
                 obj["vin"] = vin.group(1).upper()
+            vtype = self._extract_vehicle_type(desc)
+            year = self._extract_car_year(desc)
             bm = self._extract_collateral_brand_model(desc)
+            if not bm:  # марка/модель без меток: «…Грузовой ИЖ 27175 2009.»
+                bm = self._extract_freeform_make_model(desc, vtype, year)
             if bm:
                 obj["brandModel"] = bm
-            # Наименование авто — все доступные данные: марка/модель, год выпуска,
-            # гос. знак (грз/гсз/госзнак), цвет, кузов (что нашлось в описании).
-            parts = []
-            if bm:
-                parts.append(bm)
-            year = self._extract_car_year(desc)
+            # Наименование авто: «<Вид ТС> <Марка Модель>, <год> г.в., гос. знак…,
+            # цвет…, кузов…». Вид ТС и марка/модель — «голова», остальное — атрибуты.
+            head = " ".join(p for p in (vtype, bm) if p).strip()
+            attrs = []
             if year:
-                parts.append(f"{year} г.в.")
+                attrs.append(f"{year} г.в.")
             plate = self._extract_plate(desc)
             if plate:
-                parts.append(f"гос. знак {plate}")
+                attrs.append(f"гос. знак {plate}")
             cm = re.search(r"цвет\s*[:：]?\s*([А-ЯЁа-яё\-]+)", desc, re.IGNORECASE)
             if cm:
-                parts.append(f"цвет {cm.group(1).lower()}")
+                attrs.append(f"цвет {cm.group(1).lower()}")
             km = re.search(r"кузов\s*[№:：]?\s*([A-ZА-ЯЁ0-9\-]{4,})", desc, re.IGNORECASE)
             if km:
-                parts.append(f"кузов {km.group(1)}")
-            obj["objectName"] = ", ".join(parts) or "Автомобиль"
+                attrs.append(f"кузов {km.group(1)}")
+            name = (head + ", " if head and attrs else head) + ", ".join(attrs)
+            obj["objectName"] = name.strip(" ,") or "Автомобиль"
         elif ctype == "real_estate":
             cad = re.search(r"(\d{2}:\d{2}:\d{6,7}:\d{1,6})", desc)
             if cad:

@@ -39,11 +39,25 @@ class ObligationsMixin:
                 contract_match = re.search(
                     r'эмиссионн\w*\s+контракт\w*\s*№?\s*([А-ЯЁ0-9/-]+)',
                     block_text, re.IGNORECASE)
+            # Номер, разбитый ПРОБЕЛАМИ (Сбербанк, лимит кредитной линии): «договор
+            # №6142027489 24 1 от …» = 6142027489-24-1. Склеиваем группы дефисом.
+            # Проверяем ДО общего «договор №…», иначе тот возьмёт лишь базовую часть,
+            # и все блоки с одинаковой базой схлопнутся в одно обязательство.
+            space_num_raw = None
             if not contract_match:
+                sm = re.search(r'договор\w*\s*№\s*(\d{6,}(?:\s+\d{1,4}){1,3})(?=\s+от\s+\d|[\s,;.]|$)', block_text)
+                if sm:
+                    space_num_raw = sm.group(1).strip()
+            if not contract_match and not space_num_raw:
                 # Попробуем найти просто номер договора
                 contract_match = re.search(r'договор[:\s]*№?\s*([А-ЯЁ0-9/-]+)', block_text)
 
-            contract_number = self.clean_extracted_value(contract_match.group(1)) if contract_match and contract_match.groups() else f'Договор_{obligation_num}'
+            if space_num_raw:
+                contract_number = re.sub(r'\s+', '-', space_num_raw)
+                num_for_type = space_num_raw  # в тексте номер с пробелами — по нему ищем тип
+            else:
+                contract_number = self.clean_extracted_value(contract_match.group(1)) if contract_match and contract_match.groups() else f'Договор_{obligation_num}'
+                num_for_type = contract_number
 
             # Извлекаем сумму после "образовалась задолженность в размере"
             amount_match = re.search(r'образовалась\s+задолженность\s+в\s+размере[:\s]*([0-9\s,]+)\s*(?:руб|рублей|₽|р\.?)', block_text)
@@ -138,7 +152,7 @@ class ObligationsMixin:
                     penalty0071_value = total_penalty
                     logger.info(f"Сумма неустоек в залоговом обязательстве {obligation_num}: {penalty0071} руб.")
 
-            detected_type = self.detect_obligation_type(block_text, contract_number)
+            detected_type = self.detect_obligation_type(block_text, num_for_type)
             obligation = {
                 'id': f'obligation_{obligation_num}',
                 'contractNumber': contract_number,
