@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import DocumentAnalysis from '../DocumentAnalysis';
 import { DocumentData, ExtractedData } from '../../../types';
 
@@ -38,34 +38,35 @@ const renderForm = () =>
   );
 
 describe('DocumentAnalysis — CRUD обязательств', () => {
+  // Карточки — сворачиваемые (Accordion), в шапке «Обязательство N [— № …]».
   it('стартует с одним обязательством', () => {
     renderForm();
-    expect(screen.getByText('Обязательство 1')).toBeInTheDocument();
-    expect(screen.queryByText('Обязательство 2')).not.toBeInTheDocument();
+    expect(screen.getByText(/Обязательство 1/)).toBeInTheDocument();
+    expect(screen.queryByText(/Обязательство 2/)).not.toBeInTheDocument();
   });
 
   it('«Добавить обязательство» добавляет карточку', () => {
     renderForm();
     fireEvent.click(screen.getByRole('button', { name: 'Добавить обязательство' }));
-    expect(screen.getByText('Обязательство 2')).toBeInTheDocument();
+    expect(screen.getByText(/Обязательство 2/)).toBeInTheDocument();
   });
 
   it('кнопка удаления убирает обязательство', () => {
     renderForm();
     fireEvent.click(screen.getByRole('button', { name: 'Добавить обязательство' }));
-    expect(screen.getByText('Обязательство 2')).toBeInTheDocument();
+    expect(screen.getByText(/Обязательство 2/)).toBeInTheDocument();
 
     const removeButtons = screen.getAllByLabelText('Удалить обязательство');
     fireEvent.click(removeButtons[0]);
-    expect(screen.queryByText('Обязательство 2')).not.toBeInTheDocument();
-    expect(screen.getByText('Обязательство 1')).toBeInTheDocument();
+    expect(screen.queryByText(/Обязательство 2/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Обязательство 1/)).toBeInTheDocument();
   });
 
-  it('редактирование номера договора обновляет поле', () => {
+  it('редактирование номера договора обновляет поле (даже в свёрнутой карточке)', () => {
     renderForm();
-    const card = screen.getByText('Обязательство 1').closest('.MuiCard-root') as HTMLElement;
-    const numberInput = within(card).getByDisplayValue('111');
+    // Поля свёрнутой карточки остаются в DOM (MUI Collapse не размонтирует контент).
+    const numberInput = screen.getByDisplayValue('111');
     fireEvent.change(numberInput, { target: { value: '222' } });
-    expect(within(card).getByDisplayValue('222')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('222')).toBeInTheDocument();
   });
 });

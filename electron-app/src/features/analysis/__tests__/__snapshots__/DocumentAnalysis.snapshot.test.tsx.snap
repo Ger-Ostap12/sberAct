@@ -3167,180 +3167,230 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                     Обязательства
                   </h6>
                   <div
-                    class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-x4anvp-MuiPaper-root-MuiCard-root"
+                    class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiAccordion-root MuiAccordion-rounded css-16h60jb-MuiPaper-root-MuiAccordion-root"
                   >
                     <div
-                      class="MuiBox-root css-efd5gz"
+                      aria-expanded="false"
+                      aria-label="Обязательство 1"
+                      class="MuiButtonBase-root MuiAccordionSummary-root css-1pvvkxv-MuiButtonBase-root-MuiAccordionSummary-root"
+                      role="button"
+                      tabindex="0"
                     >
-                      <h6
-                        class="MuiTypography-root MuiTypography-subtitle1 css-1786zc4-MuiTypography-root"
+                      <div
+                        class="MuiAccordionSummary-content css-1betqn-MuiAccordionSummary-content"
                       >
-                        Обязательство 
-                        1
-                      </h6>
-                      <button
-                        aria-label="Удалить обязательство"
-                        class="MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeSmall css-fhw2au-MuiButtonBase-root-MuiIconButton-root"
-                        tabindex="0"
-                        type="button"
+                        <div
+                          class="MuiBox-root css-13463n6"
+                        >
+                          <h6
+                            class="MuiTypography-root MuiTypography-subtitle1 css-1786zc4-MuiTypography-root"
+                          >
+                            Обязательство 
+                            1
+                             — № 123
+                          </h6>
+                          <button
+                            aria-label="Удалить обязательство"
+                            class="MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeSmall css-fhw2au-MuiButtonBase-root-MuiIconButton-root"
+                            tabindex="0"
+                            type="button"
+                          >
+                            <svg
+                              aria-hidden="true"
+                              class="MuiSvgIcon-root MuiSvgIcon-fontSizeSmall css-ptiqhd-MuiSvgIcon-root"
+                              data-testid="CloseIcon"
+                              focusable="false"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+                              />
+                            </svg>
+                            <span
+                              class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
+                            />
+                          </button>
+                        </div>
+                      </div>
+                      <div
+                        class="MuiAccordionSummary-expandIconWrapper css-yw020d-MuiAccordionSummary-expandIconWrapper"
                       >
                         <svg
                           aria-hidden="true"
-                          class="MuiSvgIcon-root MuiSvgIcon-fontSizeSmall css-ptiqhd-MuiSvgIcon-root"
-                          data-testid="CloseIcon"
+                          class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                          data-testid="ExpandMoreIcon"
                           focusable="false"
                           viewBox="0 0 24 24"
                         >
                           <path
-                            d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+                            d="M16.59 8.59 12 13.17 7.41 8.59 6 10l6 6 6-6z"
                           />
                         </svg>
-                        <span
-                          class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
-                        />
-                      </button>
+                      </div>
                     </div>
                     <div
-                      class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-2 css-mhc70k-MuiGrid-root"
+                      class="MuiCollapse-root MuiCollapse-vertical MuiCollapse-hidden css-bz4dnt-MuiCollapse-root"
+                      style="min-height: 0px;"
                     >
                       <div
-                        class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 css-1idn90j-MuiGrid-root"
+                        class="MuiCollapse-wrapper MuiCollapse-vertical css-smkl36-MuiCollapse-wrapper"
                       >
                         <div
-                          class="MuiBox-root css-1qctysj"
+                          class="MuiCollapse-wrapperInner MuiCollapse-vertical css-9l5vo-MuiCollapse-wrapperInner"
                         >
-                          <p
-                            class="MuiTypography-root MuiTypography-body2 css-ul1486-MuiTypography-root"
-                          >
-                            Номер договора:
-                          </p>
                           <div
-                            class="MuiFormControl-root MuiFormControl-marginDense MuiFormControl-fullWidth MuiTextField-root css-1z10yd4-MuiFormControl-root-MuiTextField-root"
+                            class="MuiAccordion-region"
+                            role="region"
                           >
                             <div
-                              class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-fullWidth MuiInputBase-formControl MuiInputBase-sizeSmall MuiInputBase-multiline css-z1o969-MuiInputBase-root-MuiOutlinedInput-root"
+                              class="MuiAccordionDetails-root css-15v22id-MuiAccordionDetails-root"
                             >
-                              <textarea
-                                aria-invalid="false"
-                                class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline MuiInputBase-inputSizeSmall css-12tl3rr-MuiInputBase-input-MuiOutlinedInput-input"
-                                id=":r16:"
-                                style="height: 0px; overflow: hidden;"
+                              <div
+                                class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-2 css-mhc70k-MuiGrid-root"
                               >
-                                123
-                              </textarea>
-                              <textarea
-                                aria-hidden="true"
-                                class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline MuiInputBase-inputSizeSmall css-12tl3rr-MuiInputBase-input-MuiOutlinedInput-input"
-                                readonly=""
-                                style="visibility: hidden; position: absolute; overflow: hidden; height: 0px; top: 0px; left: 0px; transform: translateZ(0); padding-top: 0px; padding-bottom: 0px; width: 100%;"
-                                tabindex="-1"
-                              />
-                              <fieldset
-                                aria-hidden="true"
-                                class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
-                              >
-                                <legend
-                                  class="css-1whs34k-MuiNotchedOutlined-root"
+                                <div
+                                  class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 css-1idn90j-MuiGrid-root"
                                 >
-                                  <span
-                                    class="notranslate"
+                                  <div
+                                    class="MuiBox-root css-1qctysj"
                                   >
-                                    ​
-                                  </span>
-                                </legend>
-                              </fieldset>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div
-                        class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 MuiGrid-grid-sm-4 css-wg4xta-MuiGrid-root"
-                      >
-                        <div
-                          class="MuiBox-root css-1qctysj"
-                        >
-                          <p
-                            class="MuiTypography-root MuiTypography-body2 css-ul1486-MuiTypography-root"
-                          >
-                            Дата договора:
-                          </p>
-                          <div
-                            class="MuiFormControl-root MuiFormControl-marginDense MuiFormControl-fullWidth MuiTextField-root css-1z10yd4-MuiFormControl-root-MuiTextField-root"
-                          >
-                            <div
-                              class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-fullWidth MuiInputBase-formControl MuiInputBase-sizeSmall css-md26zr-MuiInputBase-root-MuiOutlinedInput-root"
-                            >
-                              <input
-                                aria-invalid="false"
-                                class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                                id=":r17:"
-                                type="date"
-                                value="2024-02-01"
-                              />
-                              <fieldset
-                                aria-hidden="true"
-                                class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
-                              >
-                                <legend
-                                  class="css-1whs34k-MuiNotchedOutlined-root"
+                                    <p
+                                      class="MuiTypography-root MuiTypography-body2 css-ul1486-MuiTypography-root"
+                                    >
+                                      Номер договора:
+                                    </p>
+                                    <div
+                                      class="MuiFormControl-root MuiFormControl-marginDense MuiFormControl-fullWidth MuiTextField-root css-1z10yd4-MuiFormControl-root-MuiTextField-root"
+                                    >
+                                      <div
+                                        class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-fullWidth MuiInputBase-formControl MuiInputBase-sizeSmall MuiInputBase-multiline css-z1o969-MuiInputBase-root-MuiOutlinedInput-root"
+                                      >
+                                        <textarea
+                                          aria-invalid="false"
+                                          class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline MuiInputBase-inputSizeSmall css-12tl3rr-MuiInputBase-input-MuiOutlinedInput-input"
+                                          id=":r16:"
+                                          style="height: 0px; overflow: hidden;"
+                                        >
+                                          123
+                                        </textarea>
+                                        <textarea
+                                          aria-hidden="true"
+                                          class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline MuiInputBase-inputSizeSmall css-12tl3rr-MuiInputBase-input-MuiOutlinedInput-input"
+                                          readonly=""
+                                          style="visibility: hidden; position: absolute; overflow: hidden; height: 0px; top: 0px; left: 0px; transform: translateZ(0); padding-top: 0px; padding-bottom: 0px; width: 100%;"
+                                          tabindex="-1"
+                                        />
+                                        <fieldset
+                                          aria-hidden="true"
+                                          class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
+                                        >
+                                          <legend
+                                            class="css-1whs34k-MuiNotchedOutlined-root"
+                                          >
+                                            <span
+                                              class="notranslate"
+                                            >
+                                              ​
+                                            </span>
+                                          </legend>
+                                        </fieldset>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div
+                                  class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 MuiGrid-grid-sm-4 css-wg4xta-MuiGrid-root"
                                 >
-                                  <span
-                                    class="notranslate"
+                                  <div
+                                    class="MuiBox-root css-1qctysj"
                                   >
-                                    ​
-                                  </span>
-                                </legend>
-                              </fieldset>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div
-                        class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 css-1idn90j-MuiGrid-root"
-                      >
-                        <div
-                          class="MuiBox-root css-1qctysj"
-                        >
-                          <p
-                            class="MuiTypography-root MuiTypography-body2 css-ul1486-MuiTypography-root"
-                          >
-                            Тип обязательства:
-                          </p>
-                          <div
-                            class="MuiFormControl-root MuiFormControl-marginDense MuiFormControl-fullWidth MuiTextField-root css-1z10yd4-MuiFormControl-root-MuiTextField-root"
-                          >
-                            <div
-                              class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-fullWidth MuiInputBase-formControl MuiInputBase-sizeSmall MuiInputBase-multiline css-z1o969-MuiInputBase-root-MuiOutlinedInput-root"
-                            >
-                              <textarea
-                                aria-invalid="false"
-                                class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline MuiInputBase-inputSizeSmall css-12tl3rr-MuiInputBase-input-MuiOutlinedInput-input"
-                                id=":r18:"
-                                style="height: 0px; overflow: hidden;"
-                              >
-                                Кредитный договор
-                              </textarea>
-                              <textarea
-                                aria-hidden="true"
-                                class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline MuiInputBase-inputSizeSmall css-12tl3rr-MuiInputBase-input-MuiOutlinedInput-input"
-                                readonly=""
-                                style="visibility: hidden; position: absolute; overflow: hidden; height: 0px; top: 0px; left: 0px; transform: translateZ(0); padding-top: 0px; padding-bottom: 0px; width: 100%;"
-                                tabindex="-1"
-                              />
-                              <fieldset
-                                aria-hidden="true"
-                                class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
-                              >
-                                <legend
-                                  class="css-1whs34k-MuiNotchedOutlined-root"
+                                    <p
+                                      class="MuiTypography-root MuiTypography-body2 css-ul1486-MuiTypography-root"
+                                    >
+                                      Дата договора:
+                                    </p>
+                                    <div
+                                      class="MuiFormControl-root MuiFormControl-marginDense MuiFormControl-fullWidth MuiTextField-root css-1z10yd4-MuiFormControl-root-MuiTextField-root"
+                                    >
+                                      <div
+                                        class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-fullWidth MuiInputBase-formControl MuiInputBase-sizeSmall css-md26zr-MuiInputBase-root-MuiOutlinedInput-root"
+                                      >
+                                        <input
+                                          aria-invalid="false"
+                                          class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
+                                          id=":r17:"
+                                          type="date"
+                                          value="2024-02-01"
+                                        />
+                                        <fieldset
+                                          aria-hidden="true"
+                                          class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
+                                        >
+                                          <legend
+                                            class="css-1whs34k-MuiNotchedOutlined-root"
+                                          >
+                                            <span
+                                              class="notranslate"
+                                            >
+                                              ​
+                                            </span>
+                                          </legend>
+                                        </fieldset>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div
+                                  class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 css-1idn90j-MuiGrid-root"
                                 >
-                                  <span
-                                    class="notranslate"
+                                  <div
+                                    class="MuiBox-root css-1qctysj"
                                   >
-                                    ​
-                                  </span>
-                                </legend>
-                              </fieldset>
+                                    <p
+                                      class="MuiTypography-root MuiTypography-body2 css-ul1486-MuiTypography-root"
+                                    >
+                                      Тип обязательства:
+                                    </p>
+                                    <div
+                                      class="MuiFormControl-root MuiFormControl-marginDense MuiFormControl-fullWidth MuiTextField-root css-1z10yd4-MuiFormControl-root-MuiTextField-root"
+                                    >
+                                      <div
+                                        class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-fullWidth MuiInputBase-formControl MuiInputBase-sizeSmall MuiInputBase-multiline css-z1o969-MuiInputBase-root-MuiOutlinedInput-root"
+                                      >
+                                        <textarea
+                                          aria-invalid="false"
+                                          class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline MuiInputBase-inputSizeSmall css-12tl3rr-MuiInputBase-input-MuiOutlinedInput-input"
+                                          id=":r18:"
+                                          style="height: 0px; overflow: hidden;"
+                                        >
+                                          Кредитный договор
+                                        </textarea>
+                                        <textarea
+                                          aria-hidden="true"
+                                          class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline MuiInputBase-inputSizeSmall css-12tl3rr-MuiInputBase-input-MuiOutlinedInput-input"
+                                          readonly=""
+                                          style="visibility: hidden; position: absolute; overflow: hidden; height: 0px; top: 0px; left: 0px; transform: translateZ(0); padding-top: 0px; padding-bottom: 0px; width: 100%;"
+                                          tabindex="-1"
+                                        />
+                                        <fieldset
+                                          aria-hidden="true"
+                                          class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
+                                        >
+                                          <legend
+                                            class="css-1whs34k-MuiNotchedOutlined-root"
+                                          >
+                                            <span
+                                              class="notranslate"
+                                            >
+                                              ​
+                                            </span>
+                                          </legend>
+                                        </fieldset>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
