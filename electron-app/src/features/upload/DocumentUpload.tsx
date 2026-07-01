@@ -11,8 +11,8 @@ import {
 } from '@mui/material';
 import { CloudUpload as UploadIcon, Description as FileIcon } from '@mui/icons-material';
 import { useDropzone } from 'react-dropzone';
-import { DocumentData, AnalysisResult } from '../types';
-import { analyzeDocument, selectFile, hasElectronAPI } from '../services/electronApi';
+import { DocumentData, AnalysisResult } from '../../types';
+import { analyzeDocument, selectFile, hasElectronAPI } from '../../services/electronApi';
 
 interface DocumentUploadProps {
   onDocumentUploaded: (data: DocumentData, analysisResult?: AnalysisResult) => void;
