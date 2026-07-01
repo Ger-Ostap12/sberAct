@@ -4,7 +4,7 @@ import { CssBaseline, Box, Container, Typography, AppBar, Toolbar, IconButton, T
 import { LocalOffer as DocumentIcon, BugReport as DevToolsIcon } from '@mui/icons-material';
 import DocumentUpload from './components/DocumentUpload';
 import DocumentAnalysis from './components/DocumentAnalysis';
-import DocumentPreview from './components/DocumentPreview';
+import DocumentPreview from './features/preview/DocumentPreview';
 import { DocumentData, TemplateType, ExtractedData, AnalysisResult } from './types';
 import { pickTemplate } from './templates';
 import { toggleDevTools } from './services/electronApi';
