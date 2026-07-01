@@ -1,13 +1,18 @@
-import { BANK_DATA, BANK_ALIASES } from '../constants/banks';
+import { Bank } from '../constants/banks';
 
-// Распознавание банка по названию из документа → ключ в BANK_DATA (для автоподсветки
-// в выпадающем списке). Перенесено 1:1 из DocumentAnalysis.
-export const matchBankKey = (name?: string): string | null => {
+/**
+ * Распознаёт банк по названию кредитора среди переданного списка (с бэкенда) →
+ * возвращает `display` (ключ для выпадающего списка) или null. Логика прежняя:
+ * точное совпадение по display, затем поиск по алиасам как подстроке (регистр
+ * игнорируется).
+ */
+export const matchBankKey = (name: string | undefined, banks: Bank[]): string | null => {
   if (!name) return null;
-  if (BANK_DATA[name]) return name; // точное совпадение с ключом
+  const exact = banks.find((b) => b.display === name);
+  if (exact) return exact.display;
   const low = name.toLowerCase();
-  for (const { key, keywords } of BANK_ALIASES) {
-    if (keywords.some((k) => low.includes(k))) return key;
+  for (const bank of banks) {
+    if (bank.aliases.some((alias) => low.includes(alias))) return bank.display;
   }
   return null;
 };

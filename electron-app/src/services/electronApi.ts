@@ -1,4 +1,5 @@
 import { AnalysisResult, ExtractedData } from '../types';
+import { Bank } from '../shared/constants/banks';
 import { webApi } from './webApi';
 
 // ── Формы запросов/ответов backend (snake_case — как отдаёт Python/preload) ──
@@ -45,6 +46,8 @@ export interface ElectronAPI {
   analyzeDocument: (input: File | string) => Promise<AnalysisResult>;
   generateDocument: (req: GenerateDocumentRequest) => Promise<GenerateDocumentResult>;
   getTemplates: () => Promise<unknown>;
+  /** Единый реестр банков-кредиторов с бэкенда (GET /banks). */
+  getBanks: () => Promise<Bank[]>;
   downloadDocument: (documentId: string) => Promise<DownloadResult>;
   downloadAllDocuments: (data: DownloadAllDocumentsRequest) => Promise<DownloadResult>;
   getDownloadPaths: () => Promise<unknown>;
@@ -105,6 +108,8 @@ export const getExtractedData = (): Promise<ExtractedData | null> =>
   getApi().getExtractedData();
 
 export const selectFile = (): Promise<string | null> => getApi().selectFile();
+
+export const getBanks = (): Promise<Bank[]> => getApi().getBanks();
 
 /** Переключение DevTools с фолбэком на глобальную openDevTools (как было в App). */
 export const toggleDevTools = (): void => {

@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import { ArrowBack as BackIcon, CheckCircle as CheckIcon } from '@mui/icons-material';
 import { DocumentData, ExtractedData, Obligation, Collateral, CollateralType, EntityType, CollateralOption, DebtorStatus, SelectedAct, ThirdParty, Debtor } from '../../types';
-import { BANK_DATA } from '../../shared/constants/banks';
+import { useBanks } from './hooks/useBanks';
 import { extractCollateralData } from '../../shared/lib/collateral';
 import { buildSubmitData } from './lib/buildSubmitData';
 import ObligationsSection from './sections/ObligationsSection';
@@ -45,6 +45,9 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   const [analysisResult, setAnalysisResult] = useState<ExtractedData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editedFields, setEditedFields] = useState<Record<string, string>>({});
+
+  // Единый реестр банков с бэкенда (для дропдауна кредитора и автозаполнения).
+  const banks = useBanks();
 
   // Состояние для выбора актов
   const [entityType, setEntityType] = useState<EntityType | null>(null);
@@ -417,9 +420,9 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         creditorOgrn: '',
         creditorInn: ''
       }));
-    } else if (value && BANK_DATA[value]) {
-      // Если выбран банк из списка, автозаполняем данные
-      const bankData = BANK_DATA[value];
+    } else if (value && banks.find(b => b.display === value)) {
+      // Если выбран банк из реестра (с бэкенда), автозаполняем данные
+      const bankData = banks.find(b => b.display === value)!;
       setEditedFields(prev => ({
         ...prev,
         creditorName: value,
@@ -753,6 +756,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 editedFields={editedFields}
                 onFieldChange={handleFieldChange}
                 onCreditorChange={handleCreditorChange}
+                banks={banks}
               />
                 </Grid>
 

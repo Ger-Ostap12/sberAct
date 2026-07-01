@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Typography, Grid, TextField, FormControl, Select, MenuItem } from '@mui/material';
-import { BANK_NAMES } from '../../../shared/constants/banks';
+import { Bank } from '../../../shared/constants/banks';
 import { matchBankKey } from '../../../shared/lib/banks';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';
 
@@ -8,6 +8,8 @@ interface CreditorSectionProps {
   editedFields: Record<string, string>;
   onFieldChange: (field: string, value: string) => void;
   onCreditorChange: (value: string) => void;
+  /** Реестр банков с бэкенда (для выпадающего списка и распознавания). */
+  banks: Bank[];
 }
 
 /**
@@ -18,6 +20,7 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
   editedFields,
   onFieldChange,
   onCreditorChange,
+  banks,
 }) => (
   <Box sx={{ ...BLOCK_BOX_SX, mb: 3 }}>
     <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
@@ -29,16 +32,16 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Кредитор:</Typography>
           <FormControl fullWidth size="small" margin="dense">
             <Select
-              value={matchBankKey(editedFields.creditorName) || (editedFields.creditorName ? 'OTHER' : '')}
+              value={matchBankKey(editedFields.creditorName, banks) || (editedFields.creditorName ? 'OTHER' : '')}
               onChange={(e) => onCreditorChange(e.target.value)}
               displayEmpty
             >
               <MenuItem value="">
                 <em>Выберите банк</em>
               </MenuItem>
-              {BANK_NAMES.map((bankName) => (
-                <MenuItem key={bankName} value={bankName}>
-                  {bankName}
+              {banks.map((bank) => (
+                <MenuItem key={bank.display} value={bank.display}>
+                  {bank.display}
                 </MenuItem>
               ))}
               <MenuItem value="OTHER">
@@ -46,7 +49,7 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
               </MenuItem>
             </Select>
           </FormControl>
-          {!matchBankKey(editedFields.creditorName) ? (
+          {!matchBankKey(editedFields.creditorName, banks) ? (
             <Box sx={{ mt: 1, ...LABEL_OVERLAP_BOX }}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Название кредитора:</Typography>
               <TextField

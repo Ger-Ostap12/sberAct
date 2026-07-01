@@ -87,6 +87,11 @@ export const webApi: ElectronAPI = {
     return res.json();
   },
 
+  getBanks: async () => {
+    const res = await fetchBackend('/banks');
+    return res.json();
+  },
+
   downloadDocument: async (documentId: string): Promise<DownloadResult> => {
     try {
       const res = await fetchBackend(`/download-document/${documentId}`);

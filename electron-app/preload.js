@@ -150,6 +150,20 @@ try {
     }
   },
 
+  // Единый реестр банков-кредиторов с бэкенда (GET /banks)
+  getBanks: async () => {
+    try {
+      const response = await fetchBackend('/banks');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting banks:', error);
+      throw error;
+    }
+  },
+
   downloadDocument: async (documentId) => {
     try {
       console.log('[preload] downloadDocument(): downloading document with ID:', documentId);

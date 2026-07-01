@@ -16,6 +16,7 @@ from datetime import datetime
 from document_analyzer import DocumentAnalyzer
 from document_generator import DocumentGenerator
 from template_manager import TemplateManager
+from creditor_registry import list_banks
 
 logger = logging.getLogger(__name__)
 
@@ -236,6 +237,17 @@ async def get_templates():
         return templates
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при получении шаблонов: {str(e)}")
+
+@app.get("/banks")
+async def get_banks():
+    """
+    Возвращает единый реестр банков-кредиторов (display + реквизиты + алиасы).
+    Единый источник для выпадающего списка и автозаполнения на фронте.
+    """
+    try:
+        return list_banks()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при получении банков: {str(e)}")
 
 @app.post("/generate-document")
 async def generate_document(request_data: Dict[str, Any]):

@@ -17,6 +17,7 @@ const makeApi = () => ({
   analyzeDocument: jest.fn(async () => ({ success: true } as any)),
   generateDocument: jest.fn(async () => ({ success: true, document_id: 'x' })),
   getTemplates: jest.fn(),
+  getBanks: jest.fn(async () => []),
   downloadDocument: jest.fn(async () => ({ success: true })),
   downloadAllDocuments: jest.fn(async () => ({ success: true, filePath: '/tmp/a' })),
   getDownloadPaths: jest.fn(),

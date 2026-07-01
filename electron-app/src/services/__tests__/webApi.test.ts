@@ -38,6 +38,20 @@ describe('webApi.analyzeDocument', () => {
   });
 });
 
+describe('webApi.getBanks', () => {
+  it('GET /banks возвращает список банков', async () => {
+    const banks = [{ display: 'Сбербанк', inn: '1', ogrn: '2', address: 'a', aliases: ['сбербанк'] }];
+    const fetchMock = jest.fn(async () => okJson(banks));
+    (global as any).fetch = fetchMock;
+
+    const res = await webApi.getBanks();
+
+    expect(res).toEqual(banks);
+    const [url] = fetchMock.mock.calls[0] as unknown as [string];
+    expect(String(url)).toContain('/banks');
+  });
+});
+
 describe('webApi.generateDocument', () => {
   it('POST /generate-document с JSON', async () => {
     const fetchMock = jest.fn(async () => okJson({ success: true, document_id: 'd1' }));
