@@ -235,18 +235,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # Списки должников и третьих лиц + дедуп
             debtors_result, third_parties_result = self._resolve_debtors_and_third_parties(extracted_fields, text, details)
 
-            # Залоги. Оставляем предметы, классифицированные как авто/недвижимость —
-            # это реальный залог. Предметы типа «иное» сохраняем ТОЛЬКО если документ
-            # действительно про залог (collateralOption != no_collateral); иначе это
-            # мусор от переизвлечения («Поттер Г.Д.», «по доверенности №…») — убираем,
-            # и блок залога остаётся чистым.
-            _opt = (recommended_acts or {}).get("collateralOption")
+            # Залоги. Недвижимость/авто — всегда реальны. «Иное» (оборудование,
+            # линии, товары и т.п.) — это ВСЁ, что не недвижимость и не ТС; оставляем,
+            # если у предмета есть конкретная стоимость и наименование (это и проверяет
+            # _collateral_has_substance). Болванки переизвлечения («Поттер Г.Д.»,
+            # «по доверенности №…») стоимости не имеют и отсеиваются там же.
             _raw_cols = collaterals_list if collaterals_list else extracted_fields.get('collaterals', [])
-            collaterals_final = [
-                c for c in _raw_cols
-                if self._collateral_has_substance(c)
-                and (c.get("collateralType") in ("auto", "real_estate") or _opt != "no_collateral")
-            ]
+            collaterals_final = [c for c in _raw_cols if self._collateral_has_substance(c)]
             if not collaterals_final:
                 extracted_fields.pop("mortgageCollateralDescription1221", None)
                 extracted_fields.pop("collaterals", None)
@@ -3050,7 +3045,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         год постройки, площадь и пр.), чтобы в адресе не было постороннего.
         """
         m = re.search(
-            r"(?:по\s+адресу|адрес[уе]?|расположен\w*(?:\s+по\s+адресу)?|местонахожд\w*)\s*[:：,]?\s*([^\n]+)",
+            r"(?:по\s+адресу|адрес[уе]?|расположен\w*\s+по\s+адресу|местонахожд\w*)\s*[:：,]?\s*([^\n]+)",
             desc, re.IGNORECASE,
         )
         if not m:
@@ -3106,7 +3101,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
     # Фраза залоговой стоимости (для вырезания из описания «иного» залога).
     _VALUE_PHRASE_RE = (
-        r"[,;.]?\s*(?:залогов\w+\s+стоимост\w+|оценочн\w+\s+стоимост\w+|рыночн\w+\s+стоимост\w+|"
+        r"[,;.]?\s*(?:общ\w+\s+)?(?:залогов\w+\s+стоимост\w+|оценочн\w+\s+стоимост\w+|рыночн\w+\s+стоимост\w+|"
         r"стоимост\w+\s+(?:предмета\s+)?залога|начальн\w+\s+(?:продажн\w+\s+)?цен\w+|стоимост\w+)"
         r"\s*(?:залога|объекта)?\s*[:：]?\s*(?:в\s+размере\s+)?[0-9][0-9\s.,]*[0-9]?\s*(?:руб\w*|₽|р\.)"
     )
@@ -3116,8 +3111,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         return re.sub(self._VALUE_PHRASE_RE, "", text, flags=re.IGNORECASE).strip(" ,;.-—–")
 
     def _extract_other_object_name(self, desc: str) -> Optional[str]:
-        """Наименование «иного» предмета залога: до «:» либо по ключевому слову вида."""
-        m = re.match(r"\s*([^:：\n]{2,50}?)\s*[:：]", desc)
+        """Наименование «иного» предмета залога: до первой запятой/двоеточия (там
+        обычно начинаются атрибуты — «, страна изготовления:», «, находящееся по
+        адресу:») либо по ключевому слову вида."""
+        m = re.match(r"\s*([^:：,\n]{2,100}?)\s*[:：,]", desc)
         if m:
             name = m.group(1)
         else:
@@ -3133,13 +3130,19 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         return (name[0].upper() + name[1:]) if name else None
 
     def _extract_collateral_object_name(self, desc: str) -> Optional[str]:
-        """Извлекает вид объекта недвижимости (дом / земельный участок / квартира …)."""
+        """Извлекает вид объекта недвижимости (дом / земельный участок / квартира …).
+
+        Здание/помещение/дом и т.п. — если есть, это САМ объект (земельный участок
+        под ним фигурирует лишь как «расположенное на земельном участке …»). Поэтому
+        строения ищем первым проходом, землю — вторым."""
         m = re.search(
-            r"(жил\w+\s+дом|нежил\w+\s+(?:помещени\w+|здани\w+)|земельн\w+\s+участ\w+|"
+            r"(жил\w+\s+дом|нежил\w+\s+(?:помещени\w+|здани\w+)|"
             r"квартир\w+|комнат\w+|машино-?мест\w*|гараж\w*|нежил\w+\s+здани\w+|"
             r"здани\w+|строени\w+|сооружени\w+|помещени\w+|\bдом\b)",
             desc, re.IGNORECASE,
         )
+        if not m:
+            m = re.search(r"(земельн\w+\s+участ\w+)", desc, re.IGNORECASE)
         if m:
             name = m.group(1).strip()
             return name[0].upper() + name[1:]
@@ -3175,6 +3178,49 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             s = m.group(1).strip().rstrip(" .,;")
             if len(s) >= 8:
                 items.append(s)
+        # Формат договоров залога/ипотеки без буллетов: «…в залог передано следующее
+        # [движимое] имущество: <предмет1 … стоимостью N руб.> <предмет2 … стоимостью
+        # N руб.> Общая стоимость … составляет N руб.». Каждый предмет — до своей
+        # «стоимостью N руб.»; строка «Общая стоимость … составляет …» — это итог, не
+        # предмет (не содержит «стоимостью <число>» вплотную), поэтому не попадает.
+        items.extend(self._extract_pledge_block_items(norm))
+        return items
+
+    def _extract_pledge_block_items(self, norm: str) -> List[str]:
+        """Предметы залога из блоков «в залог передано следующее имущество: …».
+        Возвращает описания предметов (каждое оканчивается на «стоимостью N руб.»)."""
+        _val = r"стоимост\w+\s+[0-9][0-9\s.,]*[0-9]\s*руб"
+        items: List[str] = []
+        for bm in re.finditer(r"в\s+залог\s+переда\w+\s+", norm, re.IGNORECASE):
+            head = norm[bm.end(): bm.end() + 5000]
+            # Итемизированный список: «следующее [движимое] имущество: <предметы>».
+            lm = re.match(r"следующее\s+[^:\n]{0,40}?имуществ\w*\s*[:：]", head, re.IGNORECASE)
+            if lm:
+                block = head[lm.end():]
+                # Конец блока — итоговая строка «Общая стоимость … составляет … руб».
+                endm = re.search(r"Общая\s+стоимост\w+.*?составляет.*?руб", block,
+                                 re.IGNORECASE | re.DOTALL)
+                if endm:
+                    block = block[:endm.start()]
+                buf = ""
+                for line in block.split("\n"):
+                    buf += " " + line.strip()
+                    if re.search(_val, buf, re.IGNORECASE):
+                        s = re.sub(r"\s+", " ", buf).strip(" .,;")
+                        if len(s) >= 12 and "общая стоимост" not in s.lower():
+                            items.append(s)
+                        buf = ""
+                continue
+            # Сводная форма без перечня: «…[движимое] имущество … общей стоимостью N
+            # руб.» (предметы вынесены в Приложение) — одна карточка «Иное».
+            sm = re.match(
+                r"([^:\n]{0,25}?имуществ\w*.{0,240}?общ\w+\s+" + _val + r")",
+                head, re.IGNORECASE | re.DOTALL,
+            )
+            if sm:
+                s = re.sub(r"\s+", " ", sm.group(1)).strip(" .,;")
+                if len(s) >= 12:
+                    items.append(s)
         return items
 
     def _collateral_dedupe_key(self, obj: Dict[str, Any]):
@@ -3184,7 +3230,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             return ("auto", (obj.get("vin") or obj.get("brandModel") or obj.get("description", "")[:60]).upper())
         if t == "real_estate":
             return ("re", (obj.get("cadastralNumber") or obj.get("address") or obj.get("description", "")[:60]).lower())
-        return ("other", obj.get("description", "")[:80].lower())
+        # «Иное»: описания однотипных предметов (линия № 6 / № 7) совпадают в первых
+        # символах — добавляем стоимость, чтобы разные предметы не схлопнулись.
+        return ("other", obj.get("description", "")[:80].lower(), obj.get("collateralValue", ""))
 
     def _dedupe_collaterals(self, objs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Убирает дубли предметов залога, оставляя наиболее заполненный."""
@@ -3213,6 +3261,16 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         товары в обороте, имущественные права и т.п.
         """
         if obj.get("collateralType") in ("auto", "real_estate"):
+            return True
+        # «Иное» — это ВСЁ, что не недвижимость и не ТС (оборудование, линии, товары,
+        # ценные бумаги, доли и т.п.). Реальный предмет ВСЕГДА имеет конкретную
+        # залоговую стоимость (он так и извлекается из договора залога). Болванки
+        # переизвлечения («Согласно Обзора судебной практики…», «Правовое обоснование
+        # требований…», «Поттер Г.Д.») стоимости не имеют — отсекаются.
+        if not obj.get("collateralValue"):
+            return False
+        name = (obj.get("objectName") or "").strip()
+        if len(name) >= 8 and name.lower() != "иное":
             return True
         desc = (obj.get("description") or "").lower()
         return bool(re.search(

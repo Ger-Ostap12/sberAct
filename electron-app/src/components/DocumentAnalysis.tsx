@@ -2594,24 +2594,6 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                               </Grid>
                             </>
                           )}
-                          {/* Для типа "other" показываем поле описания, если оно пустое или уже заполнено */}
-                          {collateral.collateralType === 'other' && (
-                            <Grid item xs={12}>
-                              <Box sx={LABEL_OVERLAP_BOX}>
-                                <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Описание:</Typography>
-                                <TextField
-                                  fullWidth
-                    multiline
-                                  rows={4}
-                                  size="small"
-                                  margin="dense"
-                                  value={collateral.otherDescription || ''}
-                                  onChange={(e) => updateCollateral(index, 'otherDescription', e.target.value)}
-                                  placeholder="Опишите предмет залога"
-                                />
-                              </Box>
-                            </Grid>
-                          )}
                         </Grid>
                       </Card>
                     ))}
