@@ -29,8 +29,12 @@ class ObligationsMixin:
             date_match = re.search(r'(\d{1,2}[.,]\d{1,2}[.,]\d{4})', block_text)
             contract_date = date_match.group(1) if date_match and date_match.groups() else 'Не указана'
 
-            # Извлекаем номер договора после "заключили кредитный договор"
-            contract_match = re.search(r'заключили\s+кредитный\s+договор[:\s]*№?\s*([А-ЯЁ0-9/-]+)', block_text)
+            # Извлекаем номер договора после "заключили кредитный договор".
+            # Класс номера включает ЗАГЛАВНУЮ латиницу (номера вида
+            # «5221L85XS2TR2Q0QG2UW3F»), иначе номер обрезается на первой латинской
+            # букве. Строчные НЕ включаем — они срезают приклеенный предлог «о»
+            # («…-2о предоставлении…» → «…-2») сами по себе.
+            contract_match = re.search(r'заключили\s+кредитный\s+договор[:\s]*№?\s*([A-ZА-ЯЁ0-9/-]+)', block_text)
             if not contract_match:
                 # Эмиссионный контракт (возобновляемая кредитная линия → кредитная
                 # карта): «подписания эмиссионного контракт №99ТКПР…». Берём ДО
@@ -49,8 +53,8 @@ class ObligationsMixin:
                 if sm:
                     space_num_raw = sm.group(1).strip()
             if not contract_match and not space_num_raw:
-                # Попробуем найти просто номер договора
-                contract_match = re.search(r'договор[:\s]*№?\s*([А-ЯЁ0-9/-]+)', block_text)
+                # Просто номер договора (с ЗАГЛАВНОЙ латиницей, без строчных).
+                contract_match = re.search(r'договор[:\s]*№?\s*([A-ZА-ЯЁ0-9/-]+)', block_text)
 
             if space_num_raw:
                 contract_number = re.sub(r'\s+', '-', space_num_raw)
@@ -295,19 +299,22 @@ class ObligationsMixin:
         for i, (num, block_text) in enumerate(obligation_blocks):
             logger.info(f"Обрабатываем блок обязательства {num}: {block_text[:200]}...")
 
-            # Ищем номер договора в блоке - более гибкие паттерны
+            # Ищем номер договора в блоке. Ключевые слова — регистронезависимо
+            # (scoped (?i:…)), а КЛАСС НОМЕРА — только заглавные (латиница+кириллица)
+            # без глобального IGNORECASE, чтобы не приклеить строчный предлог «о»
+            # («№…-2о предоставлении…» → «…-2») и при этом ловить латиницу.
             contract_patterns = [
-                r'договор[:\s]*№?\s*([А-ЯЁ0-9/-]{3,})',
-                r'№\s*([А-ЯЁ0-9/-]{3,})',
-                r'номер[:\s]*([А-ЯЁ0-9/-]{3,})',
-                r'кредитный\s+договор[:\s]*№?\s*([А-ЯЁ0-9/-]{3,})',
-                r'договор\s+займа[:\s]*№?\s*([А-ЯЁ0-9/-]{3,})',
-                r'договор\s+ссуды[:\s]*№?\s*([А-ЯЁ0-9/-]{3,})'
+                r'(?i:договор)[:\s]*№?\s*([A-ZА-ЯЁ0-9/-]{3,})',
+                r'№\s*([A-ZА-ЯЁ0-9/-]{3,})',
+                r'(?i:номер)[:\s]*([A-ZА-ЯЁ0-9/-]{3,})',
+                r'(?i:кредитный\s+договор)[:\s]*№?\s*([A-ZА-ЯЁ0-9/-]{3,})',
+                r'(?i:договор\s+займа)[:\s]*№?\s*([A-ZА-ЯЁ0-9/-]{3,})',
+                r'(?i:договор\s+ссуды)[:\s]*№?\s*([A-ZА-ЯЁ0-9/-]{3,})'
             ]
 
             contract_number = None
             for pattern in contract_patterns:
-                match = re.search(pattern, block_text, re.IGNORECASE)
+                match = re.search(pattern, block_text)
                 if match:
                     contract_number = match.group(1).strip()
                     logger.info(f"Найден номер договора в блоке {num}: {contract_number}")
