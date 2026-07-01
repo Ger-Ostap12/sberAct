@@ -1,4 +1,5 @@
 import { AnalysisResult, ExtractedData } from '../types';
+import { webApi } from './webApi';
 
 // ── Формы запросов/ответов backend (snake_case — как отдаёт Python/preload) ──
 
@@ -59,13 +60,13 @@ declare global {
   }
 }
 
-/** Доступен ли мост Electron в текущем окружении (в браузере — нет). */
+/** Доступен ли настоящий мост Electron (десктоп). В браузере — false. */
 export const hasElectronAPI = (): boolean =>
   typeof window !== 'undefined' && !!window.electronAPI;
 
 /**
  * Возвращает типизированный `electronAPI` или кидает понятную ошибку, если мост
- * не инициализирован. Заменяет разбросанные по коду `(window as any).electronAPI`.
+ * не инициализирован. Только для электрон-специфичных вещей.
  */
 export const getElectronAPI = (): ElectronAPI => {
   const api = typeof window !== 'undefined' ? window.electronAPI : undefined;
@@ -77,26 +78,33 @@ export const getElectronAPI = (): ElectronAPI => {
   return api;
 };
 
-// ── Тонкие обёртки: единый вход для компонентов вместо прямого доступа к window ──
+/**
+ * Активный API документа: мост Electron (десктоп) либо веб-адаптер на fetch
+ * (браузер). Единая точка для операций, которые должны работать в обоих режимах.
+ */
+export const getApi = (): ElectronAPI =>
+  typeof window !== 'undefined' && window.electronAPI ? window.electronAPI : webApi;
+
+// ── Тонкие обёртки: единый вход для компонентов (работают и в Electron, и в браузере) ──
 
 export const analyzeDocument = (input: File | string): Promise<AnalysisResult> =>
-  getElectronAPI().analyzeDocument(input);
+  getApi().analyzeDocument(input);
 
 export const generateDocument = (
   req: GenerateDocumentRequest
-): Promise<GenerateDocumentResult> => getElectronAPI().generateDocument(req);
+): Promise<GenerateDocumentResult> => getApi().generateDocument(req);
 
 export const downloadDocument = (documentId: string): Promise<DownloadResult> =>
-  getElectronAPI().downloadDocument(documentId);
+  getApi().downloadDocument(documentId);
 
 export const downloadAllDocuments = (
   data: DownloadAllDocumentsRequest
-): Promise<DownloadResult> => getElectronAPI().downloadAllDocuments(data);
+): Promise<DownloadResult> => getApi().downloadAllDocuments(data);
 
 export const getExtractedData = (): Promise<ExtractedData | null> =>
-  getElectronAPI().getExtractedData();
+  getApi().getExtractedData();
 
-export const selectFile = (): Promise<string | null> => getElectronAPI().selectFile();
+export const selectFile = (): Promise<string | null> => getApi().selectFile();
 
 /** Переключение DevTools с фолбэком на глобальную openDevTools (как было в App). */
 export const toggleDevTools = (): void => {

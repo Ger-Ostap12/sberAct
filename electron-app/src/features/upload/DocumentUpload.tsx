@@ -12,7 +12,7 @@ import {
 import { CloudUpload as UploadIcon, Description as FileIcon } from '@mui/icons-material';
 import { useDropzone } from 'react-dropzone';
 import { DocumentData, AnalysisResult } from '../../types';
-import { analyzeDocument, selectFile, hasElectronAPI } from '../../services/electronApi';
+import { analyzeDocument, selectFile } from '../../services/electronApi';
 
 interface DocumentUploadProps {
   onDocumentUploaded: (data: DocumentData, analysisResult?: AnalysisResult) => void;
@@ -40,12 +40,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded }) =
     setIsAnalyzing(true);
 
     try {
-      // Анализируем документ через Electron API
-      if (!hasElectronAPI()) {
-        setError('Внутренняя ошибка: electronAPI не инициализирован');
-        setIsAnalyzing(false);
-        return;
-      }
+      // Анализируем документ (Electron — через мост, браузер — через webApi/fetch)
       const analysisResult = await analyzeDocument(file);
 
       if (analysisResult.success) {
@@ -79,10 +74,8 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded }) =
 
   const handleManualUpload = async () => {
     try {
-      if (!hasElectronAPI()) {
-        setError('Electron preload не инициализирован');
-        return;
-      }
+      // В браузере нативный выбор файла по пути недоступен (selectFile → null);
+      // используйте перетаскивание. В Electron открывается системный диалог.
       const filePath = await selectFile();
       if (filePath) {
         // Сразу запускаем анализ по выбранному пути

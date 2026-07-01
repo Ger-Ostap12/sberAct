@@ -1,9 +1,5 @@
 import { useState, useCallback } from 'react';
-import {
-  hasElectronAPI,
-  downloadDocument,
-  downloadAllDocuments,
-} from '../../../services/electronApi';
+import { downloadDocument, downloadAllDocuments } from '../../../services/electronApi';
 import { GenerationState, DownloadMessage } from '../types';
 
 interface UseDownloadDocument {
@@ -30,12 +26,6 @@ export const useDownloadDocument = (): UseDownloadDocument => {
     setDownloadMessage(null);
 
     try {
-      if (!hasElectronAPI()) {
-        throw new Error(
-          'Electron API не доступен. Убедитесь, что приложение запущено в Electron.'
-        );
-      }
-
       if (generationResult?.documentIds && generationResult.documentIds.length > 0) {
         // Пакет документов
         const result = await downloadAllDocuments({

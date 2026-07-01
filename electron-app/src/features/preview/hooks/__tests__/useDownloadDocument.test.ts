@@ -3,14 +3,12 @@ import { useDownloadDocument } from '../useDownloadDocument';
 import * as api from '../../../../services/electronApi';
 
 jest.mock('../../../../services/electronApi');
-const mockedHas = api.hasElectronAPI as jest.MockedFunction<typeof api.hasElectronAPI>;
 const mockedOne = api.downloadDocument as jest.MockedFunction<typeof api.downloadDocument>;
 const mockedAll = api.downloadAllDocuments as jest.MockedFunction<
   typeof api.downloadAllDocuments
 >;
 
 beforeEach(() => {
-  mockedHas.mockReturnValue(true);
   jest.spyOn(console, 'error').mockImplementation(() => {});
 });
 afterEach(() => jest.clearAllMocks());
@@ -54,18 +52,6 @@ describe('useDownloadDocument', () => {
       type: 'error',
       text: 'Нет доступных документов для скачивания',
     });
-  });
-
-  it('нет Electron API → понятная ошибка', async () => {
-    mockedHas.mockReturnValue(false);
-    const { result } = renderHook(() => useDownloadDocument());
-
-    await act(async () => {
-      await result.current.download({ success: true, documentIds: ['a'] });
-    });
-
-    expect(result.current.downloadMessage?.type).toBe('error');
-    expect(result.current.downloadMessage?.text).toMatch(/Electron API не доступен/);
   });
 
   it('backend вернул success:false → ошибка из error', async () => {

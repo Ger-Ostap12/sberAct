@@ -1,11 +1,13 @@
 import {
   getElectronAPI,
+  getApi,
   hasElectronAPI,
   analyzeDocument,
   generateDocument,
   downloadAllDocuments,
   toggleDevTools,
 } from '../electronApi';
+import { webApi } from '../webApi';
 
 const makeApi = () => ({
   isReady: jest.fn(() => true),
@@ -76,9 +78,18 @@ describe('обёртки делегируют в electronAPI', () => {
     });
   });
 
-  it('обёртка кидает синхронно, если моста нет', () => {
-    // getElectronAPI() бросает до создания промиса → throw синхронный.
-    expect(() => analyzeDocument('x')).toThrow(/Electron API не доступен/);
+  it('без моста Electron обёртки уходят в webApi (браузер-режим)', () => {
+    // getApi() отдаёт webApi, поэтому синхронного throw больше нет.
+    expect(getApi()).toBe(webApi);
+    const p = analyzeDocument(new File(['x'], 'a.docx'));
+    expect(p).toBeInstanceOf(Promise);
+    p.catch(() => {}); // подавляем отклонение (fetch недоступен в jsdom)
+  });
+
+  it('getApi отдаёт electronAPI, когда мост присутствует', () => {
+    const api = makeApi();
+    (window as any).electronAPI = api;
+    expect(getApi()).toBe(api);
   });
 });
 
