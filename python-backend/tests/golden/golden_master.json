@@ -2562,9 +2562,10 @@
    "applicationDate": "20.06.1991",
    "caseNumber": "А53-11864/2026",
    "contractDate": "08.05.2023",
-   "contractNumber": "1054603, 2913650, аДолжникубылавыданамеждународнаякредитнаякарта, омипотеки, заключен, 99ТКПР23050800169728, Договор_3",
+   "contractNumber": "1054603, 2913650, заключен, омипотеки, 99ТКПР23050800169728",
    "courtDecisionDate": "28.04.2026",
    "courtName": "Арбитражный суд Ростовской области",
+   "creditInterestRate": "25,4",
    "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
    "creditorInn": "7707083893",
    "creditorName": "ПАО Сбербанк",
@@ -2613,12 +2614,12 @@
      "amount": "237 257,39",
      "amountValue": 237257.39,
      "contractDate": "08.05.2023",
-     "contractNumber": "аДолжникубылавыданамеждународнаякредитнаякарта",
+     "contractNumber": "99ТКПР23050800169728",
      "id": "obligation_3",
      "isCollateral": false,
      "issuedAmount": null,
      "issuedAmountValue": 0.0,
-     "obligationType": "Договор",
+     "obligationType": "Кредитная карта",
      "penalty0071": null,
      "penalty0071Value": 0.0
     }
@@ -2639,7 +2640,7 @@
   "metadata": {
    "language": "ru",
    "pageCount": 4,
-   "wordCount": 1035
+   "wordCount": 1103
   },
   "obligations": [
    {
@@ -2672,18 +2673,18 @@
     "amount": "237 257,39",
     "amountValue": 237257.39,
     "contractDate": "08.05.2023",
-    "contractNumber": "аДолжникубылавыданамеждународнаякредитнаякарта",
+    "contractNumber": "99ТКПР23050800169728",
     "id": "obligation_3",
     "isCollateral": false,
     "issuedAmount": null,
     "issuedAmountValue": 0.0,
-    "obligationType": "Договор",
+    "obligationType": "Кредитная карта",
     "penalty0071": null,
     "penalty0071Value": 0.0
    }
   ],
-  "rawTextLen": 10599,
-  "rawTextSha": "19d3e62a59518a59b3946ab7364e40e446486d999935d90b74de91d203034f90",
+  "rawTextLen": 10667,
+  "rawTextSha": "d23664d41b07c65f5484bd813a1dd65b720df13316ded10184cf6a2b5a63b92d",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "individual",
@@ -2761,7 +2762,7 @@
     }
    ],
    "contractDate": "13.06.2024",
-   "contractNumber": "1383367, 2105586, напредоставлениевозобновляемойкредитнойлинии, аДолжникубылавыданамеждународнаякредитнаякарта, омипотеки, Договор_3",
+   "contractNumber": "1383367, 2105586, напредоставлениевозобновляемойкредитнойлинии, аДолжникубылавыданамеждународнаякредитнаякарта, омипотеки, 99ТКПР24061300419782",
    "courtName": "Арбитражный суд Ростовской области",
    "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
    "creditorInn": "7707083893",
@@ -2813,12 +2814,12 @@
      "amount": "538 990,38",
      "amountValue": 538990.38,
      "contractDate": "13.06.2024",
-     "contractNumber": "напредоставлениевозобновляемойкредитнойлинии",
+     "contractNumber": "99ТКПР24061300419782",
      "id": "obligation_3",
      "isCollateral": true,
      "issuedAmount": null,
      "issuedAmountValue": 0.0,
-     "obligationType": "Договор",
+     "obligationType": "Кредитная карта",
      "penalty0071": "21 401,75",
      "penalty0071Value": 21401.75
     }
@@ -2872,12 +2873,12 @@
     "amount": "538 990,38",
     "amountValue": 538990.38,
     "contractDate": "13.06.2024",
-    "contractNumber": "напредоставлениевозобновляемойкредитнойлинии",
+    "contractNumber": "99ТКПР24061300419782",
     "id": "obligation_3",
     "isCollateral": true,
     "issuedAmount": null,
     "issuedAmountValue": 0.0,
-    "obligationType": "Договор",
+    "obligationType": "Кредитная карта",
     "penalty0071": "21 401,75",
     "penalty0071Value": 21401.75
    }
@@ -3503,8 +3504,8 @@
    "birthDate": "09.09.1988",
    "birthPlace": "гор. Шахты Ростовской обл",
    "caseNumber": "А53-10111/2026",
-   "contractDate": "30.07.2025, 15.08.2023, 12.01.2024",
-   "contractNumber": "KK-7779566277817, 59742084-ДО-РОС-23, цессии, 4-24/Ц-01",
+   "contractDate": "30.07.2025, 15.08.2023",
+   "contractNumber": "KK-7779566277817, 59742084-ДО-РОС-23, цессии",
    "courtDecisionDate": "27.04.2026",
    "courtName": "Арбитражный суд Ростовской области",
    "creditorAddress": "191144, г. Санкт-Петербург, пер. Дегтярный, д. 11-А",
@@ -3539,12 +3540,6 @@
      "contractNumber": "59742084-ДО-РОС-23",
      "id": "obligation_p_1",
      "obligationType": "Кредитный договор"
-    },
-    {
-     "contractDate": "12.01.2024",
-     "contractNumber": "4-24/Ц-01",
-     "id": "obligation_p_2",
-     "obligationType": "Кредитный договор"
     }
    ],
    "penalties": "0,00",
@@ -3575,12 +3570,6 @@
     "contractDate": "15.08.2023",
     "contractNumber": "59742084-ДО-РОС-23",
     "id": "obligation_p_1",
-    "obligationType": "Кредитный договор"
-   },
-   {
-    "contractDate": "12.01.2024",
-    "contractNumber": "4-24/Ц-01",
-    "id": "obligation_p_2",
     "obligationType": "Кредитный договор"
    }
   ],
@@ -3624,7 +3613,8 @@
    "applicantNameInstrumental": "АО \"КОНЦЕРНОМ \"САРМАТ\"(заемщик)",
    "applicationDate": "08.06.2026",
    "companyInn": "6123010803",
-   "contractNumber": "052/5221/20199-199102, азадолженностьпогашаетсяежемесячно, усоставляетгодовыхотсуммы, уот15",
+   "contractDate": "25.12.2024",
+   "contractNumber": "052/5221/20199-199102/2",
    "courtName": "Арбитражный суд Ростовской области",
    "creditInterestRate": "17,5",
    "creditorAddress": "117312, Москва, ул. Вавилова, д. 19",
@@ -3642,6 +3632,14 @@
    "legalShortName": "АО \"КОНЦЕРН \"САРМАТ\"",
    "loanDebt": "2789060,93",
    "obligationType": "Кредитный договор",
+   "obligations": [
+    {
+     "contractDate": "25.12.2024",
+     "contractNumber": "052/5221/20199-199102/2",
+     "id": "obligation_p_0",
+     "obligationType": "Договор поручительства"
+    }
+   ],
    "ogrn": "1026101344664",
    "penalties": "0,00",
    "principalDebt": "2 294 779,03",
@@ -3658,11 +3656,18 @@
   "metadata": {
    "language": "ru",
    "pageCount": 3,
-   "wordCount": 656
+   "wordCount": 668
   },
-  "obligations": [],
-  "rawTextLen": 7424,
-  "rawTextSha": "ea10c103c8ae8dc254b0bca69fd9801c92d83e7da49529e8992aefe76e63940e",
+  "obligations": [
+   {
+    "contractDate": "25.12.2024",
+    "contractNumber": "052/5221/20199-199102/2",
+    "id": "obligation_p_0",
+    "obligationType": "Договор поручительства"
+   }
+  ],
+  "rawTextLen": 7436,
+  "rawTextSha": "ce1eecb6d079234771a80bfee75c0afd5bbf2fe0a09baa40ac999f18b607e61d",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "legal",
@@ -3914,7 +3919,8 @@
    "birthDate": "24.05.1985",
    "birthPlace": "Г. РОСТОВ-НА-ДОНУ",
    "companyInn": "616483649926",
-   "contractNumber": "616100070855-24-3, упредставлено, аиобязуетсяпередКредиторомотвечать, 616100070855-24-2, 616100070855-24-1, 616100070855-24-4",
+   "contractDate": "23.07.2024, 10.04.2024, 13.03.2024, 20.09.2024",
+   "contractNumber": "616100070855-24-3, аиобязуетсяпередКредиторомотвечать, 616100070855-24-2, 616100070855-24-1, 616100070855-24-4, 616100070855-24-3П01, 616100070855-24-2П01, 616100070855-24-1П01, 616100070855-24-4П01",
    "courtName": "Арбитражный суд Ростовской области",
    "creditInterestRate": "25,46",
    "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
@@ -3934,59 +3940,30 @@
    "obligationType": "кредитный договор",
    "obligations": [
     {
-     "amount": "5 582 178,00",
-     "amountValue": 5582178.0,
      "contractDate": "23.07.2024",
-     "contractNumber": "616100070855-24-3",
-     "id": "obligation_1",
-     "isCollateral": false,
-     "issuedAmount": null,
-     "issuedAmountValue": 0.0,
-     "obligationType": "Кредитный договор",
-     "penalty0071": null,
-     "penalty0071Value": 0.0
+     "contractNumber": "616100070855-24-3П01",
+     "id": "obligation_p_0",
+     "obligationType": "Договор поручительства"
     },
     {
-     "amount": "0,00",
-     "amountValue": 0.0,
      "contractDate": "10.04.2024",
-     "contractNumber": "616100070855-24-2",
-     "id": "obligation_2",
-     "isCollateral": false,
-     "issuedAmount": null,
-     "issuedAmountValue": 0.0,
-     "obligationType": "Кредитный договор",
-     "penalty0071": null,
-     "penalty0071Value": 0.0
+     "contractNumber": "616100070855-24-2П01",
+     "id": "obligation_p_1",
+     "obligationType": "Договор поручительства"
     },
     {
-     "amount": "4 904 702,00",
-     "amountValue": 4904702.0,
      "contractDate": "13.03.2024",
-     "contractNumber": "616100070855-24-1",
-     "id": "obligation_3",
-     "isCollateral": false,
-     "issuedAmount": null,
-     "issuedAmountValue": 0.0,
-     "obligationType": "Кредитный договор",
-     "penalty0071": null,
-     "penalty0071Value": 0.0
+     "contractNumber": "616100070855-24-1П01",
+     "id": "obligation_p_2",
+     "obligationType": "Договор поручительства"
     },
     {
-     "amount": "11 975 585,00",
-     "amountValue": 11975585.0,
      "contractDate": "20.09.2024",
-     "contractNumber": "616100070855-24-4",
-     "id": "obligation_4",
-     "isCollateral": false,
-     "issuedAmount": "5 000 000,00",
-     "issuedAmountValue": 5000000.0,
-     "obligationType": "Кредитный договор",
-     "penalty0071": null,
-     "penalty0071Value": 0.0
+     "contractNumber": "616100070855-24-4П01",
+     "id": "obligation_p_3",
+     "obligationType": "Договор поручительства"
     }
    ],
-   "obligationsTotalDebt": "22 462 465,00",
    "penalties": "0,00",
    "principalDebt": "4 241 575,75",
    "principalDebt13": "4 241 575,75",
@@ -4001,64 +3978,36 @@
   "metadata": {
    "language": "ru",
    "pageCount": 4,
-   "wordCount": 1189
+   "wordCount": 1395
   },
   "obligations": [
    {
-    "amount": "5 582 178,00",
-    "amountValue": 5582178.0,
     "contractDate": "23.07.2024",
-    "contractNumber": "616100070855-24-3",
-    "id": "obligation_1",
-    "isCollateral": false,
-    "issuedAmount": null,
-    "issuedAmountValue": 0.0,
-    "obligationType": "Кредитный договор",
-    "penalty0071": null,
-    "penalty0071Value": 0.0
+    "contractNumber": "616100070855-24-3П01",
+    "id": "obligation_p_0",
+    "obligationType": "Договор поручительства"
    },
    {
-    "amount": "0,00",
-    "amountValue": 0.0,
     "contractDate": "10.04.2024",
-    "contractNumber": "616100070855-24-2",
-    "id": "obligation_2",
-    "isCollateral": false,
-    "issuedAmount": null,
-    "issuedAmountValue": 0.0,
-    "obligationType": "Кредитный договор",
-    "penalty0071": null,
-    "penalty0071Value": 0.0
+    "contractNumber": "616100070855-24-2П01",
+    "id": "obligation_p_1",
+    "obligationType": "Договор поручительства"
    },
    {
-    "amount": "4 904 702,00",
-    "amountValue": 4904702.0,
     "contractDate": "13.03.2024",
-    "contractNumber": "616100070855-24-1",
-    "id": "obligation_3",
-    "isCollateral": false,
-    "issuedAmount": null,
-    "issuedAmountValue": 0.0,
-    "obligationType": "Кредитный договор",
-    "penalty0071": null,
-    "penalty0071Value": 0.0
+    "contractNumber": "616100070855-24-1П01",
+    "id": "obligation_p_2",
+    "obligationType": "Договор поручительства"
    },
    {
-    "amount": "11 975 585,00",
-    "amountValue": 11975585.0,
     "contractDate": "20.09.2024",
-    "contractNumber": "616100070855-24-4",
-    "id": "obligation_4",
-    "isCollateral": false,
-    "issuedAmount": "5 000 000,00",
-    "issuedAmountValue": 5000000.0,
-    "obligationType": "Кредитный договор",
-    "penalty0071": null,
-    "penalty0071Value": 0.0
+    "contractNumber": "616100070855-24-4П01",
+    "id": "obligation_p_3",
+    "obligationType": "Договор поручительства"
    }
   ],
-  "rawTextLen": 13033,
-  "rawTextSha": "21efbbfd71c6f4cd377ac2b5a549dd6cc2dc4de06f994a5b0e4c578ea531d7e8",
+  "rawTextLen": 13240,
+  "rawTextSha": "37bcef458a558189fda99815e3d9c80ae48b8964e7f1a92831d0b93c4aababbb",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "individual",
@@ -4119,13 +4068,13 @@
    "obligationType": "Кредитный договор",
    "obligations": [
     {
-     "contractDate": "Не указана",
+     "contractDate": "23.05.2025",
      "contractNumber": "616506698400-25-2",
      "id": "obligation_p_0",
      "obligationType": "Кредитный договор"
     },
     {
-     "contractDate": "Не указана",
+     "contractDate": "14.03.2025",
      "contractNumber": "616506698400-25-1",
      "id": "obligation_p_1",
      "obligationType": "Кредитный договор"
@@ -4150,13 +4099,13 @@
   },
   "obligations": [
    {
-    "contractDate": "Не указана",
+    "contractDate": "23.05.2025",
     "contractNumber": "616506698400-25-2",
     "id": "obligation_p_0",
     "obligationType": "Кредитный договор"
    },
    {
-    "contractDate": "Не указана",
+    "contractDate": "14.03.2025",
     "contractNumber": "616506698400-25-1",
     "id": "obligation_p_1",
     "obligationType": "Кредитный договор"
@@ -5424,7 +5373,7 @@
    "applicantNameGenitive": "Долгова Рашида Умаровича",
    "applicantNameInstrumental": "Долговым Рашидом Умаровичем",
    "applicationDate": "16.02.2024",
-   "contractDate": "Не указана",
+   "contractDate": "04.08.2023, Не указана",
    "contractNumber": "У625/0055-0143478, V625/0055-0143478, Уб25/00550143478, Погашение",
    "courtName": "Арбитражный суд республики Ингушетия",
    "creditorAddress": "191144, г. Санкт-Петербург, Дегтярный переулок, д. 11, лит. А",
@@ -5443,7 +5392,7 @@
    "obligationType": "Кредитный договор",
    "obligations": [
     {
-     "contractDate": "Не указана",
+     "contractDate": "04.08.2023",
      "contractNumber": "V625/0055-0143478",
      "id": "obligation_p_0",
      "obligationType": "Кредитный договор"
@@ -5455,7 +5404,7 @@
      "obligationType": "Кредитный договор"
     },
     {
-     "contractDate": "Не указана",
+     "contractDate": "04.08.2023",
      "contractNumber": "Уб25/00550143478",
      "id": "obligation_p_2",
      "obligationType": "Кредитный договор"
@@ -5482,7 +5431,7 @@
   },
   "obligations": [
    {
-    "contractDate": "Не указана",
+    "contractDate": "04.08.2023",
     "contractNumber": "V625/0055-0143478",
     "id": "obligation_p_0",
     "obligationType": "Кредитный договор"
@@ -5494,7 +5443,7 @@
     "obligationType": "Кредитный договор"
    },
    {
-    "contractDate": "Не указана",
+    "contractDate": "04.08.2023",
     "contractNumber": "Уб25/00550143478",
     "id": "obligation_p_2",
     "obligationType": "Кредитный договор"

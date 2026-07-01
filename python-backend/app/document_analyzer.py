@@ -3740,6 +3740,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # 2 самых частых типа — кредитный договор и кредитная карта.
             if 'карт' in context and ('кредит' in context or 'эмисси' in context):
                 local_type = 'Кредитная карта'
+            elif 'эмисси' in context:  # эмиссионный контракт = выпуск кредитной карты
+                local_type = 'Кредитная карта'
             elif 'кредитн' in context:
                 local_type = 'Кредитный договор'
             elif 'займ' in context:
