@@ -24,15 +24,11 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onField
     <Grid container spacing={2}>
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
-          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Ссудная задолженность (просроченный основной долг):</Typography>
+          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Общая сумма долга:</Typography>
           <TextField
             fullWidth
-            value={editedFields.principalDebt || editedFields.loanDebt || ''}
-            onChange={(e) => {
-              const value = rawAmount(e.target.value);
-              onFieldChange('principalDebt', value);
-              onFieldChange('loanDebt', value);
-            }}
+            value={editedFields.totalDebt || ''}
+            onChange={(e) => onFieldChange('totalDebt', rawAmount(e.target.value))}
             size="small"
             margin="dense"
             placeholder="0.00"
@@ -84,11 +80,15 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onField
 
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
-          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Общая сумма долга:</Typography>
+          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Ссудная задолженность (просроченный основной долг):</Typography>
           <TextField
             fullWidth
-            value={editedFields.totalDebt || ''}
-            onChange={(e) => onFieldChange('totalDebt', rawAmount(e.target.value))}
+            value={editedFields.principalDebt || editedFields.loanDebt || ''}
+            onChange={(e) => {
+              const value = rawAmount(e.target.value);
+              onFieldChange('principalDebt', value);
+              onFieldChange('loanDebt', value);
+            }}
             size="small"
             margin="dense"
             placeholder="0.00"

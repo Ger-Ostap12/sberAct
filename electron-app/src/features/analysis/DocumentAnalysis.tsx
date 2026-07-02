@@ -15,6 +15,7 @@ import { ArrowBack as BackIcon, CheckCircle as CheckIcon } from '@mui/icons-mate
 import { DocumentData, ExtractedData, Obligation, Collateral, CollateralType, EntityType, CollateralOption, DebtorStatus, SelectedAct, ThirdParty, Debtor } from '../../types';
 import { useBanks } from './hooks/useBanks';
 import { extractCollateralData } from '../../shared/lib/collateral';
+import { isFnsCreditor, FNS_CREDITOR_KEY } from '../../shared/lib/banks';
 import { buildSubmitData } from './lib/buildSubmitData';
 import ObligationsSection from './sections/ObligationsSection';
 import CollateralSection from './sections/CollateralSection';
@@ -411,7 +412,15 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   };
 
   const handleCreditorChange = (value: string) => {
-    if (value === 'OTHER') {
+    if (value === FNS_CREDITOR_KEY) {
+      // Выбрана «ФНС»: сохраняем уже распознанное детальное имя налогового органа
+      // («ФНС России в лице Межрайонной ИФНС № N …») и его юр-адрес из реестра —
+      // не затираем. Если имя не было ФНС, ставим общий «ФНС России» для ручного ввода.
+      setEditedFields(prev => ({
+        ...prev,
+        creditorName: isFnsCreditor(prev.creditorName) ? prev.creditorName : 'ФНС России'
+      }));
+    } else if (value === 'OTHER') {
       // Если выбран "Другой банк", очищаем автозаполненные данные, но оставляем creditorName пустым для ручного ввода
       setEditedFields(prev => ({
         ...prev,

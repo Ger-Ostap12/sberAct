@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Typography, Grid, TextField, FormControl, Select, MenuItem } from '@mui/material';
 import { Bank } from '../../../shared/constants/banks';
-import { matchBankKey } from '../../../shared/lib/banks';
+import { matchBankKey, isFnsCreditor, FNS_CREDITOR_KEY } from '../../../shared/lib/banks';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';
 
 interface CreditorSectionProps {
@@ -32,13 +32,18 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Кредитор:</Typography>
           <FormControl fullWidth size="small" margin="dense">
             <Select
-              value={matchBankKey(editedFields.creditorName, banks) || (editedFields.creditorName ? 'OTHER' : '')}
+              value={
+                matchBankKey(editedFields.creditorName, banks)
+                || (isFnsCreditor(editedFields.creditorName) ? FNS_CREDITOR_KEY
+                    : (editedFields.creditorName ? 'OTHER' : ''))
+              }
               onChange={(e) => onCreditorChange(e.target.value)}
               displayEmpty
             >
               <MenuItem value="">
                 <em>Выберите банк</em>
               </MenuItem>
+              <MenuItem value={FNS_CREDITOR_KEY}>ФНС</MenuItem>
               {banks.map((bank) => (
                 <MenuItem key={bank.display} value={bank.display}>
                   {bank.display}
