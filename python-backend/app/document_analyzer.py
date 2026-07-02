@@ -1565,15 +1565,29 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         built_full = "в лице" in creditor.lower()
         if "фнс" not in cur_cred.lower() or (built_full and "в лице" not in cur_cred.lower()):
             fields["creditorName"] = creditor
-        # Заявитель уполномоченного органа = ФНС (сейчас часто ошибочно = должник);
-        # тоже апгрейдим короткую форму до полной. Не перетираем компанию-заявителя.
         cred_now = fields.get("creditorName") or ""
+        # ДОЛЖНИК остаётся в applicant* — генератор акта берёт эти поля как ДОЛЖНИКА
+        # (applicantNameDative = «…требований кредиторов ДОЛЖНИКА»). ФНС держим ТОЛЬКО
+        # в creditor*. Если общий парсер/ранняя версия затёрли applicantName на ФНС
+        # (или пусто), а debtorName — физлицо, восстанавливаем должника в applicantName
+        # и ПЕРЕСЧИТЫВАЕМ падежи под него: иначе в акт уйдёт «должник = ФНС», а часть
+        # падежей окажется смешанной («ФНС Россию» в винительном при физлице в родительном).
         appl = fields.get("applicantName") or ""
-        if ("фнс" in cred_now.lower()
-                and not re.search(_OPF, appl, re.IGNORECASE)
-                and ("фнс" not in appl.lower()
-                     or ("в лице" in cred_now.lower() and "в лице" not in appl.lower()))):
-            fields["applicantName"] = cred_now
+        debt_name = (fields.get("debtorName") or "").strip()
+        if (debt_name and debt_name != appl and "фнс" not in debt_name.lower()
+                and is_person_name(debt_name)):
+            fields["applicantName"] = debt_name
+            base = re.sub(self._NAME_PREFIX_RE, "", debt_name, flags=re.IGNORECASE).strip() or debt_name
+            for case_key, conv in (
+                ("applicantNameGenitive", self._convert_name_to_genitive),
+                ("applicantNameDative", self._convert_name_to_dative),
+                ("applicantNameAccusative", self._convert_name_to_accusative),
+                ("applicantNameInstrumental", self._convert_name_to_instrumental),
+            ):
+                try:
+                    fields[case_key] = conv(base) or debt_name
+                except Exception:
+                    fields[case_key] = debt_name
         # Адреса ФНС-заявления. У заявителя-ФНС нет метки «Адрес:», поэтому общий
         # парсер кладёт в applicantAddress адрес ДОЛЖНИКА (или суда) — разводим их:
         #   • debtorAddress ← «Должник … Адрес: …», иначе — из applicantAddress (общий
@@ -1683,25 +1697,17 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if reg_addr:
                 fields["creditorAddress"] = reg_addr
 
-        # Юр-адрес инспекции в applicantAddress — по шапке: улица…индекс прямо перед
-        # Телефон/Телефакс/www.nalog/«Адрес для корреспонденции» (так оформлена шапка
-        # ИФНС; разделитель может быть с переносом строки и «;»). Адрес суда
-        # (Станиславского) это не заденет.
-        im = re.search(
-            r"((?:ул|пр|проспект|пер)[^\n]*?\b\d{6})\b"
-            r"(?=[;\s]{0,12}(?:ФНС|Телефон|Телефакс|www\.nalog|Адрес\s+для))",
-            text[:1800], re.IGNORECASE,
-        )
-        if im:
-            fields["applicantAddress"] = _clean_addr(im.group(1))
+        # applicantAddress — это АДРЕС ДОЛЖНИКА (генератор берёт его как адрес должника;
+        # юр-адрес ФНС живёт в creditorAddress). Ставим сюда адрес должника; если он не
+        # извлёкся — вычищаем из applicantAddress чужое (адрес ФНС/суда/проза или совпадение
+        # с юр-адресом ФНС), чтобы в акт не попал адрес инспекции как адрес должника.
+        if debt_addr:
+            fields["applicantAddress"] = debt_addr
         else:
-            # Инспекционного адреса нет — не оставляем в applicantAddress чужой адрес:
-            # чистим адрес должника/суда, мусор-фразу или адрес без улицы (город+индекс).
-            aa = fields.get("applicantAddress") or ""
-            if aa and (aa == debt_addr or not re.search(r"\b\d{6}\b", aa)
-                       or not re.search(_STREET, aa, re.IGNORECASE)
-                       or re.search(r"руководству|должник|направлен|уплач|закон|заявлени|"
-                                    r"корреспонденц|наименовани|Станиславског", aa, re.IGNORECASE)):
+            aa = (fields.get("applicantAddress") or "").strip()
+            creda = (fields.get("creditorAddress") or "").strip()
+            if aa and (not _is_addr(aa) or (creda and aa == creda)
+                       or re.search(r"Неглинн|Станиславског|www\.nalog|Адрес\s+для", aa, re.IGNORECASE)):
                 fields.pop("applicantAddress", None)
 
     def _fill_manager_address(self, fields: Dict[str, Any], text: str) -> None:
