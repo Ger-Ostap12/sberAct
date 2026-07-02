@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import logging
 import re
 from typing import Any, Dict, List, Optional
@@ -1171,10 +1170,33 @@ class PartiesMixin:
         return out
 
     def _single_debtor_from_fields(self, fields: Dict[str, Any]) -> Dict[str, Any]:
-        """Собирает запись одного должника из плоских полей (для формы)."""
+        """Собирает запись одного должника из плоских полей (для формы).
+
+        Имя обычно берём из applicantName (самобанкротство: заявитель = должник). Но
+        в кредиторских заявлениях (ФНС/банк/ООО) заявитель — это КРЕДИТОР, а должник
+        лежит в debtorName; в таком случае имя/адрес должника берём из debtor* полей,
+        иначе в блок должника утекает кредитор (ФНС)."""
+        appl = fields.get("applicantName") or ""
+        debt = fields.get("debtorName") or ""
+        cred = fields.get("creditorName") or ""
+        # Заявитель — это КРЕДИТОР (а не должник-организация): ФНС либо буквально
+        # совпадает с creditorName. Только тогда должник берётся из debtorName. При
+        # банкротстве организации заявитель = сам должник (ООО «…») — его НЕ трогаем,
+        # иначе теряем ОПФ/кавычки.
+        appl_is_creditor = bool(appl) and (appl == cred or bool(re.search(r"\bФНС\b", appl, re.IGNORECASE)))
+        if debt and appl_is_creditor and debt != appl:
+            name = debt
+            # ВАЖНО: в кредиторском заявлении applicantAddress — адрес КРЕДИТОРА
+            # (ФНС/банка), а не должника. Поэтому адрес должника берём ТОЛЬКО из
+            # debtorAddress; если он не извлёкся — оставляем пустым, иначе должнику
+            # подставится юр-адрес ФНС (напр. Чернов → адрес инспекции в Уфе).
+            address = fields.get("debtorAddress") or ""
+        else:
+            name = appl or debt
+            address = fields.get("applicantAddress") or ""
         return {
-            "name": fields.get("applicantName") or fields.get("debtorName") or "",
-            "address": fields.get("applicantAddress") or "",
+            "name": name,
+            "address": address,
             "inn": fields.get("inn") or fields.get("companyInn") or "",
             "ogrn": fields.get("ogrn") or "",
             "ogrnip": fields.get("ogrnip") or "",

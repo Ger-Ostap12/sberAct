@@ -27,6 +27,7 @@ from inflection_mixin import InflectionMixin
 from patterns import build_patterns
 from creditor_registry import _match_creditor_registry
 import nlp_natasha as _nlp
+import fns_registry as _fns_reg
 from typing import Dict, Any, List, Tuple, Optional, Union
 import logging
 from pathlib import Path
@@ -233,6 +234,17 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             elif not extracted_fields.get("creditorAddress"):
                 self._fill_creditor_requisites(extracted_fields, text)
 
+            # Заявление уполномоченного органа (ФНС): кредитор/заявитель — налоговый
+            # орган (в шапке-бланке, без метки «Кредитор:»), а не должник-физлицо.
+            # ДО разбора должников — чтобы карточка должника взяла ФИО/адрес из
+            # debtor*, а не из applicantName (там ФНС). И ДО NLP-сети (у ФНС свой шаблон).
+            self._apply_fns_authority(extracted_fields, text)
+
+            # Гибрид-сеть (Natasha, второстепенно): если кредитор не распознан ни
+            # меткой, ни реестром, ни ФНС-детектором — берём кандидата-организацию из
+            # NER по шапке. Ловит незнакомые раскладки, где label-парсер пасует.
+            self._fill_creditor_nlp(extracted_fields, text)
+
             # Списки должников и третьих лиц + дедуп
             debtors_result, third_parties_result = self._resolve_debtors_and_third_parties(extracted_fields, text, details)
 
@@ -269,16 +281,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # Имя кредитора, обрезанное на переносе строки внутри названия
             # («…"МТС-» + «Банк"» ниже) — дотягиваем по тексту.
             self._fix_truncated_creditor_name(extracted_fields, text)
-
-            # Заявление уполномоченного органа (ФНС): кредитор/заявитель — налоговый
-            # орган (в шапке-бланке, без метки «Кредитор:»), а не должник-физлицо.
-            # ДО NLP-сети: у ФНС свой точный шаблон, NER тут только мусорит.
-            self._apply_fns_authority(extracted_fields, text)
-
-            # Гибрид-сеть (Natasha, второстепенно): если кредитор не распознан ни
-            # меткой, ни реестром, ни ФНС-детектором — берём кандидата-организацию из
-            # NER по шапке. Ловит незнакомые раскладки, где label-парсер пасует.
-            self._fill_creditor_nlp(extracted_fields, text)
 
             # Адрес управляющего — фолбэк для многострочного «Адрес регистрации:»,
             # когда ФИО и адрес на разных строках (общие паттерны не справляются).
@@ -1572,13 +1574,135 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 and ("фнс" not in appl.lower()
                      or ("в лице" in cred_now.lower() and "в лице" not in appl.lower()))):
             fields["applicantName"] = cred_now
-        # Мусорный applicantAddress (кусок предложения / без индекса) — убираем: адрес
-        # заявителя-ФНС отдельным полем не тянем, лучше пусто, чем фраза из текста.
-        aa = fields.get("applicantAddress") or ""
-        if aa and (not re.search(r"\b\d{6}\b", aa) or re.search(
-            r"руководству|должник|направлен|уплач|закон|заявлени|корреспонденц|наименовани",
-            aa, re.IGNORECASE)):
-            fields.pop("applicantAddress", None)
+        # Адреса ФНС-заявления. У заявителя-ФНС нет метки «Адрес:», поэтому общий
+        # парсер кладёт в applicantAddress адрес ДОЛЖНИКА (или суда) — разводим их:
+        #   • debtorAddress ← «Должник … Адрес: …», иначе — из applicantAddress (общий
+        #     парсер часто кладёт туда именно адрес должника);
+        #   • applicantAddress ← юр-адрес инспекции из шапки (перед Телефон/www.nalog).
+        _STREET = r"ул|пр\.|просп|проспект|пер|переул|д\.|дом|улиц|ст-ца|стан|мкр|кв\."
+
+        def _clean_addr(s: str) -> str:
+            s = re.sub(r"\s+", " ", s).strip(" ,;")
+            return re.split(r"\b(?:ИНН|ОГРН|ОГРНИП|СНИЛС|КПП)\b", s, flags=re.IGNORECASE)[0].strip(" ,;")
+
+        debt_addr = None
+        dm = re.search(
+            r"Должник\w*[:\s][\s\S]{0,90}?\bАдрес[:\s]*([0-9А-ЯЁ][^\n]+)",
+            text, re.IGNORECASE,
+        )
+        # Без метки «Адрес» адрес должника в бланке ФНС идёт голой строкой/фрагментом
+        # с индексом в блоке под меткой «Должник:». Индекс может стоять в начале строки
+        # (Чернов: «…ИНН …\n346414, Ростовская обл…Харьковская ул,47») или в одну строку
+        # после «ФИО ИНН ОГРНИП» (Зайцев: «…ОГРНИП 318… 346630, РОСТОВСКАЯ ОБЛ…ЛЕВЧЕНКО
+        # ПЛ,46»). Якоримся на метку «Должник:» с ДВОЕТОЧИЕМ (а не на слово «должника»
+        # в тексте) и берём первый индекс-адрес в пределах 200 символов после неё.
+        dm_bare = None
+        if not dm:
+            dm_bare = re.search(
+                r"Должник\w*\s*:\s*[\s\S]{0,200}?(\d{6}\s*,\s*[А-ЯЁ][^\n]+)",
+                text, re.IGNORECASE,
+            )
+        # ВАЛИДАТОР: принятое значение должно ВЫГЛЯДЕТЬ как адрес, а не как набор слов /
+        # фрагмент закона. Так regex, случайно поймавший прозу («…руководствуясь ст. 71,
+        # приложены к заявлению…»), отбраковывается и уступает место сети/пустому
+        # значению. Признак адреса: индекс ИЛИ уличный маркер + наличие цифры; при этом
+        # нет юридической прозы (стоп-слова заявления). Пусто лучше мусора.
+        def _is_addr(s: str) -> bool:
+            s = (s or "").strip()
+            if not (8 <= len(s) <= 160) or not re.search(r"\d", s):
+                return False
+            # Стоп-слова заявления: если есть — это проза, а не адрес.
+            if re.search(r"руководству|федеральн\w+\s+закон|уведомл|задолженност|приложен|"
+                         r"направлен|уплач|несостоятельн|банкротств|\bстать\w+|\bст\.?\s*\d",
+                         s, re.IGNORECASE):
+                return False
+            # 1) Почтовый индекс — однозначный признак адреса (покрывает большинство).
+            if re.search(r"\b\d{6}\b", s):
+                return True
+            # 2) Тип адресного объекта из ШИРОКОГО спектра (улицы/площади/наб/шоссе/туп/
+            #    аллея/линия/проезд/тракт/квартал/мкр + типы НП). Все токены ≥2 симв. и
+            #    адресо-специфичны, поэтому в прозе почти не встречаются; форма «тип
+            #    Название, Номер» ловится (номер не обязан примыкать к типу).
+            if re.search(r"\b(?:ул|улиц\w*|пер|переул\w*|пр-кт|пр-т|просп\w*|проспект|б-р|"
+                         r"бульвар|наб|набережн\w*|пл|площад\w*|шоссе|туп|тупик|алле\w*|"
+                         r"лини\w*|проезд|тракт|кв-л|квартал|мкр|микрорайон|городок|"
+                         r"пос|пос[её]лок|село|сельсовет|деревн\w*|станиц\w*|ст-ца|хутор|"
+                         r"аул|слобод\w*|город|гор|пгт|снт|днп)\b", s, re.IGNORECASE):
+                return True
+            # 3) Дом/строение/корпус/квартира с номером вплотную («д. 5», «дом 14»,
+            #    «стр 3», «кв. 43») — адресный хвост без явного типа улицы/НП.
+            return bool(re.search(r"\b(?:д|дом|влд|владени\w*|стр|строени\w*|корп|корпус|к|кв|"
+                                  r"уч|участок)\b\.?\s*\d", s, re.IGNORECASE))
+
+        cur_aa = (fields.get("applicantAddress") or "").strip()
+        cand = None
+        if dm:
+            cand = _clean_addr(dm.group(1))
+        elif dm_bare:
+            cand = _clean_addr(dm_bare.group(1))
+        if cand and _is_addr(cand):
+            debt_addr = cand
+        # ПОДСТРАХОВКА (гибрид): regex промахнулся ИЛИ вернул не-адрес → достаём адрес
+        # морфологически через Natasha AddrExtractor из окна блока «Должник:». Работает
+        # независимо от раскладки (индекс в начале строки / после ОГРНИП / без метки),
+        # т.е. страхует от невиданных макетов — чего конечным числом регулярок не выразить.
+        if not debt_addr:
+            _dblk = re.search(r"Должник\w*\s*:", text, re.IGNORECASE)
+            if _dblk:
+                nat = _nlp.complete_address(text[_dblk.end(): _dblk.end() + 300])
+                if nat:
+                    nat = _clean_addr(nat)
+                    if _is_addr(nat):
+                        debt_addr = nat
+        if (not debt_addr and cur_aa and re.search(r"\b\d{6}\b", cur_aa)
+                and re.search(_STREET, cur_aa, re.IGNORECASE)
+                and not re.search(r"Неглинн|Станиславског", cur_aa, re.IGNORECASE)):
+            # Метки «Должник Адрес:» нет, но в applicantAddress лежит адрес с улицей и
+            # индексом (не центральный ФНС, не суд) — это фактически адрес должника.
+            debt_addr = cur_aa
+        if debt_addr and not (fields.get("debtorAddress") or "").strip():
+            fields["debtorAddress"] = debt_addr
+
+        # НОВОЕ (справочник ФНС): выверенный юр-адрес КРЕДИТОРА в блок «Данные о
+        # кредиторе» → поле creditorAddress. Заполняем ТОЛЬКО его и ТОЛЬКО когда
+        # кредитор — налоговый орган; адресов заявителя/должника не касаемся (иначе
+        # юр-адрес инспекции подмешивается в адрес должника). Справочник fns_registry
+        # находит адрес по имени органа — он инвариантен к тому, как оформлена шапка
+        # конкретного заявления (и работает, даже если адреса в шапке нет).
+        # Подсказка для дизамбигуации ТОРМ (один № инспекции обслуживает несколько
+        # городов): шапка ДО блока «Должник», чтобы город/индекс инспекции не спутать
+        # с городом должника — реестр выберет кандидата по городу/индексу из шапки.
+        if "фнс" in (cred_now or "").lower():
+            _dpos = re.search(r"Должник", text, re.IGNORECASE)
+            _hint = text[: _dpos.start()] if _dpos else text[:1800]
+            reg_addr = None
+            try:
+                reg_addr = _fns_reg.resolve_address(cred_now, _hint)
+            except Exception as exc:  # справочник недоступен — тихо пропускаем
+                logger.warning(f"Реестр ФНС не ответил: {exc}")
+            if reg_addr:
+                fields["creditorAddress"] = reg_addr
+
+        # Юр-адрес инспекции в applicantAddress — по шапке: улица…индекс прямо перед
+        # Телефон/Телефакс/www.nalog/«Адрес для корреспонденции» (так оформлена шапка
+        # ИФНС; разделитель может быть с переносом строки и «;»). Адрес суда
+        # (Станиславского) это не заденет.
+        im = re.search(
+            r"((?:ул|пр|проспект|пер)[^\n]*?\b\d{6})\b"
+            r"(?=[;\s]{0,12}(?:ФНС|Телефон|Телефакс|www\.nalog|Адрес\s+для))",
+            text[:1800], re.IGNORECASE,
+        )
+        if im:
+            fields["applicantAddress"] = _clean_addr(im.group(1))
+        else:
+            # Инспекционного адреса нет — не оставляем в applicantAddress чужой адрес:
+            # чистим адрес должника/суда, мусор-фразу или адрес без улицы (город+индекс).
+            aa = fields.get("applicantAddress") or ""
+            if aa and (aa == debt_addr or not re.search(r"\b\d{6}\b", aa)
+                       or not re.search(_STREET, aa, re.IGNORECASE)
+                       or re.search(r"руководству|должник|направлен|уплач|закон|заявлени|"
+                                    r"корреспонденц|наименовани|Станиславског", aa, re.IGNORECASE)):
+                fields.pop("applicantAddress", None)
 
     def _fill_manager_address(self, fields: Dict[str, Any], text: str) -> None:
         """Фолбэк адреса управляющего: «… управляющий: <ФИО, м.б. в 2 строки>

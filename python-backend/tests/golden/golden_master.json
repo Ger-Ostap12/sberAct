@@ -17,11 +17,11 @@
   "confidence": 0.95,
   "debtors": [
    {
-    "address": "344002, г. Ростов-на-Дону",
+    "address": "346630, РОСТОВСКАЯ ОБЛ, Семикаракорский Р-Н, СЕМИКАРАКОРСК Г, ЛЕВЧЕНКО ПЛ,46",
     "birthDate": "",
     "birthPlace": "",
     "inn": "",
-    "name": "МинФин России Арбитражны",
+    "name": "ЗАЙЦЕВ ВИТАЛИЙ ВЛАДИМИРОВИЧ",
     "ogrn": "",
     "ogrnip": "318619600149696",
     "snils": ""
@@ -30,7 +30,7 @@
   "documentType": "initiation_physical",
   "entityType": "ip",
   "fields": {
-   "applicantAddress": "344002, г. Ростов-на-Дону",
+   "applicantAddress": "России 127381, г. Москва, ул. Неглинная",
    "applicantName": "ФНС России в лице Межрайонной ИФНС России № 13 по Ростовской области",
    "applicantNameAccusative": "МинФина Россию Арбитражных",
    "applicantNameDative": "МинФину России Арбитражным",
@@ -38,8 +38,10 @@
    "applicantNameInstrumental": "МинФиным Россией Арбитражными",
    "applicationDate": "29.05.2004",
    "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "346407, Ростовская обл, Новочеркасск г, Ермака пр-кт, 104",
    "creditorName": "ФНС России в лице Межрайонной ИФНС России № 13 по Ростовской области",
    "debtAmount": "298 892,00",
+   "debtorAddress": "346630, РОСТОВСКАЯ ОБЛ, Семикаракорский Р-Н, СЕМИКАРАКОРСК Г, ЛЕВЧЕНКО ПЛ,46",
    "debtorName": "ЗАЙЦЕВ ВИТАЛИЙ ВЛАДИМИРОВИЧ",
    "entityType": "ip",
    "forfeit": "2 121 308,66",
@@ -74,7 +76,7 @@
   "confidence": 1.0,
   "debtors": [
    {
-    "address": "ул. 2-я Краснодарская, 149/5, кв. 43 г. Ростов-на-Дону, 344091",
+    "address": "ул. 2-я Краснодарская, 149/5, кв. 43",
     "birthDate": "",
     "birthPlace": "",
     "inn": "",
@@ -87,7 +89,7 @@
   "documentType": "rtk_application",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "ул. 2-я Краснодарская, 149/5, кв. 43 г. Ростов-на-Дону, 344091",
+   "applicantAddress": "ул. Мясникова, 52/32, г. Ростов-на-Дону, 344019",
    "applicantName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
    "applicantNameAccusative": "Богачёву Анну Михайловну",
    "applicantNameDative": "Богачёвой Анне Михайловне",
@@ -97,8 +99,10 @@
    "caseNumber": "А53-31358/2025",
    "courtDecisionDate": "04.09.2025",
    "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "344019, Ростов-на-Дону г, Мясникова ул, 52/32",
    "creditorName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
    "debtAmount": "4 590,95",
+   "debtorAddress": "ул. 2-я Краснодарская, 149/5, кв. 43",
    "debtorName": "Богачева Анна Михайловна",
    "entityType": "individual",
    "forfeit": "90,87",
@@ -139,11 +143,11 @@
   "confidence": 1.0,
   "debtors": [
    {
-    "address": "пер Рязанова, 31, х Елкин, Багаевский р-н, 346621",
+    "address": "пер Рязанова, 31, х Елкин, Багаевский р-н, ,346621",
     "birthDate": "",
     "birthPlace": "",
     "inn": "",
-    "name": "ФНС России",
+    "name": "Бузнякова Елена Васильевна",
     "ogrn": "",
     "ogrnip": "",
     "snils": ""
@@ -152,7 +156,7 @@
   "documentType": "rtk_application",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "пер Рязанова, 31, х Елкин, Багаевский р-н, 346621",
+   "applicantAddress": "ул. Мясникова, 52/32, г. Ростов-на-Дону, 344019",
    "applicantName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
    "applicantNameAccusative": "ФНС Россию",
    "applicantNameDative": "ФНС России",
@@ -162,8 +166,10 @@
    "caseNumber": "А53-3438/2026",
    "courtDecisionDate": "17.03.2026",
    "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "344019, Ростов-на-Дону г, Мясникова ул, 52/32",
    "creditorName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
    "debtAmount": "5 334 382 026,00",
+   "debtorAddress": "пер Рязанова, 31, х Елкин, Багаевский р-н, ,346621",
    "debtorName": "Бузнякова Елена Васильевна",
    "efirsbPublicationDate": "20.03.2026",
    "entityType": "individual",
@@ -201,11 +207,11 @@
   "confidence": 1.0,
   "debtors": [
    {
-    "address": "ул. Орбитальная, д.90, к.67 г. Ростов-на-Дону, 344114",
+    "address": "ул. Орбитальная, д.90, к.67",
     "birthDate": "",
     "birthPlace": "",
     "inn": "",
-    "name": "ФНС России",
+    "name": "Воробьева Светлана Михайловна",
     "ogrn": "",
     "ogrnip": "",
     "snils": ""
@@ -214,7 +220,7 @@
   "documentType": "rtk_application",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "ул. Орбитальная, д.90, к.67 г. Ростов-на-Дону, 344114",
+   "applicantAddress": "ул. Мясникова, 52/32, г. Ростов-на-Дону, 344019",
    "applicantName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
    "applicantNameAccusative": "ФНС Россию",
    "applicantNameDative": "ФНС России",
@@ -226,8 +232,10 @@
    "contractNumber": "224597118, 002566",
    "courtDecisionDate": "30.01.2026",
    "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "344019, Ростов-на-Дону г, Мясникова ул, 52/32",
    "creditorName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
    "debtAmount": "55 393,70",
+   "debtorAddress": "ул. Орбитальная, д.90, к.67",
    "debtorName": "Воробьева Светлана Михайловна",
    "efirsbPublicationDate": "02.02.2026",
    "entityType": "individual",
@@ -295,7 +303,7 @@
   "confidence": 0.95,
   "debtors": [
    {
-    "address": "ул. Садовая, д. 28, п. Двуречье Кагальницкий р-н, Ростовская область 347704",
+    "address": "ул. Садовая, д. 28, п. Двуречье",
     "birthDate": "",
     "birthPlace": "",
     "inn": "",
@@ -308,7 +316,7 @@
   "documentType": "rtk_application",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "ул. Садовая, д. 28, п. Двуречье Кагальницкий р-н, Ростовская область 347704",
+   "applicantAddress": "ул. Мясникова, 52/32, г. Ростов-на-Дону, 344019",
    "applicantName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
    "applicantNameAccusative": "Мишунина Ивана Александровича",
    "applicantNameDative": "Мишунину Ивану Александровичу",
@@ -320,7 +328,9 @@
    "contractNumber": "235759037",
    "courtDecisionDate": "09.10.2025",
    "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "344019, Ростов-на-Дону г, Мясникова ул, 52/32",
    "creditorName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
+   "debtorAddress": "ул. Садовая, д. 28, п. Двуречье",
    "debtorName": "Мишунин Иван Александрович",
    "entityType": "individual",
    "loanDebt": "26,00",
@@ -373,11 +383,11 @@
   "confidence": 1.0,
   "debtors": [
    {
-    "address": "ул. Баумана, 20, кв. 15 г. Ростов-на-Дону, 344002",
+    "address": "ул. Баумана, 20, кв. 15",
     "birthDate": "",
     "birthPlace": "",
     "inn": "",
-    "name": "ФНС России",
+    "name": "Мурадьян Максим Евгеньевич",
     "ogrn": "",
     "ogrnip": "",
     "snils": ""
@@ -386,7 +396,7 @@
   "documentType": "rtk_application",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "ул. Баумана, 20, кв. 15 г. Ростов-на-Дону, 344002",
+   "applicantAddress": "ул. Мясникова, 52/32, г. Ростов-на-Дону, 344019",
    "applicantName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
    "applicantNameAccusative": "ФНС Россию",
    "applicantNameDative": "ФНС России",
@@ -398,8 +408,10 @@
    "contractNumber": "265604384",
    "courtDecisionDate": "03.10.2025",
    "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "344019, Ростов-на-Дону г, Мясникова ул, 52/32",
    "creditorName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
    "debtAmount": "300,00",
+   "debtorAddress": "ул. Баумана, 20, кв. 15",
    "debtorName": "Мурадьян Максим Евгеньевич",
    "efirsbPublicationDate": "05.02.2026",
    "entityType": "individual",
@@ -453,7 +465,7 @@
   "confidence": 0.95,
   "debtors": [
    {
-    "address": "26, г. Сальск, Сальский р-н., Ростовская обл., 347636 Наименование налога",
+    "address": "ул. Социалистическая, д. 26, г. Сальск, Сальский р-н., Ростовская обл., 347636",
     "birthDate": "",
     "birthPlace": "",
     "inn": "615308542625",
@@ -474,9 +486,11 @@
    "applicantNameInstrumental": "Карагезовой ЛИЛИЕЙ АРКАДЬЕВНОЙ",
    "applicationDate": "26.08.2825",
    "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "347375, Ростовская обл, Волгодонск г, Ленинградская ул, 10",
    "creditorName": "ФНС России в лице Межрайонной ИФНС России № 4 по Ростовской области",
    "debtAmount": "208 472,00",
    "debtSnapshotDate88": "26.08.2025",
+   "debtorAddress": "ул. Социалистическая, д. 26, г. Сальск, Сальский р-н., Ростовская обл., 347636",
    "debtorName": "Карагезова ЛИЛИЯ АРКАДЬЕВНА",
    "entityType": "individual",
    "forfeit": "0,00",
@@ -492,11 +506,11 @@
   "metadata": {
    "language": "ru",
    "pageCount": 3,
-   "wordCount": 1446
+   "wordCount": 1444
   },
   "obligations": [],
-  "rawTextLen": 11170,
-  "rawTextSha": "204a30881c5c3ac7570ba01e38998bacf1f7731b22c9bff82a0ffa46d6e3dea3",
+  "rawTextLen": 11164,
+  "rawTextSha": "c63347d379dbc36f3c72e90135e41b2ae79061005ad6dea96e639fa3afd9bbaf",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "individual",
@@ -513,7 +527,7 @@
   "confidence": 1.0,
   "debtors": [
    {
-    "address": "для корреспонденции: пр.Ермака, 104, г. Новочеркасск, 346400 Колос Екатерина Александровна",
+    "address": "346406, РОССИЯ, Ростовская обл, ,г Новочеркасск,, ул Речная, 43",
     "birthDate": "",
     "birthPlace": "",
     "inn": "",
@@ -536,8 +550,10 @@
    "contractNumber": "138906027",
    "courtDecisionDate": "26.02.2026",
    "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "346407, Ростовская обл, Новочеркасск г, Ермака пр-кт, 104",
    "creditorName": "ФНС России в лице Межрайонной ИФНС России № 13 по Ростовской области",
    "debtAmount": "34 104 315,00",
+   "debtorAddress": "346406, РОССИЯ, Ростовская обл, ,г Новочеркасск,, ул Речная, 43",
    "debtorName": "Артемов Игорь Геннадьевич",
    "efirsbPublicationDate": "04.03.2026",
    "entityType": "individual",
@@ -588,7 +604,7 @@
   "confidence": 0.95,
   "debtors": [
    {
-    "address": "должника направлены налоговые уведомления № 224670153 от 26.08.2025. До настоящего времени задолженность не уплачена. Руководствуясь ст. ст. 71, 100, 213.8 Федерального закона от 26.10.2002 № 127-Ф3 «О несостоятельности (",
+    "address": "346611,РОССИЯ,Ростовская обл,Багаевская ст-ца,Фрунзе ул,67",
     "birthDate": "",
     "birthPlace": "",
     "inn": "610304071535",
@@ -611,7 +627,9 @@
    "contractNumber": "224670153",
    "courtDecisionDate": "03.03.2026",
    "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "344019, Ростов-на-Дону г, Мясникова ул, 52/32",
    "creditorName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
+   "debtorAddress": "346611,РОССИЯ,Ростовская обл,Багаевская ст-ца,Фрунзе ул,67",
    "debtorName": "Геворкян Ксения Валериевна",
    "efirsbPublicationDate": "05.03.2026",
    "entityType": "individual",
@@ -646,8 +664,8 @@
     "obligationType": "Договор"
    }
   ],
-  "rawTextLen": 7244,
-  "rawTextSha": "4aed2e13c34ca925bc8592448db216ed4b73916527ecb52d413a790dd7d96fcd",
+  "rawTextLen": 7247,
+  "rawTextSha": "a253d0e14783d9f0d08a48acb76f13a1b73f1e4ab5cdcf2bedf2d495b0d1df74",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "individual",
@@ -677,7 +695,7 @@
   "documentType": "initiation_physical",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "346731, Россия, обл. Ростовская, Аксайский р-н, Щепкин п., Адмирала Нахимова ул., д.14",
+   "applicantAddress": "пр. Октября, 95/2, г.Уфа, 450075",
    "applicantName": "ФНС России в лице Межрайонной ИФНС России № 4 по Республике Башкортостан",
    "applicantNameAccusative": "Базова Георгия Николаевича",
    "applicantNameDative": "Базову Георгию Николаевичу",
@@ -688,9 +706,11 @@
    "birthPlace": "гор. Астрахань",
    "companyInn": "616506698400",
    "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "450075, Башкортостан Респ, Уфа г, Октября проспект, 95, 2",
    "creditorName": "ФНС России в лице Межрайонной ИФНС России № 4 по Республике Башкортостан",
    "debtAmount": "71 145 066,58",
    "debtSnapshotDate88": "16.06.2026",
+   "debtorAddress": "346731, Россия, обл. Ростовская, Аксайский р-н, Щепкин п., Адмирала Нахимова ул., д.14",
    "debtorName": "Базов Георгий Николаевич",
    "entityType": "individual",
    "forfeit": "16 242 223,52",
@@ -745,7 +765,7 @@
   "documentType": "initiation_physical",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "346404, Россия, Ростовская обл, Новочеркасск г, Флерова А.Ф. ул, 4, кв. 66",
+   "applicantAddress": "пр. Октября, 95/2, г.Уфа, 450075",
    "applicantName": "ФНС России в лице Межрайонной ИФНС России № 4 по Республике Башкортостан",
    "applicantNameAccusative": "Бирюкову Елену Андреевну",
    "applicantNameDative": "Бирюковой Елене Андреевне",
@@ -758,9 +778,11 @@
    "contractDate": "Не указана",
    "contractNumber": "15399, 13754",
    "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "450075, Башкортостан Респ, Уфа г, Октября проспект, 95, 2",
    "creditorName": "ФНС России в лице Межрайонной ИФНС России № 4 по Республике Башкортостан",
    "debtAmount": "5 631 934,26",
    "debtSnapshotDate88": "08.04.2026",
+   "debtorAddress": "346404, Россия, Ростовская обл, Новочеркасск г, Флерова А.Ф. ул, 4, кв. 66",
    "debtorName": "Бирюкова Елена Андреевна",
    "entityType": "individual",
    "forfeit": "595 911,64",
@@ -828,7 +850,7 @@
   "confidence": 1.0,
   "debtors": [
    {
-    "address": "должника и приложены к заявлению. Руководствуясь 71, 100, 213.24 Закона о",
+    "address": "346414, Ростовская обл,,Новочеркасск г,,Харьковская ул,47",
     "birthDate": "",
     "birthPlace": "",
     "inn": "615014093624",
@@ -841,6 +863,7 @@
   "documentType": "rtk_application",
   "entityType": "individual",
   "fields": {
+   "applicantAddress": "пр. Октября, 95/2, г.Уфа, 450075",
    "applicantName": "ФНС России в лице Межрайонной ИФНС России № 4 по Республике Башкортостан",
    "applicantNameAccusative": "Чернова Николая Николаевича",
    "applicantNameDative": "Чернову Николаю Николаевичу",
@@ -851,8 +874,10 @@
    "companyInn": "615014093624",
    "courtDecisionDate": "06.04.2026",
    "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "450075, Башкортостан Респ, Уфа г, Октября проспект, 95, 2",
    "creditorName": "ФНС России в лице Межрайонной ИФНС России № 4 по Республике Башкортостан",
    "debtAmount": "54 558,94",
+   "debtorAddress": "346414, Ростовская обл,,Новочеркасск г,,Харьковская ул,47",
    "debtorName": "Чернов Николай Николаевич",
    "entityType": "individual",
    "forfeit": "2 631,84",
