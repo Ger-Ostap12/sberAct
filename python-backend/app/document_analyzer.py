@@ -26,6 +26,7 @@ from obligations_mixin import ObligationsMixin
 from inflection_mixin import InflectionMixin
 from patterns import build_patterns
 from creditor_registry import _match_creditor_registry
+import nlp_natasha as _nlp
 from typing import Dict, Any, List, Tuple, Optional, Union
 import logging
 from pathlib import Path
@@ -269,9 +270,23 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # («…"МТС-» + «Банк"» ниже) — дотягиваем по тексту.
             self._fix_truncated_creditor_name(extracted_fields, text)
 
+            # Заявление уполномоченного органа (ФНС): кредитор/заявитель — налоговый
+            # орган (в шапке-бланке, без метки «Кредитор:»), а не должник-физлицо.
+            # ДО NLP-сети: у ФНС свой точный шаблон, NER тут только мусорит.
+            self._apply_fns_authority(extracted_fields, text)
+
+            # Гибрид-сеть (Natasha, второстепенно): если кредитор не распознан ни
+            # меткой, ни реестром, ни ФНС-детектором — берём кандидата-организацию из
+            # NER по шапке. Ловит незнакомые раскладки, где label-парсер пасует.
+            self._fill_creditor_nlp(extracted_fields, text)
+
             # Адрес управляющего — фолбэк для многострочного «Адрес регистрации:»,
             # когда ФИО и адрес на разных строках (общие паттерны не справляются).
             self._fill_manager_address(extracted_fields, text)
+
+            # Вспомогательный NLP-слой (Natasha, второстепенно): когда regex не
+            # извлёк адрес совсем или обрезал его — достраиваем по окну роли.
+            self._refine_addresses_nlp(extracted_fields, text)
 
             # Адрес не может содержать реквизиты (ИНН/ОГРН/ОГРНИП/СНИЛС/КПП) —
             # обрезаем хвост, а полностью мусорные адреса (без букв) убираем.
@@ -1441,6 +1456,130 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             fields.pop("stateDuty", None)
             logger.info("Удалена мусорная банкротная госпошлина (совпала с итогом/осн.долгом)")
 
+    def _fill_creditor_nlp(self, fields: Dict[str, Any], text: str) -> None:
+        """Второстепенная NLP-сеть для кредитора: срабатывает ТОЛЬКО когда основной
+        label-anchored парсер и реестр не дали имени. Берём из NER первую организацию
+        по шапке, отсекая суд/должника и требуя признак организации (ОПФ/кавычки/
+        налоговый орган). Роль (это кредитор) задаёт позиция-шапка, а не сам NER.
+        Verbatim-срез обеспечивает `find_orgs`. Цель — не «сломаться» на незнакомой
+        раскладке будущих документов, где нет привычной метки «Кредитор:/Заявитель:»."""
+        if not text or (fields.get("creditorName") or "").strip():
+            return
+        for cand in _nlp.find_orgs(text[:1200]):
+            low = cand.lower()
+            # Отсев суда и явного не-кредитора.
+            if re.search(r"\bсуд\b|арбитражн\w+\s+суд", low):
+                continue
+            # Признак организации: ОПФ / банк / налоговый орган / кавычки-название.
+            looks_org = bool(re.search(
+                r"\b(?:ООО|АО|ПАО|ЗАО|ОАО|ПКО|НАО|Банк)\b|банк|общество|"
+                r"налогов|ифнс|\bфнс\b|инспекц|служб|[«\"]",
+                cand, re.IGNORECASE))
+            if looks_org and 3 < len(cand) < 150:
+                fields["creditorName"] = cand
+                return
+
+    # Регион в любом регистре: «Ростовской области», «Республике Башкортостан»,
+    # «ПО РОСТОВСКОЙ ОБЛАСТИ» и т.п. Нормализуется в _norm_fns_region.
+    _FNS_REGION = (r"(?:Республик\w+\s+[А-Яа-яЁё][А-Яа-яЁё-]+|"
+                   r"[А-Яа-яЁё]+(?:ой|ому)\s+(?:области|краю|округу|АО))")
+
+    @staticmethod
+    def _norm_fns_region(region: str) -> str:
+        """ЗАГЛАВНЫЙ/смешанный регион → канонический вид: «РОСТОВСКОЙ ОБЛАСТИ» →
+        «Ростовской области», «РЕСПУБЛИКЕ БАШКОРТОСТАН» → «Республике Башкортостан».
+        Гео-тип (области/краю/округу) со строчной, названия — с заглавной."""
+        lower_words = {"области", "краю", "округу", "ао", "автономному"}
+        out = []
+        for w in re.sub(r"\s+", " ", region).strip().split(" "):
+            out.append(w.lower() if w.lower() in lower_words else w[:1].upper() + w[1:].lower())
+        return " ".join(out)
+
+    def _build_fns_creditor(self, text: str) -> str:
+        """Имя налогового органа по слоям шаблонов (приоритет — конкретной инспекции).
+
+        Слои (первый сработавший): 1) «в лице Межрайонной ИФНС России № N по <регион>»;
+        2) скобка «(Межрайонная ИФНС России № N по <регион>)»; 3) заглавная полная форма
+        «МЕЖРАЙОННАЯ ИНСПЕКЦИЯ ФНС № N ПО <РЕГИОН>»; 4) управление «УФНС/УПРАВЛЕНИЕ ФНС
+        по <регион>». Если ни один — общий «ФНС России» (безопасная деградация, не мусор).
+        Возвращает всегда verbatim-нормализованное юр-имя.
+        """
+        rg = self._FNS_REGION
+        # Слои с конкретной инспекцией: (№ инспекции, регион).
+        insp_layers = [
+            rf"в\s+лице\s+Межрайонн\w+\s+ИФНС\s+России\s+№?\s*(\d+)\s+по\s+({rg})",
+            rf"\(\s*Межрайонн\w+\s+ИФНС\s+России\s+№?\s*(\d+)\s+по\s+({rg})\s*\)",
+            rf"Межрайонн\w+\s+инспекци\w+\s+федеральн\w+\s+налогов\w+\s+служб\w+"
+            rf"\s+№?\s*(\d+)\s+по\s+({rg})",
+        ]
+        for pat in insp_layers:
+            m = re.search(pat, text, re.IGNORECASE)
+            if m:
+                return (f"ФНС России в лице Межрайонной ИФНС России № {m.group(1)} "
+                        f"по {self._norm_fns_region(m.group(2))}")
+        # Уровень управления по субъекту (без номера инспекции).
+        for pat in (rf"УФНС\s+России\s+по\s+({rg})",
+                    rf"управлени\w+\s+федеральн\w+\s+налогов\w+\s+служб\w+\s+по\s+({rg})"):
+            m = re.search(pat, text, re.IGNORECASE)
+            if m:
+                return f"ФНС России в лице УФНС России по {self._norm_fns_region(m.group(1))}"
+        return "ФНС России"
+
+    def _apply_fns_authority(self, fields: Dict[str, Any], text: str) -> None:
+        """Заявления уполномоченного органа (ФНС) о банкротстве/включении в РТК.
+
+        В таких заявлениях кредитор и заявитель — налоговый орган (ФНС России /
+        Межрайонная ИФНС), указанный в шапке-бланке БЕЗ метки «Кредитор:/Заявитель:»,
+        поэтому общий label-anchored парсер его не берёт, а заявителем ошибочно
+        становится должник-физлицо (из «…требований кредитора … <ФИО должника>»).
+        Детектор срабатывает ТОЛЬКО при бланке ФНС в шапке; должника не трогает.
+        """
+        if not text:
+            return
+        # Признак заявления ФНС — налоговый БЛАНК в самом начале (первые ~400 симв.),
+        # а не упоминание закона/органа в теле: «…ФЕДЕРАЛЬНАЯ НАЛОГОВАЯ СЛУЖБА…» или
+        # заголовок «Заявление уполномоченного органа …». Тело («Федерального закона»,
+        # «требования … уполномоченного органа») сигналом НЕ считаем.
+        if not (
+            re.search(r"НАЛОГОВ\w+\s+СЛУЖБ", text[:400], re.IGNORECASE)
+            or re.search(r"ЗАЯВЛЕНИ\w+\s+УПОЛНОМОЧЕНН\w+\s+ОРГАН", text[:700], re.IGNORECASE)
+        ):
+            return
+        # Не трогаем заявления с уже распознанным кредитором-компанией (банк/ООО/АО…):
+        # налоговый бланк мог оказаться штампом суда, а кредитор — реальная организация.
+        # ОПФ по границе слова (не подстрокой: «банк» ⊂ «банкротстве» давало ложняк).
+        _OPF = r"\b(?:ООО|АО|ПАО|ЗАО|ОАО|ПКО|НАО|Банк)\b"
+        cur_cred = fields.get("creditorName") or ""
+        if "фнс" not in cur_cred.lower() and re.search(_OPF, cur_cred, re.IGNORECASE):
+            return
+
+        # Имя налогового органа собираем слоями (см. _build_fns_creditor); если ни
+        # один шаблон инспекции/управления не сработал — безопасный общий «ФНС России».
+        creditor = self._build_fns_creditor(text)
+
+        # Кредитор: ставим налоговый орган, если он ещё не распознан как ФНС; либо
+        # АПГРЕЙДИМ короткое «ФНС России» до полной формы «…в лице Межрайонной ИФНС
+        # № N по <регион>», когда инспекция найдена (единообразие всех ФНС-заявлений).
+        built_full = "в лице" in creditor.lower()
+        if "фнс" not in cur_cred.lower() or (built_full and "в лице" not in cur_cred.lower()):
+            fields["creditorName"] = creditor
+        # Заявитель уполномоченного органа = ФНС (сейчас часто ошибочно = должник);
+        # тоже апгрейдим короткую форму до полной. Не перетираем компанию-заявителя.
+        cred_now = fields.get("creditorName") or ""
+        appl = fields.get("applicantName") or ""
+        if ("фнс" in cred_now.lower()
+                and not re.search(_OPF, appl, re.IGNORECASE)
+                and ("фнс" not in appl.lower()
+                     or ("в лице" in cred_now.lower() and "в лице" not in appl.lower()))):
+            fields["applicantName"] = cred_now
+        # Мусорный applicantAddress (кусок предложения / без индекса) — убираем: адрес
+        # заявителя-ФНС отдельным полем не тянем, лучше пусто, чем фраза из текста.
+        aa = fields.get("applicantAddress") or ""
+        if aa and (not re.search(r"\b\d{6}\b", aa) or re.search(
+            r"руководству|должник|направлен|уплач|закон|заявлени|корреспонденц|наименовани",
+            aa, re.IGNORECASE)):
+            fields.pop("applicantAddress", None)
+
     def _fill_manager_address(self, fields: Dict[str, Any], text: str) -> None:
         """Фолбэк адреса управляющего: «… управляющий: <ФИО, м.б. в 2 строки>
         Адрес регистрации: <многострочный адрес>». Срабатывает только если адрес
@@ -1466,6 +1605,20 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 r"(?=\n\s*(?:Реквизиты|Дело|Тел|Исх|ЗАЯВЛЕНИЕ|ИНН|ОГРН|№|член)|\n\s*\n|$)",
                 text, re.IGNORECASE,
             )
+        if not m and (fields.get("managerName") or "").strip():
+            # Простая метка «Адрес:» после якоря «…управляющий: <ФИО>» —
+            # ФИО может переноситься на 2 строки (word-wrap docx), поэтому между
+            # якорем и меткой допускаем окно из нескольких строк. Метка должна
+            # стоять в НАЧАЛЕ строки — иначе цепляем «Почтовый/Электронный адрес»
+            # контактов банка (форма Сбербанка «Финансовых управляющих: … Почтовый
+            # адрес: …»). Гейт по managerName: без названного управляющего адрес
+            # ему не принадлежит.
+            m = re.search(
+                r"(?:финансов\w+|временн\w+|конкурсн\w+|арбитражн\w+)\s+управляющ\w+"
+                r"[:\s]*[\s\S]{0,120}?(?:^|\n)\s*адрес[^:\n]*:\s*([0-9]{6}[\s\S]{0,160}?)"
+                r"(?=\n\s*(?:Дело|Тел|Исх|ЗАЯВЛЕНИЕ|ИНН|ОГРН|СНИЛС|№|Размер|Государственн)|\n\s*\n|$)",
+                text, re.IGNORECASE | re.MULTILINE,
+            )
         if not m:
             return
         addr = re.sub(r"\s+", " ", m.group(1)).strip()
@@ -1473,6 +1626,68 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         addr = addr.strip().rstrip(" ,;")
         if re.search(r"[А-Яа-яЁё]{3}", addr):
             fields["managerAddress"] = addr
+
+    # Метка → (якорь роли, стоп-метки других сторон) для NLP-достройки адреса.
+    # Окно берём ПОСЛЕ якоря и ОБРЫВАЕМ на метке следующей стороны — иначе окно
+    # перепрыгивает через контакты роли (напр. «Адрес для корреспонденции: email»)
+    # в блок другой стороны и хватает чужой адрес (адрес должника вместо управляющего).
+    _ADDR_ROLE_ANCHORS = (
+        ("managerAddress",
+         r"(?:финансов\w+|временн\w+|конкурсн\w+|арбитражн\w+)\s+управляющ\w+",
+         r"Должник|Кредитор|Заявител|Ответчик|Взыскател|Третье\s+лицо|ЗАЯВЛЕНИЕ|Требование|Дело\s*№|В\s+производств"),
+        ("applicantAddress",
+         r"Заявител\w+\s*[:\-]",
+         r"Должник|Кредитор|управляющ|Ответчик|Взыскател|Третье\s+лицо|ЗАЯВЛЕНИЕ|Требование|Дело\s*№|В\s+производств"),
+    )
+
+    def _refine_addresses_nlp(self, fields: Dict[str, Any], text: str) -> None:
+        """Второстепенный слой: Natasha достраивает адрес по окну роли.
+
+        Срабатывает КОНСЕРВАТИВНО, чтобы не портить рабочий regex:
+        - поле пустое → заполняем адресом из окна роли;
+        - поле есть, но обрезано → заменяем ТОЛЬКО если кандидат Natasha строго
+          длиннее и текущее значение — его префикс (тогда не теряем нестандартный
+          хвост «а/я»/литеру, который AddrExtractor склонен отбрасывать).
+        Роль/принадлежность определяет якорь-метка, не NER. VERBATIM-срез исходного
+        текста обеспечивает сам `complete_address`.
+        """
+        if not text:
+            return
+
+        def _norm(s: str) -> str:
+            return re.sub(r"\s+", " ", s or "").strip().lower()
+
+        for field, anchor, stop in self._ADDR_ROLE_ANCHORS:
+            # Адрес управляющего заполняем ТОЛЬКО при названном управляющем: в
+            # заявлениях о признании банкротом управляющий ещё не назначен, а
+            # «финансового управляющего … адрес: …» указывает на адрес СРО
+            # (из числа членов которой его утвердят) — это НЕ адрес управляющего.
+            if field == "managerAddress" and not (fields.get("managerName") or "").strip():
+                continue
+            am = re.search(anchor, text, re.IGNORECASE)
+            if not am:
+                continue
+            # Окно роли: до 400 символов после якоря, обрываем на пустой строке
+            # и на метке следующей стороны (чтобы не захватить чужой адрес).
+            win = text[am.end():am.end() + 400]
+            win = re.split(r"\n\s*\n", win, maxsplit=1)[0]
+            sm = re.search(stop, win, re.IGNORECASE)
+            if sm:
+                win = win[:sm.start()]
+            cand = _nlp.complete_address(win)
+            if not cand:
+                continue
+            cand = re.sub(r"\s+", " ", cand).strip()  # схлопываем переносы внутри адреса
+            # Гейт полноты: AddrExtractor склонен обрезать хвост (а/я/индекс), а
+            # расплывчатый «регион, город» без дома/индекса нарушает принцип «текст
+            # как в документе». Заполняем только достаточно конкретным адресом.
+            if not re.search(r"\b\d{6}\b", cand) and not re.search(r"\bд\.?\s*\d", cand, re.IGNORECASE):
+                continue
+            cur = (fields.get(field) or "").strip()
+            if not cur:
+                fields[field] = cand
+            elif len(_norm(cand)) > len(_norm(cur)) and _norm(cand).startswith(_norm(cur)):
+                fields[field] = cand
 
     def _sanitize_address_fields(self, fields: Dict[str, Any]) -> None:
         """Адресные поля не должны содержать реквизиты (ИНН/ОГРН/ОГРНИП/СНИЛС/КПП):

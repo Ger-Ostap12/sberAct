@@ -160,7 +160,7 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onField
           return (
             <Typography variant="body2" sx={{ mt: 1, fontWeight: 500, color: ok ? 'success.main' : 'error.main' }}>
               {ok
-                ? '✓ Расчеты коррекны'
+                ? '✓ Расчеты корректны'
                 : `⚠ Не сходится: Σ компонентов = ${fmt(sum)}, Общая сумма = ${fmt(total)} (расхождение ${fmt(diff)}). Проверьте числа или документ.`}
             </Typography>
           );

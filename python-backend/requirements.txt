@@ -10,6 +10,11 @@ pydantic>=2.0.0
 pywebview>=4.0
 natasha>=1.6.0
 pymorphy3>=1.2.0
+# natasha тянет pymorphy2, а тот импортирует pkg_resources, удалённый из
+# setuptools>=81. Без этого пина на чистой сборке natasha падает при инициализации
+# экстракторов (AddrExtractor/DatesExtractor). Держим setuptools<81, пока natasha
+# не перейдёт на importlib.metadata.
+setuptools<81
 
 # --- dev-инструменты (линт/формат, в проде не нужны) ---
 ruff>=0.15
