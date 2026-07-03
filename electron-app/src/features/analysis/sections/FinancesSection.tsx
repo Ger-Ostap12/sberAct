@@ -36,6 +36,34 @@ const FNS_QUEUE_FIELDS: { suffix: string; label: string }[] = [
   { suffix: 'Commission', label: 'Комиссия банка:' },
 ];
 const FNS_QUEUE_TITLES = ['Первая очередь', 'Вторая очередь', 'Третья очередь'];
+// Суффиксы полей-компонентов очереди (всё, кроме подытога Total) — для сверки.
+const FNS_COMPONENT_SUFFIXES = FNS_QUEUE_FIELDS.filter((f) => f.suffix !== 'Total').map((f) => f.suffix);
+
+/** Строка суммы → число (учёт пробелов/неразрывных пробелов/запятой/знака «-»). */
+const fnsNum = (v?: string): number =>
+  parseFloat((v ?? '').toString().replace(/\s/g, '').replace(',', '.')) || 0;
+const fnsFmt = (n: number): string =>
+  n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/**
+ * Строка сверки: указанный подытог (`expected`) против суммы слагаемых (`sum`).
+ * Пустой блок (обе величины по нулям) не показываем — чтобы не пугать «✓» там,
+ * где ничего не заполнено. Логика ⚠/✓ — как в общем (не-ФНС) блоке.
+ */
+const FnsReconcile: React.FC<{ label: string; expected: number; sum: number }> = ({ label, expected, sum }) => {
+  if (expected === 0 && sum === 0) return null;
+  const diff = Math.round((expected - sum) * 100) / 100;
+  const ok = Math.abs(diff) < 0.01;
+  return (
+    <Grid item xs={12}>
+      <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 500, color: ok ? 'success.main' : 'error.main' }}>
+        {ok
+          ? `✓ ${label}: сходится`
+          : `⚠ ${label}: Σ строк = ${fnsFmt(sum)}, указано ${fnsFmt(expected)} (расхождение ${fnsFmt(diff)}). Проверьте числа или документ.`}
+      </Typography>
+    </Grid>
+  );
+};
 
 // Метка ФНС-ячеек — в ОБЫЧНОМ потоке над полем (не overlap): часть подписей длинные
 // («Ссудная задолженность (просроченный основной долг)») и при абсолютном наложении
@@ -112,6 +140,12 @@ const FnsFinances: React.FC<FinancesSectionProps> = ({ editedFields, onFieldChan
           <FnsAmountField label="Общая сумма долга:" field="totalDebt" editedFields={editedFields} onFieldChange={onFieldChange} />
           <FnsDateField label="Дата ПП депозит:" field="ppDepositDate80" editedFields={editedFields} onFieldChange={onFieldChange} />
           <FnsDateField label="Дата ПП ГП:" field="ppStateDutyDate81" editedFields={editedFields} onFieldChange={onFieldChange} />
+          {/* Сверка: Общая сумма долга = Σ подытогов трёх очередей. */}
+          <FnsReconcile
+            label="Общая сумма долга"
+            expected={fnsNum(editedFields.totalDebt)}
+            sum={[1, 2, 3].reduce((acc, n) => acc + fnsNum(editedFields[`fnsQ${n}Total`]), 0)}
+          />
         </Grid>
       </AccordionDetails>
     </Accordion>
@@ -134,6 +168,13 @@ const FnsFinances: React.FC<FinancesSectionProps> = ({ editedFields, onFieldChan
                 onFieldChange={onFieldChange}
               />
             ))}
+            {/* Сверка: подытог очереди = Σ её слагаемых (недоимка+штраф+пени+НДФЛ+
+                взносы+ссудная задолж.+ссудная ГП+комиссия). */}
+            <FnsReconcile
+              label="Итог очереди"
+              expected={fnsNum(editedFields[`fnsQ${n}Total`])}
+              sum={FNS_COMPONENT_SUFFIXES.reduce((acc, suf) => acc + fnsNum(editedFields[`fnsQ${n}${suf}`]), 0)}
+            />
           </Grid>
         </AccordionDetails>
       </Accordion>

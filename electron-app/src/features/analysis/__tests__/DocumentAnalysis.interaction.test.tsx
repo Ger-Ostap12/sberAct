@@ -70,3 +70,33 @@ describe('DocumentAnalysis — CRUD обязательств', () => {
     expect(screen.getByDisplayValue('222')).toBeInTheDocument();
   });
 });
+
+describe('DocumentAnalysis — раскладка ФНС', () => {
+  const renderWith = (creditorName?: string) => {
+    const data = makeData();
+    data.fields = { ...data.fields, creditorName: creditorName || '' };
+    return render(
+      <DocumentAnalysis
+        documentData={documentData}
+        extractedData={data}
+        onAnalysisComplete={() => {}}
+        onBack={() => {}}
+      />,
+    );
+  };
+
+  it('для обычного кредитора блоки «Залог», «Обязательства», «Третьи лица» показаны', () => {
+    renderWith('ПАО Сбербанк');
+    expect(screen.getByText('Залог')).toBeInTheDocument();
+    expect(screen.getByText(/Обязательство 1/)).toBeInTheDocument();
+    expect(screen.getByText('Третьи лица')).toBeInTheDocument();
+  });
+
+  it('для кредитора-ФНС блоки «Залог», «Обязательства», «Третьи лица» скрыты, финансы — по очередям', () => {
+    renderWith('ФНС России в лице Межрайонной ИФНС России № 13 по Ростовской области');
+    expect(screen.queryByText('Залог')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Обязательство 1/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Третьи лица')).not.toBeInTheDocument();
+    expect(screen.getByText('Первая очередь')).toBeInTheDocument();
+  });
+});

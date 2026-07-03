@@ -43,4 +43,32 @@ describe('FinancesSection — кредитор ФНС', () => {
     fireEvent.change(input, { target: { value: '1000,50' } });
     expect(onFieldChange).toHaveBeenCalledWith('fnsQ3LoanDebt', '1000.50');
   });
+
+  it('сверка очереди: подытог = Σ строк → ✓; расхождение → ⚠', () => {
+    const { rerender } = render(
+      <FinancesSection
+        editedFields={{ creditorName: fns, fnsQ3Total: '100,00', fnsQ3LoanDebt: '70,00', fnsQ3Forfeit: '30,00' }}
+        onFieldChange={() => {}}
+      />,
+    );
+    expect(screen.getByText(/Итог очереди: сходится/)).toBeInTheDocument();
+
+    rerender(
+      <FinancesSection
+        editedFields={{ creditorName: fns, fnsQ3Total: '100,00', fnsQ3LoanDebt: '70,00', fnsQ3Forfeit: '5,00' }}
+        onFieldChange={() => {}}
+      />,
+    );
+    expect(screen.getByText(/Итог очереди:.*расхождение/)).toBeInTheDocument();
+  });
+
+  it('итоговая сверка: Общая сумма долга = Σ подытогов очередей', () => {
+    render(
+      <FinancesSection
+        editedFields={{ creditorName: fns, totalDebt: '300,00', fnsQ1Total: '100,00', fnsQ2Total: '100,00', fnsQ3Total: '100,00' }}
+        onFieldChange={() => {}}
+      />,
+    );
+    expect(screen.getByText(/Общая сумма долга: сходится/)).toBeInTheDocument();
+  });
 });

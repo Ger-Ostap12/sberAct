@@ -903,6 +903,26 @@ class AmountsMixin:
             )
         )
 
+        # Диагностическая сверка (не правит данные — только сигнализирует в лог о
+        # расхождениях, чтобы ловить недоизвлечение/битые исходники; на фронте те же
+        # расхождения показываются пользователю ⚠). Допуск 1 руб. на округление.
+        _cmp = [suf for suf in ("Arrears", "Penalties", "Forfeit", "Ndfl", "Insurance",
+                                "LoanDebt", "LoanDuty", "Commission")]
+        for n, data in queues.items():
+            sub = self._fin_amount(data.get("Total"))
+            parts = sum(self._fns_amount(data[s]) for s in _cmp if s in data)
+            if sub and parts and abs(sub - parts) > 1.0:
+                logger.warning(
+                    "FNS сверка: очередь %s — подытог %.2f ≠ Σ строк %.2f (расхождение %.2f)"
+                    % (n, sub, parts, sub - parts)
+                )
+        totals_sum = sum(self._fin_amount(q["Total"]) for q in queues.values() if q.get("Total"))
+        if grand and totals_sum and abs(grand - totals_sum) > 1.0:
+            logger.warning(
+                "FNS сверка: общая сумма %.2f ≠ Σ подытогов очередей %.2f (расхождение %.2f)"
+                % (grand, totals_sum, grand - totals_sum)
+            )
+
     def _normalize_financial_block(self, fields: Dict[str, Any], text: str) -> None:
         """Нормализует поля блока «Финансовые данные» по явным формулировкам.
 

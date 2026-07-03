@@ -774,6 +774,9 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
               <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} />
                 </Grid>
 
+                {/* Третьи лица — у ФНС-заявлений (уполномоченный орган) их нет,
+                    блок скрываем. */}
+                {!isFnsCreditor(editedFields.creditorName) && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
               {/* Третьи лица */}
               <ThirdPartiesSection
@@ -783,6 +786,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 onRemove={removeThirdParty}
               />
                 </Grid>
+                )}
 
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
               {/* Финансовые данные */}
@@ -794,6 +798,9 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
               <PriorCollectionSection editedFields={editedFields} onFieldChange={handleFieldChange} />
                 </Grid>
 
+                {/* Обязательства — у ФНС-заявлений (уполномоченный орган) кредитных
+                    обязательств/поручительств нет, блок скрываем. */}
+                {!isFnsCreditor(editedFields.creditorName) && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
               {/* Блок обязательств */}
               <ObligationsSection
@@ -803,8 +810,11 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 onRemove={removeObligation}
               />
                 </Grid>
+                )}
 
-                {/* Залог */}
+                {/* Залог — у ФНС-заявлений (уполномоченный орган) залога не бывает,
+                    блок скрываем. */}
+                {!isFnsCreditor(editedFields.creditorName) && (
                 <Grid item xs={12} sx={{ display: 'flex', minWidth: 0 }}>
                   <CollateralSection
                     collaterals={analysisResult?.collaterals || []}
@@ -813,6 +823,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                     onRemove={removeCollateral}
                   />
                 </Grid>
+                )}
               </Grid>
             </CardContent>
           </Card>
