@@ -89,6 +89,10 @@ export interface ExtractedData {
     interest14?: string;
     forfeit15?: string;
     stateDuty16?: string;
+    // ФНС-финансы по очередям реестра: ключи вида `fnsQ{1|2|3}{Suffix}`, где Suffix ∈
+    // Total/Arrears/Penalties/Forfeit/Ndfl/Insurance/LoanDebt/LoanDuty/Commission.
+    // Валидны по индекс-сигнатуре ниже; заполняются backend только для кредитора-ФНС
+    // и рендерятся 4-мя подблоками в FinancesSection (см. память fns-queue-finances).
     creditAmount?: string;
     creditTermMonths?: string;
     creditInterestRate?: string;

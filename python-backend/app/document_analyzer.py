@@ -278,6 +278,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # и валидация суммы = «ОБЩАЯ ЗАДОЛЖЕННОСТЬ».
             self._apply_table_breakdown_finances(extracted_fields, text)
 
+            # ФНС-заявления: финансы по ОЧЕРЕДЯМ реестра (недоимка/налог/пени/штраф/
+            # НДФЛ/взносы/госпошлина по 1/2/3 очереди). Гейт по кредитору-ФНС;
+            # перекрывает общий парсер и чистит скрытый общий блок финансов.
+            self._apply_fns_queue_finances(extracted_fields, text)
+
             # Имя кредитора, обрезанное на переносе строки внутри названия
             # («…"МТС-» + «Банк"» ниже) — дотягиваем по тексту.
             self._fix_truncated_creditor_name(extracted_fields, text)

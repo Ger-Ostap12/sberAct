@@ -3,6 +3,8 @@ import logging
 import re
 from typing import Any, Dict, List, Optional, Union
 
+from patterns import FNS_CAT_LABELS, FNS_QUEUE_ORDINAL_WORDS
+
 logger = logging.getLogger(__name__)
 
 
@@ -735,6 +737,169 @@ class AmountsMixin:
             "PRAYER finances: pr=%s int=%s fo=%s loanD=%s bankrD=%s total=%s" % (
                 fields.get("principalDebt"), fields["interest"], fields["forfeit"],
                 fields.get("loanStateDuty17"), fields.get("stateDuty16"), fields["totalDebt"],
+            )
+        )
+
+    # === ФНС: финансы по ОЧЕРЕДЯМ реестра требований =============================
+    # Регэкспы модульного уровня (компилируются один раз). Суммы у ФНС всегда с
+    # единицей (руб/рублей/py6-OCR/р.), поэтому «голые» числа (ИНН/даты/индексы) не
+    # ловим — единица обязательна. Знак «-» разрешён (артефакт «взносам – -96396,39»).
+    _FNS_AMT_RE = re.compile(
+        r"(\d[\d\s  ]*(?:[.,]\d{1,2})?)\s*(?:руб\w*|рублей|py6\w*|р\.)",
+        re.IGNORECASE,
+    )
+    # Маркер очереди: прописью «в первую/во вторую/в третью очередь» ИЛИ цифрой
+    # «2-ой очереди», «3-ю очередь». Слово/цифра → номер (label-anchored на «очеред»).
+    _FNS_QUEUE_RE = re.compile(
+        r"(?:в|во)\s+(перв|втор|трет)\w*\s+очеред\w*"
+        r"|(\d)\s*-?\s*(?:[оеаяйюмг]{1,3}\s+)?очеред\w*",
+        re.IGNORECASE,
+    )
+    # Подытог очереди: сумма сразу после слова «очередь» + «в размере/в сумме/–».
+    _FNS_SUBTOTAL_RE = re.compile(
+        r"(?:в\s+размере|в\s+сумме|размере|сумме|[–—\-])\s*[–—\-]?\s*"
+        r"(\d[\d\s  ]*(?:[.,]\d{1,2})?)\s*(?:руб\w*|рублей|py6\w*|р\.)",
+        re.IGNORECASE,
+    )
+    _FNS_CAT_COMPILED = [(re.compile(rx, re.IGNORECASE), suf) for rx, suf in FNS_CAT_LABELS]
+    # Отрицательная сумма — ТОЛЬКО когда перед числом идут разделитель-тире И знак «-»
+    # («взносам – -96396,39»). Одиночный дефис («штраф -0,00») — разделитель, не знак.
+    _FNS_DASH_SIGN_RE = re.compile(r"[–—\-]\s*-\s*$")
+    # Грандтотал (до разбивки по очередям): «в размере/в сумме/составляет N».
+    _FNS_GRANDTOTAL_RE = re.compile(
+        r"(?:в\s+размере|в\s+сумме|составля\w+)\s*[–—\-]?\s*"
+        r"(\d[\d\s  ]*(?:[.,]\d{1,2})?)\s*(?:руб\w*|рублей|py6\w*|р\.)",
+        re.IGNORECASE,
+    )
+    # Общие поля «Финансовых данных», которые в ФНС-режиме не показываются: чистим,
+    # чтобы скрытый общий блок и golden не несли артефакты общего парсера.
+    _FNS_CLEAR_FIELDS = (
+        "principalDebt", "principalDebt13", "loanDebt", "interest", "interest14",
+        "forfeit", "forfeit15", "penalties", "loanStateDuty17", "bankCommission",
+        "stateDuty16", "stateDuty",
+    )
+
+    def _fns_amount(self, s: str) -> float:
+        """Денежная строка ФНС → float с сохранением знака («-96 396,39» → отриц.)."""
+        neg = str(s).strip().startswith("-")
+        val = self._fin_amount(s)
+        return -val if neg else val
+
+    def _fns_queue_num(self, m: "re.Match") -> Optional[int]:
+        """Номер очереди из матча _FNS_QUEUE_RE (прописью или цифрой)."""
+        if m.group(1):
+            return FNS_QUEUE_ORDINAL_WORDS.get(m.group(1).lower())
+        if m.group(2):
+            n = int(m.group(2))
+            return n if 1 <= n <= 3 else None
+        return None
+
+    def _parse_fns_segment(self, seg: str, skip_span: Optional[tuple] = None) -> Dict[str, str]:
+        """Чистый разбор сегмента одной очереди: категория (по метке ПЕРЕД суммой)
+        → отформатированная сумма. `skip_span` — позиция подытога (её не берём в
+        категории). Без сайд-эффектов; один вход → один результат."""
+        out: Dict[str, str] = {}
+        amts = list(self._FNS_AMT_RE.finditer(seg))
+        for i, m in enumerate(amts):
+            if skip_span and m.start() <= skip_span[0] < m.end():
+                continue
+            prev_end = amts[i - 1].end() if i > 0 else 0
+            window = seg[prev_end:m.start()]
+            # Метка категории — та, чей матч заканчивается БЛИЖЕ всего к сумме слева.
+            best_suf, best_pos = None, -1
+            for rx, suf in self._FNS_CAT_COMPILED:
+                for lm in rx.finditer(window):
+                    if lm.end() > best_pos:
+                        best_pos, best_suf = lm.end(), suf
+            if best_suf and best_suf not in out:
+                neg = bool(self._FNS_DASH_SIGN_RE.search(seg[max(0, m.start() - 8):m.start()]))
+                val = self._fin_amount(m.group(1))
+                out[best_suf] = self._fin_fmt(-val if neg else val)
+        return out
+
+    def _apply_fns_queue_finances(self, fields: Dict[str, Any], text: str) -> None:
+        """Финансы ФНС-заявлений по ОЧЕРЕДЯМ реестра требований кредиторов.
+
+        Заполняет `totalDebt` (грандтотал) + `fnsQ{n}<Suffix>` (подытог очереди и
+        категории: недоимка/штраф/пени/НДФЛ/взносы/осн.долг(=налог)/госпошлина).
+        Работает ТОЛЬКО для ФНС (гейт по creditorName), вызывается ПОСЛЕ общего
+        `_apply_prayer_finances` и перекрывает его результат на ФНС-файлах. Схема
+        полей и маппинг — память fns-queue-finances.
+        """
+        if not text:
+            return
+        cred = (fields.get("creditorName") or "").lower()
+        if "фнс" not in cred and "налог" not in cred:
+            return
+
+        # Просительный регион: от первого якоря требования до «Приложения».
+        low = text.lower()
+        anchor = -1
+        for a in ("включить в реестр требований", "признать требование",
+                  "установить требовани", "включить в ртк", "включить в третью очередь",
+                  "прошу суд", "просим суд", "просит суд"):
+            k = low.find(a)
+            if k != -1 and (anchor == -1 or k < anchor):
+                anchor = k
+        region = text[anchor:] if anchor != -1 else text
+        cut = re.search(r"\n\s*Приложени", region, re.IGNORECASE)
+        if cut:
+            region = region[:cut.start()]
+
+        # Сегменты очередей по маркерам (в порядке появления в тексте).
+        markers = [(m.start(), self._fns_queue_num(m)) for m in self._FNS_QUEUE_RE.finditer(region)]
+        markers = [(pos, n) for pos, n in markers if n]
+
+        queues: Dict[int, Dict[str, str]] = {}
+        if markers:
+            for idx, (pos, n) in enumerate(markers):
+                end = markers[idx + 1][0] if idx + 1 < len(markers) else len(region)
+                seg = region[pos:end]
+                data = dict(queues.get(n, {}))
+                sub = self._FNS_SUBTOTAL_RE.search(seg[:160])
+                if sub:
+                    data["Total"] = self._fin_fmt(self._fns_amount(sub.group(1)))
+                data.update(self._parse_fns_segment(
+                    seg, skip_span=(sub.start(1), sub.end(1)) if sub else None))
+                queues[n] = data
+        else:
+            # Очередь не указана → 3-я (правило Андрея). Разбивка идёт после грандтотала.
+            gt = self._FNS_GRANDTOTAL_RE.search(region)
+            data: Dict[str, str] = {}
+            if gt:
+                data["Total"] = self._fin_fmt(self._fns_amount(gt.group(1)))
+                data.update(self._parse_fns_segment(
+                    region, skip_span=(gt.start(1), gt.end(1))))
+            if data:
+                queues[3] = data
+
+        if not queues:
+            return
+
+        # Грандтотал: явный «в размере/в сумме N» в ЗАЧИНЕ просительного предложения
+        # (окно перед первым маркером очереди, не весь документ — иначе поймаем число
+        # из шапки), иначе — сумма подытогов очередей.
+        head = region[max(0, markers[0][0] - 300):markers[0][0]] if markers else ""
+        gt_m = self._FNS_GRANDTOTAL_RE.search(head) if head else None
+        if gt_m:
+            grand = self._fns_amount(gt_m.group(1))
+        else:
+            grand = sum(self._fin_amount(q["Total"]) for q in queues.values() if q.get("Total"))
+
+        # Чистим общий блок финансов (в ФНС-режиме он скрыт) и пишем ФНС-поля.
+        for k in self._FNS_CLEAR_FIELDS:
+            fields.pop(k, None)
+        if grand > 0:
+            fields["totalDebt"] = self._fin_fmt(grand)
+            fields["debtAmount"] = fields["totalDebt"]
+        for n, data in queues.items():
+            for suf, val in data.items():
+                fields[f"fnsQ{n}{suf}"] = val
+
+        logger.info(
+            "FNS queue finances: total=%s queues=%s" % (
+                fields.get("totalDebt"),
+                {n: sorted(d) for n, d in queues.items()},
             )
         )
 
