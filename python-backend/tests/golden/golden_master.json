@@ -7128,8 +7128,8 @@
    "applicationDate": "26.10.2002",
    "caseNumber": "А53-12189/2026",
    "companyInn": "7701887506",
-   "contractDate": "21.06.2024, 19.05.2023, 16.01.2024, 06.12.2022, 17.01.2024, 10.04.2025, 21.09.2022",
-   "contractNumber": "UZH/PR/03261/24, UZH/PR/02581/23, UZH/PR/00023/24, UZH/PR/03675/22, UZH/PR/00012/24, UZH/PR/00588/25, UZH/PR/02217/22",
+   "contractDate": "17.01.2024, 21.06.2024, 19.05.2023, 16.01.2024, 06.12.2022, 10.04.2025, 21.09.2022",
+   "contractNumber": "UZH/RRK/00117/24, UZH/PR/03261/24, UZH/PR/02581/23, UZH/PR/00023/24, UZH/PR/03675/22, UZH/PR/00012/24, UZH/PR/00588/25, UZH/PR/02217/22",
    "courtName": "Арбитражный суд Ростовской области",
    "creditPenaltyRate": "0,05",
    "creditorAddress": "127287, г. Москва, ул. 2-я Хуторская, д. 38а, стр. 26",
@@ -7148,45 +7148,51 @@
    "loanDebt": "4 826 804 161,25",
    "obligations": [
     {
+     "contractDate": "17.01.2024",
+     "contractNumber": "UZH/RRK/00117/24",
+     "id": "obligation_p_0",
+     "obligationType": "Кредитный договор"
+    },
+    {
      "contractDate": "21.06.2024",
      "contractNumber": "UZH/PR/03261/24",
-     "id": "obligation_p_0",
+     "id": "obligation_p_1",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "19.05.2023",
      "contractNumber": "UZH/PR/02581/23",
-     "id": "obligation_p_1",
+     "id": "obligation_p_2",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "16.01.2024",
      "contractNumber": "UZH/PR/00023/24",
-     "id": "obligation_p_2",
+     "id": "obligation_p_3",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "06.12.2022",
      "contractNumber": "UZH/PR/03675/22",
-     "id": "obligation_p_3",
+     "id": "obligation_p_4",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "17.01.2024",
      "contractNumber": "UZH/PR/00012/24",
-     "id": "obligation_p_4",
+     "id": "obligation_p_5",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "10.04.2025",
      "contractNumber": "UZH/PR/00588/25",
-     "id": "obligation_p_5",
+     "id": "obligation_p_6",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "21.09.2022",
      "contractNumber": "UZH/PR/02217/22",
-     "id": "obligation_p_6",
+     "id": "obligation_p_7",
      "obligationType": "Договор поручительства"
     }
    ],
@@ -7209,45 +7215,51 @@
   },
   "obligations": [
    {
+    "contractDate": "17.01.2024",
+    "contractNumber": "UZH/RRK/00117/24",
+    "id": "obligation_p_0",
+    "obligationType": "Кредитный договор"
+   },
+   {
     "contractDate": "21.06.2024",
     "contractNumber": "UZH/PR/03261/24",
-    "id": "obligation_p_0",
+    "id": "obligation_p_1",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "19.05.2023",
     "contractNumber": "UZH/PR/02581/23",
-    "id": "obligation_p_1",
+    "id": "obligation_p_2",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "16.01.2024",
     "contractNumber": "UZH/PR/00023/24",
-    "id": "obligation_p_2",
+    "id": "obligation_p_3",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "06.12.2022",
     "contractNumber": "UZH/PR/03675/22",
-    "id": "obligation_p_3",
+    "id": "obligation_p_4",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "17.01.2024",
     "contractNumber": "UZH/PR/00012/24",
-    "id": "obligation_p_4",
+    "id": "obligation_p_5",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "10.04.2025",
     "contractNumber": "UZH/PR/00588/25",
-    "id": "obligation_p_5",
+    "id": "obligation_p_6",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "21.09.2022",
     "contractNumber": "UZH/PR/02217/22",
-    "id": "obligation_p_6",
+    "id": "obligation_p_7",
     "obligationType": "Договор поручительства"
    }
   ],
@@ -7377,8 +7389,8 @@
    "applicationDate": "26.10.2002",
    "caseNumber": "А53-12198/2026",
    "companyInn": "3448049188",
-   "contractDate": "17.01.2024, 16.01.2024, 06.12.2022, 21.06.2024, 10.04.2025, 21.09.2022",
-   "contractNumber": "UZH/PR/00120/24, UZH/PR/00025/24, UZH/PR/03677/22, UZH/PR/03260/24, UZH/PR/00014/24, UZH/PR/00590/25, UZH/PR/02219/22",
+   "contractDate": "07.03.2023, 19.05.2023, 17.01.2024, 16.01.2024, 06.12.2022, 21.06.2024, 10.04.2025, 21.09.2022",
+   "contractNumber": "UZH/IMP/01098/23, UZH/RK/02580/23, UZH/PR/00120/24, UZH/PR/00025/24, UZH/PR/03677/22, UZH/PR/03260/24, UZH/PR/00014/24, UZH/PR/00590/25, UZH/PR/02219/22",
    "courtName": "Арбитражный суд Ростовской области",
    "creditPenaltyRate": "0,05",
    "creditorAddress": "127287, г. Москва, ул. 2-я Хуторская, д. 38а, стр. 26",
@@ -7404,45 +7416,57 @@
    "mortgagePrincipalAmount11": "7 978 449,85",
    "obligations": [
     {
+     "contractDate": "07.03.2023",
+     "contractNumber": "UZH/IMP/01098/23",
+     "id": "obligation_p_0",
+     "obligationType": "Кредитный договор"
+    },
+    {
+     "contractDate": "19.05.2023",
+     "contractNumber": "UZH/RK/02580/23",
+     "id": "obligation_p_1",
+     "obligationType": "Кредитный договор"
+    },
+    {
      "contractDate": "17.01.2024",
      "contractNumber": "UZH/PR/00120/24",
-     "id": "obligation_p_0",
+     "id": "obligation_p_2",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "16.01.2024",
      "contractNumber": "UZH/PR/00025/24",
-     "id": "obligation_p_1",
+     "id": "obligation_p_3",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "06.12.2022",
      "contractNumber": "UZH/PR/03677/22",
-     "id": "obligation_p_2",
+     "id": "obligation_p_4",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "21.06.2024",
      "contractNumber": "UZH/PR/03260/24",
-     "id": "obligation_p_3",
+     "id": "obligation_p_5",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "17.01.2024",
      "contractNumber": "UZH/PR/00014/24",
-     "id": "obligation_p_4",
+     "id": "obligation_p_6",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "10.04.2025",
      "contractNumber": "UZH/PR/00590/25",
-     "id": "obligation_p_5",
+     "id": "obligation_p_7",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "21.09.2022",
      "contractNumber": "UZH/PR/02219/22",
-     "id": "obligation_p_6",
+     "id": "obligation_p_8",
      "obligationType": "Договор поручительства"
     }
    ],
@@ -7466,45 +7490,57 @@
   },
   "obligations": [
    {
+    "contractDate": "07.03.2023",
+    "contractNumber": "UZH/IMP/01098/23",
+    "id": "obligation_p_0",
+    "obligationType": "Кредитный договор"
+   },
+   {
+    "contractDate": "19.05.2023",
+    "contractNumber": "UZH/RK/02580/23",
+    "id": "obligation_p_1",
+    "obligationType": "Кредитный договор"
+   },
+   {
     "contractDate": "17.01.2024",
     "contractNumber": "UZH/PR/00120/24",
-    "id": "obligation_p_0",
+    "id": "obligation_p_2",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "16.01.2024",
     "contractNumber": "UZH/PR/00025/24",
-    "id": "obligation_p_1",
+    "id": "obligation_p_3",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "06.12.2022",
     "contractNumber": "UZH/PR/03677/22",
-    "id": "obligation_p_2",
+    "id": "obligation_p_4",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "21.06.2024",
     "contractNumber": "UZH/PR/03260/24",
-    "id": "obligation_p_3",
+    "id": "obligation_p_5",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "17.01.2024",
     "contractNumber": "UZH/PR/00014/24",
-    "id": "obligation_p_4",
+    "id": "obligation_p_6",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "10.04.2025",
     "contractNumber": "UZH/PR/00590/25",
-    "id": "obligation_p_5",
+    "id": "obligation_p_7",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "21.09.2022",
     "contractNumber": "UZH/PR/02219/22",
-    "id": "obligation_p_6",
+    "id": "obligation_p_8",
     "obligationType": "Договор поручительства"
    }
   ],
@@ -7598,8 +7634,8 @@
    "applicationDate": "26.10.2002",
    "caseNumber": "А53-12200/2026",
    "companyInn": "3461063590",
-   "contractDate": "23.10.2025",
-   "contractNumber": "UZH/PR/02510/25, UZH/PR/02442/25, UZH/PR/02477/25, UZH/PR/02479/25, UZH/PR/02486/25, UZH/PR/02498/25, UZH/PR/02491/25, UZH/PR/02508/25",
+   "contractDate": "21.06.2024, 23.10.2025",
+   "contractNumber": "UZH/RK/03255/24, UZH/PR/02510/25, UZH/PR/02442/25, UZH/PR/02477/25, UZH/PR/02479/25, UZH/PR/02486/25, UZH/PR/02498/25, UZH/PR/02491/25, UZH/PR/02508/25",
    "courtName": "Арбитражный суд Ростовской области",
    "creditPenaltyRate": "0,05",
    "creditorAddress": "127287, г. Москва, ул. 2-я Хуторская, д. 38а, стр. 26",
@@ -7623,51 +7659,57 @@
    "mortgagePrincipalAmount11": "6243 169,90",
    "obligations": [
     {
-     "contractDate": "23.10.2025",
-     "contractNumber": "UZH/PR/02510/25",
+     "contractDate": "21.06.2024",
+     "contractNumber": "UZH/RK/03255/24",
      "id": "obligation_p_0",
-     "obligationType": "Договор поручительства"
+     "obligationType": "Кредитный договор"
     },
     {
      "contractDate": "23.10.2025",
-     "contractNumber": "UZH/PR/02442/25",
+     "contractNumber": "UZH/PR/02510/25",
      "id": "obligation_p_1",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "23.10.2025",
-     "contractNumber": "UZH/PR/02477/25",
+     "contractNumber": "UZH/PR/02442/25",
      "id": "obligation_p_2",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "23.10.2025",
-     "contractNumber": "UZH/PR/02479/25",
+     "contractNumber": "UZH/PR/02477/25",
      "id": "obligation_p_3",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "23.10.2025",
-     "contractNumber": "UZH/PR/02486/25",
+     "contractNumber": "UZH/PR/02479/25",
      "id": "obligation_p_4",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "23.10.2025",
-     "contractNumber": "UZH/PR/02498/25",
+     "contractNumber": "UZH/PR/02486/25",
      "id": "obligation_p_5",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "23.10.2025",
-     "contractNumber": "UZH/PR/02491/25",
+     "contractNumber": "UZH/PR/02498/25",
      "id": "obligation_p_6",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "23.10.2025",
-     "contractNumber": "UZH/PR/02508/25",
+     "contractNumber": "UZH/PR/02491/25",
      "id": "obligation_p_7",
+     "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "23.10.2025",
+     "contractNumber": "UZH/PR/02508/25",
+     "id": "obligation_p_8",
      "obligationType": "Договор поручительства"
     }
    ],
@@ -7691,51 +7733,57 @@
   },
   "obligations": [
    {
-    "contractDate": "23.10.2025",
-    "contractNumber": "UZH/PR/02510/25",
+    "contractDate": "21.06.2024",
+    "contractNumber": "UZH/RK/03255/24",
     "id": "obligation_p_0",
-    "obligationType": "Договор поручительства"
+    "obligationType": "Кредитный договор"
    },
    {
     "contractDate": "23.10.2025",
-    "contractNumber": "UZH/PR/02442/25",
+    "contractNumber": "UZH/PR/02510/25",
     "id": "obligation_p_1",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "23.10.2025",
-    "contractNumber": "UZH/PR/02477/25",
+    "contractNumber": "UZH/PR/02442/25",
     "id": "obligation_p_2",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "23.10.2025",
-    "contractNumber": "UZH/PR/02479/25",
+    "contractNumber": "UZH/PR/02477/25",
     "id": "obligation_p_3",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "23.10.2025",
-    "contractNumber": "UZH/PR/02486/25",
+    "contractNumber": "UZH/PR/02479/25",
     "id": "obligation_p_4",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "23.10.2025",
-    "contractNumber": "UZH/PR/02498/25",
+    "contractNumber": "UZH/PR/02486/25",
     "id": "obligation_p_5",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "23.10.2025",
-    "contractNumber": "UZH/PR/02491/25",
+    "contractNumber": "UZH/PR/02498/25",
     "id": "obligation_p_6",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "23.10.2025",
-    "contractNumber": "UZH/PR/02508/25",
+    "contractNumber": "UZH/PR/02491/25",
     "id": "obligation_p_7",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "23.10.2025",
+    "contractNumber": "UZH/PR/02508/25",
+    "id": "obligation_p_8",
     "obligationType": "Договор поручительства"
    }
   ],
@@ -7777,8 +7825,8 @@
    "applicationDate": "26.10.2002",
    "caseNumber": "А53-10405/2026",
    "companyInn": "6163076960",
-   "contractDate": "21.06.2024, 07.03.2023, 19.05.2023, 17.01.2024, 16.01.2024, 06.12.2022",
-   "contractNumber": "UZH/PR/03262/24, UZH/PR/01102/23, UZH/PR/02584/23, UZH/PR/00118/24, UZH/PR/00022/24, UZH/PR/03674/22",
+   "contractDate": "17.01.2024, 21.09.2022, 10.04.2025, 21.06.2024, 07.03.2023, 19.05.2023, 16.01.2024, 06.12.2022",
+   "contractNumber": "UZH/RRK/00011/24, UZH/RRK/02214/22, UZH/RRK/00585/25, UZH/PR/03262/24, UZH/PR/01102/23, UZH/PR/02584/23, UZH/PR/00118/24, UZH/PR/00022/24, UZH/PR/03674/22",
    "courtName": "Арбитражный суд Ростовской области",
    "creditPenaltyRate": "0,05",
    "creditorAddress": "127287, г. Москва, ул. 2-я Хуторская, д. 38а, стр. 26",
@@ -7797,39 +7845,57 @@
    "loanDebt": "1 400 000 000,00",
    "obligations": [
     {
+     "contractDate": "17.01.2024",
+     "contractNumber": "UZH/RRK/00011/24",
+     "id": "obligation_p_0",
+     "obligationType": "Кредитный договор"
+    },
+    {
+     "contractDate": "21.09.2022",
+     "contractNumber": "UZH/RRK/02214/22",
+     "id": "obligation_p_1",
+     "obligationType": "Кредитный договор"
+    },
+    {
+     "contractDate": "10.04.2025",
+     "contractNumber": "UZH/RRK/00585/25",
+     "id": "obligation_p_2",
+     "obligationType": "Кредитный договор"
+    },
+    {
      "contractDate": "21.06.2024",
      "contractNumber": "UZH/PR/03262/24",
-     "id": "obligation_p_0",
+     "id": "obligation_p_3",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "07.03.2023",
      "contractNumber": "UZH/PR/01102/23",
-     "id": "obligation_p_1",
+     "id": "obligation_p_4",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "19.05.2023",
      "contractNumber": "UZH/PR/02584/23",
-     "id": "obligation_p_2",
+     "id": "obligation_p_5",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "17.01.2024",
      "contractNumber": "UZH/PR/00118/24",
-     "id": "obligation_p_3",
+     "id": "obligation_p_6",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "16.01.2024",
      "contractNumber": "UZH/PR/00022/24",
-     "id": "obligation_p_4",
+     "id": "obligation_p_7",
      "obligationType": "Договор поручительства"
     },
     {
      "contractDate": "06.12.2022",
      "contractNumber": "UZH/PR/03674/22",
-     "id": "obligation_p_5",
+     "id": "obligation_p_8",
      "obligationType": "Договор поручительства"
     }
    ],
@@ -7853,39 +7919,57 @@
   },
   "obligations": [
    {
+    "contractDate": "17.01.2024",
+    "contractNumber": "UZH/RRK/00011/24",
+    "id": "obligation_p_0",
+    "obligationType": "Кредитный договор"
+   },
+   {
+    "contractDate": "21.09.2022",
+    "contractNumber": "UZH/RRK/02214/22",
+    "id": "obligation_p_1",
+    "obligationType": "Кредитный договор"
+   },
+   {
+    "contractDate": "10.04.2025",
+    "contractNumber": "UZH/RRK/00585/25",
+    "id": "obligation_p_2",
+    "obligationType": "Кредитный договор"
+   },
+   {
     "contractDate": "21.06.2024",
     "contractNumber": "UZH/PR/03262/24",
-    "id": "obligation_p_0",
+    "id": "obligation_p_3",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "07.03.2023",
     "contractNumber": "UZH/PR/01102/23",
-    "id": "obligation_p_1",
+    "id": "obligation_p_4",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "19.05.2023",
     "contractNumber": "UZH/PR/02584/23",
-    "id": "obligation_p_2",
+    "id": "obligation_p_5",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "17.01.2024",
     "contractNumber": "UZH/PR/00118/24",
-    "id": "obligation_p_3",
+    "id": "obligation_p_6",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "16.01.2024",
     "contractNumber": "UZH/PR/00022/24",
-    "id": "obligation_p_4",
+    "id": "obligation_p_7",
     "obligationType": "Договор поручительства"
    },
    {
     "contractDate": "06.12.2022",
     "contractNumber": "UZH/PR/03674/22",
-    "id": "obligation_p_5",
+    "id": "obligation_p_8",
     "obligationType": "Договор поручительства"
    }
   ],
