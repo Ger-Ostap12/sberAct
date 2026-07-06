@@ -319,6 +319,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 if pc and extracted_fields.get("caseNumber") == pc:
                     extracted_fields.pop("caseNumber", None)
 
+            # Разбивка полей финансов на слагаемые (для тултипа «откуда число») —
+            # top-level, НЕ в fields (иначе попала бы в editedFields как [object Object]
+            # и в golden). None, если разбивки нет.
+            finance_breakdown = extracted_fields.pop("financeBreakdown", None)
+
             # Формируем результат
             result = {
                 "documentType": document_type,
@@ -326,6 +331,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 "fields": extracted_fields,
                 "obligations": extracted_fields.get('obligations', []),
                 "collaterals": collaterals_final,
+                "financeBreakdown": finance_breakdown,
                 "rawText": text,
                 "metadata": {
                     "pageCount": self.get_page_count(file_path),

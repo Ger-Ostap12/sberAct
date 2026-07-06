@@ -568,6 +568,9 @@ class AmountsMixin:
             pr = it = fo = pen = ld = 0.0
             hits = 0
             seen = set()
+            # Отдельные слагаемые по категориям (для тултипа-разбивки на фронте).
+            add: Dict[str, list] = {"principal": [], "interest": [], "forfeit": [],
+                                    "penalty": [], "loan_duty": []}
             for i, m in ms:
                 val = self._fin_amount(m.group(1))
                 ph = win_after(i, m) if use_after else win_before(i, m)
@@ -588,8 +591,9 @@ class AmountsMixin:
                     ld += val
                 else:
                     pr += val
+                add[cat].append(val)
                 hits += 1
-            return pr, it, fo, pen, ld, hits
+            return pr, it, fo, pen, ld, hits, add
 
         p_anchor = -1
         for a in ("просим суд", "прошу суд", "просит суд",
@@ -604,6 +608,9 @@ class AmountsMixin:
 
         principal = interest = forfeit = penalty = loan_duty = 0.0
         validated = False
+        # Слагаемые по категориям (для тултипа-разбивки поля на фронте).
+        addends: Dict[str, list] = {"principal": [], "interest": [], "forfeit": [],
+                                    "penalty": [], "loan_duty": []}
 
         verb_block_re = re.compile(
             r"(?:включить|установить|призна\w+[^.\n]{0,60}?включить)"
@@ -629,11 +636,13 @@ class AmountsMixin:
                 if cw:
                     window = window[:cw.start()]
                 window = window[:1800]
-                pr, it, fo, pen, ld, h = parse_seg(window)
+                pr, it, fo, pen, ld, h, add = parse_seg(window)
                 ssum = pr + it + fo + pen + ld
                 if h and abs(ssum - subtotal) < 1.5 and round(subtotal, 2) not in seen_sub:
                     seen_sub.add(round(subtotal, 2))
                     g[0] += pr; g[1] += it; g[2] += fo; g[3] += pen; g[4] += ld
+                    for cat, vals in add.items():
+                        addends[cat].extend(vals)
                     nvalid += 1
             if nvalid:
                 principal, interest, forfeit, penalty, loan_duty = g
@@ -691,7 +700,7 @@ class AmountsMixin:
                     seg = seg[: b.start() + 20]
                 if len(dash_cat_re.findall(seg)) < 2:
                     return
-            principal, interest, forfeit, penalty, loan_duty, hits = parse_seg(seg)
+            principal, interest, forfeit, penalty, loan_duty, hits, addends = parse_seg(seg)
             if hits == 0 or (principal + interest + forfeit + penalty) <= 0:
                 return
             if has_iz:
@@ -721,6 +730,23 @@ class AmountsMixin:
             fields["loanStateDuty17"] = self._fin_fmt(loan_duty)
         else:
             fields.pop("loanStateDuty17", None)
+
+        # Разбивка полей на слагаемые (для тултипа «откуда число»): только там, где
+        # итог сложился из ≥2 сумм (несколько обязательств/строк). Кладём во временный
+        # ключ fields — analyze() поднимет его в top-level result.financeBreakdown и
+        # уберёт из fields (в editedFields/golden не попадает).
+        _brk_map = [("principal", "principalDebt"), ("interest", "interest"),
+                    ("forfeit", "forfeit"), ("penalty", "penalties"),
+                    ("loan_duty", "loanStateDuty17")]
+        breakdown = {}
+        for cat, fkey in _brk_map:
+            vals = [v for v in addends.get(cat, []) if round(v, 2) != 0]  # нули не показываем
+            if len(vals) >= 2:
+                breakdown[fkey] = [self._fin_fmt(v) for v in vals]
+        if breakdown:
+            fields["financeBreakdown"] = breakdown
+        else:
+            fields.pop("financeBreakdown", None)
 
         bankr_duty = 0.0
         for bm in re.finditer(
@@ -780,7 +806,7 @@ class AmountsMixin:
     _FNS_CLEAR_FIELDS = (
         "principalDebt", "principalDebt13", "loanDebt", "interest", "interest14",
         "forfeit", "forfeit15", "penalties", "loanStateDuty17", "bankCommission",
-        "stateDuty16", "stateDuty",
+        "stateDuty16", "stateDuty", "financeBreakdown",
     )
 
     def _fns_amount(self, s: str) -> float:

@@ -4,6 +4,7 @@ import {
   Typography,
   Grid,
   TextField,
+  Tooltip,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -13,13 +14,49 @@ import { toInputDate, fromInputDate } from '../../../shared/lib/dates';
 import { isFnsCreditor } from '../../../shared/lib/banks';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';
 
+/** Разбивка полей финансов на слагаемые (из нескольких обязательств): ключ поля →
+ *  список форматированных сумм. Приходит из backend (result.financeBreakdown). */
+export type FinanceBreakdown = Record<string, string[]> | null | undefined;
+
 interface FinancesSectionProps {
   editedFields: Record<string, string>;
   onFieldChange: (field: string, value: string) => void;
+  /** Разбивка «откуда число» для тултипа поля (только не-ФНС, ≥2 слагаемых). */
+  financeBreakdown?: FinanceBreakdown;
 }
 
 /** Оставляет только цифры/точку/запятую (сырое значение суммы). */
 const rawAmount = (value: string) => value.replace(/[^\d.,]/g, '').replace(',', '.');
+
+/**
+ * Оборачивает поле в тултип с разбивкой «= a + b (+ …)», когда итог сложился из ≥2
+ * сумм (несколько обязательств). Иначе отдаёт ребёнка как есть. Тултип — при наведении.
+ */
+const BreakdownTip: React.FC<{ addends?: string[]; total?: string; children: React.ReactElement }> = ({
+  addends,
+  total,
+  children,
+}) => {
+  if (!addends || addends.length < 2) return children;
+  return (
+    <Tooltip
+      arrow
+      placement="top"
+      title={
+        <Box sx={{ fontSize: '0.8rem', lineHeight: 1.6, py: 0.5, fontVariantNumeric: 'tabular-nums' }}>
+          {addends.map((a, i) => (
+            <div key={i}>{i === 0 ? '  ' : '+ '}{a}</div>
+          ))}
+          <Box sx={{ borderTop: '1px solid rgba(255,255,255,0.45)', mt: 0.5, pt: 0.5, fontWeight: 600 }}>
+            = {total || ''}
+          </Box>
+        </Box>
+      }
+    >
+      {children}
+    </Tooltip>
+  );
+};
 
 // --- ФНС-раскладка: подблок очереди — 9 строк (порядок = бэкенд FNS_QUEUE_FIELD_ORDER).
 //     Ключ поля = `fnsQ{n}{suffix}`. «налог/осн.долг» → LoanDebt, «недоимка» → Arrears
@@ -197,10 +234,11 @@ const FnsFinances: React.FC<FinancesSectionProps> = ({ editedFields, onFieldChan
  * Для кредитора-ФНС (авто-детект или ручной выбор «ФНС») раскладка перестраивается
  * в 4 подблока по очередям реестра (FnsFinances).
  */
-const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onFieldChange }) => {
+const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onFieldChange, financeBreakdown }) => {
   if (isFnsCreditor(editedFields.creditorName)) {
     return <FnsFinances editedFields={editedFields} onFieldChange={onFieldChange} />;
   }
+  const brk = financeBreakdown || undefined;
   return (
   <Box sx={{ ...BLOCK_BOX_SX, mb: 3 }}>
     <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
@@ -224,6 +262,7 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onField
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Проценты:</Typography>
+          <BreakdownTip addends={brk?.interest} total={editedFields.interest}>
           <TextField
             fullWidth
             value={editedFields.interest || ''}
@@ -232,12 +271,14 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onField
             margin="dense"
             placeholder="0.00"
           />
+          </BreakdownTip>
         </Box>
       </Grid>
 
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Штрафные санкции:</Typography>
+          <BreakdownTip addends={brk?.penalties} total={editedFields.penalties}>
           <TextField
             fullWidth
             value={editedFields.penalties || ''}
@@ -246,12 +287,14 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onField
             margin="dense"
             placeholder="0.00"
           />
+          </BreakdownTip>
         </Box>
       </Grid>
 
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Неустойка:</Typography>
+          <BreakdownTip addends={brk?.forfeit} total={editedFields.forfeit}>
           <TextField
             fullWidth
             value={editedFields.forfeit || ''}
@@ -260,12 +303,14 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onField
             margin="dense"
             placeholder="0.00"
           />
+          </BreakdownTip>
         </Box>
       </Grid>
 
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Ссудная задолженность (просроченный основной долг):</Typography>
+          <BreakdownTip addends={brk?.principalDebt} total={editedFields.principalDebt || editedFields.loanDebt}>
           <TextField
             fullWidth
             value={editedFields.principalDebt || editedFields.loanDebt || ''}
@@ -278,6 +323,7 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onField
             margin="dense"
             placeholder="0.00"
           />
+          </BreakdownTip>
         </Box>
       </Grid>
 
@@ -302,6 +348,7 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onField
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Ссудная госпошлина:</Typography>
+          <BreakdownTip addends={brk?.loanStateDuty17} total={editedFields.loanStateDuty17}>
           <TextField
             fullWidth
             value={editedFields.loanStateDuty17 ?? ''}
@@ -310,6 +357,7 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onField
             margin="dense"
             placeholder="0.00"
           />
+          </BreakdownTip>
         </Box>
       </Grid>
 

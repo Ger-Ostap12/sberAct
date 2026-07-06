@@ -791,7 +791,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                     <Grid item xs={12} md={6}>
                       <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} showSro={showSroField} />
                       <Box sx={{ mt: 3 }}>
-                        <FinancesSection editedFields={editedFields} onFieldChange={handleFieldChange} />
+                        <FinancesSection editedFields={editedFields} onFieldChange={handleFieldChange} financeBreakdown={analysisResult?.financeBreakdown} />
                       </Box>
                     </Grid>
                     <Grid item xs={12} md={6}>
@@ -825,7 +825,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 {/* Финансовые данные (не-ФНС; у ФНС — в колонке выше) */}
                 {!isFnsCreditor(editedFields.creditorName) && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
-              <FinancesSection editedFields={editedFields} onFieldChange={handleFieldChange} />
+              <FinancesSection editedFields={editedFields} onFieldChange={handleFieldChange} financeBreakdown={analysisResult?.financeBreakdown} />
                 </Grid>
                 )}
 

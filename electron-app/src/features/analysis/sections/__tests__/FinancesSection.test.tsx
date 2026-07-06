@@ -14,6 +14,19 @@ describe('FinancesSection — обычный кредитор (не ФНС)', ()
     expect(screen.queryByText('Первая очередь')).not.toBeInTheDocument();
     expect(screen.queryByText('Общая информация')).not.toBeInTheDocument();
   });
+
+  it('тултип-разбивка при наведении на поле с ≥2 слагаемыми', async () => {
+    render(
+      <FinancesSection
+        editedFields={{ creditorName: 'ПАО Сбербанк', principalDebt: '1 465 013 605,99' }}
+        onFieldChange={() => {}}
+        financeBreakdown={{ principalDebt: ['465 015 355,26', '999 998 250,73'] }}
+      />,
+    );
+    fireEvent.mouseOver(screen.getByDisplayValue('1 465 013 605,99'));
+    expect(await screen.findByText(/465 015 355,26/)).toBeInTheDocument();
+    expect(screen.getByText(/999 998 250,73/)).toBeInTheDocument();
+  });
 });
 
 describe('FinancesSection — кредитор ФНС', () => {

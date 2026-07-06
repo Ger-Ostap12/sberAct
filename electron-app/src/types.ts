@@ -117,6 +117,9 @@ export interface ExtractedData {
   };
   obligations?: Obligation[];
   collaterals?: Collateral[];
+  /** Разбивка полей финансов на слагаемые (ключ поля → суммы), когда итог сложился
+   *  из нескольких обязательств. Для тултипа «откуда число» в FinancesSection. */
+  financeBreakdown?: Record<string, string[]> | null;
   thirdParties?: ThirdParty[];
   debtors?: Debtor[];
   rawText: string;
