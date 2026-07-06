@@ -881,17 +881,26 @@ class AmountsMixin:
         # из шапки), иначе — сумма подытогов очередей.
         head = region[max(0, markers[0][0] - 300):markers[0][0]] if markers else ""
         gt_m = self._FNS_GRANDTOTAL_RE.search(head) if head else None
+        # В части заявлений ФНС общая сумма не выделена отдельной строкой —
+        # тогда считаем её как Σ подытогов очередей и помечаем флагом (фронт покажет
+        # предупреждение, что значение вычислено, а не взято из документа).
+        total_computed = False
         if gt_m:
             grand = self._fns_amount(gt_m.group(1))
         else:
             grand = sum(self._fin_amount(q["Total"]) for q in queues.values() if q.get("Total"))
+            if markers:  # single-queue (else-ветка) берёт Total из грандтотала — не «посчитано»
+                total_computed = True
 
         # Чистим общий блок финансов (в ФНС-режиме он скрыт) и пишем ФНС-поля.
         for k in self._FNS_CLEAR_FIELDS:
             fields.pop(k, None)
+        fields.pop("fnsTotalComputed", None)
         if grand > 0:
             fields["totalDebt"] = self._fin_fmt(grand)
             fields["debtAmount"] = fields["totalDebt"]
+            if total_computed:
+                fields["fnsTotalComputed"] = "1"
         for n, data in queues.items():
             for suf, val in data.items():
                 fields[f"fnsQ{n}{suf}"] = val

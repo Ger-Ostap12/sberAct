@@ -71,4 +71,19 @@ describe('FinancesSection — кредитор ФНС', () => {
     );
     expect(screen.getByText(/Общая сумма долга: сходится/)).toBeInTheDocument();
   });
+
+  it('флаг fnsTotalComputed=1 → предупреждение «вычислена»', () => {
+    const { rerender } = render(
+      <FinancesSection editedFields={{ creditorName: fns, totalDebt: '300,00' }} onFieldChange={() => {}} />,
+    );
+    expect(screen.queryByText(/вычислена как сумма подытогов/)).not.toBeInTheDocument();
+
+    rerender(
+      <FinancesSection
+        editedFields={{ creditorName: fns, totalDebt: '300,00', fnsTotalComputed: '1' }}
+        onFieldChange={() => {}}
+      />,
+    );
+    expect(screen.getByText(/вычислена как сумма подытогов/)).toBeInTheDocument();
+  });
 });

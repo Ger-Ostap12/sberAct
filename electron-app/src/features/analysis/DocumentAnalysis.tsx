@@ -769,7 +769,9 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
               />
                 </Grid>
 
-                <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
+                {/* alignItems:flex-start — иначе Box секции (flex-ребёнок) тянется по
+                    высоте ряда за высоким соседом (Финансы у ФНС), давая пустоту вглубь. */}
+                <Grid item xs={12} md={6} sx={{ display: 'flex', alignItems: 'flex-start', minWidth: 0 }}>
               {/* Арбитражный управляющий */}
               <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} />
                 </Grid>

@@ -138,6 +138,13 @@ const FnsFinances: React.FC<FinancesSectionProps> = ({ editedFields, onFieldChan
       <AccordionDetails>
         <Grid container spacing={2}>
           <FnsAmountField label="Общая сумма долга:" field="totalDebt" editedFields={editedFields} onFieldChange={onFieldChange} />
+          {editedFields.fnsTotalComputed === '1' && (
+            <Grid item xs={12}>
+              <Typography variant="body2" sx={{ color: 'warning.main', fontWeight: 500 }}>
+                ⚠ Общая сумма долга не указана в заявлении — вычислена как сумма подытогов трёх очередей. Проверьте значение.
+              </Typography>
+            </Grid>
+          )}
           <FnsDateField label="Дата ПП депозит:" field="ppDepositDate80" editedFields={editedFields} onFieldChange={onFieldChange} />
           <FnsDateField label="Дата ПП ГП:" field="ppStateDutyDate81" editedFields={editedFields} onFieldChange={onFieldChange} />
           {/* Сверка: Общая сумма долга = Σ подытогов трёх очередей. */}
