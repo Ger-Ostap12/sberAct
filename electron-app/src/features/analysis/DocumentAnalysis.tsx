@@ -281,10 +281,16 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
 
         // Виды залога для блока «Выбор залога» — из реальных типов предметов залога.
         // Может быть выбрано несколько (например, недвижимость И транспорт одновременно).
-        const hasRealEstate = initialCollaterals.some(c => c.collateralType === 'real_estate');
-        const hasAuto = initialCollaterals.some(c => c.collateralType === 'auto');
-        const hasOther = initialCollaterals.some(c => c.collateralType === 'other');
-        setCollateralKinds({ realEstate: hasRealEstate, auto: hasAuto, other: hasOther });
+        // У ФНС-заявлений (уполномоченный орган) залога не бывает — принудительно
+        // «Без залога», даже если детектор ошибочно нашёл предмет в тексте.
+        if (isFnsCreditor(propExtractedData.fields?.creditorName)) {
+          setCollateralKinds({ realEstate: false, auto: false, other: false });
+        } else {
+          const hasRealEstate = initialCollaterals.some(c => c.collateralType === 'real_estate');
+          const hasAuto = initialCollaterals.some(c => c.collateralType === 'auto');
+          const hasOther = initialCollaterals.some(c => c.collateralType === 'other');
+          setCollateralKinds({ realEstate: hasRealEstate, auto: hasAuto, other: hasOther });
+        }
 
         // Инициализируем третьих лиц из полей или создаем пустой массив
         let initialThirdParties: ThirdParty[] = [];
@@ -769,12 +775,31 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
               />
                 </Grid>
 
-                {/* alignItems:flex-start — иначе Box секции (flex-ребёнок) тянется по
-                    высоте ряда за высоким соседом (Финансы у ФНС), давая пустоту вглубь. */}
-                <Grid item xs={12} md={6} sx={{ display: 'flex', alignItems: 'flex-start', minWidth: 0 }}>
-              {/* Арбитражный управляющий */}
+                {/* ФНС: две независимые колонки — слева «Управляющий» + «Финансы»
+                    встык, справа «Сведения о взыскании». Построчный Grid даёт masonry-
+                    пустоту (высокие Финансы), поэтому для ФНС колонки собираем вручную. */}
+                {isFnsCreditor(editedFields.creditorName) && (
+                <Grid item xs={12}>
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} md={6}>
+                      <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} />
+                      <Box sx={{ mt: 3 }}>
+                        <FinancesSection editedFields={editedFields} onFieldChange={handleFieldChange} />
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <PriorCollectionSection editedFields={editedFields} onFieldChange={handleFieldChange} />
+                    </Grid>
+                  </Grid>
+                </Grid>
+                )}
+
+                {/* Арбитражный управляющий (не-ФНС; у ФНС — в колонке выше) */}
+                {!isFnsCreditor(editedFields.creditorName) && (
+                <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
               <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} />
                 </Grid>
+                )}
 
                 {/* Третьи лица — у ФНС-заявлений (уполномоченный орган) их нет,
                     блок скрываем. */}
@@ -790,15 +815,19 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 </Grid>
                 )}
 
+                {/* Финансовые данные (не-ФНС; у ФНС — в колонке выше) */}
+                {!isFnsCreditor(editedFields.creditorName) && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
-              {/* Финансовые данные */}
               <FinancesSection editedFields={editedFields} onFieldChange={handleFieldChange} />
                 </Grid>
+                )}
 
+                {/* Сведения о взыскании (не-ФНС; у ФНС — в правой колонке выше) */}
+                {!isFnsCreditor(editedFields.creditorName) && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
-              {/* Ранее вынесенное решение суда */}
               <PriorCollectionSection editedFields={editedFields} onFieldChange={handleFieldChange} />
                 </Grid>
+                )}
 
                 {/* Обязательства — у ФНС-заявлений (уполномоченный орган) кредитных
                     обязательств/поручительств нет, блок скрываем. */}

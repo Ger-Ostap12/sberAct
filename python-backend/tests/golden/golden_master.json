@@ -40,7 +40,7 @@
    "courtName": "Арбитражный суд Ростовской области",
    "creditorAddress": "346407, Ростовская обл, Новочеркасск г, Ермака пр-кт, 104",
    "creditorName": "ФНС России в лице Межрайонной ИФНС России № 13 по Ростовской области",
-   "debtAmount": "7 401 719,87",
+   "debtAmount": "7 267 312,82",
    "debtorAddress": "346630, РОСТОВСКАЯ ОБЛ, Семикаракорский Р-Н, СЕМИКАРАКОРСК Г, ЛЕВЧЕНКО ПЛ,46",
    "debtorName": "ЗАЙЦЕВ ВИТАЛИЙ ВЛАДИМИРОВИЧ",
    "entityType": "ip",
@@ -51,11 +51,10 @@
    "fnsQ3LoanDuty": "707,00",
    "fnsQ3Penalties": "105 555,43",
    "fnsQ3Total": "4 270 589,08",
-   "fnsTotalComputed": "1",
    "ogrnip": "318619600149696",
    "requirementsSum": "298 892,00",
    "sourceDocumentType": "initiation_physical",
-   "totalDebt": "7 401 719,87"
+   "totalDebt": "7 267 312,82"
   },
   "metadata": {
    "language": "ru",
@@ -419,7 +418,6 @@
    "fnsQ3LoanDebt": "1 312,40",
    "fnsQ3Penalties": "5 550,00",
    "fnsQ3Total": "33 950,31",
-   "fnsTotalComputed": "1",
    "managerName": "Гутников Кирилл Александрович",
    "messageDate": "05.02.2026",
    "obligations": [
@@ -722,7 +720,7 @@
    "debtorAddress": "346731, Россия, обл. Ростовская, Аксайский р-н, Щепкин п., Адмирала Нахимова ул., д.14",
    "debtorName": "Базов Георгий Николаевич",
    "entityType": "individual",
-   "fnsQ2Insurance": "-96 396,39",
+   "fnsQ2Insurance": "96 396,39",
    "fnsQ2Ndfl": "8 390,27",
    "fnsQ2Total": "104 786,66",
    "fnsQ3Forfeit": "16 242 223,52",
@@ -890,7 +888,6 @@
    "fnsQ2Total": "51 927,10",
    "fnsQ3Forfeit": "2 631,84",
    "fnsQ3Total": "2 631,84",
-   "fnsTotalComputed": "1",
    "inn": "615014093624",
    "kommersantDate": "18.04.2026",
    "managerName": "Березина Марина Вячеславовна",

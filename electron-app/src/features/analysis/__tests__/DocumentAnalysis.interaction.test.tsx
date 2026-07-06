@@ -72,9 +72,10 @@ describe('DocumentAnalysis — CRUD обязательств', () => {
 });
 
 describe('DocumentAnalysis — раскладка ФНС', () => {
-  const renderWith = (creditorName?: string) => {
+  const renderWith = (creditorName?: string, collaterals?: ExtractedData['collaterals']) => {
     const data = makeData();
     data.fields = { ...data.fields, creditorName: creditorName || '' };
+    if (collaterals) data.collaterals = collaterals;
     return render(
       <DocumentAnalysis
         documentData={documentData}
@@ -98,5 +99,19 @@ describe('DocumentAnalysis — раскладка ФНС', () => {
     expect(screen.queryByText(/Обязательство 1/)).not.toBeInTheDocument();
     expect(screen.queryByText('Третьи лица')).not.toBeInTheDocument();
     expect(screen.getByText('Первая очередь')).toBeInTheDocument();
+  });
+
+  const collOther = [{ id: 'c1', collateralType: 'other', otherDescription: 'оборудование' }] as ExtractedData['collaterals'];
+
+  it('не-ФНС: задетекченный залог «иное» отмечает «Залог иное»', () => {
+    renderWith('ПАО Сбербанк', collOther);
+    expect(screen.getByRole('checkbox', { name: 'Залог иное' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Без залога' })).not.toBeChecked();
+  });
+
+  it('ФНС: даже при задетекченном залоге по умолчанию «Без залога»', () => {
+    renderWith('ФНС России в лице Межрайонной ИФНС России № 13 по Ростовской области', collOther);
+    expect(screen.getByRole('checkbox', { name: 'Без залога' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Залог иное' })).not.toBeChecked();
   });
 });

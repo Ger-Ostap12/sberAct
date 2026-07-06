@@ -762,13 +762,17 @@ class AmountsMixin:
         re.IGNORECASE,
     )
     _FNS_CAT_COMPILED = [(re.compile(rx, re.IGNORECASE), suf) for rx, suf in FNS_CAT_LABELS]
-    # Отрицательная сумма — ТОЛЬКО когда перед числом идут разделитель-тире И знак «-»
-    # («взносам – -96396,39»). Одиночный дефис («штраф -0,00») — разделитель, не знак.
-    _FNS_DASH_SIGN_RE = re.compile(r"[–—\-]\s*-\s*$")
-    # Грандтотал (до разбивки по очередям): «в размере/в сумме/составляет N».
+    # Грандтотал (до разбивки по очередям): «в размере/в (общей) сумме/составляет N».
     _FNS_GRANDTOTAL_RE = re.compile(
-        r"(?:в\s+размере|в\s+сумме|составля\w+)\s*[–—\-]?\s*"
+        r"(?:в\s+размере|в\s+общей\s+сумме|в\s+сумме|составля\w+)\s*[–—\-]?\s*"
         r"(\d[\d\s  ]*(?:[.,]\d{1,2})?)\s*(?:руб\w*|рублей|py6\w*|р\.)",
+        re.IGNORECASE,
+    )
+    # Грандтотал-fallback: «N руб., в том числе» без «в размере/сумме» (форма, где
+    # общая сумма стоит отдельной строкой перед разбивкой по очередям). Допускаем
+    # OCR-разрыв тысяч точкой («7. 267 312,82»); десятичная — только запятой.
+    _FNS_GRANDTOTAL_INCL_RE = re.compile(
+        r"(\d[\d\s.  ]*,\d{2})\s*(?:руб\w*|рублей|py6\w*|р\.)[.,]?\s*в\s+том\s+числе",
         re.IGNORECASE,
     )
     # Общие поля «Финансовых данных», которые в ФНС-режиме не показываются: чистим,
@@ -780,10 +784,22 @@ class AmountsMixin:
     )
 
     def _fns_amount(self, s: str) -> float:
-        """Денежная строка ФНС → float с сохранением знака («-96 396,39» → отриц.)."""
-        neg = str(s).strip().startswith("-")
-        val = self._fin_amount(s)
-        return -val if neg else val
+        """Денежная строка ФНС → float. Знак игнорируем: минус в ФНС-заявлениях
+        встречается лишь как артефакт разделителя («по взносам – -96396,39»), суммы
+        задолженности всегда положительны (правило Андрея)."""
+        return self._fin_amount(s)
+
+    def _fns_grandtotal(self, seg: str) -> Optional[float]:
+        """Общая сумма долга ИЗ ТЕКСТА (приоритет над вычислением по очередям):
+        сначала «в размере/в (общей) сумме/составляет N», затем fallback
+        «N руб., в том числе» (в т.ч. OCR-разрыв тысяч точкой «7. 267 312,82»)."""
+        m = self._FNS_GRANDTOTAL_RE.search(seg)
+        if m:
+            return self._fns_amount(m.group(1))
+        m = self._FNS_GRANDTOTAL_INCL_RE.search(seg)
+        if m:
+            return self._fin_amount(m.group(1).replace(".", " "))  # точка-тысячи → пробел
+        return None
 
     def _fns_queue_num(self, m: "re.Match") -> Optional[int]:
         """Номер очереди из матча _FNS_QUEUE_RE (прописью или цифрой)."""
@@ -812,9 +828,7 @@ class AmountsMixin:
                     if lm.end() > best_pos:
                         best_pos, best_suf = lm.end(), suf
             if best_suf and best_suf not in out:
-                neg = bool(self._FNS_DASH_SIGN_RE.search(seg[max(0, m.start() - 8):m.start()]))
-                val = self._fin_amount(m.group(1))
-                out[best_suf] = self._fin_fmt(-val if neg else val)
+                out[best_suf] = self._fin_fmt(self._fin_amount(m.group(1)))
         return out
 
     def _apply_fns_queue_finances(self, fields: Dict[str, Any], text: str) -> None:
@@ -876,17 +890,15 @@ class AmountsMixin:
         if not queues:
             return
 
-        # Грандтотал: явный «в размере/в сумме N» в ЗАЧИНЕ просительного предложения
-        # (окно перед первым маркером очереди, не весь документ — иначе поймаем число
-        # из шапки), иначе — сумма подытогов очередей.
+        # Грандтотал: СНАЧАЛА берём общую сумму ИЗ ДОКУМЕНТА (зачин просительного
+        # предложения — окно перед первым маркером очереди, не весь документ, иначе
+        # поймаем число из шапки). Только если её нет — вычисляем как Σ подытогов
+        # очередей и помечаем флагом (фронт покажет ⚠ «значение вычислено»).
         head = region[max(0, markers[0][0] - 300):markers[0][0]] if markers else ""
-        gt_m = self._FNS_GRANDTOTAL_RE.search(head) if head else None
-        # В части заявлений ФНС общая сумма не выделена отдельной строкой —
-        # тогда считаем её как Σ подытогов очередей и помечаем флагом (фронт покажет
-        # предупреждение, что значение вычислено, а не взято из документа).
+        grand_doc = self._fns_grandtotal(head) if head else None
         total_computed = False
-        if gt_m:
-            grand = self._fns_amount(gt_m.group(1))
+        if grand_doc is not None:
+            grand = grand_doc
         else:
             grand = sum(self._fin_amount(q["Total"]) for q in queues.values() if q.get("Total"))
             if markers:  # single-queue (else-ветка) берёт Total из грандтотала — не «посчитано»
