@@ -5,10 +5,13 @@ import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shar
 interface ManagerSectionProps {
   editedFields: Record<string, string>;
   onFieldChange: (field: string, value: string) => void;
+  /** Показывать поле «Саморегулируемая организация» — только для инициирующих актов
+   *  (реализация/конкурсное/реструктуризация/наблюдение), где СРО обязательна. */
+  showSro?: boolean;
 }
 
-/** Секция «Арбитражный управляющий» (ФИО, адрес). Перенесено из DocumentAnalysis 1:1. */
-const ManagerSection: React.FC<ManagerSectionProps> = ({ editedFields, onFieldChange }) => (
+/** Секция «Арбитражный управляющий» (ФИО, адрес, при инициировании — СРО). */
+const ManagerSection: React.FC<ManagerSectionProps> = ({ editedFields, onFieldChange, showSro }) => (
   <Box sx={{ ...BLOCK_BOX_SX, mt: 3 }}>
     <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
       Арбитражный управляющий
@@ -39,6 +42,21 @@ const ManagerSection: React.FC<ManagerSectionProps> = ({ editedFields, onFieldCh
         />
       </Box>
       </Grid>
+      {showSro && (
+      <Grid item xs={12}>
+        <Box sx={LABEL_OVERLAP_BOX}>
+        <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Саморегулируемая организация:</Typography>
+        <TextField
+          fullWidth
+          value={editedFields.sroName || ''}
+          multiline
+          onChange={(e) => onFieldChange('sroName', e.target.value)}
+          size="small"
+          margin="dense"
+        />
+      </Box>
+      </Grid>
+      )}
     </Grid>
   </Box>
 );

@@ -660,6 +660,13 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     return null;
   }
 
+  // Поле «Саморегулируемая организация» в блоке управляющего показываем, когда выбран
+  // инициирующий финальный акт (реализация/конкурсное/реструктуризация/наблюдение) —
+  // для них СРО обязательна. Определение ВКЛ в РТК сюда НЕ входит.
+  const showSroField = selectedActs.some(
+    (a) => a.selected && ['final_realization', 'final_competition', 'final_restructuring', 'final_observation'].includes(a.id),
+  );
+
   return (
     <Box sx={{ width: '100%', maxWidth: 1600, mx: 'auto', px: 1 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -782,7 +789,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 <Grid item xs={12}>
                   <Grid container spacing={3}>
                     <Grid item xs={12} md={6}>
-                      <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} />
+                      <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} showSro={showSroField} />
                       <Box sx={{ mt: 3 }}>
                         <FinancesSection editedFields={editedFields} onFieldChange={handleFieldChange} />
                       </Box>
@@ -797,7 +804,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 {/* Арбитражный управляющий (не-ФНС; у ФНС — в колонке выше) */}
                 {!isFnsCreditor(editedFields.creditorName) && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
-              <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} />
+              <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} showSro={showSroField} />
                 </Grid>
                 )}
 

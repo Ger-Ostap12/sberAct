@@ -291,6 +291,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # когда ФИО и адрес на разных строках (общие паттерны не справляются).
             self._fill_manager_address(extracted_fields, text)
 
+            # Саморегулируемая организация: сопоставляем упоминание СРО из текста с
+            # реестром sro_data и подставляем каноничное полное имя (NAIM_FULL).
+            self._resolve_manager_sro(extracted_fields, text)
+
             # Вспомогательный NLP-слой (Natasha, второстепенно): когда regex не
             # извлёк адрес совсем или обрезал его — достраиваем по окну роли.
             self._refine_addresses_nlp(extracted_fields, text)
@@ -1714,6 +1718,17 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if aa and (not _is_addr(aa) or (creda and aa == creda)
                        or re.search(r"Неглинн|Станиславског|www\.nalog|Адрес\s+для", aa, re.IGNORECASE)):
                 fields.pop("applicantAddress", None)
+
+    def _resolve_manager_sro(self, fields: Dict[str, Any], text: str) -> None:
+        """Сопоставляет извлечённое упоминание СРО (`sroName`) с реестром (`sro_data`)
+        и заменяет его каноничным полным именем (NAIM_FULL). Работает только когда
+        `sroName` уже извлечён основным парсером и уверенно опознан в реестре; иначе
+        поле не трогаем (не изобретаем СРО из общего текста, чтобы не плодить ложные)."""
+        from sro_registry import resolve_sro
+
+        full = resolve_sro(fields.get("sroName"))
+        if full:
+            fields["sroName"] = full
 
     def _fill_manager_address(self, fields: Dict[str, Any], text: str) -> None:
         """Фолбэк адреса управляющего: «… управляющий: <ФИО, м.б. в 2 строки>

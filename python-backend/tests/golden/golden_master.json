@@ -40,7 +40,7 @@
    "courtName": "Арбитражный суд Ростовской области",
    "creditorAddress": "346407, Ростовская обл, Новочеркасск г, Ермака пр-кт, 104",
    "creditorName": "ФНС России в лице Межрайонной ИФНС России № 13 по Ростовской области",
-   "debtAmount": "7 267 312,82",
+   "debtAmount": "7 401 719,87",
    "debtorAddress": "346630, РОСТОВСКАЯ ОБЛ, Семикаракорский Р-Н, СЕМИКАРАКОРСК Г, ЛЕВЧЕНКО ПЛ,46",
    "debtorName": "ЗАЙЦЕВ ВИТАЛИЙ ВЛАДИМИРОВИЧ",
    "entityType": "ip",
@@ -54,7 +54,7 @@
    "ogrnip": "318619600149696",
    "requirementsSum": "298 892,00",
    "sourceDocumentType": "initiation_physical",
-   "totalDebt": "7 267 312,82"
+   "totalDebt": "7 401 719,87"
   },
   "metadata": {
    "language": "ru",
@@ -62,8 +62,8 @@
    "wordCount": 2090
   },
   "obligations": [],
-  "rawTextLen": 15417,
-  "rawTextSha": "84c12bffdbc48b7ce8c033ba6da5b5976ccd0bbc731b8c0148e1103ba94babef",
+  "rawTextLen": 15416,
+  "rawTextSha": "28412853f0af796860e3763f6eaa703499c5d3e9e2c19836d909a2fe94b58d3b",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "ip",
@@ -504,7 +504,7 @@
    "inn": "615308542625",
    "requirementsSum": "208 472,00",
    "sourceDocumentType": "rtk_application",
-   "sroName": "АССОЦИАЦИЯ «МОСКОВСКАЯ САМОРЕГУЛИРУЕМАЯ ОРГАНИЗАЦИЯ ПРОФЕССИОНАЛЬНЫХ АРБИТРАЖНЫХ УПРАВЛЯЮЩИХ»",
+   "sroName": "Ассоциация \"Московская саморегулируемая организация профессиональных арбитражных управляющих\"",
    "totalDebt": "1 712 229,07"
   },
   "metadata": {
@@ -731,7 +731,7 @@
    "requirementsSum": "16,06",
    "snils": "045-968-519 07",
    "sourceDocumentType": "initiation_physical",
-   "sroName": "\"ДЕЛО\" ИНН 5010029544",
+   "sroName": "Союз арбитражных управляющих \"Саморегулируемая организация \"ДЕЛО\"",
    "totalDebt": "71 145 066,58"
   },
   "metadata": {
@@ -1378,7 +1378,7 @@
    "requirementsSum": "2 449 211,19",
    "snils": "000-011-011-11",
    "sourceDocumentType": "rtk_application",
-   "sroName": "ААУ «АЛЬЯНС»",
+   "sroName": "Некоммерческое Партнёрство - Союз \"Межрегиональная саморегулируемая организация профессиональных арбитражных управляющих \"Альянс управляющих\"",
    "thirdPartyAddress": "021007, Тульская область, Кунжут-на-Бублике, ул. Клювдина, д.3",
    "thirdPartyBirthDate": "19.05.2005",
    "thirdPartyInn": "222222212301",
@@ -4069,7 +4069,7 @@
    "registrationDate": "20.06.1991",
    "requirementsSum": "27 297 873,00",
    "sourceDocumentType": "rtk_application",
-   "sroName": "– Ассоциация МСОПАУ –",
+   "sroName": "Ассоциация \"Московская саморегулируемая организация профессиональных арбитражных управляющих\"",
    "stateDuty": "348 989,00",
    "stateDuty16": "348 989,00",
    "totalDebt": "5 582 178,84"
@@ -4203,6 +4203,7 @@
    "registrationDate": "20.06.1991",
    "requirementsSum": "21 681 376,81",
    "sourceDocumentType": "ip_enforcement_restructuring",
+   "sroName": "Ассоциация \"Межрегиональная саморегулируемая организация арбитражных управляющих \"Содействие\"",
    "stateDuty": "320 907,00",
    "stateDuty16": "320 907,00",
    "totalDebt": "21 681 376,81"
@@ -4210,7 +4211,7 @@
   "metadata": {
    "language": "ru",
    "pageCount": 3,
-   "wordCount": 809
+   "wordCount": 820
   },
   "obligations": [
    {
@@ -4240,8 +4241,8 @@
     "penalty0071Value": 0.0
    }
   ],
-  "rawTextLen": 6692,
-  "rawTextSha": "e803d77ce6dffc6bd2f4149e1f8da428e095f8625af9654520220a740b647a97",
+  "rawTextLen": 6703,
+  "rawTextSha": "272ebcf0e230778ea187f5e029f51bef47b82fff80939b3d71f20162e373805e",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "ip",
@@ -6908,7 +6909,7 @@
    "registrationDate": "20.06.1991",
    "requirementsSum": "2 100 477,62",
    "sourceDocumentType": "ip_enforcement_restructuring",
-   "sroName": "- СРО ААУ \"Синергия\"(ИНН2308980067",
+   "sroName": "Саморегулируемая организация ассоциация арбитражных управляющих \"Синергия\"",
    "stateDuty": "144 007,00",
    "stateDuty16": "144 007,00",
    "totalDebt": "3 349 600,15"
@@ -7479,7 +7480,7 @@
    "procedureTypeRaw": "наблюдение",
    "requirementsSum": "5 032 544 855,59",
    "sourceDocumentType": "mortgage_claim",
-   "sroName": "«Содействие» ОГРН: 1025700780071",
+   "sroName": "Ассоциация \"Межрегиональная саморегулируемая организация арбитражных управляющих \"Содействие\"",
    "stateDuty": "5 200 000,00",
    "stateDuty16": "5 200 000,00",
    "totalDebt": "5 032 544 855,59"
@@ -7722,7 +7723,7 @@
    "procedureTypeRaw": "наблюдение",
    "requirementsSum": "5 032 544 855,59",
    "sourceDocumentType": "mortgage_claim",
-   "sroName": "«Содействие» ОГРН: 1025700780071",
+   "sroName": "Ассоциация \"Межрегиональная саморегулируемая организация арбитражных управляющих \"Содействие\"",
    "stateDuty": "5 125 000,00",
    "stateDuty16": "5 125 000,00",
    "totalDebt": "5 032 544 855,59"
@@ -7908,7 +7909,7 @@
    "procedureTypeRaw": "наблюдение",
    "requirementsSum": "1 400 000 000,00",
    "sourceDocumentType": "initiation_legal",
-   "sroName": "\"Содействие\" ОГРН 1025700780071",
+   "sroName": "Ассоциация \"Межрегиональная саморегулируемая организация арбитражных управляющих \"Содействие\"",
    "stateDuty": "5 100 000,00",
    "stateDuty16": "5 100 000,00",
    "totalDebt": "5 032 544 855,59"
@@ -10680,7 +10681,7 @@
    "requirementsSum": "9 148,36",
    "snils": "000-011-011-11",
    "sourceDocumentType": "rtk_application",
-   "sroName": "ААУ «АЛЬЯНС»",
+   "sroName": "Некоммерческое Партнёрство - Союз \"Межрегиональная саморегулируемая организация профессиональных арбитражных управляющих \"Альянс управляющих\"",
    "thirdPartyAddress": "021007, Тульская область, Кунжут-на-Бублике, ул. Клювдина, д.3",
    "thirdPartyName": "ТОЛСТОЙ ЛЕВ НИКОЛАЕВИЧ",
    "totalDebt": "9 148,36"
@@ -10816,7 +10817,7 @@
    "requirementsSum": "189 626,72",
    "snils": "000-011-011-11",
    "sourceDocumentType": "rtk_application",
-   "sroName": "ААУ «АЛЬЯНС»",
+   "sroName": "Некоммерческое Партнёрство - Союз \"Межрегиональная саморегулируемая организация профессиональных арбитражных управляющих \"Альянс управляющих\"",
    "thirdPartyAddress": "021007, Тульская область, Кунжут-на-Бублике, ул. Клювдина, д.3",
    "thirdPartyName": "ТОЛСТОЙ ЛЕВ НИКОЛАЕВИЧ",
    "totalDebt": "189 626,72"
@@ -11004,7 +11005,7 @@
    "requirementsSum": "2 449 211,19",
    "snils": "000-011-011-11",
    "sourceDocumentType": "rtk_application",
-   "sroName": "ААУ «АЛЬЯНС»",
+   "sroName": "Некоммерческое Партнёрство - Союз \"Межрегиональная саморегулируемая организация профессиональных арбитражных управляющих \"Альянс управляющих\"",
    "thirdPartyAddress": "021007, Тульская область, Кунжут-на-Бублике, ул. Клювдина, д.3",
    "thirdPartyName": "ТОЛСТОЙ ЛЕВ НИКОЛАЕВИЧ",
    "totalDebt": "2 449 211,19"

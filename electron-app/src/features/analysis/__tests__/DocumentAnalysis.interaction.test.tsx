@@ -115,3 +115,30 @@ describe('DocumentAnalysis — раскладка ФНС', () => {
     expect(screen.getByRole('checkbox', { name: 'Залог иное' })).not.toBeChecked();
   });
 });
+
+describe('DocumentAnalysis — поле СРО у управляющего', () => {
+  const renderWithSro = () => {
+    const data = makeData();
+    data.fields = { ...data.fields, sroName: 'Ассоциация "Содействие"' };
+    return render(
+      <DocumentAnalysis
+        documentData={documentData}
+        extractedData={data}
+        onAnalysisComplete={() => {}}
+        onBack={() => {}}
+      />,
+    );
+  };
+
+  it('поле СРО скрыто, пока не выбран инициирующий финальный акт', () => {
+    renderWithSro();
+    expect(screen.queryByText('Саморегулируемая организация:')).not.toBeInTheDocument();
+  });
+
+  it('выбор акта «Решение реализация» показывает поле СРО', () => {
+    renderWithSro();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Решение реализация' }));
+    expect(screen.getByText('Саморегулируемая организация:')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Ассоциация "Содействие"')).toBeInTheDocument();
+  });
+});
