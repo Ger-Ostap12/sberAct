@@ -27,6 +27,18 @@ describe('FinancesSection — обычный кредитор (не ФНС)', ()
     expect(await screen.findByText(/465 015 355,26/)).toBeInTheDocument();
     expect(screen.getByText(/999 998 250,73/)).toBeInTheDocument();
   });
+
+  it('тултип при ОДНОМ слагаемом — «Из документа: N» (кейс Форте Хоум)', async () => {
+    render(
+      <FinancesSection
+        editedFields={{ creditorName: 'ПАО Сбербанк', principalDebt: '4 463 145 841,47' }}
+        onFieldChange={() => {}}
+        financeBreakdown={{ principalDebt: ['4 463 145 841,47'] }}
+      />,
+    );
+    fireEvent.mouseOver(screen.getByDisplayValue('4 463 145 841,47'));
+    expect(await screen.findByText(/Из документа: 4 463 145 841,47/)).toBeInTheDocument();
+  });
 });
 
 describe('FinancesSection — кредитор ФНС', () => {

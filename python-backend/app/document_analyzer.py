@@ -337,6 +337,22 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 if pc and extracted_fields.get("caseNumber") == pc:
                     extracted_fields.pop("caseNumber", None)
 
+            # Тултип «откуда число» должен быть на ВСЕХ не-ФНС полях с суммой
+            # (требование Андрея): если слой, заполнивший поле, разбивку не оставил
+            # (одно число из документа / общий паттерн-слой), дополняем единичным
+            # слагаемым = текущему значению поля. У ФНС свои поля-очереди, общий
+            # блок скрыт — не дополняем.
+            if not any(k.startswith("fnsQ") for k in extracted_fields):
+                _brk = extracted_fields.get("financeBreakdown") or {}
+                for _fk in ("principalDebt", "interest", "forfeit", "penalties", "loanStateDuty17"):
+                    _v = extracted_fields.get(_fk)
+                    if _fk == "principalDebt" and not _v:
+                        _v = extracted_fields.get("loanDebt")  # поле фронта: principalDebt OR loanDebt
+                    if _fk not in _brk and _v and self._fin_amount(_v) > 0:
+                        _brk[_fk] = [_v]
+                if _brk:
+                    extracted_fields["financeBreakdown"] = _brk
+
             # Разбивка полей финансов на слагаемые (для тултипа «откуда число») —
             # top-level, НЕ в fields (иначе попала бы в editedFields как [object Object]
             # и в golden). None, если разбивки нет.
@@ -1427,6 +1443,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         pr = it = fo = pen = ld = 0.0
         n = 0
         seen = set()  # таблица в тексте бывает задвоена — дедуп по (категория, значение)
+        brk_vals: Dict[str, list] = {}  # адденды по группам — для тултипа «откуда число»
         for m in re.finditer(
             r"(основн\w*\s+долг\w*|процент\w*|неустойк\w*|\bпени\b|штраф\w*|госпошлин\w*)"
             r"\s*\n\s*" + money + r"\s*\n?\s*(?:RUR|руб)",
@@ -1444,6 +1461,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if (_grp, round(val, 2)) in seen:
                 continue
             seen.add((_grp, round(val, 2)))
+            brk_vals.setdefault(_grp, []).append(val)
             if "штраф" in cat:
                 pen += val
             elif "неустой" in cat or "пени" in cat:
@@ -1458,6 +1476,20 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         comp = pr + it + fo + pen + ld
         if n == 0 or abs(comp - total) > 1.5:
             return
+        # Разбивка перекрывает prayer-версию: значения полей заменяются — тултип
+        # должен показывать именно эти слагаемые (устаревший breakdown вводил бы
+        # в заблуждение).
+        breakdown = {
+            fkey: [self._fin_fmt(v) for v in brk_vals[grp]]
+            for grp, fkey in (("principal", "principalDebt"), ("interest", "interest"),
+                              ("forfeit", "forfeit"), ("penalty", "penalties"),
+                              ("loan_duty", "loanStateDuty17"))
+            if brk_vals.get(grp)
+        }
+        if breakdown:
+            fields["financeBreakdown"] = breakdown
+        else:
+            fields.pop("financeBreakdown", None)
         fields["principalDebt"] = self._fin_fmt(pr)
         fields["principalDebt13"] = fields["principalDebt"]
         fields["interest"] = self._fin_fmt(it)
@@ -2278,6 +2310,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         body = pm.group(2)
         pr = it = fo = 0.0
         found = False
+        brk_vals: Dict[str, list] = {}  # адденды по полям — для тултипа «откуда число»
         for am in re.finditer(money + r"\s*руб[^–\-\n]*[–\-]\s*([^\n;]+)", body):
             val = self._fin_amount(am.group(1))
             lbl = am.group(2).lower()
@@ -2286,10 +2319,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # «основной долг (кредит, проценты)» — это долг (скобки не делают его процентами).
             if "неустой" in lbl or "пени" in lbl:
                 fo += val
+                brk_vals.setdefault("forfeit", []).append(val)
             elif "основн" in lbl or "долг" in lbl or "ссудн" in lbl:
                 pr += val
+                brk_vals.setdefault("principalDebt", []).append(val)
             elif "процент" in lbl:
                 it += val
+                brk_vals.setdefault("interest", []).append(val)
             else:
                 continue
             found = True
@@ -2299,6 +2335,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if total <= 0 or abs(comp_sum - total) > 1.5:
             # Разбивка не сошлась с общим размером — не перекрываем (страховка).
             return
+        # Слой перекрывает значения полей — синхронно перекрываем и разбивку тултипа.
+        if brk_vals:
+            fields["financeBreakdown"] = {
+                k: [self._fin_fmt(v) for v in vals] for k, vals in brk_vals.items()
+            }
+        else:
+            fields.pop("financeBreakdown", None)
         fields["principalDebt"] = self._fin_fmt(pr)
         fields["principalDebt13"] = fields["principalDebt"]
         fields["interest"] = self._fin_fmt(it)

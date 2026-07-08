@@ -21,7 +21,7 @@ export type FinanceBreakdown = Record<string, string[]> | null | undefined;
 interface FinancesSectionProps {
   editedFields: Record<string, string>;
   onFieldChange: (field: string, value: string) => void;
-  /** Разбивка «откуда число» для тултипа поля (только не-ФНС, ≥2 слагаемых). */
+  /** Разбивка «откуда число» для тултипа поля (только не-ФНС). */
   financeBreakdown?: FinanceBreakdown;
 }
 
@@ -29,27 +29,35 @@ interface FinancesSectionProps {
 const rawAmount = (value: string) => value.replace(/[^\d.,]/g, '').replace(',', '.');
 
 /**
- * Оборачивает поле в тултип с разбивкой «= a + b (+ …)», когда итог сложился из ≥2
- * сумм (несколько обязательств). Иначе отдаёт ребёнка как есть. Тултип — при наведении.
+ * Оборачивает поле в тултип «откуда число»: слагаемые из документа и итог «= a + b»,
+ * при одном слагаемом — «Из документа: N» (сумма взята как есть). Без разбивки отдаёт
+ * ребёнка как есть. Тултип — при наведении.
  */
 const BreakdownTip: React.FC<{ addends?: string[]; total?: string; children: React.ReactElement }> = ({
   addends,
   total,
   children,
 }) => {
-  if (!addends || addends.length < 2) return children;
+  if (!addends || addends.length < 1) return children;
   return (
     <Tooltip
       arrow
       placement="top"
       title={
         <Box sx={{ fontSize: '0.8rem', lineHeight: 1.6, py: 0.5, fontVariantNumeric: 'tabular-nums' }}>
-          {addends.map((a, i) => (
-            <div key={i}>{i === 0 ? '  ' : '+ '}{a}</div>
-          ))}
-          <Box sx={{ borderTop: '1px solid rgba(255,255,255,0.45)', mt: 0.5, pt: 0.5, fontWeight: 600 }}>
-            = {total || ''}
-          </Box>
+          {addends.length === 1 ? (
+            // Одно слагаемое: сумма взята из документа как есть — без «= итог».
+            <div>Из документа: {addends[0]}</div>
+          ) : (
+            <>
+              {addends.map((a, i) => (
+                <div key={i}>{i === 0 ? '  ' : '+ '}{a}</div>
+              ))}
+              <Box sx={{ borderTop: '1px solid rgba(255,255,255,0.45)', mt: 0.5, pt: 0.5, fontWeight: 600 }}>
+                = {total || ''}
+              </Box>
+            </>
+          )}
         </Box>
       }
     >

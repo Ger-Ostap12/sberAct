@@ -731,17 +731,18 @@ class AmountsMixin:
         else:
             fields.pop("loanStateDuty17", None)
 
-        # Разбивка полей на слагаемые (для тултипа «откуда число»): только там, где
-        # итог сложился из ≥2 сумм (несколько обязательств/строк). Кладём во временный
-        # ключ fields — analyze() поднимет его в top-level result.financeBreakdown и
-        # уберёт из fields (в editedFields/golden не попадает).
+        # Разбивка полей на слагаемые (для тултипа «откуда число»). ОДНО слагаемое —
+        # тоже источник («взято из документа как есть»): тултип должен быть на ВСЕХ
+        # не-ФНС заявлениях (требование Андрея), а не только при суммировании ≥2 сумм.
+        # Кладём во временный ключ fields — analyze() поднимет его в top-level
+        # result.financeBreakdown и уберёт из fields (в editedFields/golden не попадает).
         _brk_map = [("principal", "principalDebt"), ("interest", "interest"),
                     ("forfeit", "forfeit"), ("penalty", "penalties"),
                     ("loan_duty", "loanStateDuty17")]
         breakdown = {}
         for cat, fkey in _brk_map:
             vals = [v for v in addends.get(cat, []) if round(v, 2) != 0]  # нули не показываем
-            if len(vals) >= 2:
+            if vals:
                 breakdown[fkey] = [self._fin_fmt(v) for v in vals]
         if breakdown:
             fields["financeBreakdown"] = breakdown
