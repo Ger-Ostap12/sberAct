@@ -834,8 +834,10 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 </Grid>
                 )}
 
-                {/* Финансовые данные (не-ФНС; у ФНС — в колонке выше) */}
-                {!isFnsCreditor(editedFields.creditorName) && (
+                {/* Финансовые данные (не-ФНС; у ФНС — в колонке выше). У самобанкрота
+                    финансов из просительной нет (суммы по каждому кредитору в теле) —
+                    блок скрываем вместе с кредитором. */}
+                {!isFnsCreditor(editedFields.creditorName) && debtorStatus !== 'self' && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
               <FinancesSection editedFields={editedFields} onFieldChange={handleFieldChange} financeBreakdown={analysisResult?.financeBreakdown} />
                 </Grid>

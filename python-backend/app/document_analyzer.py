@@ -245,8 +245,26 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # NER по шапке. Ловит незнакомые раскладки, где label-парсер пасует.
             self._fill_creditor_nlp(extracted_fields, text)
 
+            # САМОБАНКРОТСТВО: должник в шапке ПЕРВЫМ, затем список кредиторов —
+            # общий парсер путает стороны (ОГРН/адрес кредитора у должника).
+            # Точечный layout-парсер перекрывает поля должника строго из его
+            # блока и чистит creditor* (кредитора-заявителя нет). ПОСЛЕ NLP-слоёв,
+            # чтобы никакой общий обработчик не перезатёр результат.
+            is_self_bk = self._detect_self_bankruptcy(text)
+            sb_third_parties = None
+            if is_self_bk:
+                sb_third_parties = self._apply_self_bankruptcy_layout(extracted_fields, text)
+                # Тип лица мог поменяться (legal→individual) — рекомендации заново.
+                recommended_acts = self._get_recommended_acts(document_type, extracted_fields, text)
+
             # Списки должников и третьих лиц + дедуп
-            debtors_result, third_parties_result = self._resolve_debtors_and_third_parties(extracted_fields, text, details)
+            if is_self_bk:
+                # Должник один и уже выверен layout-парсером — генерик-извлечение
+                # extract_debtors по такой шапке тащит кредиторов, минуем его.
+                debtors_result = [self._single_debtor_from_fields(extracted_fields)]
+                third_parties_result = sb_third_parties or []
+            else:
+                debtors_result, third_parties_result = self._resolve_debtors_and_third_parties(extracted_fields, text, details)
 
             # Залоги. Недвижимость/авто — всегда реальны. «Иное» (оборудование,
             # линии, товары и т.п.) — это ВСЁ, что не недвижимость и не ТС; оставляем,
@@ -327,10 +345,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # Самобанкротство (заявитель = сам должник): флаг top-level, НЕ в
             # fields — по образцу financeBreakdown (не попадает в golden и в
             # editedFields фронта). Фронт по нему автопроставляет статус
-            # должника «Самобанкрот» и скрывает блок кредитора.
-            application_kind = (
-                "self_bankruptcy" if self._detect_self_bankruptcy(text) else None
-            )
+            # должника «Самобанкрот» и скрывает блоки кредитора/финансов.
+            application_kind = "self_bankruptcy" if is_self_bk else None
 
             # Формируем результат
             result = {
@@ -1551,6 +1567,315 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 return f"ФНС России в лице УФНС России по {self._norm_fns_region(m.group(1))}"
         return "ФНС России"
 
+    # ------------------------------------------------------------------
+    # САМОБАНКРОТСТВО: структурный разбор шапки «должник первым, кредиторы списком»
+    # ------------------------------------------------------------------
+    # Метка должника в шапке: «Должник:», «Должник (заявитель)», «от Должника:», «ФИО:».
+    _SB_DEBTOR_LABEL_RE = re.compile(
+        r"(?:от\s+)?должник\w*\s*(?:\(\s*заявител\w*\s*\))?\s*:?|(?<![а-яё])фио\s*:",
+        re.IGNORECASE,
+    )
+    # Начало блока кредиторов: «Кредиторы:», «Кредитор 1:», «Кредитор 1.», «11 КРЕДИТОРОВ:».
+    # Числовой префикс — только через пробел/таб на ТОЙ ЖЕ строке: через \n это не
+    # префикс, а хвост адреса должника («…д. 23\nКредиторы:» резало «23» из блока).
+    _SB_CREDITORS_RE = re.compile(r"(?:\d{1,2}[ \t]+)?кредитор\w*\s*\d{0,2}\s*[:.]", re.IGNORECASE)
+    # Конец шапки — заголовок «Заявление …» (отдельной строкой, с продолжением-типом,
+    # либо ЗАГЛАВНОЕ «ЗАЯВЛЕНИЕ» посреди строки перед «о признании…»).
+    _SB_TITLE_RES = (
+        re.compile(r"(?im)^\s*заявлени\w*\s*$"),
+        re.compile(r"(?im)^\s*заявлени\w*\s+(?:должника|физическ|гражданина|о\s)"),
+        re.compile(r"ЗАЯВЛЕНИЕ(?=\s*\n?\s*о\s)"),
+    )
+    # ФИО: Фамилия [( девичья )] Имя Отчество; допускаем перенос строки внутри
+    # («Корсунов Вячеслав\nВалерьевич») — \s+ покрывает \n.
+    _SB_FIO_RE = re.compile(
+        r"([А-ЯЁ][А-ЯЁа-яё-]{1,25}(?:\s*\(\s*[А-ЯЁ][А-ЯЁа-яё-]{1,25}\s*\))?)"
+        r"\s+([А-ЯЁ][а-яё-]{2,20})"
+        r"\s+([А-ЯЁ][а-яё-]{2,25})"
+    )
+    # Метки-стопы внутри блока должника (конец значения очередного поля).
+    _SB_FIELD_STOP = (
+        r"(?:снилс|инн\b|огрн|кредитор|место\s+работы|телефон|контактн|адрес\s+для|"
+        r"семейн|депозит|тел[.\s]|паспорт|выдан|дата\s+выдачи|код\s+подразделения|"
+        r"дата\s+(?:и\s+место\s+)?рождения|место\s+рождения|$)"
+    )
+
+    def _apply_self_bankruptcy_layout(self, fields: Dict[str, Any], text: str):
+        """Разводит должника и кредиторов в заявлении САМОБАНКРОТА.
+
+        Шапка самобанкрота: должник (с паспортными реквизитами) идёт ПЕРВЫМ,
+        затем СПИСОК кредиторов с их ИНН/ОГРН/адресами, затем третьи лица /
+        уполномоченный орган. Общий label-парсер на такой раскладке путает
+        стороны (берёт ОГРН/адрес кредитора как реквизиты должника) — здесь
+        реквизиты должника извлекаются СТРОГО из его блока (до первого
+        «Кредитор…»), а кредиторские поля очищаются (кредитора-заявителя нет).
+
+        Возвращает список третьих лиц из шапки (может быть пустым) или None,
+        если блок «Третьи лица:» не найден.
+        """
+        if not text:
+            return None
+
+        # --- Границы шапки и блока должника -------------------------------
+        title_pos = len(text)
+        for rx in self._SB_TITLE_RES:
+            m = rx.search(text)
+            if m and m.start() < title_pos:
+                title_pos = m.start()
+        header = text[: min(title_pos, 6000)]
+
+        m_label = self._SB_DEBTOR_LABEL_RE.search(header)
+        if m_label:
+            blk_start = m_label.end()
+        else:
+            # Безметочная шапка (Федоренко): должник — первое ФИО после суда.
+            m_fio0 = None
+            for cand in self._SB_FIO_RE.finditer(header):
+                fio_c = re.sub(r"\s+", " ", cand.group(0))
+                if re.search(r"суд|област|район", fio_c, re.IGNORECASE):
+                    continue
+                if is_person_name(fio_c):
+                    m_fio0 = cand
+                    break
+            if not m_fio0:
+                return None
+            blk_start = m_fio0.start()
+        m_cred = self._SB_CREDITORS_RE.search(header, blk_start)
+        blk = header[blk_start : m_cred.start() if m_cred else len(header)]
+        if len(blk) < 30:
+            return None
+
+        # --- ФИО должника ---------------------------------------------------
+        fio = None
+        for cand in self._SB_FIO_RE.finditer(blk[:300]):
+            fio_c = re.sub(r"\s+", " ", cand.group(0)).strip()
+            # Отсев ложных «ФИО» из служебных строк (название суда и т.п.)
+            if re.search(r"суд|банкрот|заявл", fio_c, re.IGNORECASE):
+                continue
+            if is_person_name(fio_c):
+                fio = fio_c
+                break
+        if not fio:
+            return None
+
+        fields["applicantName"] = fio
+        fields["debtorName"] = fio
+        base = re.sub(self._NAME_PREFIX_RE, "", fio, flags=re.IGNORECASE).strip() or fio
+        for case_key, conv in (
+            ("applicantNameGenitive", self._convert_name_to_genitive),
+            ("applicantNameDative", self._convert_name_to_dative),
+            ("applicantNameAccusative", self._convert_name_to_accusative),
+            ("applicantNameInstrumental", self._convert_name_to_instrumental),
+        ):
+            try:
+                fields[case_key] = conv(base) or fio
+            except Exception:
+                fields[case_key] = fio
+
+        # --- Дата рождения (слои) -------------------------------------------
+        # Паспортные даты («выдан 09.12.2016») не путать с рождением: общий
+        # безметочный слой ищем только ДО слова «паспорт/выдан».
+        pre_passport = re.split(r"паспорт|выдан", blk, flags=re.IGNORECASE)[0]
+        birth = (
+            re.search(r"дата\s*(?:и\s*место\s*)?рождения[:;\s]*(\d{2}\.\d{2}\.\d{4})", blk, re.IGNORECASE)
+            or re.search(r"(\d{2}\.\d{2}\.\d{4})\s*(?:г\.?\s*р\.?|года\s+рождения)", blk, re.IGNORECASE)
+            or re.search(
+                r"(\d{1,2}\s+(?:январ|феврал|март|апрел|ма[яй]|июн|июл|август|сентябр|октябр|ноябр|декабр)[а-яё]*"
+                r"\s+\d{4})\s+года\s+рождения",
+                blk, re.IGNORECASE,
+            )
+            or re.search(r"\b(\d{2}\.\d{2}\.\d{4})\s*г?\b", pre_passport)
+        )
+        if birth:
+            fields["birthDate"] = birth.group(1).strip()
+        else:
+            fields.pop("birthDate", None)
+
+        # --- Место рождения ---------------------------------------------------
+        bp = re.search(
+            r"место\s+рождения[:;\s]*(?:\d{2}\.\d{2}\.\d{4}\s*)?(.{3,140}?)(?=\s*(?:[;]|" + self._SB_FIELD_STOP + r"))",
+            blk, re.IGNORECASE | re.DOTALL,
+        )
+        if bp:
+            place = re.sub(r"\s+", " ", bp.group(1)).strip(" ,;.")
+            place = re.sub(r"(?<=[а-яё])-\s+(?=[а-яё])", "-", place)  # перенос «р-\nна» → «р-на»
+            if len(place) >= 3:
+                fields["birthPlace"] = place
+        elif fields.get("birthPlace"):
+            fields.pop("birthPlace", None)
+
+        # --- СНИЛС / ИНН (строго из блока должника) ---------------------------
+        snils = re.search(r"снилс[:\s]*([\d][\d\-\s]{9,15}\d)", blk, re.IGNORECASE)
+        if snils:
+            fields["snils"] = re.sub(r"\s+", " ", snils.group(1)).strip()
+        else:
+            fields.pop("snils", None)
+        inn = re.search(r"\bинн\b[:\s]*(\d{10,12})", blk, re.IGNORECASE)
+        if inn:
+            fields["inn"] = inn.group(1)
+            fields["companyInn"] = inn.group(1)
+        else:
+            fields.pop("inn", None)
+            fields.pop("companyInn", None)
+
+        # --- Адрес регистрации -------------------------------------------------
+        addr = re.search(
+            r"(?:адрес\s+(?:мест[аом]*\s+)?регистрации|место\s+жительства\s+по\s+регистрации|"
+            r"мест[ао]\s+регистрации|адрес)\s*[:\s]\s*(.{5,240}?)(?=\s*" + self._SB_FIELD_STOP + r")",
+            blk, re.IGNORECASE | re.DOTALL,
+        )
+        addr_val = None
+        if addr:
+            addr_val = re.sub(r"\s+", " ", addr.group(1)).strip(" ,;")
+        else:
+            # Фолбэк: первая индекс-строка блока.
+            m6 = re.search(r"(\d{6}\s*,?\s*[^\n]{5,160}(?:\n[^\n]{2,80}){0,2})", blk)
+            if m6:
+                addr_val = re.sub(r"\s+", " ", m6.group(1)).strip(" ,;")
+        if addr_val:
+            fields["applicantAddress"] = addr_val
+            fields["debtorAddress"] = addr_val
+        else:
+            fields.pop("applicantAddress", None)
+
+        # --- Тип лица и очистка чужих реквизитов -------------------------------
+        # Самобанкрот-гражданин — физлицо; ОГРН у должника-ФЛ быть не может
+        # (мусор с кредитора из списка). Кредитора-заявителя в этих заявлениях
+        # нет — creditor*-поля чистим (фронт скрывает блок кредитора).
+        fields["entityType"] = "individual"
+        for k in ("ogrn", "ogrnip", "companyOgrn",
+                  "creditorName", "creditorAddress", "creditorInn", "creditorOgrn",
+                  "thirdPartyName", "thirdPartyAddress", "thirdPartyInn",
+                  "thirdPartyBirthDate", "thirdPartySnils"):
+            fields.pop(k, None)
+
+        logger.info(f"✅ Самобанкротство: должник из шапки «{fio}», реквизиты строго из его блока")
+        return self._extract_sb_third_parties(text, title_pos)
+
+    def _extract_sb_third_parties(self, text: str, title_pos: int):
+        """Третьи лица из шапки самобанкрота: «Третьи лица[, не заявляющие …]:».
+
+        Формат блока: <название организации / ФИО> <адрес с индексом> …
+        (повторяется). У третьего лица-персоны после адреса могут идти реквизиты
+        (дата рождения, паспорт, СНИЛС, ИНН) — выделяем их из хвоста адреса.
+        Возвращает список словарей или None (блока нет).
+        """
+        # Уточнение метки («, не заявляющие самостоятельных требований») может
+        # быть разорвано переносом строки — допускаем \n до двоеточия.
+        m = re.search(r"треть\w+\s+лиц[^:]{0,80}?:", text, re.IGNORECASE)
+        if not m:
+            return None
+        end = m.end() + 1600
+        # Стопы блока: уполномоченный орган, заголовок заявления, начало таблицы
+        # обязательств (табличная шапка «№ п/п Содержание обязательства…»).
+        for stop_rx in (
+            re.compile(r"уполномоченн\w+\s+орган", re.IGNORECASE),
+            re.compile(r"№\s*п/п|содержание\s+обязательства|итого\s*:", re.IGNORECASE),
+        ):
+            m_s = stop_rx.search(text, m.end())
+            if m_s:
+                end = min(end, m_s.start())
+        for rx in self._SB_TITLE_RES:
+            m_t = rx.search(text, m.end())
+            if m_t:
+                end = min(end, m_t.start())
+        block = text[m.end(): end]
+
+        # Табличная шапка (Галета): весь блок — одна длинная строка, построчная
+        # сегментация невозможна. Вставляем переносы перед началом каждой новой
+        # записи (оргслово / ФИО сразу после конца адреса) и перед индексами —
+        # дальше работает общий построчный алгоритм.
+        if block.count("\n") < 2:
+            block = re.sub(r"\s(?=\d{6}\b)", "\n", block)
+            block = re.sub(
+                r"\s(?=(?:УФНС|ИФНС|ФНС|Межрайонн|Управлен|Отдел|Инспекц|Отделени|Фонд|ООО|АО|ПАО|ЗАО|НАО)\b)"
+                r"|\s(?=[А-ЯЁ][а-яё-]+\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+(?:вич|вна|чна|ична)\b)",
+                "\n", block,
+            )
+
+        # Построчная сегментация: строка с индексом открывает адрес; строка с
+        # цифрами продолжает его (уличные хвосты «Ленинградская, 10»), строка
+        # без цифр — имя следующего лица. Оргслова открывают новое имя всегда
+        # (основы «межрайонн…», «управлен…» — без \b: слово продолжается).
+        _ORG_START = re.compile(
+            r"^(?:межрайонн\w*|управлен\w*|отдел\w*|инспекц\w*|отделени\w*|фонд\w*|союз\w*)"
+            r"|^(?:уфнс|ифнс|фнс|ооо|ао|пао|зао|нао)\b",
+            re.IGNORECASE,
+        )
+        # Реквизитные строки персоны-третьего лица — продолжение записи, не новое имя.
+        _REQ_LINE = re.compile(
+            r"^(?:место\s+рождения|паспорт|выдан|снилс|инн|код\s+подразделения|"
+            r"дата\s+рождения|\d{2}\.\d{2}\.\d{4})",
+            re.IGNORECASE,
+        )
+        # Кредитные организации — это КРЕДИТОРЫ, в третьих лицах их не бывает
+        # (случай слипшихся колонок таблицы «Кредиторы: | Третьи лица:»).
+        _CREDIT_ORG = re.compile(r"банк|\bмкк\b|\bмфк\b|\bпко\b|\bкпк\b", re.IGNORECASE)
+
+        entries = []
+        cur_name: list = []
+        cur_tail: list = []
+        in_addr = False
+
+        def flush():
+            nonlocal cur_name, cur_tail, in_addr
+            name = re.sub(r"\s+", " ", " ".join(cur_name)).strip(" ,;")
+            tail = re.sub(r"\s+", " ", " ".join(cur_tail)).strip(" ,;")
+            if name and len(name) >= 5 and not _CREDIT_ORG.search(name):
+                entry = {"name": name}
+                # Реквизиты персоны в хвосте адреса — отделяем от самого адреса.
+                m_req = re.search(
+                    r"\d{2}\.\d{2}\.\d{4}\s*(?:г\.?\s*р|года\s+рождения)|паспорт|снилс|инн",
+                    tail, re.IGNORECASE,
+                )
+                addr = tail[: m_req.start()] if m_req else tail
+                req = tail[m_req.start():] if m_req else ""
+                if addr.strip(" ,;"):
+                    entry["address"] = addr.strip(" ,;")
+                bd = re.search(r"(\d{2}\.\d{2}\.\d{4})\s*(?:г\.?\s*р|года\s+рождения)", req, re.IGNORECASE)
+                if bd:
+                    entry["birthDate"] = bd.group(1)
+                sn = re.search(r"снилс[:\s]*([\d][\d\-\s]{9,15}\d)", req, re.IGNORECASE)
+                if sn:
+                    entry["snils"] = re.sub(r"\s+", " ", sn.group(1)).strip()
+                inn_m = re.search(r"\bинн\b[:\s]*(\d{10,12})", req, re.IGNORECASE)
+                if inn_m:
+                    entry["inn"] = inn_m.group(1)
+                entries.append(entry)
+            cur_name, cur_tail, in_addr = [], [], False
+
+        for ln in (s.strip() for s in block.splitlines()):
+            if not ln:
+                continue
+            if re.match(r"\d{6}\b", ln):
+                in_addr = True
+                cur_tail.append(ln)
+                continue
+            # «Имя и адрес одной строкой» («ПАО СБЕРБАНК 117312, г Москва…») —
+            # начало НОВОЙ записи со встроенным адресом.
+            m_inline = re.search(r"\s(\d{6}\b.*)$", ln)
+            if m_inline and not _REQ_LINE.match(ln):
+                flush()
+                cur_name.append(ln[: m_inline.start()])
+                cur_tail.append(m_inline.group(1))
+                in_addr = True
+                continue
+            if in_addr:
+                if _REQ_LINE.match(ln):
+                    cur_tail.append(ln)  # реквизиты персоны — продолжение записи
+                elif _ORG_START.match(ln) or (not re.search(r"\d", ln) and self._SB_FIO_RE.match(ln)):
+                    flush()
+                    cur_name.append(ln)
+                elif re.search(r"\d", ln) or not re.match(r"[А-ЯЁ]{2,}", ln):
+                    cur_tail.append(ln)  # хвост адреса
+                else:
+                    flush()
+                    cur_name.append(ln)
+            else:
+                cur_name.append(ln)
+        flush()
+        return entries
+
     def _apply_fns_authority(self, fields: Dict[str, Any], text: str) -> None:
         """Заявления уполномоченного органа (ФНС) о банкротстве/включении в РТК.
 
@@ -1854,10 +2179,67 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             elif len(_norm(cand)) > len(_norm(cur)) and _norm(cand).startswith(_norm(cur)):
                 fields[field] = cand
 
+    # Категории адресных компонентов для детекта СКЛЕЙКИ двух адресов: один адрес
+    # не содержит две РАЗНЫЕ области / города / улицы / дома / почтовых индекса.
+    # «Дом» считаем только с цифрой после («д. 6»): «д. Иваново» — деревня, не дом.
+    # «г.» после «тер.» — ФИАС-элемент «вн.тер.г.», не второй город.
+    _ADDR_COMPONENT_RES = (
+        ("index", re.compile(r"\b(\d{6})\b")),
+        ("region", re.compile(r"\bобл(?:асть|асти|\.)?(?=[\s,])", re.IGNORECASE)),
+        ("city", re.compile(r"(?<!тер\.)\b(?:г|гор|город)\b\.?\s?(?=[А-ЯЁ])", re.IGNORECASE)),
+        ("street", re.compile(r"\b(?:ул|улица)\b\.?", re.IGNORECASE)),
+        ("house", re.compile(r"\b(?:д|дом)\.?\s*№?\s*(\d[\w/-]*)", re.IGNORECASE)),
+    )
+
+    @staticmethod
+    def _addr_component_value(addr: str, m: "re.Match", kind: str) -> str:
+        """Значение адресного компонента (какой именно город/улица/дом)."""
+        if kind in ("index", "house"):
+            return (m.group(1) or "").casefold()
+        # region/city/street: имя — заглавное слово ПОСЛЕ маркера («г. Москва»)
+        # либо ПЕРЕД ним («Ростовская обл,», «Ульяновская область»).
+        ma = re.match(r"[\s.]*([А-ЯЁ][А-ЯЁа-яё-]{1,})", addr[m.end():])
+        if ma:
+            return ma.group(1).casefold()
+        mb = re.search(r"([А-ЯЁ][А-ЯЁа-яё-]{1,})[\s,]*$", addr[: m.start()])
+        return mb.group(1).casefold() if mb else ""
+
+    def _truncate_glued_address(self, addr: str) -> str:
+        """Обрезает склейку двух адресов в одном поле.
+
+        Пример (Корсунов): «347631, обл. Ростовская, …, кв. 61 Кредиторы ООО МКК
+        Эквазайм 432071, Ульяновская область, …» — за адресом должника продолжен
+        список кредиторов. Правила: (1) слово «кредитор» внутри адреса — обрезка
+        по нему; (2) повтор адресной категории (индекс/область/город/улица/дом)
+        с ДРУГИМ значением — обрезка перед самым ранним повтором. Повтор с тем же
+        значением («г. о. город Новочеркасск, г. Новочеркасск …») — ФИАС-стиль
+        одного адреса, не склейка.
+        """
+        m_cred = re.search(r"[\s,;]кредитор\w*", addr, re.IGNORECASE)
+        if m_cred:
+            addr = addr[: m_cred.start()]
+        cut = len(addr)
+        for kind, rx in self._ADDR_COMPONENT_RES:
+            first_val = None
+            for m in rx.finditer(addr):
+                val = self._addr_component_value(addr, m, kind)
+                if first_val is None:
+                    first_val = val
+                    continue
+                if val and first_val and val != first_val:
+                    cut = min(cut, m.start())
+                    break
+        addr = addr[:cut].strip().rstrip(" ,;-")
+        # Огрызок следующей записи: ОПФ-хвост («… д. 80 к. 9 ООО ПКО «РСВ»») —
+        # в самом адресе организаций-ОПФ не бывает, это начало имени кредитора.
+        addr = re.sub(r"\s+(?:ООО|ОАО|ЗАО|ПАО|НАО|АО)\b.*$", "", addr)
+        return addr.strip().rstrip(" ,;-")
+
     def _sanitize_address_fields(self, fields: Dict[str, Any]) -> None:
         """Адресные поля не должны содержать реквизиты (ИНН/ОГРН/ОГРНИП/СНИЛС/КПП):
         обрезаем хвост по первому такому маркеру; если осмысленного адреса (букв)
-        не осталось — поле было мусором, удаляем."""
+        не осталось — поле было мусором, удаляем. Затем режем склейку двух
+        адресов (повтор индекса/области/города/улицы/дома, «Кредиторы …» внутри)."""
         for k in ("applicantAddress", "creditorAddress", "managerAddress",
                   "thirdPartyAddress", "debtorAddress"):
             v = fields.get(k)
@@ -1866,6 +2248,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             cleaned = re.split(
                 r"\b(?:ИНН|ОГРНИП|ОГРН|СНИЛС|КПП)\b", v, flags=re.IGNORECASE
             )[0].strip().rstrip(" ,;-")
+            cleaned = self._truncate_glued_address(cleaned)
             if not re.search(r"[А-Яа-яЁё]{3}", cleaned):
                 fields.pop(k, None)
             elif cleaned != v:

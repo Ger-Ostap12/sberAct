@@ -148,16 +148,19 @@ describe('DocumentAnalysis — самобанкротство', () => {
     expect(screen.getByRole('radio', { name: 'Самобанкрот' })).toBeInTheDocument();
   });
 
-  it('выбор «Самобанкрот» скрывает «Информация о кредиторе», повторный клик возвращает', () => {
+  it('выбор «Самобанкрот» скрывает «Информация о кредиторе» и «Финансовые данные», повторный клик возвращает', () => {
     renderSelf();
     fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));
     expect(screen.getByText('Информация о кредиторе')).toBeInTheDocument();
+    expect(screen.getByText('Финансовые данные')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('radio', { name: 'Самобанкрот' }));
     expect(screen.queryByText('Информация о кредиторе')).not.toBeInTheDocument();
+    expect(screen.queryByText('Финансовые данные')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('radio', { name: 'Самобанкрот' })); // toggle: снять
     expect(screen.getByText('Информация о кредиторе')).toBeInTheDocument();
+    expect(screen.getByText('Финансовые данные')).toBeInTheDocument();
   });
 
   it('«Самобанкрот» не сбрасывается при смене категории лица', () => {
