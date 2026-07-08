@@ -88,9 +88,10 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
 
             {/* Статус должника (банкротство) — влияет на финальный СА.
                 «Умерший» доступен только для Физ.лица, «Отсутствующий»/«Ликвидируемый» —
-                только для Юр.лица. Выбор взаимоисключающий → круглые radio;
-                повторный клик снимает выбор. */}
-            {(entityType === 'individual' || entityType === 'legal') && (
+                только для Юр.лица, «Самобанкрот» (заявление подал сам должник) —
+                для ЛЮБОЙ категории; он скрывает блок «Информация о кредиторе».
+                Выбор взаимоисключающий → круглые radio; повторный клик снимает выбор. */}
+            {entityType && (
             <Box sx={{ mb: 4 }}>
               <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 1 }}>
                 Статус должника
@@ -117,6 +118,11 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                     label="Умерший"
                   />
                 )}
+                <FormControlLabel
+                  value="self"
+                  control={<Radio onClick={() => toggleDebtorStatus('self')} />}
+                  label="Самобанкрот"
+                />
               </RadioGroup>
             </Box>
             )}

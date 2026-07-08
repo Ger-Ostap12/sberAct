@@ -120,6 +120,10 @@ export interface ExtractedData {
   /** Разбивка полей финансов на слагаемые (ключ поля → суммы), когда итог сложился
    *  из нескольких обязательств. Для тултипа «откуда число» в FinancesSection. */
   financeBreakdown?: Record<string, string[]> | null;
+  /** Вид заявления: 'self_bankruptcy' — на банкротство подаёт САМ должник
+   *  (заявитель = должник, кредитора-заявителя нет). Фронт автопроставляет
+   *  статус должника «Самобанкрот» и скрывает блок «Информация о кредиторе». */
+  applicationKind?: 'self_bankruptcy' | null;
   thirdParties?: ThirdParty[];
   debtors?: Debtor[];
   rawText: string;
@@ -245,9 +249,10 @@ export interface RTKDecision {
 // Типы для выбора судебных актов
 export type EntityType = 'individual' | 'legal' | 'ip' | 'kfh';
 export type CollateralOption = 'collateral' | 'collateral_auto' | 'no_collateral';
-// Статус должника (банкротство): отсутствующий / ликвидируемый ЮЛ, либо умерший ФЛ.
-// Влияет на рекомендацию финального СА.
-export type DebtorStatus = 'absent' | 'liquidation' | 'deceased';
+// Статус должника (банкротство): отсутствующий / ликвидируемый ЮЛ, умерший ФЛ,
+// либо самобанкрот (заявление подал сам должник) — доступен ЛЮБОЙ категории лица.
+// Влияет на рекомендацию финального СА; «self» скрывает блок кредитора.
+export type DebtorStatus = 'absent' | 'liquidation' | 'deceased' | 'self';
 
 export interface SelectedAct {
   id: string;

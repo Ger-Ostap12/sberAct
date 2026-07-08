@@ -11099,5 +11099,630 @@
     "name": "ТОЛСТОЙ ЛЕВ НИКОЛАЕВИЧ"
    }
   ]
+ },
+ "Самобанкрот/A53-9758-2026_20260318_Zajavlenie.docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "125315, город Москва, Ленинградский пр-кт, д. 80 к. 9 ООО ПКО «РСВ» 127055, город Москва, ул. Бутырский Вал, д. 68/70 стр. 1, эт 2 пом I комн 4 ООО ПКО «Интел Коллект» 630099, Новосибирская область, г Новосибирск, ул Максима Горького, д. 24 ООО ПКО «Бустер.Ру» 630099, Новосибирская область, г Новосибирск, Советская ул, д. 23",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "612102429513",
+    "name": "Тарасенко (Матвеенко)",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "initiation_legal",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "125315, город Москва, Ленинградский пр-кт, д. 80 к. 9 ООО ПКО «РСВ» 127055, город Москва, ул. Бутырский Вал, д. 68/70 стр. 1, эт 2 пом I комн 4 ООО ПКО «Интел Коллект» 630099, Новосибирская область, г Новосибирск, ул Максима Горького, д. 24 ООО ПКО «Бустер.Ру» 630099, Новосибирская область, г Новосибирск, Советская ул, д. 23",
+   "applicantName": "Тарасенко (Матвеенко)",
+   "applicantNameAccusative": "Тарасенко",
+   "applicantNameGenitive": "Тарасенко",
+   "applicantNameInstrumental": "Тарасенко",
+   "applicationDate": "21.11.1971",
+   "contractNumber": "ами",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorName": "АО МКК Займ-Экспресе 125315",
+   "debtAmount": "35 000,00",
+   "debtorName": "Тарасенко (Матвеенко)",
+   "entityType": "individual",
+   "inn": "612102429513",
+   "loanDebt": "35 000",
+   "requirementsSum": "35 000,00",
+   "sourceDocumentType": "initiation_legal",
+   "sroName": "Ассоциация Евросибирская саморегулируемая организация арбитражных управляющих",
+   "totalDebt": "35 000,00"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 4,
+   "wordCount": 1337
+  },
+  "obligations": [],
+  "rawTextLen": 9836,
+  "rawTextSha": "9e3f62775ea8717060d103654f30fa811e1ec3350b9542ebe6ff342f97235871",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Самобанкрот/Заявление РФЛ.docx": {
+  "collaterals": [],
+  "confidence": 0.85,
+  "debtors": [
+   {
+    "address": "344002, Ростов-на-Дону",
+    "birthDate": "",
+    "birthPlace": "гор. Новочеркасск",
+    "inn": "",
+    "name": "Каплунова Виталия Геннадиевича",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "344002, Ростов-на-Дону",
+   "applicantName": "Каплунова Виталия Геннадиевича",
+   "applicantNameAccusative": "Каплунова Виталия Геннадиевича",
+   "applicantNameDative": "Каплунову Виталию Геннадиевичу",
+   "applicantNameGenitive": "Каплунова Виталия Геннадиевича",
+   "applicantNameInstrumental": "Каплуновым Виталием Геннадиевичем",
+   "applicationDate": "14.10.1981",
+   "birthPlace": "гор. Новочеркасск",
+   "contractDate": "Не указана",
+   "contractNumber": "465076",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorName": "ПАО \"Банк ПСБ",
+   "debtAmount": "116 000,00",
+   "debtorName": "Каплунова Виталия Геннадиевича",
+   "entityType": "individual",
+   "loanDebt": "116 000",
+   "obligations": [
+    {
+     "contractDate": "Не указана",
+     "contractNumber": "465076",
+     "id": "obligation_fallback_0",
+     "obligationType": "Договор"
+    }
+   ],
+   "requirementsSum": "116 000,00",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "116 000,00"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 1571
+  },
+  "obligations": [
+   {
+    "contractDate": "Не указана",
+    "contractNumber": "465076",
+    "id": "obligation_fallback_0",
+    "obligationType": "Договор"
+   }
+  ],
+  "rawTextLen": 12423,
+  "rawTextSha": "88fb1680b3a0348d45c6060e14572bb9f3edeab59e5bb32603d471af0660ca0e",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Самобанкрот/Заявление РФЛ1.docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "344002, Ростов-на-Дону",
+    "birthDate": "",
+    "birthPlace": "с. Развильное",
+    "inn": "",
+    "name": "рбитражный суд Ростовско",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "344002, Ростов-на-Дону",
+   "applicantName": "рбитражный суд Ростовско",
+   "applicantNameAccusative": "рбитражного суд Ростовско",
+   "applicantNameGenitive": "Слабунова Сергея Сергеевича",
+   "applicantNameInstrumental": "рбитражным судом Ростовско",
+   "applicationDate": "28.11.1988",
+   "birthPlace": "с. Развильное",
+   "contractDate": "Не указана",
+   "contractNumber": "114409",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorName": "ООО МФК \"Джой Мани",
+   "debtAmount": "",
+   "debtorName": "не располагает имуществом",
+   "entityType": "individual",
+   "loanDebt": "Арбитражный суд Ростовской области",
+   "obligations": [
+    {
+     "contractDate": "Не указана",
+     "contractNumber": "114409",
+     "id": "obligation_fallback_0",
+     "obligationType": "Договор"
+    }
+   ],
+   "requirementsSum": "",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "25 000,00"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 1595
+  },
+  "obligations": [
+   {
+    "contractDate": "Не указана",
+    "contractNumber": "114409",
+    "id": "obligation_fallback_0",
+    "obligationType": "Договор"
+   }
+  ],
+  "rawTextLen": 12518,
+  "rawTextSha": "62134f5dd3ca74632599e8e13d621b6c4c1b496857dc8a23b08ded170efe16e3",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Самобанкрот/Заявление должника о признании его несостоятельным (банкротом) на 5 л..docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "346900, Ростовская обл. гор. Новошахтинск, ул. Харьковская, д. 259, кв. 103",
+    "birthDate": "05.01.1995",
+    "birthPlace": "гор. Новошахтинск",
+    "inn": "615109700605",
+    "name": "Бакалов Дмитрий Александрович",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "143-252-167 28"
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "346900, Ростовская обл. гор. Новошахтинск, ул. Харьковская, д. 259, кв. 103",
+   "applicantName": "Бакалов Дмитрий Александрович",
+   "applicantNameAccusative": "Бакалова Дмитрия Александровича",
+   "applicantNameDative": "Бакалову Дмитрию Александровичу",
+   "applicantNameGenitive": "Бакалова Дмитрия Александровича",
+   "applicantNameInstrumental": "Бакаловым Дмитрием Александровичем",
+   "applicationDate": "05.01.1995",
+   "birthDate": "05.01.1995",
+   "birthPlace": "гор. Новошахтинск",
+   "caseNumber": "2-1178/2024",
+   "companyInn": "615109700605",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorName": "ООО ПКО «Айди Коллект» по денежным обязательствам",
+   "debtAmount": "301,79",
+   "debtSnapshotDate88": "10.03.2026",
+   "debtorName": "Бакалов Дмитрий Александрович",
+   "entityType": "individual",
+   "inn": "615109700605",
+   "loanDebt": "301,79",
+   "requirementsSum": "301,79",
+   "snils": "143-252-167 28",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "402 592,13"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 3,
+   "wordCount": 2096
+  },
+  "obligations": [],
+  "rawTextLen": 15763,
+  "rawTextSha": "e03735c3ffdb5b60d773e531e91887a5ebc8662fcfe789324fd2e0326b1f40c7",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Самобанкрот/Заявление на банкротство Медведев М.Ю.docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "347022, Ростовская область, Белокалитвинский р-н, рп. Шолоховский, улица М. Горького, дом 46, квартира 1",
+    "birthDate": "30.08.1985",
+    "birthPlace": "пос. Шолоховский",
+    "inn": "614208901558",
+    "name": "Медведев Максим Юрьевич",
+    "ogrn": "1125476023298",
+    "ogrnip": "",
+    "snils": "063-128-006 22"
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "legal",
+  "fields": {
+   "applicantAddress": "347022, Ростовская область, Белокалитвинский р-н, рп. Шолоховский, улица М. Горького, дом 46, квартира 1",
+   "applicantName": "Медведев Максим Юрьевич",
+   "applicantNameAccusative": "Медведева Максима Юрьевича",
+   "applicantNameDative": "Медведеву Максиму Юрьевичу",
+   "applicantNameGenitive": "Медведева Максима Юрьевича",
+   "applicantNameInstrumental": "Медведевым Максимом Юрьевичем",
+   "applicationDate": "30.08.1985",
+   "birthDate": "30.08.1985",
+   "birthPlace": "пос. Шолоховский",
+   "companyInn": "614208901558",
+   "contractDate": "19.04.2025, 17.04.2025, 05.03.2025, 22.02.2025, 31.01.2025, 29.01.2025, 21.04.2023, 24.05.2025, 20.04.2025, 18.04.2025, 03.02.2025, 02.01.2025, 20.11.2024",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorName": "ООО МФК «СОВКОМ ЭКСПРЕСС",
+   "debtAmount": "",
+   "debtorName": "Медведев Максим Юрьевич",
+   "entityType": "legal",
+   "inn": "614208901558",
+   "legalShortName": "Медведев Максим Юрьевич",
+   "loanDebt": "Арбитражный суд Ростовской области\nАдрес",
+   "obligationType": "Кредитный договор",
+   "ogrn": "1125476023298",
+   "procedureType": "observation",
+   "procedureTypeRaw": "наблюдение",
+   "requirementsSum": "",
+   "snils": "063-128-006 22",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": ""
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 6,
+   "wordCount": 1827
+  },
+  "obligations": [],
+  "rawTextLen": 13373,
+  "rawTextSha": "ed76f69ad0a72e25a4f52ed006d1d5f102691ee05dfb1fec03cd97076716355b",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "legal",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Самобанкрот/Заявление о признании гражданина несостоятельным (банкротом).docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "у Ростовская обл., г. Ростов-на-Дону, Ворошиловский р-п, ул. Врубовая, 17, кв. 23-27. Кадастровый номер 61:44:0011105:1180. Должник не осуществляет предпринимательскую деятельность. Не осуществляет трудовую деятельность. Является самозанятым. На данный момент не имеет дохода. Постановление Правительства Ростовской области от 01.11.2025 № «Об установлении величины прожиточного минимума на душу населения и по основным социально-демографическим группам населения в Ростовской области на 2026 год»: на душу населения: 17803 руб./мес., для трудоспособного населения: 19405 руб./мес., для пенсионеров: 15311 руб./мес., для детей: 17269 руб./мес. Согласно приложенным к заявлению Должником документам общий размер задолженности по неисполненным кредитным обязательствам составил на момент подачи Заявления 859764.45 руб. С учетом положений п.2 ст213.14 ФЗ «О несостоятельности (",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "1160062005",
+    "name": "Федоренко Александрой Александровной",
+    "ogrn": "1021603626098",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "initiation_physical",
+  "entityType": "legal",
+  "fields": {
+   "applicantAddress": "у Ростовская обл., г. Ростов-на-Дону, Ворошиловский р-п, ул. Врубовая, 17, кв. 23-27. Кадастровый номер 61:44:0011105:1180. Должник не осуществляет предпринимательскую деятельность. Не осуществляет трудовую деятельность. Является самозанятым. На данный момент не имеет дохода. Постановление Правительства Ростовской области от 01.11.2025 № «Об установлении величины прожиточного минимума на душу населения и по основным социально-демографическим группам населения в Ростовской области на 2026 год»: на душу населения: 17803 руб./мес., для трудоспособного населения: 19405 руб./мес., для пенсионеров: 15311 руб./мес., для детей: 17269 руб./мес. Согласно приложенным к заявлению Должником документам общий размер задолженности по неисполненным кредитным обязательствам составил на момент подачи Заявления 859764.45 руб. С учетом положений п.2 ст213.14 ФЗ «О несостоятельности (",
+   "applicantName": "Федоренко Александрой Александровной",
+   "applicantNameAccusative": "Федоренко Александру Александровну",
+   "applicantNameDative": "Федоренко Александре Александровне",
+   "applicantNameGenitive": "Федоренко Александры Александровны",
+   "applicantNameInstrumental": "Федоренко Александрой Александровной",
+   "applicationDate": "15.04.1999",
+   "companyInn": "1160062005",
+   "contractDate": "Не указана",
+   "contractNumber": "695627",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorName": "ПАО МКК «Займёр» ИНН",
+   "debtAmount": "25 000,00",
+   "debtorName": "Федоренко Александрой Александровной",
+   "entityType": "legal",
+   "inn": "1160062005",
+   "legalShortName": "владеет недвижимым имуществом",
+   "loanDebt": "25 000",
+   "obligations": [
+    {
+     "contractDate": "Не указана",
+     "contractNumber": "695627",
+     "id": "obligation_fallback_0",
+     "obligationType": "Договор"
+    }
+   ],
+   "ogrn": "1021603626098",
+   "procedureType": "observation",
+   "procedureTypeRaw": "наблюдение",
+   "sourceDocumentType": "initiation_physical",
+   "sroName": "Некоммерческое партнерство \"Саморегулируемая организация \"Гильдия арбитражных управляющих\"",
+   "totalDebt": "25 000,00"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 3,
+   "wordCount": 928
+  },
+  "obligations": [
+   {
+    "contractDate": "Не указана",
+    "contractNumber": "695627",
+    "id": "obligation_fallback_0",
+    "obligationType": "Договор"
+   }
+  ],
+  "rawTextLen": 7476,
+  "rawTextSha": "8c006ec81c00a0edfa4b6a79b39fe86bb846b47e43653e2b8896661f4baf0b0b",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "legal",
+   "recommendedActIds": [
+    "final_realization",
+    "acceptance_definition",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Самобанкрот/Заявление физического лица о признании его несостоятельным (банкротом).docx": {
+  "collaterals": [],
+  "confidence": 0.85,
+  "debtors": [
+   {
+    "address": "347631, обл. Ростовская, р-н Сальский, гор. Сальск, ул. Севастопольская, д. 93-в, кв. 61 Кредиторы ООО МКК Эквазайм 432071, Ульяновская область, г Ульяновск ул Карла Маркса, д. 13а к. 1, помещ./этаж",
+    "birthDate": "19.01.1995",
+    "birthPlace": "гор. Сальск Ростовской",
+    "inn": "615301047741",
+    "name": "Корсунов Вячеслав",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "155-161-603 44"
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "347631, обл. Ростовская, р-н Сальский, гор. Сальск, ул. Севастопольская, д. 93-в, кв. 61 Кредиторы ООО МКК Эквазайм 432071, Ульяновская область, г Ульяновск ул Карла Маркса, д. 13а к. 1, помещ./этаж",
+   "applicantName": "Корсунов Вячеслав",
+   "applicantNameAccusative": "Корсунова Вячеслава",
+   "applicantNameDative": "Корсунову Вячеславу",
+   "applicantNameGenitive": "Корсунова Вячеслава Валерьевича",
+   "applicantNameInstrumental": "Корсуновым Вячеславом",
+   "applicationDate": "19.01.1995",
+   "birthDate": "19.01.1995",
+   "birthPlace": "гор. Сальск Ростовской",
+   "companyInn": "615301047741",
+   "contractDate": "Не указана",
+   "contractNumber": "672699, 671711",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorName": "ООО МКК Эквазайм 432071",
+   "debtAmount": "3 000,00",
+   "debtorName": "Корсунов Вячеслав Валерьевич",
+   "entityType": "individual",
+   "inn": "615301047741",
+   "loanDebt": "3 000",
+   "obligationType": "кредитный договор",
+   "obligations": [
+    {
+     "contractDate": "Не указана",
+     "contractNumber": "672699",
+     "id": "obligation_fallback_0",
+     "obligationType": "Договор"
+    },
+    {
+     "contractDate": "Не указана",
+     "contractNumber": "671711",
+     "id": "obligation_fallback_1",
+     "obligationType": "Договор"
+    }
+   ],
+   "requirementsSum": "3 000,00",
+   "snils": "155-161-603 44",
+   "sourceDocumentType": "rtk_application",
+   "sroName": "Ассоциации РСО ПАУ (Региональной саморегулируемой организациипрофессиональных арбитражных управляющих)",
+   "totalDebt": "3 000,00"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 5,
+   "wordCount": 1547
+  },
+  "obligations": [
+   {
+    "contractDate": "Не указана",
+    "contractNumber": "672699",
+    "id": "obligation_fallback_0",
+    "obligationType": "Договор"
+   },
+   {
+    "contractDate": "Не указана",
+    "contractNumber": "671711",
+    "id": "obligation_fallback_1",
+    "obligationType": "Договор"
+   }
+  ],
+  "rawTextLen": 11511,
+  "rawTextSha": "f37c2e52186919f13707763854b5fd2ab338f952f435fb062ab763871ee24f60",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "Самобанкрот/заявление.docx": {
+  "collaterals": [
+   {
+    "address": "",
+    "brandModel": "ВАЗ 21703",
+    "cadastralNumber": "",
+    "collateralType": "auto",
+    "collateralValue": "",
+    "description": "Марка : ВАЗ 21703, 2007 года, госномер Н823КК761, VIN XTA21703070011431",
+    "id": "collateral-0",
+    "objectName": "ВАЗ 21703, гос. знак Н823КК761",
+    "otherDescription": "",
+    "vin": "XTA21703070011431"
+   }
+  ],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "по регистрации: 347631 Ростовская область, Сальский район, г. Сальск, пер. Малый, д. 4",
+    "birthDate": "10.09.1973",
+    "birthPlace": "с/з им. Карла Маркса Энгельского р-\t\t\t\t\tна Саратовской обл.",
+    "inn": "615398867985",
+    "name": "Галета (Карпух) Ольга Николаевна",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "049-288-075 97"
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "по регистрации: 347631 Ростовская область, Сальский район, г. Сальск, пер. Малый, д. 4",
+   "applicantName": "Галета (Карпух) Ольга Николаевна",
+   "applicantNameAccusative": "Галету Ольгу Николаевну",
+   "applicantNameGenitive": "Галеты Ольги Николаевны",
+   "applicantNameInstrumental": "Галетой Ольгой Николаевной",
+   "applicationDate": "10.09.1973",
+   "birthDate": "10.09.1973",
+   "birthPlace": "с/з им. Карла Маркса Энгельского р-\t\t\t\t\tна Саратовской обл.",
+   "collaterals": [
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "394270.65 руб.",
+     "id": "collateral-0",
+     "objectName": "394270.65 руб",
+     "otherDescription": "",
+     "vin": ""
+    }
+   ],
+   "companyInn": "615398867985",
+   "contractDate": "Не указана",
+   "contractNumber": "402670, 595166",
+   "courtName": "Арбитражный суд Ростовской области",
+   "debtAmount": "19 405,00",
+   "debtorName": "Галета (Карпух) Ольга Николаевна",
+   "entityType": "individual",
+   "inn": "615398867985",
+   "loanDebt": "19405,00",
+   "mortgageCollateralDescription1221": "394270.65 руб.",
+   "obligationType": "Договор займа",
+   "obligations": [
+    {
+     "contractDate": "Не указана",
+     "contractNumber": "402670",
+     "id": "obligation_fallback_0",
+     "obligationType": "Договор"
+    },
+    {
+     "contractDate": "Не указана",
+     "contractNumber": "595166",
+     "id": "obligation_fallback_1",
+     "obligationType": "Договор"
+    }
+   ],
+   "requirementsSum": "19 405,00",
+   "snils": "049-288-075 97",
+   "sourceDocumentType": "rtk_application",
+   "sroName": "Союз \"Межрегиональный центр арбитражных управляющих\"",
+   "thirdPartyAddress": "117312, г Москва, Академический р-н, ул Вавилова, д 19",
+   "totalDebt": "19 405,00"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 1405
+  },
+  "obligations": [
+   {
+    "contractDate": "Не указана",
+    "contractNumber": "402670",
+    "id": "obligation_fallback_0",
+    "obligationType": "Договор"
+   },
+   {
+    "contractDate": "Не указана",
+    "contractNumber": "595166",
+    "id": "obligation_fallback_1",
+    "obligationType": "Договор"
+   }
+  ],
+  "rawTextLen": 10682,
+  "rawTextSha": "8262f1ca3bc6fd3c04a7255f80088a35a688ab6b3108deaac60b9ce5d7b72e27",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": [
+   {
+    "name": "ПАО СБЕРБАНК 117312, г Москва, Академический р-н, ул Вавилова, д 19"
+   },
+   {
+    "name": "АО \"ТБАНК\" 127287, г Москва, ул Хуторская 2-я, д 38А стр 26"
+   },
+   {
+    "birthDate": "28.06.1969",
+    "inn": "615300015070",
+    "name": "АО 'ОТП Банк' 125171, г Москва, Ленинградское шоссе, д 16А стр 2",
+    "snils": "049-288-075 97"
+   }
+  ]
  }
 }

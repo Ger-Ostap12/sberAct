@@ -324,6 +324,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # и в golden). None, если разбивки нет.
             finance_breakdown = extracted_fields.pop("financeBreakdown", None)
 
+            # Самобанкротство (заявитель = сам должник): флаг top-level, НЕ в
+            # fields — по образцу financeBreakdown (не попадает в golden и в
+            # editedFields фронта). Фронт по нему автопроставляет статус
+            # должника «Самобанкрот» и скрывает блок кредитора.
+            application_kind = (
+                "self_bankruptcy" if self._detect_self_bankruptcy(text) else None
+            )
+
             # Формируем результат
             result = {
                 "documentType": document_type,
@@ -332,6 +340,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 "obligations": extracted_fields.get('obligations', []),
                 "collaterals": collaterals_final,
                 "financeBreakdown": finance_breakdown,
+                "applicationKind": application_kind,
                 "rawText": text,
                 "metadata": {
                     "pageCount": self.get_page_count(file_path),

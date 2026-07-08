@@ -116,6 +116,69 @@ describe('DocumentAnalysis — раскладка ФНС', () => {
   });
 });
 
+describe('DocumentAnalysis — самобанкротство', () => {
+  const renderSelf = (mutate?: (d: ExtractedData) => void) => {
+    const data = makeData();
+    if (mutate) mutate(data);
+    return render(
+      <DocumentAnalysis
+        documentData={documentData}
+        extractedData={data}
+        onAnalysisComplete={() => {}}
+        onBack={() => {}}
+      />,
+    );
+  };
+
+  it('статус «Самобанкрот» доступен каждой категории лица; чужие статусы не показаны', () => {
+    renderSelf();
+    // ИП: только «Самобанкрот» (ни умершего, ни отсутствующего/ликвидируемого).
+    fireEvent.click(screen.getByRole('radio', { name: 'ИП' }));
+    expect(screen.getByRole('radio', { name: 'Самобанкрот' })).toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: 'Умерший' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: 'Отсутствующий' })).not.toBeInTheDocument();
+    // ФЛ: «Умерший» + «Самобанкрот».
+    fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));
+    expect(screen.getByRole('radio', { name: 'Умерший' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Самобанкрот' })).toBeInTheDocument();
+    // ЮЛ: «Отсутствующий»/«Ликвидируемый» + «Самобанкрот».
+    fireEvent.click(screen.getByRole('radio', { name: 'Юр.лицо' }));
+    expect(screen.getByRole('radio', { name: 'Отсутствующий' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Ликвидируемый' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Самобанкрот' })).toBeInTheDocument();
+  });
+
+  it('выбор «Самобанкрот» скрывает «Информация о кредиторе», повторный клик возвращает', () => {
+    renderSelf();
+    fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));
+    expect(screen.getByText('Информация о кредиторе')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Самобанкрот' }));
+    expect(screen.queryByText('Информация о кредиторе')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Самобанкрот' })); // toggle: снять
+    expect(screen.getByText('Информация о кредиторе')).toBeInTheDocument();
+  });
+
+  it('«Самобанкрот» не сбрасывается при смене категории лица', () => {
+    renderSelf();
+    fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Самобанкрот' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'ИП' }));
+    expect(screen.getByRole('radio', { name: 'Самобанкрот' })).toBeChecked();
+    expect(screen.queryByText('Информация о кредиторе')).not.toBeInTheDocument();
+  });
+
+  it('applicationKind=self_bankruptcy с бэка автопроставляет статус и скрывает кредитора', () => {
+    renderSelf((d) => {
+      d.applicationKind = 'self_bankruptcy';
+      (d as any).recommendedActs = { entityType: 'individual' };
+    });
+    expect(screen.getByRole('radio', { name: 'Самобанкрот' })).toBeChecked();
+    expect(screen.queryByText('Информация о кредиторе')).not.toBeInTheDocument();
+  });
+});
+
 describe('DocumentAnalysis — поле СРО у управляющего', () => {
   const renderWithSro = () => {
     const data = makeData();

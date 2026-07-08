@@ -69,7 +69,10 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   // отсутствующий/ликвидируемый ЮЛ → «Решение конкурсное»; умерший ФЛ → «Решение реализация».
   useEffect(() => {
     if (!debtorStatus) return;
-    const finalByStatus: Record<DebtorStatus, string> = {
+    // «Самобанкрот» совместим с ЛЮБОЙ категорией лица: не диктует ни финальный СА,
+    // ни тип лица (его роль — скрыть блок кредитора: в заявлении должника его нет).
+    if (debtorStatus === 'self') return;
+    const finalByStatus: Partial<Record<DebtorStatus, string>> = {
       absent: 'final_competition',
       liquidation: 'final_competition',
       deceased: 'final_realization',
@@ -148,6 +151,12 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           || (analysisResult.fields as any)?.procedureTypeRaw || '';
         if (String(procType).toLowerCase().includes('умер') || String(procType).toLowerCase() === 'deceased') {
           setDebtorStatus('deceased');
+        }
+
+        // Самобанкротство (детектор backend: заявление подал сам должник) →
+        // статус «Самобанкрот»; блок «Информация о кредиторе» при нём скрыт.
+        if (analysisResult.applicationKind === 'self_bankruptcy') {
+          setDebtorStatus('self');
         }
 
         // Устанавливаем рекомендуемые акты
@@ -772,8 +781,10 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
               />
                 </Grid>
 
+                {/* Информация о кредиторе. У самобанкрота (заявление подаёт сам
+                    должник) кредитора-заявителя нет — блок скрываем. */}
+                {debtorStatus !== 'self' && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
-              {/* Информация о кредиторе */}
               <CreditorSection
                 editedFields={editedFields}
                 onFieldChange={handleFieldChange}
@@ -781,6 +792,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 banks={banks}
               />
                 </Grid>
+                )}
 
                 {/* ФНС: две независимые колонки — слева «Управляющий» + «Финансы»
                     встык, справа «Сведения о взыскании». Построчный Grid даёт masonry-
