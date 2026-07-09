@@ -1,6 +1,6 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, Form
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 import os
@@ -9,6 +9,7 @@ import tempfile
 import shutil
 from pathlib import Path
 from typing import Optional, Dict, Any
+from pydantic import BaseModel
 import json
 import logging
 from datetime import datetime
@@ -226,6 +227,109 @@ async def analyze_document(document: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=f"Ошибка при анализе документа: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при анализе документа: {str(e)}")
+
+
+class AnalyzeTextRequest(BaseModel):
+    """Тело /analyze-text: плоский текст заявления (+ число страниц исходника)."""
+    text: str
+    page_count: Optional[int] = None
+
+
+@app.post("/analyze-text")
+async def analyze_text(request: AnalyzeTextRequest):
+    """
+    Анализирует уже извлечённый текст заявления (без файла).
+
+    Используется convert-шагом: пользователь правит распознанный после
+    OCR-конвертации текст в предпросмотре, и по «Далее» сюда приходит
+    именно текст — файла-источника на этом пути нет.
+    Формат ответа и ошибок идентичен /analyze-document.
+    """
+    print("🔍 API: Получен запрос на анализ текста")
+    try:
+        analysis_result = document_analyzer.analyze_from_text(
+            request.text, page_count=request.page_count
+        )
+        return {
+            "success": True,
+            "data": analysis_result
+        }
+    except ValueError as e:
+        # Пустой/непригодный текст -> 400
+        raise HTTPException(status_code=400, detail=f"Ошибка при анализе документа: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при анализе документа: {str(e)}")
+
+
+# ---------------------------------------------------------------------------
+# Прокси к OCR-конвертеру (sidecar-процесс на 127.0.0.1:8008).
+# Фронт ходит только на наш origin (:8000) — порт конвертера наружу не течёт,
+# CORS не нужен. Catch-all не привязан к конкретным путям конвертера: контракт
+# (analyze/scan/native/status/download) живёт на стороне фронта.
+# См. docs/converter_integration_plan.md.
+# ---------------------------------------------------------------------------
+CONVERTER_URL = os.environ.get("CONVERTER_URL", "http://127.0.0.1:8008")
+# Заголовки соединения не пробрасываем: они описывают hop, а не содержимое.
+_CONVERT_HOP_HEADERS = {"host", "content-length", "connection", "transfer-encoding"}
+
+
+@app.api_route("/convert/{conv_path:path}", methods=["GET", "POST"])
+async def convert_proxy(conv_path: str, request: Request):
+    """
+    Прозрачный проброс запроса к конвертеру: тело и content-type передаются
+    как есть (multipart с boundary в заголовке проходит без пересборки),
+    ответ стримится обратно (download DOCX не буферизуется в памяти).
+    """
+    import httpx
+
+    url = f"{CONVERTER_URL}/{conv_path}"
+    headers = {
+        k: v for k, v in request.headers.items()
+        if k.lower() not in _CONVERT_HOP_HEADERS
+    }
+    body = await request.body()
+    # Upload скана + синхронный analyze могут длиться десятки секунд;
+    # connect короткий — «конвертер не запущен» должен падать быстро.
+    timeout = httpx.Timeout(120.0, connect=3.0)
+
+    client = httpx.AsyncClient(timeout=timeout)
+    try:
+        upstream = await client.send(
+            client.build_request(
+                request.method, url,
+                headers=headers,
+                content=body,
+                params=request.query_params,
+            ),
+            stream=True,
+        )
+    except httpx.ConnectError:
+        await client.aclose()
+        raise HTTPException(
+            status_code=502,
+            detail="Конвертер не запущен. Запустите конвертацию заново или пропустите её."
+        )
+    except httpx.TimeoutException:
+        await client.aclose()
+        raise HTTPException(status_code=504, detail="Конвертер не отвечает (таймаут)")
+
+    async def _stream_and_close():
+        try:
+            async for chunk in upstream.aiter_bytes():
+                yield chunk
+        finally:
+            await upstream.aclose()
+            await client.aclose()
+
+    passthrough = {
+        k: v for k, v in upstream.headers.items()
+        if k.lower() in ("content-type", "content-disposition")
+    }
+    return StreamingResponse(
+        _stream_and_close(),
+        status_code=upstream.status_code,
+        headers=passthrough,
+    )
 
 @app.get("/templates")
 async def get_templates():

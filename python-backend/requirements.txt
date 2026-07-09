@@ -16,5 +16,9 @@ pymorphy3>=1.2.0
 # не перейдёт на importlib.metadata.
 setuptools<81
 
+# Прокси /convert/* к OCR-конвертеру (sidecar на 127.0.0.1:8008) — см.
+# docs/converter_integration_plan.md.
+httpx>=0.27
+
 # --- dev-инструменты (линт/формат, в проде не нужны) ---
 ruff>=0.15
