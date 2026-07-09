@@ -5,9 +5,10 @@ import { LocalOffer as DocumentIcon, BugReport as DevToolsIcon } from '@mui/icon
 import DocumentUpload from './features/upload/DocumentUpload';
 import DocumentAnalysis from './features/analysis/DocumentAnalysis';
 import DocumentPreview from './features/preview/DocumentPreview';
+import ConvertScreen from './features/convert/ConvertScreen';
 import { DocumentData, TemplateType, ExtractedData, AnalysisResult } from './types';
 import { pickTemplate } from './templates';
-import { toggleDevTools } from './services/electronApi';
+import { toggleDevTools, converterStop } from './services/electronApi';
 
 const theme = createTheme({
   palette: {
@@ -48,11 +49,13 @@ const theme = createTheme({
 });
 
 function App() {
-  const [currentStep, setCurrentStep] = useState<'upload' | 'analysis' | 'preview'>('upload');
+  const [currentStep, setCurrentStep] = useState<'upload' | 'convert' | 'analysis' | 'preview'>('upload');
   const [documentData, setDocumentData] = useState<DocumentData | null>(null);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateType | null>(null);
   const [generatedDocument, setGeneratedDocument] = useState<string | null>(null);
+  /** PDF, ожидающий OCR-конвертации (шаг convert). */
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
 
   const handleDocumentUploaded = (data: DocumentData, analysisResult?: AnalysisResult) => {
     setDocumentData(data);
@@ -60,6 +63,25 @@ function App() {
       setExtractedData(analysisResult.data);
     }
     setCurrentStep('analysis');
+  };
+
+  // PDF идёт через конвертер: сначала предпросмотр с правкой, потом анализ
+  const handlePdfSelected = (file: File) => {
+    setPdfFile(file);
+    setCurrentStep('convert');
+  };
+
+  const handleConvertComplete = (result: AnalysisResult) => {
+    if (!pdfFile) return;
+    handleDocumentUploaded(
+      {
+        filePath: pdfFile.name,
+        fileName: pdfFile.name,
+        fileSize: pdfFile.size,
+        uploadDate: new Date(),
+      },
+      result
+    );
   };
 
   const handleAnalysisComplete = (data: ExtractedData) => {
@@ -79,6 +101,9 @@ function App() {
     setExtractedData(null);
     setSelectedTemplate(null);
     setGeneratedDocument(null);
+    setPdfFile(null);
+    // Sidecar-конвертер не нужен вне convert-шага — освобождаем память
+    converterStop().catch(() => undefined);
   };
 
   const handleOpenDevTools = () => {
@@ -88,7 +113,20 @@ function App() {
   const renderCurrentStep = () => {
     switch (currentStep) {
       case 'upload':
-        return <DocumentUpload onDocumentUploaded={handleDocumentUploaded} />;
+        return (
+          <DocumentUpload
+            onDocumentUploaded={handleDocumentUploaded}
+            onPdfSelected={handlePdfSelected}
+          />
+        );
+      case 'convert':
+        return (
+          <ConvertScreen
+            file={pdfFile!}
+            onComplete={handleConvertComplete}
+            onBack={resetToUpload}
+          />
+        );
       case 'analysis':
         return (
           <DocumentAnalysis
@@ -109,7 +147,12 @@ function App() {
           />
         );
       default:
-        return <DocumentUpload onDocumentUploaded={handleDocumentUploaded} />;
+        return (
+          <DocumentUpload
+            onDocumentUploaded={handleDocumentUploaded}
+            onPdfSelected={handlePdfSelected}
+          />
+        );
     }
   };
 

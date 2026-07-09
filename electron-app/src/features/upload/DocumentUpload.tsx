@@ -12,13 +12,21 @@ import {
 import { CloudUpload as UploadIcon, Description as FileIcon } from '@mui/icons-material';
 import { useDropzone } from 'react-dropzone';
 import { DocumentData, AnalysisResult } from '../../types';
-import { analyzeDocument, selectFile, hasElectronAPI } from '../../services/electronApi';
+import {
+  analyzeDocument,
+  selectFile,
+  hasElectronAPI,
+  getElectronAPI,
+  converterStart,
+} from '../../services/electronApi';
 
 interface DocumentUploadProps {
   onDocumentUploaded: (data: DocumentData, analysisResult?: AnalysisResult) => void;
+  /** PDF идёт на convert-шаг (OCR + предпросмотр), а не сразу в анализ. */
+  onPdfSelected?: (file: File) => void;
 }
 
-const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded }) => {
+const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded, onPdfSelected }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -32,6 +40,16 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded }) =
     const nameLower = file.name.toLowerCase();
     if (!nameLower.endsWith('.docx') && !nameLower.endsWith('.pdf')) {
       setError('Поддерживаются только файлы формата .docx и .pdf');
+      return;
+    }
+
+    // PDF — через OCR-конвертер (convert-шаг). Прогреваем sidecar сразу:
+    // пока пользователь смотрит на экран конвертации, модель уже грузится.
+    if (nameLower.endsWith('.pdf') && onPdfSelected) {
+      setError(null);
+      setUploadedFile(file);
+      converterStart().catch(() => undefined);
+      onPdfSelected(file);
       return;
     }
 
@@ -61,7 +79,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded }) =
     } finally {
       setIsAnalyzing(false);
     }
-  }, [onDocumentUploaded]);
+  }, [onDocumentUploaded, onPdfSelected]);
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
@@ -84,6 +102,18 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded }) =
       // Electron: системный диалог по пути через мост preload.
       const filePath = await selectFile();
       if (filePath) {
+        // PDF — на convert-шаг: читаем байты через мост и отдаём как File
+        if (filePath.toLowerCase().endsWith('.pdf') && onPdfSelected) {
+          const fileName = filePath.split(/[\\/]/).pop() || 'document.pdf';
+          const bytes = getElectronAPI().readFile(filePath);
+          const file = new File([new Uint8Array(bytes)], fileName, { type: 'application/pdf' });
+          setError(null);
+          setUploadedFile(file);
+          converterStart().catch(() => undefined);
+          onPdfSelected(file);
+          return;
+        }
+
         // Сразу запускаем анализ по выбранному пути
         setIsAnalyzing(true);
         setError(null);
