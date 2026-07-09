@@ -802,6 +802,16 @@ class ObligationsMixin:
                     # Исключаем платёжные поручения и госпошлину — это не договоры.
                     if any(w in context for w in ("поручение", "пошлин", "платёжн", "платежн", "квитанц")):
                         continue
+                    # Документы-удостоверения: «Паспорт: серия 6018 № 402670»,
+                    # «Свидетельством о браке/рождении/установлении отцовства серии
+                    # I-АН №671711», актовые записи — их номера не обязательства
+                    # (самобанкротные заявления, где паспорт должника в шапке).
+                    # Окно шире 40: «Свидетельством о установлении отцовства серии …».
+                    id_context = text[max(0, start - 75):start].lower()
+                    if any(w in id_context for w in (
+                            "паспорт", "свидетельств", "серия", "серии",
+                            "снилс", "актовая запись", "удостоверени")):
+                        continue
                     local = text[match.end(1): match.end(1) + 90]
                     dm = re.search(r'(?:от|заключ\w+)\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})', local, re.IGNORECASE)
                     date = dm.group(1).strip() if dm else None
@@ -828,11 +838,19 @@ class ObligationsMixin:
 
             # Ограничиваем до 5 обязательств
             for i, (num, date) in enumerate(valid_contracts[:5]):
+                obl_type = self.detect_obligation_type(text, num)
+                # Правило Андрея: голый тип «Договор» в fallback-пути — мусор
+                # (номера удостоверений/справок без кредитного контекста).
+                # Настоящее обязательство здесь всегда даёт конкретный тип
+                # (кредитный договор/карта/заём/поручительство/«Вид обязательства»).
+                if obl_type == "Договор":
+                    logger.info(f"Отсев fallback-обязательства №{num}: тип «Договор» без кредитного контекста")
+                    continue
                 obligation = {
                     'id': f"obligation_fallback_{i}",
                     'contractNumber': num,
                     'contractDate': date,
-                    'obligationType': self.detect_obligation_type(text, num)
+                    'obligationType': obl_type
                 }
                 obligations.append(obligation)
                 logger.info(f"Создано обязательство из полей: {obligation}")

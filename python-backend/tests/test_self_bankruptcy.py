@@ -171,7 +171,8 @@ def test_layout_house_number_kept_before_creditors(da):
     fields = {}
     da._apply_self_bankruptcy_layout(fields, text)
     assert fields["applicantAddress"].endswith("д. 23")
-    assert fields["birthDate"] == "14 июня 1990"
+    # Дата прописью конвертируется в дд.мм.гггг (поле фронта — type=date).
+    assert fields["birthDate"] == "14.06.1990"
 
 
 # --- Обрезка склеенных адресов (требование Андрея, кейс Корсунова) -------------
@@ -217,6 +218,41 @@ def test_third_parties_multiline_and_person(da):
     assert tps[0]["address"].startswith("347375")
     assert tps[1]["birthDate"] == "28.06.1969"
     assert tps[1]["inn"] == "615300015070"
+
+
+# --- Мусорные обязательства и ложный залог (правки по разбору Андрея) ----------
+def test_passport_numbers_not_obligations(da):
+    # Номера паспортов/свидетельств («Паспорт: серия 6018 № 402670», «Свидетельством
+    # о установлении отцовства серии I-АН №671711») — не обязательства.
+    text = ("Должник: Галета Ольга Николаевна\n"
+            "Паспорт: серия 6018 № 402670\n"
+            "что подтверждается Свидетельством о установлении отцовства серии I-АН №671711, выданным\n"
+            "ПРОШУ: Признать меня банкротом.")
+    assert da.extract_obligations(text, {"debtorName": "Галета Ольга Николаевна"}) == []
+
+
+def test_bare_dogovor_type_filtered(da):
+    # Правило Андрея: голый тип «Договор» (номер без кредитного контекста) в
+    # fallback-пути — отсев (напр. «налоговое уведомление № 224597118»).
+    text = ("Должник: Иванов Иван Иванович\n"
+            "в адрес должника направлено налоговое уведомление № 224597118 от 26.08.2025.\n")
+    assert da.extract_obligations(text, {"debtorName": "Иванов Иван Иванович"}) == []
+
+
+def test_inventory_property_not_collateral(da):
+    # Перечисление имущества должника — НЕ залог (Мирский: NISSAN из описи).
+    text = ("В настоящее время у Должника имеется следующее имущество:\n"
+            "недвижимое имущество — не имеет;\n"
+            "движимое имущество — автомобиль NISSAN PRIMERA, 2003 года выпуска; имущественные права — не имеет.")
+    assert da._extract_all_collateral_items(text) == []
+
+
+def test_pledged_property_still_collateral(da):
+    # А явный залог тем же форматом — извлекается по-прежнему.
+    text = ("В качестве обеспечения в залог передано следующее имущество:\n"
+            "- Автомобиль LADA VESTA, 2020 г.в., VIN XTA000000000000, стоимостью 500 000 руб.")
+    items = da._extract_all_collateral_items(text)
+    assert any("LADA" in s for s in items)
 
 
 def test_third_parties_filters_credit_orgs(da):

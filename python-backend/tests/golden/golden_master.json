@@ -226,8 +226,6 @@
    "applicantNameInstrumental": "Воробьёвой Светланой Михайловной",
    "applicationDate": "23.10.2025",
    "caseNumber": "А53-30857/2025",
-   "contractDate": "26.08.2025, 11.02.2026",
-   "contractNumber": "224597118, 002566",
    "courtDecisionDate": "30.01.2026",
    "courtName": "Арбитражный суд Ростовской области",
    "creditorAddress": "344019, Ростов-на-Дону г, Мясникова ул, 52/32",
@@ -244,20 +242,6 @@
    "fnsQ3Total": "200 432,14",
    "managerName": "Васильев Николай Иванович",
    "messageDate": "02.02.2026",
-   "obligations": [
-    {
-     "contractDate": "26.08.2025",
-     "contractNumber": "224597118",
-     "id": "obligation_fallback_0",
-     "obligationType": "Договор"
-    },
-    {
-     "contractDate": "11.02.2026",
-     "contractNumber": "002566",
-     "id": "obligation_fallback_1",
-     "obligationType": "Договор"
-    }
-   ],
    "requirementsSum": "55 393,70",
    "sourceDocumentType": "rtk_application",
    "totalDebt": "255 825,84"
@@ -267,20 +251,7 @@
    "pageCount": 2,
    "wordCount": 1164
   },
-  "obligations": [
-   {
-    "contractDate": "26.08.2025",
-    "contractNumber": "224597118",
-    "id": "obligation_fallback_0",
-    "obligationType": "Договор"
-   },
-   {
-    "contractDate": "11.02.2026",
-    "contractNumber": "002566",
-    "id": "obligation_fallback_1",
-    "obligationType": "Договор"
-   }
-  ],
+  "obligations": [],
   "rawTextLen": 9036,
   "rawTextSha": "fd80ff50735871e9e944d582b86202f5d5bdabc9f03963fc91b4b812dcf3937e",
   "recommendedActs": {
@@ -321,8 +292,6 @@
    "applicantNameInstrumental": "Мишуниным Иваном Александровичем",
    "applicationDate": "09.10.2025",
    "caseNumber": "А53-31320/2025",
-   "contractDate": "26.08.2023",
-   "contractNumber": "235759037",
    "courtDecisionDate": "09.10.2025",
    "courtName": "Арбитражный суд Ростовской области",
    "creditorAddress": "344019, Ростов-на-Дону г, Мясникова ул, 52/32",
@@ -337,14 +306,6 @@
    "fnsTotalComputed": "1",
    "managerName": "Котова Елена Сергеевна",
    "messageDate": "15.12.2025",
-   "obligations": [
-    {
-     "contractDate": "26.08.2023",
-     "contractNumber": "235759037",
-     "id": "obligation_fallback_0",
-     "obligationType": "Договор"
-    }
-   ],
    "procedureType": "restructuring",
    "procedureTypeRaw": "реструктуризации долгов гражданина",
    "sourceDocumentType": "rtk_application",
@@ -355,14 +316,7 @@
    "pageCount": 1,
    "wordCount": 646
   },
-  "obligations": [
-   {
-    "contractDate": "26.08.2023",
-    "contractNumber": "235759037",
-    "id": "obligation_fallback_0",
-    "obligationType": "Договор"
-   }
-  ],
+  "obligations": [],
   "rawTextLen": 5071,
   "rawTextSha": "bfbcb70ad2f265871af0c5633b27c89e2fd31af0d75ae161db430bc9a521ef46",
   "recommendedActs": {
@@ -402,8 +356,6 @@
    "applicantNameInstrumental": "Мурадьяном Максимом Евгеньевичем",
    "applicationDate": "03.10.2025",
    "caseNumber": "А53-31612/2025",
-   "contractDate": "26.08.2025",
-   "contractNumber": "265604384",
    "courtDecisionDate": "03.10.2025",
    "courtName": "Арбитражный суд Ростовской области",
    "creditorAddress": "344019, Ростов-на-Дону г, Мясникова ул, 52/32",
@@ -420,14 +372,6 @@
    "fnsQ3Total": "33 950,31",
    "managerName": "Гутников Кирилл Александрович",
    "messageDate": "05.02.2026",
-   "obligations": [
-    {
-     "contractDate": "26.08.2025",
-     "contractNumber": "265604384",
-     "id": "obligation_fallback_0",
-     "obligationType": "Договор"
-    }
-   ],
    "requirementsSum": "300,00",
    "sourceDocumentType": "rtk_application",
    "totalDebt": "187 348,68"
@@ -437,14 +381,7 @@
    "pageCount": 3,
    "wordCount": 1715
   },
-  "obligations": [
-   {
-    "contractDate": "26.08.2025",
-    "contractNumber": "265604384",
-    "id": "obligation_fallback_0",
-    "obligationType": "Договор"
-   }
-  ],
+  "obligations": [],
   "rawTextLen": 13358,
   "rawTextSha": "76a2b447e31197cbe44d3e0822ba86c38abb84f80cd6f3c58f50f6c0c4e17c47",
   "recommendedActs": {
@@ -551,8 +488,6 @@
    "applicantNameGenitive": "Артемова Игоря Геннадьевича",
    "applicantNameInstrumental": "Артемовым Игорем Геннадьевичем",
    "applicationDate": "30.01.2026",
-   "contractDate": "18.09.2025",
-   "contractNumber": "138906027",
    "courtDecisionDate": "26.02.2026",
    "courtName": "Арбитражный суд Ростовской области",
    "creditorAddress": "346407, Ростовская обл, Новочеркасск г, Ермака пр-кт, 104",
@@ -566,14 +501,6 @@
    "fnsQ3Penalties": "0,00",
    "fnsQ3Total": "855,35",
    "messageDate": "04.03.2026",
-   "obligations": [
-    {
-     "contractDate": "18.09.2025",
-     "contractNumber": "138906027",
-     "id": "obligation_fallback_0",
-     "obligationType": "Договор"
-    }
-   ],
    "requirementsSum": "34 104 315,00",
    "sourceDocumentType": "rtk_application",
    "totalDebt": "855,35"
@@ -583,14 +510,7 @@
    "pageCount": 2,
    "wordCount": 954
   },
-  "obligations": [
-   {
-    "contractDate": "18.09.2025",
-    "contractNumber": "138906027",
-    "id": "obligation_fallback_0",
-    "obligationType": "Договор"
-   }
-  ],
+  "obligations": [],
   "rawTextLen": 7332,
   "rawTextSha": "a854803a8da341feb8e4fb60e5bc0520c2a0b2c2882d525e1866b5848c8113fa",
   "recommendedActs": {
@@ -629,8 +549,6 @@
    "applicantNameGenitive": "Геворгян Ксении Валериевны",
    "applicantNameInstrumental": "Геворкян Ксенией Валериевной",
    "applicationDate": "30.12.2025",
-   "contractDate": "26.08.2025",
-   "contractNumber": "224670153",
    "courtDecisionDate": "03.03.2026",
    "courtName": "Арбитражный суд Ростовской области",
    "creditorAddress": "344019, Ростов-на-Дону г, Мясникова ул, 52/32",
@@ -647,14 +565,6 @@
    "managerAddress": "344082, Ростовская область",
    "managerName": "Тесёлкин Дмитрий Сергеевич",
    "messageDate": "05.03.2026",
-   "obligations": [
-    {
-     "contractDate": "26.08.2025",
-     "contractNumber": "224670153",
-     "id": "obligation_fallback_0",
-     "obligationType": "Договор"
-    }
-   ],
    "sourceDocumentType": "rtk_application",
    "totalDebt": "338,71"
   },
@@ -663,14 +573,7 @@
    "pageCount": 1,
    "wordCount": 926
   },
-  "obligations": [
-   {
-    "contractDate": "26.08.2025",
-    "contractNumber": "224670153",
-    "id": "obligation_fallback_0",
-    "obligationType": "Договор"
-   }
-  ],
+  "obligations": [],
   "rawTextLen": 7247,
   "rawTextSha": "a253d0e14783d9f0d08a48acb76f13a1b73f1e4ab5cdcf2bedf2d495b0d1df74",
   "recommendedActs": {
@@ -781,8 +684,6 @@
    "birthDate": "02.02.1982",
    "birthPlace": "ГОР. НОВОЧЕРКАССК",
    "companyInn": "615014390786",
-   "contractDate": "Не указана",
-   "contractNumber": "15399, 13754",
    "courtName": "Арбитражный суд Ростовской области",
    "creditorAddress": "450075, Башкортостан Респ, Уфа г, Октября проспект, 95, 2",
    "creditorName": "ФНС России в лице Межрайонной ИФНС России № 4 по Республике Башкортостан",
@@ -798,20 +699,6 @@
    "fnsQ3Penalties": "23 478,88",
    "fnsQ3Total": "5 151 863,38",
    "inn": "615014390786",
-   "obligations": [
-    {
-     "contractDate": "Не указана",
-     "contractNumber": "15399",
-     "id": "obligation_fallback_0",
-     "obligationType": "Договор"
-    },
-    {
-     "contractDate": "Не указана",
-     "contractNumber": "13754",
-     "id": "obligation_fallback_1",
-     "obligationType": "Договор"
-    }
-   ],
    "requirementsSum": "8,04",
    "snils": "063-843-816 80",
    "sourceDocumentType": "initiation_physical",
@@ -822,20 +709,7 @@
    "pageCount": 3,
    "wordCount": 1551
   },
-  "obligations": [
-   {
-    "contractDate": "Не указана",
-    "contractNumber": "15399",
-    "id": "obligation_fallback_0",
-    "obligationType": "Договор"
-   },
-   {
-    "contractDate": "Не указана",
-    "contractNumber": "13754",
-    "id": "obligation_fallback_1",
-    "obligationType": "Договор"
-   }
-  ],
+  "obligations": [],
   "rawTextLen": 11791,
   "rawTextSha": "e7f5ba073cec5e20cb47c68d01136bee5f557bf75194e6d7fdb602b73c2dd21f",
   "recommendedActs": {
@@ -11189,8 +11063,6 @@
    "birthDate": "14.10.1981",
    "birthPlace": "гор. Новочеркасск Ростовской обл",
    "companyInn": "615007959197",
-   "contractDate": "Не указана",
-   "contractNumber": "465076",
    "courtName": "Арбитражный суд Ростовской области",
    "debtAmount": "116 000,00",
    "debtorAddress": "346404, Ростовская обл., г. Новочеркасск, ул. Флерова, д. 4, кв. 18",
@@ -11198,14 +11070,6 @@
    "entityType": "individual",
    "inn": "615007959197",
    "loanDebt": "116 000",
-   "obligations": [
-    {
-     "contractDate": "Не указана",
-     "contractNumber": "465076",
-     "id": "obligation_fallback_0",
-     "obligationType": "Договор"
-    }
-   ],
    "requirementsSum": "116 000,00",
    "snils": "049-543-767-96",
    "sourceDocumentType": "rtk_application",
@@ -11216,14 +11080,7 @@
    "pageCount": 2,
    "wordCount": 1572
   },
-  "obligations": [
-   {
-    "contractDate": "Не указана",
-    "contractNumber": "465076",
-    "id": "obligation_fallback_0",
-    "obligationType": "Договор"
-   }
-  ],
+  "obligations": [],
   "rawTextLen": 12423,
   "rawTextSha": "c2e819475cf8c14343038e3c1b7fa18df20e7766f3940fb30a2116d72409df50",
   "recommendedActs": {
@@ -11274,8 +11131,6 @@
    "birthDate": "28.11.1988",
    "birthPlace": "с. Развильное Песчанокопский район Ростовская область",
    "companyInn": "612704321215",
-   "contractDate": "Не указана",
-   "contractNumber": "114409",
    "courtName": "Арбитражный суд Ростовской области",
    "debtAmount": "",
    "debtorAddress": "347561, Ростовская область, Песчанокопский р-н, с. Развильное, ул. Соляника, д. 20",
@@ -11283,14 +11138,6 @@
    "entityType": "individual",
    "inn": "612704321215",
    "loanDebt": "Арбитражный суд Ростовской области",
-   "obligations": [
-    {
-     "contractDate": "Не указана",
-     "contractNumber": "114409",
-     "id": "obligation_fallback_0",
-     "obligationType": "Договор"
-    }
-   ],
    "requirementsSum": "",
    "snils": "129-592-432 90",
    "sourceDocumentType": "rtk_application",
@@ -11301,14 +11148,7 @@
    "pageCount": 2,
    "wordCount": 1595
   },
-  "obligations": [
-   {
-    "contractDate": "Не указана",
-    "contractNumber": "114409",
-    "id": "obligation_fallback_0",
-    "obligationType": "Договор"
-   }
-  ],
+  "obligations": [],
   "rawTextLen": 12518,
   "rawTextSha": "62134f5dd3ca74632599e8e13d621b6c4c1b496857dc8a23b08ded170efe16e3",
   "recommendedActs": {
@@ -11454,25 +11294,12 @@
   "thirdParties": []
  },
  "Самобанкрот/Заявление о признании банкротом.docx": {
-  "collaterals": [
-   {
-    "address": "",
-    "brandModel": "",
-    "cadastralNumber": "",
-    "collateralType": "auto",
-    "collateralValue": "",
-    "description": "автомобиль NISSAN PRIMERA, 2003 года выпуска; имущественные права — не имеет",
-    "id": "collateral-0",
-    "objectName": "2003 г.в.",
-    "otherDescription": "",
-    "vin": ""
-   }
-  ],
+  "collaterals": [],
   "confidence": 0.95,
   "debtors": [
    {
     "address": "344039, г. Ростов-на-Дону, ул. Средняя, д. 23",
-    "birthDate": "14 июня 1990",
+    "birthDate": "14.06.1990",
     "birthPlace": "г. Ростов-на-Дону",
     "inn": "",
     "name": "Мирский Алексей Степанович",
@@ -11491,24 +11318,8 @@
    "applicantNameGenitive": "Мирского Алексея Степановича",
    "applicantNameInstrumental": "Мирским Алексеем Степановичем",
    "applicationDate": "21.04.2023",
-   "birthDate": "14 июня 1990",
+   "birthDate": "14.06.1990",
    "birthPlace": "г. Ростов-на-Дону",
-   "collaterals": [
-    {
-     "address": "",
-     "brandModel": "",
-     "cadastralNumber": "",
-     "collateralType": "other",
-     "collateralValue": "",
-     "description": "Шульженко Ю.В.",
-     "id": "collateral-0",
-     "objectName": "Шульженко Ю.В",
-     "otherDescription": "",
-     "vin": ""
-    }
-   ],
-   "contractDate": "Не указана",
-   "contractNumber": "278902",
    "courtName": "Арбитражный суд Ростовской области",
    "debtAmount": "158 434,00",
    "debtorAddress": "344039, г. Ростов-на-Дону, ул. Средняя, д. 23",
@@ -11520,15 +11331,6 @@
    "interest14": "0,00",
    "legalShortName": "не имеет возможности",
    "loanDebt": "25 000",
-   "mortgageCollateralDescription1221": "Шульженко Ю.В.",
-   "obligations": [
-    {
-     "contractDate": "Не указана",
-     "contractNumber": "278902",
-     "id": "obligation_fallback_0",
-     "obligationType": "Договор"
-    }
-   ],
    "penalties": "0,00",
    "principalDebt": "158 434,00",
    "principalDebt13": "158 434,00",
@@ -11543,14 +11345,7 @@
    "pageCount": 8,
    "wordCount": 2447
   },
-  "obligations": [
-   {
-    "contractDate": "Не указана",
-    "contractNumber": "278902",
-    "id": "obligation_fallback_0",
-    "obligationType": "Договор"
-   }
-  ],
+  "obligations": [],
   "rawTextLen": 18068,
   "rawTextSha": "90ef8da97701f254a8b6a1dd7db21d140934ee282abc2783abfb382fe2b8bc91",
   "recommendedActs": {
@@ -11593,8 +11388,6 @@
    "birthDate": "15.04.1999",
    "birthPlace": "ГОР. РОСТОВ-НА-ДОНУ РОССИЯ",
    "companyInn": "616118814199",
-   "contractDate": "Не указана",
-   "contractNumber": "695627",
    "courtName": "Арбитражный суд Ростовской области",
    "debtAmount": "25 000,00",
    "debtorAddress": "ОБЛ. РОСТОВСКАЯ, Г. РОСТОВ-НА-ДОНУ, УЛ. HOBATOPOB, Д. 6, КВ. 16",
@@ -11603,14 +11396,6 @@
    "inn": "616118814199",
    "legalShortName": "владеет недвижимым имуществом",
    "loanDebt": "25 000",
-   "obligations": [
-    {
-     "contractDate": "Не указана",
-     "contractNumber": "695627",
-     "id": "obligation_fallback_0",
-     "obligationType": "Договор"
-    }
-   ],
    "procedureType": "observation",
    "procedureTypeRaw": "наблюдение",
    "snils": "157-887-524-35",
@@ -11623,14 +11408,7 @@
    "pageCount": 3,
    "wordCount": 928
   },
-  "obligations": [
-   {
-    "contractDate": "Не указана",
-    "contractNumber": "695627",
-    "id": "obligation_fallback_0",
-    "obligationType": "Договор"
-   }
-  ],
+  "obligations": [],
   "rawTextLen": 7476,
   "rawTextSha": "8c006ec81c00a0edfa4b6a79b39fe86bb846b47e43653e2b8896661f4baf0b0b",
   "recommendedActs": {
@@ -11672,8 +11450,6 @@
    "birthDate": "19.01.1995",
    "birthPlace": "гор. Сальск Ростовской обл",
    "companyInn": "615301047741",
-   "contractDate": "Не указана",
-   "contractNumber": "672699, 671711",
    "courtName": "Арбитражный суд Ростовской области",
    "debtAmount": "3 000,00",
    "debtorAddress": "347631, обл. Ростовская, р-н Сальский, гор. Сальск, ул. Севастопольская, д. 93-в, кв. 61",
@@ -11682,20 +11458,6 @@
    "inn": "615301047741",
    "loanDebt": "3 000",
    "obligationType": "кредитный договор",
-   "obligations": [
-    {
-     "contractDate": "Не указана",
-     "contractNumber": "672699",
-     "id": "obligation_fallback_0",
-     "obligationType": "Договор"
-    },
-    {
-     "contractDate": "Не указана",
-     "contractNumber": "671711",
-     "id": "obligation_fallback_1",
-     "obligationType": "Договор"
-    }
-   ],
    "requirementsSum": "3 000,00",
    "snils": "155-161-603 44",
    "sourceDocumentType": "rtk_application",
@@ -11707,20 +11469,7 @@
    "pageCount": 5,
    "wordCount": 1547
   },
-  "obligations": [
-   {
-    "contractDate": "Не указана",
-    "contractNumber": "672699",
-    "id": "obligation_fallback_0",
-    "obligationType": "Договор"
-   },
-   {
-    "contractDate": "Не указана",
-    "contractNumber": "671711",
-    "id": "obligation_fallback_1",
-    "obligationType": "Договор"
-   }
-  ],
+  "obligations": [],
   "rawTextLen": 11511,
   "rawTextSha": "f37c2e52186919f13707763854b5fd2ab338f952f435fb062ab763871ee24f60",
   "recommendedActs": {
@@ -11745,20 +11494,7 @@
   ]
  },
  "Самобанкрот/заявление.docx": {
-  "collaterals": [
-   {
-    "address": "",
-    "brandModel": "ВАЗ 21703",
-    "cadastralNumber": "",
-    "collateralType": "auto",
-    "collateralValue": "",
-    "description": "Марка : ВАЗ 21703, 2007 года, госномер Н823КК761, VIN XTA21703070011431",
-    "id": "collateral-0",
-    "objectName": "ВАЗ 21703, гос. знак Н823КК761",
-    "otherDescription": "",
-    "vin": "XTA21703070011431"
-   }
-  ],
+  "collaterals": [],
   "confidence": 0.95,
   "debtors": [
    {
@@ -11784,23 +11520,8 @@
    "applicationDate": "10.09.1973",
    "birthDate": "10.09.1973",
    "birthPlace": "с/з им. Карла Маркса Энгельского р-на Саратовской обл",
-   "collaterals": [
-    {
-     "address": "",
-     "brandModel": "",
-     "cadastralNumber": "",
-     "collateralType": "other",
-     "collateralValue": "",
-     "description": "394270.65 руб.",
-     "id": "collateral-0",
-     "objectName": "394270.65 руб",
-     "otherDescription": "",
-     "vin": ""
-    }
-   ],
    "companyInn": "615398867985",
-   "contractDate": "Не указана",
-   "contractNumber": "402670, 595166",
+   "contractNumber": "займа",
    "courtName": "Арбитражный суд Ростовской области",
    "debtAmount": "19 405,00",
    "debtorAddress": "347631, Ростовская область, Сальский район, г. Сальск, пер. Малый, д. 4",
@@ -11808,22 +11529,7 @@
    "entityType": "individual",
    "inn": "615398867985",
    "loanDebt": "19405,00",
-   "mortgageCollateralDescription1221": "394270.65 руб.",
    "obligationType": "Договор займа",
-   "obligations": [
-    {
-     "contractDate": "Не указана",
-     "contractNumber": "402670",
-     "id": "obligation_fallback_0",
-     "obligationType": "Договор"
-    },
-    {
-     "contractDate": "Не указана",
-     "contractNumber": "595166",
-     "id": "obligation_fallback_1",
-     "obligationType": "Договор"
-    }
-   ],
    "requirementsSum": "19 405,00",
    "snils": "049-288-075 97",
    "sourceDocumentType": "rtk_application",
@@ -11835,20 +11541,7 @@
    "pageCount": 2,
    "wordCount": 1405
   },
-  "obligations": [
-   {
-    "contractDate": "Не указана",
-    "contractNumber": "402670",
-    "id": "obligation_fallback_0",
-    "obligationType": "Договор"
-   },
-   {
-    "contractDate": "Не указана",
-    "contractNumber": "595166",
-    "id": "obligation_fallback_1",
-    "obligationType": "Договор"
-   }
-  ],
+  "obligations": [],
   "rawTextLen": 10682,
   "rawTextSha": "8262f1ca3bc6fd3c04a7255f80088a35a688ab6b3108deaac60b9ce5d7b72e27",
   "recommendedActs": {

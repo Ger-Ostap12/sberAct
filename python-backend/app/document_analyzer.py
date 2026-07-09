@@ -1719,7 +1719,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             or re.search(r"\b(\d{2}\.\d{2}\.\d{4})\s*г?\b", pre_passport)
         )
         if birth:
-            fields["birthDate"] = birth.group(1).strip()
+            # Дата прописью («14 июня 1990») → дд.мм.гггг: поле фронта — type=date.
+            fields["birthDate"] = (
+                self._normalize_obl_date(birth.group(1)) or birth.group(1).strip()
+            )
         else:
             fields.pop("birthDate", None)
 
@@ -4006,6 +4009,25 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             return []
         norm = text.replace("\xa0", " ").replace(" ", " ")
         items: List[str] = []
+
+        # ОПИСЬ/перечисление имущества должника — НЕ залог (самобанкротные
+        # заявления: «у Должника имеется следующее имущество: … автомобиль …»,
+        # «На мое имя зарегистрировано следующее движимое имущество: - Марка: …»).
+        # Предмет отсеиваем, если слева виден маркер описи и между маркером и
+        # предметом нет слова «залог».
+        _inventory_re = re.compile(
+            r"(?:имеется|зарегистрирован\w*)\s+следующ\w+\s+(?:движим\w+\s+|недвижим\w+\s+)?имуществ\w*"
+            r"|опис\w+\s+имуществ",
+            re.IGNORECASE,
+        )
+
+        def _is_inventory_item(pos: int) -> bool:
+            ctx = norm[max(0, pos - 200):pos]
+            last = None
+            for im in _inventory_re.finditer(ctx):
+                last = im
+            return bool(last) and "залог" not in ctx[last.end():].lower()
+
         bullet_re = re.compile(
             r"[-–—•]\s*((?:Автомобил\w*|марк[аи]\s*[:：]|жил\w*\s*дом|\bдом\b|квартир\w*|"
             r"земельн\w+\s+участ\w*|нежил\w*|помещени\w*|здани\w*|гараж\w*|машино-?мест\w*|"
@@ -4018,11 +4040,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         )
         for m in bullet_re.finditer(norm):
             s = m.group(1).strip().rstrip(" .,;")
-            if len(s) >= 8:
+            if len(s) >= 8 and not _is_inventory_item(m.start()):
                 items.append(s)
         for m in re.finditer(r"(?:авто)?транспортн\w+\s+средств\w*\s*[:：]\s*([^\n]+)", norm, re.IGNORECASE):
             s = m.group(1).strip().rstrip(" .,;")
-            if len(s) >= 8:
+            if len(s) >= 8 and not _is_inventory_item(m.start()):
                 items.append(s)
         # Формат договоров залога/ипотеки без буллетов: «…в залог передано следующее
         # [движимое] имущество: <предмет1 … стоимостью N руб.> <предмет2 … стоимостью
