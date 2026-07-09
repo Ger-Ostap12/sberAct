@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 import os
 import sys
+import subprocess
 import tempfile
 import shutil
 from pathlib import Path
@@ -330,6 +331,117 @@ async def convert_proxy(conv_path: str, request: Request):
         status_code=upstream.status_code,
         headers=passthrough,
     )
+
+
+# ---------------------------------------------------------------------------
+# Менеджер процесса конвертера НА БЭКЕНДЕ: требование Андрея — «фронт + бек»
+# без третьего терминала в ЛЮБОМ режиме. В браузере процессы умеет запускать
+# только бэкенд; в Electron свой менеджер (main.js) — оба сперва пробуют
+# /health и чужой запущенный экземпляр не дублируют и не убивают.
+# ---------------------------------------------------------------------------
+def _default_converter_dir() -> Path:
+    """converter/ в корне проекта (рядом с python-backend)."""
+    return Path(__file__).resolve().parents[2] / "converter"
+
+
+CONVERTER_DIR = Path(os.environ.get("CONVERTER_DIR", str(_default_converter_dir())))
+CONVERTER_PORT = os.environ.get("CONVERTER_PORT", "8008")
+CONVERTER_START_TIMEOUT_S = 180  # холодный старт с LLM — десятки секунд, с запасом
+
+_converter_process: Optional["subprocess.Popen[bytes]"] = None
+
+
+async def _converter_healthy() -> bool:
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            res = await client.get(f"{CONVERTER_URL}/health")
+            return res.status_code == 200
+    except httpx.HTTPError:
+        return False
+
+
+def _converter_command() -> Optional[list]:
+    """Команда запуска конвертера из его папки; None — не установлен."""
+    is_windows = sys.platform == "win32"
+    venv_python = CONVERTER_DIR / "venv" / ("Scripts" if is_windows else "bin") / (
+        "python.exe" if is_windows else "python"
+    )
+    entry = CONVERTER_DIR / "main.py"
+    if not venv_python.exists() or not entry.exists():
+        return None
+    return [str(venv_python), str(entry)]
+
+
+@app.post("/converter/start")
+async def converter_start():
+    """
+    Поднимает sidecar-конвертер, если он ещё не отвечает, и ждёт /health.
+    Уже работающий (в т.ч. запущенный вручную/Electron'ом) — переиспользуется.
+    """
+    global _converter_process
+    import asyncio
+
+    if await _converter_healthy():
+        return {"ok": True, "external": _converter_process is None}
+
+    command = _converter_command()
+    if command is None:
+        return {
+            "ok": False,
+            "error": (
+                f"Конвертер не найден в {CONVERTER_DIR} "
+                "(укажите папку через переменную окружения CONVERTER_DIR)"
+            ),
+        }
+
+    logger.info("Запускаем конвертер: %s", " ".join(command))
+    _converter_process = subprocess.Popen(
+        command,
+        cwd=str(CONVERTER_DIR),
+        env={**os.environ, "CONVERTER_PORT": CONVERTER_PORT},
+    )
+
+    deadline = asyncio.get_event_loop().time() + CONVERTER_START_TIMEOUT_S
+    while asyncio.get_event_loop().time() < deadline:
+        if _converter_process.poll() is not None:
+            code = _converter_process.returncode
+            _converter_process = None
+            return {"ok": False, "error": f"Конвертер завершился до готовности (код {code})"}
+        if await _converter_healthy():
+            return {"ok": True, "external": False}
+        await asyncio.sleep(1.0)
+
+    _kill_converter()
+    return {"ok": False, "error": f"Конвертер не поднялся за {CONVERTER_START_TIMEOUT_S} с"}
+
+
+def _kill_converter() -> None:
+    global _converter_process
+    if _converter_process is not None and _converter_process.poll() is None:
+        logger.info("Останавливаем конвертер (pid %s)", _converter_process.pid)
+        _converter_process.kill()
+    _converter_process = None
+
+
+@app.post("/converter/stop")
+async def converter_stop():
+    """Глушит НАШ процесс конвертера (внешний не трогаем — не мы запускали)."""
+    _kill_converter()
+    return {"ok": True}
+
+
+@app.get("/converter/status")
+async def converter_status():
+    running = _converter_process is not None and _converter_process.poll() is None
+    return {"running": running, "healthy": await _converter_healthy()}
+
+
+@app.on_event("shutdown")
+def _shutdown_converter() -> None:
+    # Конвертер не должен переживать бэкенд (осиротевший процесс держит гигабайты)
+    _kill_converter()
 
 @app.get("/templates")
 async def get_templates():

@@ -175,29 +175,36 @@ export const webApi: ElectronAPI = {
     return res.blob();
   },
 
-  // В браузере конвертер — постоянный сервис рядом с бэкендом: процессом не
-  // управляем, кнопок start/stop в UI нет. start отвечает по факту health.
-  converterManaged: false,
+  // В браузере процессом конвертера управляет БЭКЕНД (/converter/*): браузер
+  // сам процессы запускать не умеет, а требование — «только фронт + бек»,
+  // без третьего терминала.
+  converterManaged: true,
 
   converterStart: async (): Promise<ConverterStartResult> => {
     try {
-      await fetchBackend('/convert/health');
-      return { ok: true, external: true };
+      const res = await fetchBackend('/converter/start', { method: 'POST' });
+      return (await res.json()) as ConverterStartResult;
     } catch (e) {
       return {
         ok: false,
-        external: true,
         error: e instanceof Error ? e.message : 'Конвертер недоступен',
       };
     }
   },
 
-  converterStop: async () => ({ ok: true }),
+  converterStop: async () => {
+    try {
+      const res = await fetchBackend('/converter/stop', { method: 'POST' });
+      return (await res.json()) as { ok: boolean };
+    } catch {
+      return { ok: false };
+    }
+  },
 
   converterStatus: async (): Promise<ConverterProcessStatus> => {
     try {
-      await fetchBackend('/convert/health');
-      return { running: true, healthy: true };
+      const res = await fetchBackend('/converter/status');
+      return (await res.json()) as ConverterProcessStatus;
     } catch {
       return { running: false, healthy: false };
     }
