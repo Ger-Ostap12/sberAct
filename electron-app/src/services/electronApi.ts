@@ -34,6 +34,50 @@ export interface DownloadResult {
   error?: string;
 }
 
+// ── OCR-конвертер PDF→DOCX (sidecar; все HTTP-вызовы идут через прокси
+//    /convert/* нашего бэкенда — порт конвертера наружу не течёт) ──
+
+/** Результат классификации PDF конвертером (POST /convert/analyze). */
+export interface ConvertClassifyResult {
+  /** 'scan' — образ без текстового слоя, 'native' — текст выделяется. */
+  mode?: 'scan' | 'native';
+  [key: string]: unknown;
+}
+
+/** Флаги скан-режима конвертера (form-поля POST /convert/scan). */
+export interface ConvertScanFlags {
+  no_highlight?: boolean;
+  word_order?: boolean;
+  iim?: boolean;
+  ink_bold?: boolean;
+  ocr_preprocess?: boolean;
+}
+
+/** Статус задачи конвертации (GET /convert/status/{job_id}). */
+export interface ConvertJobStatus {
+  job_id: string;
+  status: 'queued' | 'running' | 'done' | 'error';
+  /** Человекочитаемая стадия («OCR», «Сборка DOCX», …). */
+  stage?: string;
+  /** 0..1 — грубые отметки прогресса. */
+  progress?: number;
+  filename?: string;
+  error?: string | null;
+}
+
+/** Результат запуска sidecar-процесса конвертера. */
+export interface ConverterStartResult {
+  ok: boolean;
+  /** true — сервис уже был запущен снаружи (не наш процесс). */
+  external?: boolean;
+  error?: string;
+}
+
+export interface ConverterProcessStatus {
+  running: boolean;
+  healthy: boolean;
+}
+
 /**
  * Контракт моста preload.js → renderer (contextBridge `electronAPI`).
  * Единственная точка правды о том, что доступно во `window.electronAPI`.
@@ -53,6 +97,27 @@ export interface ElectronAPI {
   getDownloadPaths: () => Promise<unknown>;
   getExtractedData: () => Promise<ExtractedData | null>;
   toggleDevTools: () => Promise<void> | void;
+
+  // ── Convert-шаг (PDF → OCR-конвертер → предпросмотр → анализ) ──
+  /** Анализ уже извлечённого текста (правленого в предпросмотре) — POST /analyze-text. */
+  analyzeText: (text: string, pageCount?: number) => Promise<AnalysisResult>;
+  /** Классификация PDF: скан или нативный. */
+  convertAnalyze: (file: File) => Promise<ConvertClassifyResult>;
+  /** Конвертация скана (Docling+Tesseract+LLM), возвращает job_id. */
+  convertScan: (file: File, flags?: ConvertScanFlags) => Promise<{ job_id: string }>;
+  /** Конвертация нативного PDF (pdf2docx), возвращает job_id. */
+  convertNative: (file: File) => Promise<{ job_id: string }>;
+  /** Поллинг статуса задачи конвертации. */
+  convertStatus: (jobId: string) => Promise<ConvertJobStatus>;
+  /** Готовый DOCX задачи (для предпросмотра mammoth и «Скачать оригинал»). */
+  convertDownload: (jobId: string) => Promise<Blob>;
+  /** true — процессом конвертера управляет Electron (в браузере он запущен постоянно). */
+  converterManaged: boolean;
+  /** Запуск sidecar-процесса конвертера (ждёт /health, холодный старт — до минут). */
+  converterStart: () => Promise<ConverterStartResult>;
+  /** Остановка sidecar-процесса (освобождает память после convert-шага). */
+  converterStop: () => Promise<{ ok: boolean }>;
+  converterStatus: () => Promise<ConverterProcessStatus>;
 }
 
 declare global {
@@ -110,6 +175,39 @@ export const getExtractedData = (): Promise<ExtractedData | null> =>
 export const selectFile = (): Promise<string | null> => getApi().selectFile();
 
 export const getBanks = (): Promise<Bank[]> => getApi().getBanks();
+
+// ── Convert-шаг ──
+
+export const analyzeText = (text: string, pageCount?: number): Promise<AnalysisResult> =>
+  getApi().analyzeText(text, pageCount);
+
+export const convertAnalyze = (file: File): Promise<ConvertClassifyResult> =>
+  getApi().convertAnalyze(file);
+
+export const convertScan = (
+  file: File,
+  flags?: ConvertScanFlags
+): Promise<{ job_id: string }> => getApi().convertScan(file, flags);
+
+export const convertNative = (file: File): Promise<{ job_id: string }> =>
+  getApi().convertNative(file);
+
+export const convertStatus = (jobId: string): Promise<ConvertJobStatus> =>
+  getApi().convertStatus(jobId);
+
+export const convertDownload = (jobId: string): Promise<Blob> =>
+  getApi().convertDownload(jobId);
+
+/** true — UI может (и должен) управлять процессом конвертера (десктоп). */
+export const isConverterManaged = (): boolean => getApi().converterManaged;
+
+export const converterStart = (): Promise<ConverterStartResult> =>
+  getApi().converterStart();
+
+export const converterStop = (): Promise<{ ok: boolean }> => getApi().converterStop();
+
+export const converterStatus = (): Promise<ConverterProcessStatus> =>
+  getApi().converterStatus();
 
 /** Переключение DevTools с фолбэком на глобальную openDevTools (как было в App). */
 export const toggleDevTools = (): void => {

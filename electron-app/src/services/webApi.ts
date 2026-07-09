@@ -5,6 +5,11 @@ import {
   GenerateDocumentResult,
   DownloadAllDocumentsRequest,
   DownloadResult,
+  ConvertClassifyResult,
+  ConvertScanFlags,
+  ConvertJobStatus,
+  ConverterStartResult,
+  ConverterProcessStatus,
 } from './electronApi';
 
 // Веб-реализация того же контракта, что и мост Electron (preload). Позволяет
@@ -122,5 +127,79 @@ export const webApi: ElectronAPI = {
   getExtractedData: async (): Promise<ExtractedData | null> => null,
   toggleDevTools: () => {
     /* В браузере DevTools открывается клавишей F12 — no-op. */
+  },
+
+  // ── Convert-шаг: те же /convert/*-прокси и /analyze-text, что и в Electron ──
+
+  analyzeText: async (text: string, pageCount?: number): Promise<AnalysisResult> => {
+    const res = await fetchBackend('/analyze-text', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, page_count: pageCount ?? null }),
+    });
+    return res.json();
+  },
+
+  convertAnalyze: async (file: File): Promise<ConvertClassifyResult> => {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    const res = await fetchBackend('/convert/analyze', { method: 'POST', body: formData });
+    return res.json();
+  },
+
+  convertScan: async (file: File, flags?: ConvertScanFlags): Promise<{ job_id: string }> => {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    // Флаги — form-поля конвертера; шлём только явно заданные (дефолты — его)
+    Object.entries(flags ?? {}).forEach(([key, value]) => {
+      if (value !== undefined) formData.append(key, String(value));
+    });
+    const res = await fetchBackend('/convert/scan', { method: 'POST', body: formData });
+    return res.json();
+  },
+
+  convertNative: async (file: File): Promise<{ job_id: string }> => {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    const res = await fetchBackend('/convert/native', { method: 'POST', body: formData });
+    return res.json();
+  },
+
+  convertStatus: async (jobId: string): Promise<ConvertJobStatus> => {
+    const res = await fetchBackend(`/convert/status/${encodeURIComponent(jobId)}`);
+    return res.json();
+  },
+
+  convertDownload: async (jobId: string): Promise<Blob> => {
+    const res = await fetchBackend(`/convert/download/${encodeURIComponent(jobId)}`);
+    return res.blob();
+  },
+
+  // В браузере конвертер — постоянный сервис рядом с бэкендом: процессом не
+  // управляем, кнопок start/stop в UI нет. start отвечает по факту health.
+  converterManaged: false,
+
+  converterStart: async (): Promise<ConverterStartResult> => {
+    try {
+      await fetchBackend('/convert/health');
+      return { ok: true, external: true };
+    } catch (e) {
+      return {
+        ok: false,
+        external: true,
+        error: e instanceof Error ? e.message : 'Конвертер недоступен',
+      };
+    }
+  },
+
+  converterStop: async () => ({ ok: true }),
+
+  converterStatus: async (): Promise<ConverterProcessStatus> => {
+    try {
+      await fetchBackend('/convert/health');
+      return { running: true, healthy: true };
+    } catch {
+      return { running: false, healthy: false };
+    }
   },
 };
