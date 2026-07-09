@@ -112,6 +112,28 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
             # Извлекаем текст из документа
             text = self.extract_text(file_path)
+            return self.analyze_from_text(text, page_count=self.get_page_count(file_path))
+        except Exception as e:
+            logger.error(f"Ошибка при анализе документа: {str(e)}")
+            raise
+
+    def analyze_from_text(self, text: str, page_count: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Анализирует уже извлечённый текст заявления (без обращения к файлу).
+
+        Отдельная точка входа для текста, отредактированного пользователем в
+        предпросмотре после OCR-конвертации PDF (эндпоинт /analyze-text):
+        файла-источника на этом пути нет, только текст.
+
+        Args:
+            text: Плоский текст документа (формат — как у extract_text)
+            page_count: Число страниц исходника; None — неизвестно
+                (используется 1, как и при ошибке подсчёта в get_page_count)
+
+        Returns:
+            Словарь с результатами анализа (идентичен analyze)
+        """
+        try:
             if not text:
                 raise ValueError("Не удалось извлечь текст из документа")
 
@@ -375,7 +397,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 "applicationKind": application_kind,
                 "rawText": text,
                 "metadata": {
-                    "pageCount": self.get_page_count(file_path),
+                    "pageCount": page_count if page_count is not None else 1,
                     "wordCount": len(text.split()),
                     "language": "ru"
                 },
