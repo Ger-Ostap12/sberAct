@@ -200,6 +200,59 @@ try {
 
   getExtractedData: () => ipcRenderer.invoke('get-extracted-data'),
 
+  // --- OCR-конвертер (sidecar-процесс, живёт только на convert-шаге) ---
+  // true = процессом управляет Electron (в браузере конвертер запущен постоянно,
+  // и webApi отдаёт false — UI прячет управление процессом)
+  converterManaged: true,
+  converterStart: () => ipcRenderer.invoke('converter:start'),
+  converterStop: () => ipcRenderer.invoke('converter:stop'),
+  converterStatus: () => ipcRenderer.invoke('converter:status'),
+
+  // Convert-шаг: HTTP только на наш бэкенд (:8000) — прокси /convert/* сам
+  // ходит на порт конвертера, рендер о нём не знает.
+  analyzeText: async (text, pageCount) => {
+    const response = await fetchBackend('/analyze-text', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, page_count: pageCount ?? null })
+    });
+    return await response.json();
+  },
+
+  convertAnalyze: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file, file.name || 'document.pdf');
+    const response = await fetchBackend('/convert/analyze', { method: 'POST', body: formData });
+    return await response.json();
+  },
+
+  convertScan: async (file, flags) => {
+    const formData = new FormData();
+    formData.append('file', file, file.name || 'document.pdf');
+    Object.entries(flags || {}).forEach(([key, value]) => {
+      if (value !== undefined) formData.append(key, String(value));
+    });
+    const response = await fetchBackend('/convert/scan', { method: 'POST', body: formData });
+    return await response.json();
+  },
+
+  convertNative: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file, file.name || 'document.pdf');
+    const response = await fetchBackend('/convert/native', { method: 'POST', body: formData });
+    return await response.json();
+  },
+
+  convertStatus: async (jobId) => {
+    const response = await fetchBackend(`/convert/status/${encodeURIComponent(jobId)}`);
+    return await response.json();
+  },
+
+  convertDownload: async (jobId) => {
+    const response = await fetchBackend(`/convert/download/${encodeURIComponent(jobId)}`);
+    return await response.blob();
+  },
+
   // Метод для открытия DevTools из рендерера
   toggleDevTools: () => ipcRenderer.invoke('toggle-devtools')
 });

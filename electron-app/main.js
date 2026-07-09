@@ -16,6 +16,132 @@ const isDev = require('electron-is-dev');
 let mainWindow;
 let pythonProcess;
 
+// ---------------------------------------------------------------------------
+// Менеджер локального сервиса-процесса (используется для OCR-конвертера).
+// Конвертер тяжёлый (torch + LLM), поэтому живёт отдельным процессом и
+// запускается ТОЛЬКО на время convert-шага: spawn при выборе PDF, kill после
+// «Далее» — так память возвращается ОС целиком (см. docs/converter_integration_plan.md).
+// ---------------------------------------------------------------------------
+class ManagedService {
+  constructor({ name, resolveCommand, healthUrl, startTimeoutMs = 60000, healthIntervalMs = 1000 }) {
+    this.name = name;
+    this.resolveCommand = resolveCommand; // () => { command, args, cwd, env } | null
+    this.healthUrl = healthUrl;
+    this.startTimeoutMs = startTimeoutMs;
+    this.healthIntervalMs = healthIntervalMs;
+    this.process = null;
+    this.external = false; // сервис уже был запущен снаружи — не наш процесс, не убиваем
+    this.starting = null;  // промис текущего запуска (защита от параллельных start)
+  }
+
+  async isHealthy() {
+    try {
+      const res = await fetch(this.healthUrl, { method: 'GET' });
+      return res.ok;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  isRunning() {
+    return this.external || (this.process !== null && this.process.exitCode === null);
+  }
+
+  async start() {
+    if (this.starting) return this.starting;
+    this.starting = this._start();
+    try {
+      return await this.starting;
+    } finally {
+      this.starting = null;
+    }
+  }
+
+  async _start() {
+    // Уже отвечает (наш процесс или внешний запуск для отладки) — не спавним второй
+    if (await this.isHealthy()) {
+      if (!this.process) this.external = true;
+      console.log(`[${this.name}] already healthy at ${this.healthUrl}`);
+      return { ok: true, external: this.external };
+    }
+
+    const cmd = this.resolveCommand();
+    if (!cmd) {
+      return { ok: false, error: `${this.name}: не найдена команда запуска (сервис не установлен?)` };
+    }
+
+    console.log(`[${this.name}] starting: ${cmd.command} ${(cmd.args || []).join(' ')}`);
+    this.external = false;
+    this.process = spawn(cmd.command, cmd.args || [], {
+      cwd: cmd.cwd,
+      env: { ...process.env, ...(cmd.env || {}) }
+    });
+    this.process.stdout.on('data', (d) => console.log(`[${this.name}] ${d}`));
+    this.process.stderr.on('data', (d) => console.error(`[${this.name}] ${d}`));
+    this.process.on('error', (e) => console.error(`[${this.name}] spawn error:`, e));
+    this.process.on('close', (code) => {
+      console.log(`[${this.name}] exited with code ${code}`);
+      this.process = null;
+    });
+
+    // Ждём готовности health-циклом: холодный старт конвертера (загрузка LLM)
+    // занимает десятки секунд — без ожидания фронт получал бы connection refused.
+    const deadline = Date.now() + this.startTimeoutMs;
+    while (Date.now() < deadline) {
+      if (this.process === null) {
+        return { ok: false, error: `${this.name}: процесс завершился до готовности` };
+      }
+      if (await this.isHealthy()) {
+        console.log(`[${this.name}] healthy`);
+        return { ok: true, external: false };
+      }
+      await new Promise((r) => setTimeout(r, this.healthIntervalMs));
+    }
+    this.stop();
+    return { ok: false, error: `${this.name}: не поднялся за ${Math.round(this.startTimeoutMs / 1000)} с` };
+  }
+
+  stop() {
+    // Внешний (не наш) процесс не трогаем — мы его не запускали
+    if (this.process) {
+      console.log(`[${this.name}] stopping`);
+      this.process.kill();
+      this.process = null;
+    }
+  }
+}
+
+// --- OCR-конвертер (sidecar): папка converter/ в корне проекта, свой venv ---
+const CONVERTER_PORT = process.env.CONVERTER_PORT || '8008';
+
+function resolveConverterCommand() {
+  // CONVERTER_DIR — на случай, если конвертер пришлось поставить в ASCII-путь
+  // (tesseract/llama-cpp бывают нетерпимы к кириллице в путях).
+  const projectRoot = isDev ? app.getAppPath() : path.join(__dirname, '../app.asar.unpacked');
+  const converterDir = process.env.CONVERTER_DIR || path.join(projectRoot, 'converter');
+  const isWindows = process.platform === 'win32';
+  const venvPython = path.join(converterDir, 'venv', isWindows ? 'Scripts' : 'bin', isWindows ? 'python.exe' : 'python');
+  const entry = path.join(converterDir, 'main.py');
+  if (!fs.existsSync(venvPython) || !fs.existsSync(entry)) {
+    console.warn(`[converter] not installed at ${converterDir}`);
+    return null;
+  }
+  return {
+    command: venvPython,
+    args: [entry],
+    cwd: converterDir,
+    env: { CONVERTER_PORT }
+  };
+}
+
+const converterService = new ManagedService({
+  name: 'converter',
+  resolveCommand: resolveConverterCommand,
+  healthUrl: `http://127.0.0.1:${CONVERTER_PORT}/health`,
+  // Холодный старт с LLM — с запасом
+  startTimeoutMs: 180000
+});
+
 function resolvePythonEntry() {
   if (isDev) {
     // В dev вычисляем от каталога приложения, а не от cwd
@@ -276,6 +402,29 @@ app.on('before-quit', () => {
   if (pythonProcess) {
     pythonProcess.kill();
   }
+  converterService.stop();
+});
+
+// --- Управление процессом OCR-конвертера из рендера (convert-шаг) ---
+ipcMain.handle('converter:start', async () => {
+  try {
+    return await converterService.start();
+  } catch (error) {
+    console.error('[converter] start error:', error);
+    return { ok: false, error: error.message || 'Не удалось запустить конвертер' };
+  }
+});
+
+ipcMain.handle('converter:stop', () => {
+  converterService.stop();
+  return { ok: true };
+});
+
+ipcMain.handle('converter:status', async () => {
+  return {
+    running: converterService.isRunning(),
+    healthy: await converterService.isHealthy()
+  };
 });
 
 // IPC handlers
