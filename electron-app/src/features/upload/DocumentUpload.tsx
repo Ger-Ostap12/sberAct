@@ -12,7 +12,7 @@ import {
 import { CloudUpload as UploadIcon, Description as FileIcon } from '@mui/icons-material';
 import { useDropzone } from 'react-dropzone';
 import { DocumentData, AnalysisResult } from '../../types';
-import { analyzeDocument, selectFile } from '../../services/electronApi';
+import { analyzeDocument, selectFile, hasElectronAPI } from '../../services/electronApi';
 
 interface DocumentUploadProps {
   onDocumentUploaded: (data: DocumentData, analysisResult?: AnalysisResult) => void;
@@ -63,7 +63,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded }) =
     }
   }, [onDocumentUploaded]);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
     accept: {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
@@ -73,9 +73,15 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded }) =
   });
 
   const handleManualUpload = async () => {
+    // Браузер: диалога по пути нет (webApi.selectFile всегда null — кнопка молча
+    // «не работала»). Открываем системный выбор файла через input дропзоны;
+    // выбранный файл идёт обычным onDrop-потоком (валидация + анализ).
+    if (!hasElectronAPI()) {
+      open();
+      return;
+    }
     try {
-      // В браузере нативный выбор файла по пути недоступен (selectFile → null);
-      // используйте перетаскивание. В Electron открывается системный диалог.
+      // Electron: системный диалог по пути через мост preload.
       const filePath = await selectFile();
       if (filePath) {
         // Сразу запускаем анализ по выбранному пути
