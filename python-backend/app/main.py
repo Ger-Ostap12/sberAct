@@ -262,6 +262,76 @@ async def analyze_text(request: AnalyzeTextRequest):
         raise HTTPException(status_code=500, detail=f"Ошибка при анализе документа: {str(e)}")
 
 
+@app.post("/docx-text")
+async def docx_text(document: UploadFile = File(...)):
+    """
+    Текст DOCX тем же экстрактором, что и анализ (тело + колонтитулы +
+    надписи + сноски). Convert-шаг показывает его пользователю для правки —
+    в анализ уходит ровно то, что видно на экране, без потерь предпросмотра.
+    """
+    try:
+        content = await document.read()
+        if not content:
+            raise HTTPException(status_code=400, detail="Файл пуст")
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp_file:
+            tmp_file.write(content)
+            tmp_path = tmp_file.name
+        try:
+            text = document_analyzer.extract_text(tmp_path)
+            return {"success": True, "text": text}
+        finally:
+            os.unlink(tmp_path)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Не удалось извлечь текст: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Не удалось извлечь текст: {str(e)}")
+
+
+@app.post("/docx-apply-edits")
+async def docx_apply_edits(
+    document: UploadFile = File(...),
+    edited_text: str = Form(...),
+):
+    """
+    «Скачать с правками»: вставляет текстовые правки пользователя в оригинальную
+    вёрстку DOCX (замена текста абзацев/ячеек, стили сохраняются) и отдаёт файл.
+    Правки строк вне тела документа (колонтитулы/надписи) в DOCX не переносятся.
+    """
+    from docx_edit import apply_text_edits
+
+    try:
+        content = await document.read()
+        if not content:
+            raise HTTPException(status_code=400, detail="Файл пуст")
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp_file:
+            tmp_file.write(content)
+            tmp_path = tmp_file.name
+        try:
+            original_text = document_analyzer.extract_text(tmp_path)
+            doc = apply_text_edits(tmp_path, edited_text, original_text)
+            out_path = tmp_path + ".edited.docx"
+            doc.save(out_path)
+        finally:
+            os.unlink(tmp_path)
+
+        def _stream_and_cleanup():
+            try:
+                with open(out_path, "rb") as f:
+                    yield from f
+            finally:
+                os.unlink(out_path)
+
+        return StreamingResponse(
+            _stream_and_cleanup(),
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": 'attachment; filename="edited.docx"'},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Не удалось применить правки: {str(e)}")
+
+
 # ---------------------------------------------------------------------------
 # Прокси к OCR-конвертеру (sidecar-процесс на 127.0.0.1:8008).
 # Фронт ходит только на наш origin (:8000) — порт конвертера наружу не течёт,

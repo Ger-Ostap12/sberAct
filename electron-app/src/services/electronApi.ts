@@ -112,8 +112,12 @@ export interface ElectronAPI {
   convertNative: (file: File) => Promise<{ job_id: string }>;
   /** Поллинг статуса задачи конвертации. */
   convertStatus: (jobId: string) => Promise<ConvertJobStatus>;
-  /** Готовый DOCX задачи (для предпросмотра mammoth и «Скачать оригинал»). */
+  /** Готовый DOCX задачи (оригинальная вёрстка; «Скачать DOCX»). */
   convertDownload: (jobId: string) => Promise<Blob>;
+  /** Текст DOCX тем же экстрактором, что анализ (для правки в предпросмотре). */
+  docxText: (docx: Blob) => Promise<{ success: boolean; text: string }>;
+  /** Вставка правленого текста в оригинальную вёрстку DOCX («Скачать с правками»). */
+  docxApplyEdits: (docx: Blob, editedText: string) => Promise<Blob>;
   /** true — процессом конвертера управляет Electron (в браузере он запущен постоянно). */
   converterManaged: boolean;
   /** Запуск sidecar-процесса конвертера (ждёт /health, холодный старт — до минут). */
@@ -200,6 +204,12 @@ export const convertStatus = (jobId: string): Promise<ConvertJobStatus> =>
 
 export const convertDownload = (jobId: string): Promise<Blob> =>
   getApi().convertDownload(jobId);
+
+export const docxText = (docx: Blob): Promise<{ success: boolean; text: string }> =>
+  getApi().docxText(docx);
+
+export const docxApplyEdits = (docx: Blob, editedText: string): Promise<Blob> =>
+  getApi().docxApplyEdits(docx, editedText);
 
 /** true — UI может (и должен) управлять процессом конвертера (десктоп). */
 export const isConverterManaged = (): boolean => getApi().converterManaged;

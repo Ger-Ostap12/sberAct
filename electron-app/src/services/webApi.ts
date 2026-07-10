@@ -175,6 +175,21 @@ export const webApi: ElectronAPI = {
     return res.blob();
   },
 
+  docxText: async (docx: Blob): Promise<{ success: boolean; text: string }> => {
+    const formData = new FormData();
+    formData.append('document', docx, 'converted.docx');
+    const res = await fetchBackend('/docx-text', { method: 'POST', body: formData });
+    return res.json();
+  },
+
+  docxApplyEdits: async (docx: Blob, editedText: string): Promise<Blob> => {
+    const formData = new FormData();
+    formData.append('document', docx, 'converted.docx');
+    formData.append('edited_text', editedText);
+    const res = await fetchBackend('/docx-apply-edits', { method: 'POST', body: formData });
+    return res.blob();
+  },
+
   // В браузере процессом конвертера управляет БЭКЕНД (/converter/*): браузер
   // сам процессы запускать не умеет, а требование — «только фронт + бек»,
   // без третьего терминала.

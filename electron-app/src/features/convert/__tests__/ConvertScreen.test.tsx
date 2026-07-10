@@ -14,26 +14,23 @@ jest.mock('../../../services/electronApi', () => ({
   convertStatus: jest.fn(),
   converterStart: jest.fn(),
   converterStop: jest.fn(),
+  docxText: jest.fn(),
+  docxApplyEdits: jest.fn(),
 }));
 
-// Тяжёлые панели предпросмотра (pdfjs/mammoth) в юнит-тестах не рендерим
+// Тяжёлая панель PDF (pdfjs) в юнит-тестах не рендерится
 jest.mock('../PdfPanel', () => () => <div data-testid="pdf-panel" />);
-jest.mock('../DocxPreviewEditor', () => {
-  const { forwardRef } = jest.requireActual('react');
-  const MockEditor = forwardRef((_props: unknown, _ref: unknown) => (
-    <div data-testid="docx-editor-mock" />
-  ));
-  return { __esModule: true, default: MockEditor };
-});
 
 import {
   analyzeDocument,
+  analyzeText,
   convertAnalyze,
   convertDownload,
   convertScan,
   convertStatus,
   converterStart,
   converterStop,
+  docxText,
 } from '../../../services/electronApi';
 
 const mockStart = converterStart as jest.Mock;
@@ -42,7 +39,9 @@ const mockScan = convertScan as jest.Mock;
 const mockStatus = convertStatus as jest.Mock;
 const mockDownload = convertDownload as jest.Mock;
 const mockAnalyzeDocument = analyzeDocument as jest.Mock;
+const mockAnalyzeText = analyzeText as jest.Mock;
 const mockStop = converterStop as jest.Mock;
+const mockDocxText = docxText as jest.Mock;
 
 const pdfFile = new File([new Uint8Array([1, 2, 3])], 'скан.pdf', {
   type: 'application/pdf',
@@ -70,23 +69,53 @@ describe('ConvertScreen', () => {
     expect(mockStop).toHaveBeenCalled();
   });
 
-  it('скан: конвертация с поллингом до done → предпросмотр', async () => {
+  it('скан: конвертация с дефолт-флагами родного фронта, поллинг → текстовый предпросмотр', async () => {
     mockAnalyze.mockResolvedValue({ suggested: 'scan' });
     mockScan.mockResolvedValue({ job_id: 'j1' });
     mockStatus
       .mockResolvedValueOnce({ job_id: 'j1', status: 'running', stage: 'OCR', progress: 0.4 })
       .mockResolvedValue({ job_id: 'j1', status: 'done', progress: 1 });
     mockDownload.mockResolvedValue(new Blob([new Uint8Array([80, 75])]));
+    mockDocxText.mockResolvedValue({ success: true, text: 'Распознанный текст заявления' });
 
     render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
 
     await userEvent.click(await screen.findByRole('button', { name: 'Конвертировать' }));
-    expect(mockScan).toHaveBeenCalledWith(pdfFile);
+    // КРИТИЧНО: флаги = дефолты родного фронта конвертера; без них API-дефолт
+    // no_highlight=true отключал LLM-доочистку — качество падало (баг Андрея)
+    expect(mockScan).toHaveBeenCalledWith(
+      pdfFile,
+      expect.objectContaining({ no_highlight: false, iim: true })
+    );
 
-    // Поллинг каждые 1.5 с: ждём предпросмотра (running → done → download)
-    expect(await screen.findByTestId('docx-editor-mock', {}, { timeout: 7000 })).toBeInTheDocument();
+    // Поллинг каждые 1.5 с: ждём предпросмотра (running → done → download → текст)
+    const editor = await screen.findByTestId('text-editor', {}, { timeout: 7000 });
+    expect(editor).toHaveValue('Распознанный текст заявления');
     expect(screen.getByTestId('pdf-panel')).toBeInTheDocument();
     expect(mockDownload).toHaveBeenCalledWith('j1');
+  }, 15000);
+
+  it('правка текста и «Далее» → analyzeText с правленым текстом', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    mockScan.mockResolvedValue({ job_id: 'j1' });
+    mockStatus.mockResolvedValue({ job_id: 'j1', status: 'done', progress: 1 });
+    mockDownload.mockResolvedValue(new Blob([new Uint8Array([80, 75])]));
+    mockDocxText.mockResolvedValue({ success: true, text: 'Сумма 100' });
+    mockAnalyzeText.mockResolvedValue({ success: true, data: { fields: {} } });
+    const onComplete = jest.fn();
+
+    render(<ConvertScreen file={pdfFile} onComplete={onComplete} onBack={jest.fn()} />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Конвертировать' }));
+    const editor = await screen.findByTestId('text-editor', {}, { timeout: 7000 });
+
+    await userEvent.clear(editor);
+    await userEvent.type(editor, 'Сумма 200');
+    await userEvent.click(screen.getByRole('button', { name: 'Далее' }));
+
+    await waitFor(() => expect(onComplete).toHaveBeenCalled());
+    expect(mockAnalyzeText).toHaveBeenCalledWith('Сумма 200');
+    expect(mockStop).toHaveBeenCalled();
   }, 15000);
 
   it('ошибка конвертации → экран ошибки с «Повторить» и «Пропустить»', async () => {

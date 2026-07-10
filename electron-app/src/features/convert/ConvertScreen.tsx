@@ -29,23 +29,37 @@ import {
   convertStatus,
   converterStart,
   converterStop,
+  ConvertScanFlags,
+  docxApplyEdits,
+  docxText,
 } from '../../services/electronApi';
-import DocxPreviewEditor, { DocxPreviewEditorHandle } from './DocxPreviewEditor';
 import PdfPanel from './PdfPanel';
-import { extractPlainText } from './lib/extractPlainText';
 
 type Phase =
   | 'starting' // подъём sidecar-процесса конвертера (холодный старт LLM — до минут)
   | 'classify' // POST /convert/analyze: скан или нативный
   | 'ready' // режим определён, ждём кнопку «Конвертировать»
   | 'converting' // задача в конвертере, поллинг статуса
-  | 'preview' // DOCX готов: редактируемый предпросмотр + панель PDF
+  | 'preview' // текст готов: правка + панель исходного PDF
   | 'analyzing' // «Далее»: правленый текст ушёл в /analyze-text
   | 'error';
 
 type ConvertMode = 'scan' | 'native';
 
 const POLL_INTERVAL_MS = 1500;
+
+// Дефолты скан-режима — РОВНО как у родного фронта конвертера
+// (converter/frontend/src/ScanConverter.tsx DEFAULT_FLAGS). Критично:
+// no_highlight=false включает подсветку сомнительных слов и их LLM-доочистку;
+// без явных флагов API-дефолт no_highlight=true ОТКЛЮЧАЛ доочистку — качество
+// распознавания падало (баг, найденный Андреем).
+const SCAN_DEFAULT_FLAGS: ConvertScanFlags = {
+  no_highlight: false,
+  word_order: false,
+  iim: true,
+  ink_bold: false,
+  ocr_preprocess: false,
+};
 
 interface ConvertScreenProps {
   /** Загруженный пользователем PDF. */
@@ -57,9 +71,11 @@ interface ConvertScreenProps {
 }
 
 /**
- * Convert-шаг: PDF → OCR-конвертер (sidecar) → Word-подобный предпросмотр с
- * правкой → «Далее» (плоский текст в /analyze-text). «Пропустить конвертацию» —
- * старый путь /analyze-document (годится для нативных PDF с текстовым слоем).
+ * Convert-шаг: PDF → OCR-конвертер (sidecar) → правка распознанного ТЕКСТА
+ * (тот же текст, что уходит в анализ — извлечён бэкендом из DOCX полным
+ * экстрактором, без потерь HTML-предпросмотра) → «Далее» (/analyze-text).
+ * «Скачать DOCX» — оригинальная вёрстка конвертера; «Скачать с правками» —
+ * бэкенд вставляет правки в оригинальную вёрстку (/docx-apply-edits).
  */
 const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack }) => {
   const [phase, setPhase] = useState<Phase>('starting');
@@ -70,7 +86,7 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
   const [stage, setStage] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [docxBlob, setDocxBlob] = useState<Blob | null>(null);
-  const editorRef = useRef<DocxPreviewEditorHandle | null>(null);
+  const [editedText, setEditedText] = useState('');
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopPolling = useCallback(() => {
@@ -131,7 +147,9 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
     setError(null);
     try {
       const { job_id: jobId } =
-        mode === 'native' ? await convertNative(file) : await convertScan(file);
+        mode === 'native'
+          ? await convertNative(file)
+          : await convertScan(file, SCAN_DEFAULT_FLAGS);
       pollTimer.current = setInterval(async () => {
         try {
           const status = await convertStatus(jobId);
@@ -140,7 +158,10 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
           if (status.status === 'done') {
             stopPolling();
             const blob = await convertDownload(jobId);
+            // Текст для правки — с бэкенда, тем же экстрактором, что анализ
+            const extracted = await docxText(blob);
             setDocxBlob(blob);
+            setEditedText(extracted.text || '');
             setPhase('preview');
           } else if (status.status === 'error') {
             failWith(status.error || 'Ошибка конвертации');
@@ -172,20 +193,17 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
   }, [file, onComplete, failWith]);
 
   const handleNext = useCallback(async () => {
-    const root = editorRef.current?.getRoot();
-    if (!root) return;
     setPhase('analyzing');
     setError(null);
     try {
-      const text = extractPlainText(root);
-      const result = await analyzeText(text);
+      const result = await analyzeText(editedText);
       converterStop().catch(() => undefined);
       onComplete(result);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Ошибка анализа текста');
       setPhase('preview');
     }
-  }, [onComplete]);
+  }, [editedText, onComplete]);
 
   const triggerDownload = useCallback((blob: Blob, fileName: string) => {
     const url = URL.createObjectURL(blob);
@@ -204,17 +222,16 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
     if (docxBlob) triggerDownload(docxBlob, `${baseName}.docx`);
   }, [docxBlob, baseName, triggerDownload]);
 
+  // Правки вставляются в ОРИГИНАЛЬНУЮ вёрстку на бэкенде (/docx-apply-edits)
   const handleDownloadEdited = useCallback(async () => {
-    const root = editorRef.current?.getRoot();
-    if (!root) return;
-    // DOCX из правленого HTML: форматирование упрощённое (см. план §5),
-    // оригинал конвертера доступен соседней кнопкой.
-    const { asBlob } = await import('html-docx-js-typescript');
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${root.innerHTML}</body></html>`;
-    const result = await asBlob(html);
-    const blob = result instanceof Blob ? result : new Blob([new Uint8Array(result as Buffer)]);
-    triggerDownload(blob, `${baseName} (правки).docx`);
-  }, [baseName, triggerDownload]);
+    if (!docxBlob) return;
+    try {
+      const blob = await docxApplyEdits(docxBlob, editedText);
+      triggerDownload(blob, `${baseName} (правки).docx`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось собрать DOCX с правками');
+    }
+  }, [docxBlob, editedText, baseName, triggerDownload]);
 
   const handleBack = useCallback(() => {
     stopPolling();
@@ -256,8 +273,40 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <PdfPanel file={file} />
           </Box>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <DocxPreviewEditor ref={editorRef} docx={docxBlob} />
+          <Box
+            sx={{
+              flex: 1,
+              minWidth: 0,
+              backgroundColor: 'grey.200',
+              p: 2,
+              overflow: 'hidden',
+              display: 'flex',
+            }}
+          >
+            <Box
+              component="textarea"
+              value={editedText}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                setEditedText(e.target.value)
+              }
+              data-testid="text-editor"
+              sx={{
+                // «Лист»: белая страница с полями; правится ТОТ ЖЕ текст,
+                // что уйдёт в анализ — на экране нет потерь предпросмотра
+                flex: 1,
+                width: '100%',
+                border: 'none',
+                resize: 'none',
+                outline: 'none',
+                backgroundColor: 'white',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                px: 4,
+                py: 3,
+                fontFamily: '"Times New Roman", Times, serif',
+                fontSize: '12pt',
+                lineHeight: 1.5,
+              }}
+            />
           </Box>
         </Box>
       </Box>

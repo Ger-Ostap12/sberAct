@@ -253,6 +253,21 @@ try {
     return await response.blob();
   },
 
+  docxText: async (docx) => {
+    const formData = new FormData();
+    formData.append('document', docx, 'converted.docx');
+    const response = await fetchBackend('/docx-text', { method: 'POST', body: formData });
+    return await response.json();
+  },
+
+  docxApplyEdits: async (docx, editedText) => {
+    const formData = new FormData();
+    formData.append('document', docx, 'converted.docx');
+    formData.append('edited_text', editedText);
+    const response = await fetchBackend('/docx-apply-edits', { method: 'POST', body: formData });
+    return await response.blob();
+  },
+
   // Метод для открытия DevTools из рендерера
   toggleDevTools: () => ipcRenderer.invoke('toggle-devtools')
 });
