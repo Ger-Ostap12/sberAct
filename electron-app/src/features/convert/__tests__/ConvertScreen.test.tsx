@@ -56,7 +56,7 @@ beforeEach(() => {
 
 describe('ConvertScreen', () => {
   it('нативный PDF: вердикт классификации и «Пропустить» → старый путь анализа', async () => {
-    mockAnalyze.mockResolvedValue({ mode: 'native' });
+    mockAnalyze.mockResolvedValue({ suggested: 'native', confidence: 'high' });
     mockAnalyzeDocument.mockResolvedValue({ success: true, data: { fields: {} } });
     const onComplete = jest.fn();
 
@@ -71,7 +71,7 @@ describe('ConvertScreen', () => {
   });
 
   it('скан: конвертация с поллингом до done → предпросмотр', async () => {
-    mockAnalyze.mockResolvedValue({ mode: 'scan' });
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
     mockScan.mockResolvedValue({ job_id: 'j1' });
     mockStatus
       .mockResolvedValueOnce({ job_id: 'j1', status: 'running', stage: 'OCR', progress: 0.4 })
@@ -90,7 +90,7 @@ describe('ConvertScreen', () => {
   }, 15000);
 
   it('ошибка конвертации → экран ошибки с «Повторить» и «Пропустить»', async () => {
-    mockAnalyze.mockResolvedValue({ mode: 'scan' });
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
     mockScan.mockResolvedValue({ job_id: 'j2' });
     mockStatus.mockResolvedValue({ job_id: 'j2', status: 'error', error: 'OCR упал' });
 
@@ -114,7 +114,7 @@ describe('ConvertScreen', () => {
   });
 
   it('«Назад» останавливает конвертер', async () => {
-    mockAnalyze.mockResolvedValue({ mode: 'native' });
+    mockAnalyze.mockResolvedValue({ suggested: 'native' });
     const onBack = jest.fn();
 
     render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={onBack} />);

@@ -65,6 +65,7 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
   const [phase, setPhase] = useState<Phase>('starting');
   const [mode, setMode] = useState<ConvertMode>('scan');
   const [detectedMode, setDetectedMode] = useState<ConvertMode | null>(null);
+  const [detectReason, setDetectReason] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [stage, setStage] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -98,9 +99,10 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
       try {
         const verdict = await convertAnalyze(file);
         if (cancelled) return;
-        const detected: ConvertMode = verdict.mode === 'native' ? 'native' : 'scan';
+        const detected: ConvertMode = verdict.suggested === 'native' ? 'native' : 'scan';
         setDetectedMode(detected);
         setMode(detected);
+        setDetectReason(typeof verdict.reason === 'string' ? verdict.reason : null);
       } catch {
         // Классификация — удобство, не обязательность: даём выбрать руками
         if (!cancelled) setDetectedMode(null);
@@ -298,9 +300,10 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
             <Stack spacing={2}>
               {detectedMode && (
                 <Alert severity="info">
-                  {detectedMode === 'scan'
-                    ? 'Похоже, это скан (без текстового слоя) — рекомендуем режим «Скан (OCR)».'
-                    : 'В PDF есть текстовый слой — подойдёт быстрый режим «Нативный PDF».'}
+                  {detectReason ||
+                    (detectedMode === 'scan'
+                      ? 'Похоже, это скан (без текстового слоя) — рекомендуем режим «Скан (OCR)».'
+                      : 'В PDF есть текстовый слой — подойдёт быстрый режим «Нативный PDF».')}
                 </Alert>
               )}
               <Box>

@@ -39,8 +39,11 @@ export interface DownloadResult {
 
 /** Результат классификации PDF конвертером (POST /convert/analyze). */
 export interface ConvertClassifyResult {
-  /** 'scan' — образ без текстового слоя, 'native' — текст выделяется. */
-  mode?: 'scan' | 'native';
+  /** Рекомендация конвертера: 'scan' — образ без текстового слоя, 'native' — текст выделяется. */
+  suggested?: 'scan' | 'native';
+  confidence?: string;
+  /** Человекочитаемое объяснение рекомендации (показываем пользователю). */
+  reason?: string;
   [key: string]: unknown;
 }
 

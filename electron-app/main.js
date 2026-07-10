@@ -120,17 +120,24 @@ function resolveConverterCommand() {
   const projectRoot = isDev ? app.getAppPath() : path.join(__dirname, '../app.asar.unpacked');
   const converterDir = process.env.CONVERTER_DIR || path.join(projectRoot, 'converter');
   const isWindows = process.platform === 'win32';
-  const venvPython = path.join(converterDir, 'venv', isWindows ? 'Scripts' : 'bin', isWindows ? 'python.exe' : 'python');
+  const pyRel = path.join(isWindows ? 'Scripts' : 'bin', isWindows ? 'python.exe' : 'python');
+  // install_offline.bat конвертера создаёт `.venv`; `venv` — фолбэк на ручную установку
+  const venvPython = [path.join(converterDir, '.venv', pyRel), path.join(converterDir, 'venv', pyRel)]
+    .find((p) => fs.existsSync(p));
   const entry = path.join(converterDir, 'main.py');
-  if (!fs.existsSync(venvPython) || !fs.existsSync(entry)) {
+  // Запускаем через лаунчер sberAct (порт у upstream захардкожен на 8000,
+  // run_converter.py поднимает то же приложение на CONVERTER_PORT без правок
+  // кода конвертера).
+  const launcher = path.join(projectRoot, 'python-backend', 'app', 'run_converter.py');
+  if (!venvPython || !fs.existsSync(entry)) {
     console.warn(`[converter] not installed at ${converterDir}`);
     return null;
   }
   return {
     command: venvPython,
-    args: [entry],
+    args: [launcher],
     cwd: converterDir,
-    env: { CONVERTER_PORT }
+    env: { CONVERTER_PORT, CONVERTER_DIR: converterDir }
   };
 }
 

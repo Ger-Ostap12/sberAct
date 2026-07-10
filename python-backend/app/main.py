@@ -270,6 +270,10 @@ async def analyze_text(request: AnalyzeTextRequest):
 # См. docs/converter_integration_plan.md.
 # ---------------------------------------------------------------------------
 CONVERTER_URL = os.environ.get("CONVERTER_URL", "http://127.0.0.1:8008")
+# Роутер конвертера подключён С префиксом /convert (upstream-факт, проверено по
+# docling_dev/api.py), а /health — в корне. Поэтому прокси форвардит на
+# <root>/convert/..., а health-проба ходит в <root>/health.
+CONVERTER_API_URL = os.environ.get("CONVERTER_API_URL", f"{CONVERTER_URL}/convert")
 # Заголовки соединения не пробрасываем: они описывают hop, а не содержимое.
 _CONVERT_HOP_HEADERS = {"host", "content-length", "connection", "transfer-encoding"}
 
@@ -283,7 +287,7 @@ async def convert_proxy(conv_path: str, request: Request):
     """
     import httpx
 
-    url = f"{CONVERTER_URL}/{conv_path}"
+    url = f"{CONVERTER_API_URL}/{conv_path}"
     headers = {
         k: v for k, v in request.headers.items()
         if k.lower() not in _CONVERT_HOP_HEADERS
@@ -363,15 +367,22 @@ async def _converter_healthy() -> bool:
 
 
 def _converter_command() -> Optional[list]:
-    """Команда запуска конвертера из его папки; None — не установлен."""
+    """
+    Команда запуска конвертера; None — не установлен.
+    Запускаем НЕ его main.py, а наш лаунчер run_converter.py (тем же venv
+    конвертера): у upstream порт захардкожен на 8000, лаунчер поднимает то же
+    приложение на CONVERTER_PORT без правок кода конвертера.
+    """
     is_windows = sys.platform == "win32"
-    venv_python = CONVERTER_DIR / "venv" / ("Scripts" if is_windows else "bin") / (
-        "python.exe" if is_windows else "python"
-    )
+    py_rel = Path("Scripts" if is_windows else "bin") / ("python.exe" if is_windows else "python")
+    # install_offline.bat конвертера создаёт `.venv`; `venv` — фолбэк на ручную установку
+    candidates = [CONVERTER_DIR / ".venv" / py_rel, CONVERTER_DIR / "venv" / py_rel]
+    venv_python = next((p for p in candidates if p.exists()), None)
     entry = CONVERTER_DIR / "main.py"
-    if not venv_python.exists() or not entry.exists():
+    launcher = Path(__file__).resolve().parent / "run_converter.py"
+    if venv_python is None or not entry.exists():
         return None
-    return [str(venv_python), str(entry)]
+    return [str(venv_python), str(launcher)]
 
 
 @app.post("/converter/start")
@@ -400,7 +411,11 @@ async def converter_start():
     _converter_process = subprocess.Popen(
         command,
         cwd=str(CONVERTER_DIR),
-        env={**os.environ, "CONVERTER_PORT": CONVERTER_PORT},
+        env={
+            **os.environ,
+            "CONVERTER_PORT": CONVERTER_PORT,
+            "CONVERTER_DIR": str(CONVERTER_DIR),
+        },
     )
 
     deadline = asyncio.get_event_loop().time() + CONVERTER_START_TIMEOUT_S
