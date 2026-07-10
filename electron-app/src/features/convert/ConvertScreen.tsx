@@ -5,11 +5,15 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   CircularProgress,
+  FormControlLabel,
+  FormGroup,
   LinearProgress,
   Stack,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import {
@@ -61,6 +65,44 @@ const SCAN_DEFAULT_FLAGS: ConvertScanFlags = {
   ocr_preprocess: false,
 };
 
+// Настройки распознавания — те же, что в родном фронте конвертера (FLAG_DEFS
+// из ScanConverter.tsx): названия, описания и дефолты совпадают, чтобы
+// пользователь получал одинаковый результат в обеих программах.
+//   invert: галочка показывает обратное значение флага («галочка = включено»).
+const SCAN_FLAG_DEFS: {
+  key: keyof ConvertScanFlags;
+  title: string;
+  desc: string;
+  invert?: boolean;
+}[] = [
+  {
+    key: 'no_highlight',
+    invert: true,
+    title: 'Подсвечивать сомнительные слова',
+    desc: 'Выделяет жёлтым слова, в распознавании которых программа не уверена. Включено по умолчанию.',
+  },
+  {
+    key: 'iim',
+    title: 'Улучшать текст нейросетью (ИИ)',
+    desc: 'Локальная нейросеть исправляет ошибки распознавания. Работает чуть дольше. Включено по умолчанию.',
+  },
+  {
+    key: 'ocr_preprocess',
+    title: 'Улучшать качество плохих сканов',
+    desc: 'Выравнивает наклон и повышает контраст. Помогает тёмным и перекошенным сканам, но может ухудшить чёткие.',
+  },
+  {
+    key: 'word_order',
+    title: 'Восстанавливать порядок строк на сложных сканах',
+    desc: 'Помогает, когда колонки или строки распознаются вперемешку. Обычно не требуется.',
+  },
+  {
+    key: 'ink_bold',
+    title: 'Определять жирный шрифт по толщине букв',
+    desc: 'Экспериментальная функция, может ошибаться. По умолчанию выключено.',
+  },
+];
+
 interface ConvertScreenProps {
   /** Загруженный пользователем PDF. */
   file: File;
@@ -87,6 +129,7 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
   const [error, setError] = useState<string | null>(null);
   const [docxBlob, setDocxBlob] = useState<Blob | null>(null);
   const [editedText, setEditedText] = useState('');
+  const [scanFlags, setScanFlags] = useState<ConvertScanFlags>(SCAN_DEFAULT_FLAGS);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopPolling = useCallback(() => {
@@ -149,7 +192,7 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
       const { job_id: jobId } =
         mode === 'native'
           ? await convertNative(file)
-          : await convertScan(file, SCAN_DEFAULT_FLAGS);
+          : await convertScan(file, scanFlags);
       pollTimer.current = setInterval(async () => {
         try {
           const status = await convertStatus(jobId);
@@ -369,6 +412,39 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
                   <ToggleButton value="native">Нативный PDF</ToggleButton>
                 </ToggleButtonGroup>
               </Box>
+
+              {mode === 'scan' && (
+                <Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                    Настройки распознавания:
+                  </Typography>
+                  <FormGroup>
+                    {SCAN_FLAG_DEFS.map(({ key, title, desc, invert }) => {
+                      const raw = Boolean(scanFlags[key]);
+                      const checked = invert ? !raw : raw;
+                      return (
+                        <Tooltip key={key} title={desc} placement="right" arrow>
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                size="small"
+                                checked={checked}
+                                onChange={(e) =>
+                                  setScanFlags((prev) => ({
+                                    ...prev,
+                                    [key]: invert ? !e.target.checked : e.target.checked,
+                                  }))
+                                }
+                              />
+                            }
+                            label={<Typography variant="body2">{title}</Typography>}
+                          />
+                        </Tooltip>
+                      );
+                    })}
+                  </FormGroup>
+                </Box>
+              )}
               <Stack direction="row" spacing={1}>
                 <Button variant="contained" startIcon={<ConvertIcon />} onClick={handleConvert}>
                   Конвертировать
