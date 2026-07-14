@@ -41,12 +41,12 @@ def test_sections_reassemble_to_extract_text(path):
     da = DocumentAnalyzer()
     text = da.extract_text(path)
     sections = da.extract_sections(path)
-    n_parts = len(da._docx_text_parts(path))
+    n_lines = len(text.split("\n"))
 
     reassembled, indices = _reassemble(sections)
     assert reassembled == text, f"секции не пересобираются в extract_text: {path}"
-    # Партиция: каждый индекс ровно один раз, покрыт весь диапазон частей.
-    assert sorted(indices) == list(range(n_parts)), f"индексы не образуют партицию: {path}"
+    # Партиция по СТРОКАМ: каждый line-index ровно один раз, покрыт весь диапазон.
+    assert sorted(indices) == list(range(n_lines)), f"индексы не образуют партицию: {path}"
 
 
 def _build_docx(tmp_path, petition="Прошу суд признать должника банкротом"):
@@ -75,11 +75,11 @@ def test_sections_four_blocks_full(tmp_path):
 
     text = da.extract_text(path)
     sections = da.extract_sections(path)
-    n_parts = len(da._docx_text_parts(path))
+    n_lines = len(text.split("\n"))
     reassembled, indices = _reassemble(sections)
 
     assert reassembled == text
-    assert sorted(indices) == list(range(n_parts))
+    assert sorted(indices) == list(range(n_lines))
     assert [s["id"] for s in sections] == ["header", "body", "prayer", "attachments"]
 
     by_id = {s["id"]: " ".join(ln["text"] for ln in s["lines"]) for s in sections}
@@ -133,6 +133,82 @@ def test_prayer_anchor_ignores_inline_proshu_in_body(tmp_path):
     # Просительная открывается ровно на «ПРОШУ:».
     assert by_id.get("prayer", "").startswith("ПРОШУ:")
     assert "Ввести реструктуризацию" in by_id.get("prayer", "")
+
+
+def test_prayer_leadin_and_proshu_one_paragraph(tmp_path):
+    """Преамбула «Руководствуясь…» и «ПРОШУ:» в ОДНОМ абзаце: преамбула остаётся
+    в body, просительная стартует со строки «ПРОШУ:» (баг Богачевой/Форте)."""
+    da = DocumentAnalyzer()
+    from docx import Document
+
+    doc = Document()
+    doc.add_paragraph("ЗАЯВЛЕНИЕ о включении в реестр")
+    doc.add_paragraph("Между сторонами заключён договор.")
+    # Один абзац: лид-ин + ПРОШУ: + требование (через переносы строк).
+    doc.add_paragraph(
+        "Руководствуясь ст. ст. 71, 100 Федерального закона № 127-ФЗ; "
+        "Постановлением Правительства РФ от 29.05.2004 № 257\nПРОШУ:\n"
+        "признать требование обоснованным, включить в реестр."
+    )
+    doc.add_paragraph("Приложение:")
+    doc.add_paragraph("1. Копия требования.")
+    p = os.path.join(tmp_path, "leadin.docx")
+    doc.save(p)
+
+    sections = da.extract_sections(p)
+    by_id = {s["id"]: "\n".join(ln["text"] for ln in s["lines"]) for s in sections}
+    assert "Руководствуясь" in by_id.get("body", "")
+    assert "Руководствуясь" not in by_id.get("prayer", "")
+    assert by_id.get("prayer", "").startswith("ПРОШУ:")
+    assert "включить в реестр" in by_id.get("prayer", "")
+    assert "Приложение" in by_id.get("attachments", "")
+
+
+def test_prayer_and_attach_in_table_cells(tmp_path):
+    """Табличная вёрстка (pdf2docx): «ПРОШУ:» и «Приложение:» в ЯЧЕЙКАХ таблицы —
+    якоря должны срабатывать и в таблицах (баг prayer=0)."""
+    da = DocumentAnalyzer()
+    from docx import Document
+
+    doc = Document()
+    doc.add_paragraph("ЗАЯВЛЕНИЕ о включении в реестр")
+    doc.add_paragraph("Между сторонами заключён договор.")
+    t = doc.add_table(rows=3, cols=1)
+    t.rows[0].cells[0].text = "ПРОШУ:"
+    t.rows[1].cells[0].text = "1. Включить в третью очередь реестра."
+    t.rows[2].cells[0].text = "Приложение: 1. Копия договора."
+    p = os.path.join(tmp_path, "tableprayer.docx")
+    doc.save(p)
+
+    sections = da.extract_sections(p)
+    by_id = {s["id"]: "\n".join(ln["text"] for ln in s["lines"]) for s in sections}
+    assert by_id.get("prayer", "").startswith("ПРОШУ:")
+    assert "Включить в третью очередь" in by_id.get("prayer", "")
+    assert by_id.get("attachments", "").startswith("Приложение")
+
+
+def test_title_caps_token_midline(tmp_path):
+    """Титул «ЗАЯВЛЕНИЕ» не в начале строки («Дело № …\\tЗАЯВЛЕНИЕ») распознаётся,
+    шапка попадает во Вводную, а не в Основной текст (баг main_Заявление)."""
+    da = DocumentAnalyzer()
+    from docx import Document
+
+    doc = Document()
+    doc.add_paragraph("Арбитражный суд Ростовской области")           # шапка → header
+    doc.add_paragraph("Должник: Пискова Татьяна Николаевна")          # шапка → header
+    doc.add_paragraph("Дело № А53-11864/2026\tЗАЯВЛЕНИЕ")             # титул mid-line
+    doc.add_paragraph("о включении в реестр требований кредиторов")   # body
+    doc.add_paragraph("ПРОШУ СУД:")
+    doc.add_paragraph("1. Включить требование в реестр.")
+    p = os.path.join(tmp_path, "titlecaps.docx")
+    doc.save(p)
+
+    sections = da.extract_sections(p)
+    by_id = {s["id"]: "\n".join(ln["text"] for ln in s["lines"]) for s in sections}
+    # Шапка — во Вводной, а не в Основном тексте.
+    assert "Арбитражный суд" in by_id.get("header", "")
+    assert "Пискова" in by_id.get("header", "")
+    assert by_id.get("prayer", "").startswith("ПРОШУ СУД:")
 
 
 def test_prayer_anchor_ignores_prositelnoy(tmp_path):

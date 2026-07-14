@@ -631,13 +631,20 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
         return results
 
-    # Якорь заголовка-титула документа («ЗАЯВЛЕНИЕ», «Исковое заявление»,
-    # «Ходатайство…»): строка, НАЧИНАЮЩАЯСЯ с одного из этих слов. Служебные
-    # упоминания («…обращается с заявлением…») в начале строки не стоят.
-    _TITLE_ANCHOR_RE = re.compile(
+    # Якорь заголовка-титула документа. Два случая:
+    #   (T1) строка НАЧИНАЕТСЯ с «заявление/исковое заявление/ходатайство»
+    #        («Заявление о признании…») — регистронезависимо;
+    #   (T2) CAPS-токен «ЗАЯВЛЕНИЕ»/«ХОДАТАЙСТВО» ГДЕ УГОДНО в строке
+    #        (регистрозависимо) — ловит «Дело № А53-…\tЗАЯВЛЕНИЕ», не задевая
+    #        строчное «…обращается с заявлением…».
+    _TITLE_START_RE = re.compile(
         r"^\s*(?:исковое\s+)?(?:заявлени[ея]|ходатайство)\b",
         re.IGNORECASE,
     )
+    _TITLE_CAPS_RE = re.compile(r"\b(?:ЗАЯВЛЕНИЕ|ХОДАТАЙСТВО)\b")
+
+    def _is_title_line(self, line: str) -> bool:
+        return bool(self._TITLE_START_RE.match(line) or self._TITLE_CAPS_RE.search(line))
     # Глагол-просьба: прошу/просим/просит/просят, ходатайствую/ходатайствуем/
     # ходатайствует. Границы слова кириллицей вручную: `\b` в re не отделяет
     # «просит» от «просительной».
@@ -700,20 +707,24 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         для предпросмотра/правки (`/docx-text`). Анализ и baseline «Скачать с
         правками» продолжают работать с плоским `extract_text`.
 
-        Классификация идёт по РЕАЛЬНОМУ порядку документа
-        (`_docx_parts_true_order`), а каждая строка несёт ПЛОСКИЙ `index`.
-        Инвариант: соединение строк ВСЕХ блоков, отсортированных по `index`,
-        байт-в-байт равно `extract_text(file)` (нулевой риск для golden).
+        Классификация — ПОСТРОЧНАЯ и по РЕАЛЬНОМУ порядку документа: части
+        (`_docx_parts_true_order`) разворачиваются в строки по «\\n», каждая
+        строка несёт ПЛОСКИЙ line-index (её позицию в `extract_text.split("\\n")`).
+        Инвариант: соединение строк ВСЕХ блоков, отсортированных по `index`, через
+        «\\n» байт-в-байт равно `extract_text(file)` (нулевой риск для golden).
 
-        Блоки — непрерывные диапазоны по якорям в ТЕЛЕ документа:
-          `header`      — вводная часть: всё до строки-титула (сюда же шапка-
-                          таблица ФНС, которая в реальном порядке стоит первой);
-          `body`        — описательно-мотивировочная: от титула до просьбы
-                          (включая таблицы, встроенные в текст);
-          `prayer`      — просительная: от глагола-просьбы до «Приложение»;
+        Строчная гранулярность нужна, т.к. в реальных заявлениях преамбула и
+        маркер идут ОДНИМ абзацем («Руководствуясь ст…, ПРОШУ: …») — по абзацу
+        преамбула уезжала в просительную. По строкам «ПРОШУ:» — своя строка.
+
+        Блоки — непрерывные диапазоны по якорям (ищутся в теле И таблицах —
+        в табличной вёрстке pdf2docx просьба/приложение лежат в ячейках):
+          `header`      — вводная: всё до строки-титула (шапка-таблица ФНС в
+                          реальном порядке стоит первой → сюда);
+          `body`        — описательно-мотивировочная: от титула до просьбы;
+          `prayer`      — просительная: от строки-просьбы до «Приложение»;
           `attachments` — приложения: от «Приложение» и до конца.
-        Якорь не найден → соответствующая граница схлопывается. Строки НИКОГДА
-        не теряются.
+        Якорь не найден → граница схлопывается. Строки НИКОГДА не теряются.
 
         Не-DOCX (PDF-fallback) блоков не даёт — вызывающая сторона использует
         плоский `text`.
@@ -721,17 +732,31 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if Path(file_path).suffix.lower() not in (".docx", ".doc"):
             return []
 
-        parts = self._docx_parts_true_order(file_path)
+        # Смещение line-index для каждой плоской части (часть может содержать
+        # несколько строк через «\n»); line-index = позиция в extract_text-строках.
+        flat = self._docx_text_parts(file_path)
+        part_line_start: List[int] = []
+        acc = 0
+        for text, _origin in flat:
+            part_line_start.append(acc)
+            acc += text.count("\n") + 1
 
-        # Якоря ищем только по телу (origin == "body"), в реальном порядке;
-        # позиции — по СЕКВЕНЦИИ (seq), таблицы шапки/текста наследуют блок.
+        # Развернуть части реального порядка в строки: (line_text, origin, line_idx).
+        lines: List[Tuple[str, str, int]] = []
+        for text, origin, fpi in self._docx_parts_true_order(file_path):
+            base = part_line_start[fpi]
+            for j, ln in enumerate(text.split("\n")):
+                lines.append((ln, origin, base + j))
+
+        # Якоря — по строкам тела и таблиц (колонтитулы/сноски не считаем).
+        anchor_origins = ("body", "table")
         title_seq: Optional[int] = None
         prayer_seq: Optional[int] = None
         attach_seq: Optional[int] = None
-        for seq, (text, origin, _fidx) in enumerate(parts):
-            if origin != "body":
+        for seq, (text, origin, _idx) in enumerate(lines):
+            if origin not in anchor_origins:
                 continue
-            if title_seq is None and self._TITLE_ANCHOR_RE.match(text):
+            if title_seq is None and self._is_title_line(text):
                 title_seq = seq
                 continue
             if prayer_seq is None and (
@@ -748,7 +773,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             ):
                 attach_seq = seq
 
-        n = len(parts)
+        n = len(lines)
         header_end = title_seq if title_seq is not None else 0
         body_end = prayer_seq if prayer_seq is not None else n
         prayer_end = attach_seq if attach_seq is not None else n
@@ -758,7 +783,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         buckets: Dict[str, List[Dict[str, Any]]] = {
             "header": [], "body": [], "prayer": [], "attachments": []
         }
-        for seq, (text, _origin, fidx) in enumerate(parts):
+        for seq, (text, _origin, line_idx) in enumerate(lines):
             if seq < header_end:
                 key = "header"
             elif seq < body_end:
@@ -767,7 +792,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 key = "prayer"
             else:
                 key = "attachments"
-            buckets[key].append({"text": text, "index": fidx})
+            buckets[key].append({"text": text, "index": line_idx})
 
         titles = {
             "header": "Вводная часть",
