@@ -4264,12 +4264,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         addr = re.sub(r"\s+", " ", m.group(1)).strip()
         # Обрезаем хвост: кадастр, стоимость, год постройки, площадь, этажность, VIN.
         addr = re.split(
-            r"\s*,?\s*(?:\d{2}:\d{2}:\d{6,7}:\d+|кадастров\w+|залогов\w+\s+стоим|оценочн\w+\s+стоим|"
+            r"\s*[,(]?\s*(?:\d{2}:\d{2}:\d{6,7}:\d+|кадастров\w+|залогов\w+\s+стоим|оценочн\w+\s+стоим|"
             r"рыночн\w+\s+стоим|начальн\w+\s+(?:продажн\w+\s+)?цен|стоимост\w+|год\s+постройки|"
             r"площад\w+|\d+[\s-]*этажн|\bVIN\b)",
             addr, flags=re.IGNORECASE,
         )[0]
-        addr = addr.strip().rstrip(",;. ")
+        # Хвостовая «(» от «(кадастровый номер …)» остаётся, если скобку не съел split.
+        addr = addr.strip().rstrip(",;.( ")
         return addr if len(addr) >= 6 else None
 
     def _extract_car_year(self, desc: str) -> Optional[str]:
@@ -4406,7 +4407,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             re.IGNORECASE,
         )
         for m in bullet_re.finditer(norm):
-            s = m.group(1).strip().rstrip(" .,;")
+            s = self._join_bullet_continuation(norm, m.start(1)).rstrip(" .,;")
             if len(s) >= 8 and not _is_inventory_item(m.start()):
                 items.append(s)
         for m in re.finditer(r"(?:авто)?транспортн\w+\s+средств\w*\s*[:：]\s*([^\n]+)", norm, re.IGNORECASE):
@@ -4457,6 +4458,27 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 if len(s) >= 12:
                     items.append(s)
         return items
+
+    def _join_bullet_continuation(self, norm: str, obj_start: int) -> str:
+        """Собирает предмет залога, перенесённый pdf2docx на несколько строк:
+        адрес и «(кадастровый номер …)» часто уезжают на следующие строки, а
+        `bullet_re` берёт только первую (до `\\n`). Продолжение приклеиваем ТОЛЬКО
+        пока первая строка НЕ завершена терминатором перечня (`;`/`.`) — т.е. это
+        реальный перенос, а не следующий пункт/предложение. Стоп — на терминаторе,
+        следующем буллете или пустой строке. Дефис-переносы («об-\\nласти») склеиваем."""
+        window = norm[obj_start: obj_start + 600]
+        lines = window.split("\n")
+        acc = (lines[0] if lines else "").strip()
+        # Первая строка уже завершена — предмет однострочный, ничего не тянем.
+        if re.search(r"[;.]\s*$", acc):
+            return acc
+        for cur in (ln.strip() for ln in lines[1:]):
+            if not cur or re.match(r"[-–—•]\s*\S", cur):
+                break
+            acc = (acc[:-1] + cur) if acc.endswith("-") else (acc + " " + cur)
+            if re.search(r"[;.]\s*$", acc):
+                break
+        return acc.strip()
 
     def _collateral_dedupe_key(self, obj: Dict[str, Any]):
         """Ключ уникальности предмета залога (VIN для авто, кадастр/адрес для недвижимости)."""
