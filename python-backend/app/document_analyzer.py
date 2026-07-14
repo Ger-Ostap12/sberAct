@@ -635,16 +635,23 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
     # «Ходатайство…»): строка, НАЧИНАЮЩАЯСЯ с одного из этих слов. Служебные
     # упоминания («…обращается с заявлением…») в начале строки не стоят.
     _TITLE_ANCHOR_RE = re.compile(
-        r"^\s*(?:исковое\s+)?(?:заявлени[ея]|ходатайство|исковое\s+заявление)\b",
+        r"^\s*(?:исковое\s+)?(?:заявлени[ея]|ходатайство)\b",
         re.IGNORECASE,
     )
-    # Якорь просительной части — строка со словом «Прошу» (в т.ч. «прошу суд»,
-    # «Прошу:»); ищется только в теле, начиная с титула.
-    _PRAYER_ANCHOR_RE = re.compile(r"(?:^|[^а-яё])прошу\b", re.IGNORECASE)
+    # Якорь просительной части — глагол-просьба: прошу/просим/просит/просят,
+    # ходатайствую/ходатайствуем/ходатайствует (в т.ч. «ПРОСИТ СУД», «Прошу:»).
+    # Границы слова кириллицей вручную: `\b` в re не отделяет «просит» от
+    # «просительной». Ищется только в теле, начиная с титула.
+    _PRAYER_ANCHOR_RE = re.compile(
+        r"(?:^|[^а-яёА-ЯЁ])(?:прошу|просим|просит|просят|ходатайству(?:ю|ем|ет))(?![а-яёА-ЯЁ])",
+        re.IGNORECASE,
+    )
+    # Якорь блока приложений — строка, начинающаяся с «Приложение(я/й)».
+    _ATTACH_ANCHOR_RE = re.compile(r"^\s*приложени[еяй]", re.IGNORECASE)
 
     def extract_sections(self, file_path: str) -> List[Dict[str, Any]]:
-        """Тот же текст, что `extract_text`, разбитый на ТРИ блока — ТОЛЬКО для
-        предпросмотра/правки (`/docx-text`). Анализ и baseline «Скачать с
+        """Тот же текст, что `extract_text`, разбитый на ЧЕТЫРЕ блока — ТОЛЬКО
+        для предпросмотра/правки (`/docx-text`). Анализ и baseline «Скачать с
         правками» продолжают работать с плоским `extract_text`.
 
         Каждая строка несёт глобальный индекс `index` (позиция части в плоском
@@ -652,13 +659,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         `index`, байт-в-байт равно `extract_text(file)`. Пока он держится —
         порядок анализа и правок не меняется (нулевой риск для golden).
 
-        Блоки — непрерывные диапазоны по двум якорям в ТЕЛЕ документа:
-          `header` — шапка: всё до строки-титула («ЗАЯВЛЕНИЕ»/«Ходатайство»);
-          `body`   — основной текст: от титула до строки со словом «Прошу»;
-          `prayer` — просительная часть: от «Прошу» и до конца (включая таблицы
-                     и колонтитулы, которые в плоском тексте идут за телом).
-        Якорь не найден → соответствующая граница схлопывается (например, нет
-        «Прошу» → `prayer` пуст). Строки НИКОГДА не теряются.
+        Блоки — непрерывные диапазоны по якорям в ТЕЛЕ документа:
+          `header`      — вводная часть: всё до строки-титула;
+          `body`        — описательно-мотивировочная: от титула до просьбы;
+          `prayer`      — просительная: от глагола-просьбы до «Приложение»;
+          `attachments` — приложения: от «Приложение» и до конца (включая
+                          таблицы/колонтитулы, идущие в плоском тексте за телом).
+        Якорь не найден → соответствующая граница схлопывается (нет «Приложение»
+        → всё до конца остаётся в `prayer`). Строки НИКОГДА не теряются.
 
         Не-DOCX (PDF-fallback) блоков не даёт — вызывающая сторона использует
         плоский `text`.
@@ -669,43 +677,61 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         parts = self._docx_text_parts(file_path)
 
         # Границы ищем только по телу (origin == "body"); таблицы/колонтитулы в
-        # плоском тексте идут ПОСЛЕ тела и попадают в prayer как «до конца».
+        # плоском тексте идут ПОСЛЕ тела и попадают в последний непустой блок.
         title_idx: Optional[int] = None
         prayer_idx: Optional[int] = None
+        attach_idx: Optional[int] = None
         for index, (text, origin) in enumerate(parts):
             if origin != "body":
                 continue
             if title_idx is None and self._TITLE_ANCHOR_RE.match(text):
                 title_idx = index
                 continue
-            # «Прошу» учитываем только после титула (если он найден).
+            # Просьбу учитываем только после титула (если он найден).
             if prayer_idx is None and self._PRAYER_ANCHOR_RE.search(text):
                 if title_idx is None or index >= title_idx:
                     prayer_idx = index
+                continue
+            # «Приложение» — только после начала просительной части.
+            if (
+                attach_idx is None
+                and prayer_idx is not None
+                and index >= prayer_idx
+                and self._ATTACH_ANCHOR_RE.match(text)
+            ):
+                attach_idx = index
 
+        n = len(parts)
         header_end = title_idx if title_idx is not None else 0
-        body_end = prayer_idx if prayer_idx is not None else len(parts)
-        if body_end < header_end:
-            body_end = header_end  # аномалия «Прошу» раньше титула — body пуст
+        body_end = prayer_idx if prayer_idx is not None else n
+        prayer_end = attach_idx if attach_idx is not None else n
+        # Монотонность границ (на случай аномального порядка якорей).
+        body_end = max(body_end, header_end)
+        prayer_end = max(prayer_end, body_end)
 
-        buckets: Dict[str, List[Dict[str, Any]]] = {"header": [], "body": [], "prayer": []}
+        buckets: Dict[str, List[Dict[str, Any]]] = {
+            "header": [], "body": [], "prayer": [], "attachments": []
+        }
         for index, (text, _origin) in enumerate(parts):
             if index < header_end:
                 key = "header"
             elif index < body_end:
                 key = "body"
-            else:
+            elif index < prayer_end:
                 key = "prayer"
+            else:
+                key = "attachments"
             buckets[key].append({"text": text, "index": index})
 
         titles = {
-            "header": "Шапка",
-            "body": "Основной текст",
+            "header": "Вводная часть",
+            "body": "Описательно-мотивировочная часть",
             "prayer": "Просительная часть",
+            "attachments": "Приложения",
         }
         return [
             {"id": key, "title": titles[key], "lines": buckets[key]}
-            for key in ("header", "body", "prayer")
+            for key in ("header", "body", "prayer", "attachments")
             if buckets[key]
         ]
 
