@@ -10,6 +10,7 @@ import {
   ConvertJobStatus,
   ConverterStartResult,
   ConverterProcessStatus,
+  DocxTextResult,
 } from './electronApi';
 
 // Веб-реализация того же контракта, что и мост Electron (preload). Позволяет
@@ -175,7 +176,7 @@ export const webApi: ElectronAPI = {
     return res.blob();
   },
 
-  docxText: async (docx: Blob): Promise<{ success: boolean; text: string }> => {
+  docxText: async (docx: Blob): Promise<DocxTextResult> => {
     const formData = new FormData();
     formData.append('document', docx, 'converted.docx');
     const res = await fetchBackend('/docx-text', { method: 'POST', body: formData });

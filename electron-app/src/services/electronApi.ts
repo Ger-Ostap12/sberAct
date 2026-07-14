@@ -81,6 +81,27 @@ export interface ConverterProcessStatus {
   healthy: boolean;
 }
 
+/** Одна строка секции предпросмотра: текст + глобальный индекс в плоском тексте. */
+export interface DocxSectionLine {
+  text: string;
+  index: number;
+}
+
+/** Секция посекционного предпросмотра (представление строк extract_text). */
+export interface DocxSection {
+  id: string;
+  title: string;
+  lines: DocxSectionLine[];
+}
+
+/** Ответ /docx-text: плоский текст + его секционное представление. */
+export interface DocxTextResult {
+  success: boolean;
+  text: string;
+  /** Может отсутствовать (не-DOCX/старый бэкенд) — тогда fallback на text. */
+  sections?: DocxSection[];
+}
+
 /**
  * Контракт моста preload.js → renderer (contextBridge `electronAPI`).
  * Единственная точка правды о том, что доступно во `window.electronAPI`.
@@ -114,8 +135,8 @@ export interface ElectronAPI {
   convertStatus: (jobId: string) => Promise<ConvertJobStatus>;
   /** Готовый DOCX задачи (оригинальная вёрстка; «Скачать DOCX»). */
   convertDownload: (jobId: string) => Promise<Blob>;
-  /** Текст DOCX тем же экстрактором, что анализ (для правки в предпросмотре). */
-  docxText: (docx: Blob) => Promise<{ success: boolean; text: string }>;
+  /** Текст DOCX тем же экстрактором, что анализ (+ секции для предпросмотра). */
+  docxText: (docx: Blob) => Promise<DocxTextResult>;
   /** Вставка правленого текста в оригинальную вёрстку DOCX («Скачать с правками»). */
   docxApplyEdits: (docx: Blob, editedText: string) => Promise<Blob>;
   /** true — процессом конвертера управляет Electron (в браузере он запущен постоянно). */
@@ -205,7 +226,7 @@ export const convertStatus = (jobId: string): Promise<ConvertJobStatus> =>
 export const convertDownload = (jobId: string): Promise<Blob> =>
   getApi().convertDownload(jobId);
 
-export const docxText = (docx: Blob): Promise<{ success: boolean; text: string }> =>
+export const docxText = (docx: Blob): Promise<DocxTextResult> =>
   getApi().docxText(docx);
 
 export const docxApplyEdits = (docx: Blob, editedText: string): Promise<Blob> =>

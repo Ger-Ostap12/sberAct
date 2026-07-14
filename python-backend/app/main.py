@@ -278,7 +278,10 @@ async def docx_text(document: UploadFile = File(...)):
             tmp_path = tmp_file.name
         try:
             text = document_analyzer.extract_text(tmp_path)
-            return {"success": True, "text": text}
+            # Секции — представление ТОГО ЖЕ текста для посекционного редактора;
+            # анализ и «Скачать с правками» работают с плоским text (не меняются).
+            sections = document_analyzer.extract_sections(tmp_path)
+            return {"success": True, "text": text, "sections": sections}
         finally:
             os.unlink(tmp_path)
     except ValueError as e:

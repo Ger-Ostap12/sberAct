@@ -36,21 +36,21 @@ const PdfPanel: React.FC<PdfPanelProps> = ({ file }) => {
         if (cancelled) return;
 
         const targetWidth = Math.max(container.clientWidth - 16, 300);
-        // Один переиспользуемый canvas: страницы отдаются как <img> (PNG).
-        // Десятки живых canvas упираются в лимит canvas-памяти браузера —
-        // средние страницы «пустели» (баг Андрея); картинки лимита не имеют.
-        const canvas = document.createElement('canvas');
         for (let pageNum = 1; pageNum <= doc.numPages; pageNum++) {
           const page = await doc.getPage(pageNum);
           if (cancelled) return;
           const unscaled = page.getViewport({ scale: 1 });
           const viewport = page.getViewport({ scale: targetWidth / unscaled.width });
 
+          // Свой canvas на КАЖДУЮ страницу: переиспользование одного canvas между
+          // page.render() в pdfjs v6 оставляло средние страницы пустыми (баг
+          // Андрея). Страница отдаётся как <img> (PNG), затем canvas сразу
+          // освобождается — живым остаётся максимум один, лимит памяти не растёт.
+          const canvas = document.createElement('canvas');
           canvas.width = viewport.width;
           canvas.height = viewport.height;
           const context = canvas.getContext('2d');
           if (!context) continue;
-          context.clearRect(0, 0, canvas.width, canvas.height);
           await page.render({ canvas, canvasContext: context, viewport }).promise;
           if (cancelled) return;
 
@@ -64,9 +64,9 @@ const PdfPanel: React.FC<PdfPanelProps> = ({ file }) => {
           img.style.maxWidth = '100%';
           container.appendChild(img);
           page.cleanup();
+          canvas.width = 0;
+          canvas.height = 0;
         }
-        canvas.width = 0;
-        canvas.height = 0;
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : 'Не удалось отобразить PDF');

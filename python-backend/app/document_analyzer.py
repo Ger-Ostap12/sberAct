@@ -495,70 +495,82 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
     def _extract_text_from_docx(self, file_path: str) -> str:
         """Извлекает ВЕСЬ текст из Word документа (.docx).
 
-        Полный обход (надмножество старой логики «параграфы + таблицы»):
-          1. тело: параграфы и таблицы — в порядке документа (важно для
-             контекстных паттернов классификации вида «Должник:\\nИП ...»);
-          2. колонтитулы всех секций (6 контейнеров) — с дедупликацией;
-          3. надписи / текстовые поля (w:txbxContent);
-          4. сноски и концевые сноски.
-        Реквизиты (наименование, ИНН, КПП, адрес, банк) в юр-заявлениях часто
-        лежат именно в колонтитуле или надписи на бланке — старый способ их терял.
+        Тонкая обёртка над :meth:`_docx_text_parts` — тот же обход, только
+        соединяет части в плоский текст. Порядок и дедуп — единый источник
+        истины для анализа, предпросмотра и baseline «Скачать с правками».
         """
         try:
-            doc = Document(file_path)
-            text_parts: List[str] = []
-
-            # 1. Тело документа: параграфы, затем таблицы
-            for paragraph in doc.paragraphs:
-                if paragraph.text.strip():
-                    text_parts.append(paragraph.text.strip())
-
-            for table in doc.tables:
-                for row in table.rows:
-                    for cell in row.cells:
-                        if cell.text.strip():
-                            text_parts.append(cell.text.strip())
-
-            # 2. Колонтитулы всех секций: header/footer + first_page + even_page.
-            # Секции часто ссылаются на один и тот же колонтитул — дедуплицируем.
-            seen_headers = set()
-            for section in doc.sections:
-                for container in (
-                    section.header, section.footer,
-                    section.first_page_header, section.first_page_footer,
-                    section.even_page_header, section.even_page_footer,
-                ):
-                    if container is None:
-                        continue
-                    try:
-                        chunk_parts = []
-                        for paragraph in container.paragraphs:
-                            if paragraph.text.strip():
-                                chunk_parts.append(paragraph.text.strip())
-                        for table in container.tables:
-                            for row in table.rows:
-                                for cell in row.cells:
-                                    if cell.text.strip():
-                                        chunk_parts.append(cell.text.strip())
-                        chunk = "\n".join(chunk_parts)
-                        if chunk and chunk not in seen_headers:
-                            seen_headers.add(chunk)
-                            text_parts.append(chunk)
-                    except Exception as exc:
-                        logger.warning(f"Не удалось обработать колонтитул: {exc}")
-
-            # 3 + 4. Надписи (w:txbxContent) и сноски/концевые сноски —
-            # части DOCX, недоступные через объектную модель python-docx.
-            text_parts.extend(self._extract_docx_raw_xml_text(file_path))
-
-            if not text_parts:
+            parts = self._docx_text_parts(file_path)
+            if not parts:
                 raise ValueError("Документ пуст или не содержит извлекаемого текста")
-            return "\n".join(text_parts)
+            return "\n".join(text for text, _origin in parts)
         except ValueError:
             raise
         except Exception as e:
             logger.error(f"Ошибка при извлечении текста из Word: {str(e)}")
             raise ValueError("Не удалось извлечь текст из документа (возможно, файл поврежден или пустой)") from e
+
+    def _docx_text_parts(self, file_path: str) -> List[Tuple[str, str]]:
+        """Части текста DOCX с указанием происхождения (провенанс) каждой части.
+
+        Возвращает список ``(text, origin)`` В ТОМ ЖЕ ПОРЯДКЕ, что и старый
+        плоский экстрактор — так `"\\n".join(text ...)` байт-в-байт совпадает с
+        `extract_text` (гарант инварианта для секций и golden). ``origin`` ∈
+        ``{"body", "table", "colophon", "raw"}``:
+          1. тело: параграфы (``body``), затем таблицы (``table``);
+          2. колонтитулы всех секций (``colophon``) — с дедупликацией;
+          3. надписи (w:txbxContent) и сноски/концевые сноски (``raw``).
+        Провенанс нужен посекционному предпросмотру (`extract_sections`), плоский
+        текст его игнорирует.
+        """
+        doc = Document(file_path)
+        parts: List[Tuple[str, str]] = []
+
+        # 1. Тело документа: параграфы, затем таблицы
+        for paragraph in doc.paragraphs:
+            if paragraph.text.strip():
+                parts.append((paragraph.text.strip(), "body"))
+
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    if cell.text.strip():
+                        parts.append((cell.text.strip(), "table"))
+
+        # 2. Колонтитулы всех секций: header/footer + first_page + even_page.
+        # Секции часто ссылаются на один и тот же колонтитул — дедуплицируем.
+        seen_headers = set()
+        for section in doc.sections:
+            for container in (
+                section.header, section.footer,
+                section.first_page_header, section.first_page_footer,
+                section.even_page_header, section.even_page_footer,
+            ):
+                if container is None:
+                    continue
+                try:
+                    chunk_parts = []
+                    for paragraph in container.paragraphs:
+                        if paragraph.text.strip():
+                            chunk_parts.append(paragraph.text.strip())
+                    for table in container.tables:
+                        for row in table.rows:
+                            for cell in row.cells:
+                                if cell.text.strip():
+                                    chunk_parts.append(cell.text.strip())
+                    chunk = "\n".join(chunk_parts)
+                    if chunk and chunk not in seen_headers:
+                        seen_headers.add(chunk)
+                        parts.append((chunk, "colophon"))
+                except Exception as exc:
+                    logger.warning(f"Не удалось обработать колонтитул: {exc}")
+
+        # 3 + 4. Надписи (w:txbxContent) и сноски/концевые сноски —
+        # части DOCX, недоступные через объектную модель python-docx.
+        for chunk in self._extract_docx_raw_xml_text(file_path):
+            parts.append((chunk, "raw"))
+
+        return parts
 
     def _extract_docx_raw_xml_text(self, file_path: str) -> List[str]:
         """Собирает текст из частей DOCX, не покрытых моделью python-docx.
@@ -619,7 +631,92 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
         return results
 
+    def extract_sections(self, file_path: str) -> List[Dict[str, Any]]:
+        """Тот же текст, что `extract_text`, сгруппированный по секциям — ТОЛЬКО
+        для предпросмотра/правки (`/docx-text`). Анализ и baseline «Скачать с
+        правками» продолжают работать с плоским `extract_text`.
 
+        Каждая строка несёт глобальный индекс `index` (позиция части в плоском
+        тексте). Инвариант: соединение строк ВСЕХ секций, отсортированных по
+        `index`, байт-в-байт равно `extract_text(file)`. Пока он держится —
+        порядок анализа и правок не меняется (нулевой риск для golden).
+
+        Секции — привязка к меткам-заголовкам (`label_synonyms`), а не к позиции:
+        `intro` (до первого заголовка), `debtor`, `creditor`, `manager`,
+        `third_party`, `finances` (просительная часть), `tables` (ячейки таблиц),
+        `other` (колонтитулы/надписи/сноски). Нераспознанная строка тела остаётся
+        в текущей открытой секции — строки НЕ теряются.
+
+        Не-DOCX (PDF-fallback) секций не даёт — вызывающая сторона использует
+        плоский `text`.
+        """
+        from label_synonyms import (
+            CREDITOR_HEADER_LABELS,
+            DEBTOR_HEADER_LABELS,
+            MANAGER_HEADER_LABELS,
+            THIRD_PARTY_HEADER_LABELS,
+            header_pattern,
+        )
+
+        if Path(file_path).suffix.lower() not in (".docx", ".doc"):
+            return []
+
+        # Якорь-заголовок в начале части (возможна нумерация «1.», «2)»).
+        def _anchor(labels: List[str]) -> "re.Pattern":
+            return re.compile(r"^\s*(?:\d+[.)]\s*)?(?:" + header_pattern(labels) + r")", re.IGNORECASE)
+
+        debtor_re = _anchor(DEBTOR_HEADER_LABELS)
+        creditor_re = _anchor(CREDITOR_HEADER_LABELS)
+        manager_re = _anchor(MANAGER_HEADER_LABELS)
+        third_party_re = _anchor(THIRD_PARTY_HEADER_LABELS)
+        # Начало просительной части — дальше всё тело до таблиц считаем финансами.
+        prayer_re = re.compile(
+            r"(?:^|\n)\s*(?:на\s+основании\s+изложенного|руководствуясь\s+ст|прошу\s+суд|прошу\s*:)",
+            re.IGNORECASE,
+        )
+
+        buckets: Dict[str, List[Dict[str, Any]]] = {
+            key: [] for key in
+            ("intro", "debtor", "creditor", "manager", "third_party", "finances", "tables", "other")
+        }
+
+        current = "intro"
+        for index, (text, origin) in enumerate(self._docx_text_parts(file_path)):
+            if origin == "table":
+                target = "tables"
+            elif origin in ("colophon", "raw"):
+                target = "other"
+            elif debtor_re.match(text):
+                current = target = "debtor"
+            elif creditor_re.match(text):
+                current = target = "creditor"
+            elif manager_re.match(text):
+                current = target = "manager"
+            elif third_party_re.match(text):
+                current = target = "third_party"
+            elif current != "finances" and prayer_re.search(text):
+                current = target = "finances"
+            else:
+                target = current
+            buckets[target].append({"text": text, "index": index})
+
+        titles = {
+            "intro": "Вводная часть",
+            "debtor": "Должник",
+            "creditor": "Кредитор / Заявитель",
+            "manager": "Управляющий",
+            "third_party": "Третьи лица",
+            "finances": "Требования",
+            "tables": "Таблицы",
+            "other": "Реквизиты и примечания",
+        }
+        # Порядок отображения: таблицы рядом с финансами, а не в хвосте.
+        display_order = ("intro", "debtor", "creditor", "manager", "third_party", "finances", "tables", "other")
+        return [
+            {"id": key, "title": titles[key], "lines": buckets[key]}
+            for key in display_order
+            if buckets[key]
+        ]
 
     def clean_extracted_value(self, value: str) -> str:
         """Очищает извлеченное значение от звездочек и других маскирующих символов"""

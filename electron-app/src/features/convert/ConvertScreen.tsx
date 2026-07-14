@@ -34,10 +34,12 @@ import {
   converterStart,
   converterStop,
   ConvertScanFlags,
+  DocxSection,
   docxApplyEdits,
   docxText,
 } from '../../services/electronApi';
 import PdfPanel from './PdfPanel';
+import SectionedEditor from './SectionedEditor';
 
 type Phase =
   | 'starting' // подъём sidecar-процесса конвертера (холодный старт LLM — до минут)
@@ -129,6 +131,7 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
   const [error, setError] = useState<string | null>(null);
   const [docxBlob, setDocxBlob] = useState<Blob | null>(null);
   const [editedText, setEditedText] = useState('');
+  const [sections, setSections] = useState<DocxSection[]>([]);
   const [scanFlags, setScanFlags] = useState<ConvertScanFlags>(SCAN_DEFAULT_FLAGS);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -205,6 +208,7 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
             const extracted = await docxText(blob);
             setDocxBlob(blob);
             setEditedText(extracted.text || '');
+            setSections(extracted.sections || []);
             setPhase('preview');
           } else if (status.status === 'error') {
             failWith(status.error || 'Ошибка конвертации');
@@ -321,35 +325,40 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
               flex: 1,
               minWidth: 0,
               backgroundColor: 'grey.200',
-              p: 2,
+              p: sections.length > 0 ? 1 : 2,
               overflow: 'hidden',
               display: 'flex',
             }}
           >
-            <Box
-              component="textarea"
-              value={editedText}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                setEditedText(e.target.value)
-              }
-              data-testid="text-editor"
-              sx={{
-                // «Лист»: белая страница с полями; правится ТОТ ЖЕ текст,
-                // что уйдёт в анализ — на экране нет потерь предпросмотра
-                flex: 1,
-                width: '100%',
-                border: 'none',
-                resize: 'none',
-                outline: 'none',
-                backgroundColor: 'white',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
-                px: 4,
-                py: 3,
-                fontFamily: '"Times New Roman", Times, serif',
-                fontSize: '12pt',
-                lineHeight: 1.5,
-              }}
-            />
+            {sections.length > 0 ? (
+              // Посекционный редактор: те же строки extract_text, сгруппированы
+              // по меткам; на выходе — канонический текст в исходном порядке.
+              <SectionedEditor sections={sections} onChange={setEditedText} />
+            ) : (
+              // Fallback (не-DOCX/старый бэкенд): единый «лист» с плоским текстом.
+              <Box
+                component="textarea"
+                value={editedText}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  setEditedText(e.target.value)
+                }
+                data-testid="text-editor"
+                sx={{
+                  flex: 1,
+                  width: '100%',
+                  border: 'none',
+                  resize: 'none',
+                  outline: 'none',
+                  backgroundColor: 'white',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                  px: 4,
+                  py: 3,
+                  fontFamily: '"Times New Roman", Times, serif',
+                  fontSize: '12pt',
+                  lineHeight: 1.5,
+                }}
+              />
+            )}
           </Box>
         </Box>
       </Box>
