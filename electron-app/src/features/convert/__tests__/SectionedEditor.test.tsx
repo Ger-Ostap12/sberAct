@@ -4,46 +4,63 @@ import userEvent from '@testing-library/user-event';
 import SectionedEditor from '../SectionedEditor';
 import { DocxSection } from '../../../services/electronApi';
 
-// Секции в ПОРЯДКЕ ОТОБРАЖЕНИЯ (как отдаёт бэкенд), но с индексами вразнобой:
-// таблица (index 2) показывается после «Требований», хотя канонически стоит
-// между должником и кредитором — проверяем пересборку по index.
+// Три блока (Шапка → Основной текст → Просительная) с индексами по порядку.
 const SECTIONS: DocxSection[] = [
-  { id: 'intro', title: 'Вводная часть', lines: [{ text: 'В Арбитражный суд', index: 0 }] },
-  { id: 'debtor', title: 'Должник', lines: [{ text: 'Должник: Иванов', index: 1 }] },
-  { id: 'creditor', title: 'Кредитор / Заявитель', lines: [{ text: 'Кредитор: Сбербанк', index: 3 }] },
-  { id: 'finances', title: 'Требования', lines: [{ text: 'Прошу признать банкротом', index: 4 }] },
-  { id: 'tables', title: 'Таблицы', lines: [{ text: 'Договор №1', index: 2 }] },
-  { id: 'other', title: 'Реквизиты и примечания', lines: [{ text: 'ИНН 6100000000', index: 5 }] },
+  {
+    id: 'header',
+    title: 'Шапка',
+    lines: [
+      { text: 'В Арбитражный суд', index: 0 },
+      { text: 'Должник: Иванов', index: 1 },
+    ],
+  },
+  {
+    id: 'body',
+    title: 'Основной текст',
+    lines: [
+      { text: 'ЗАЯВЛЕНИЕ о банкротстве', index: 2 },
+      { text: 'Между сторонами договор', index: 3 },
+    ],
+  },
+  {
+    id: 'prayer',
+    title: 'Просительная часть',
+    lines: [
+      { text: 'Прошу признать банкротом', index: 4 },
+      { text: 'Договор №1', index: 5 },
+    ],
+  },
 ];
 
 const CANONICAL =
-  'В Арбитражный суд\nДолжник: Иванов\nДоговор №1\nКредитор: Сбербанк\nПрошу признать банкротом\nИНН 6100000000';
+  'В Арбитражный суд\nДолжник: Иванов\nЗАЯВЛЕНИЕ о банкротстве\nМежду сторонами договор\nПрошу признать банкротом\nДоговор №1';
 
 describe('SectionedEditor', () => {
-  it('пересобирает канонический текст в исходном порядке index (не в порядке секций)', () => {
+  it('пересобирает канонический текст в исходном порядке index', () => {
     const onChange = jest.fn();
     render(<SectionedEditor sections={SECTIONS} onChange={onChange} />);
     expect(onChange).toHaveBeenLastCalledWith(CANONICAL);
   });
 
-  it('должник и кредитор — в РАЗНЫХ секциях (не слиты)', () => {
+  it('рендерит ровно три блока: шапка / основной текст / просительная', () => {
     render(<SectionedEditor sections={SECTIONS} onChange={jest.fn()} />);
-    expect(screen.getByTestId('section-debtor')).toHaveValue('Должник: Иванов');
-    expect(screen.getByTestId('section-creditor')).toHaveValue('Кредитор: Сбербанк');
-    // Таблица отделена в свою секцию (а не в хвосте общего текста).
-    expect(screen.getByTestId('section-tables')).toHaveValue('Договор №1');
+    expect(screen.getByTestId('section-header')).toHaveValue('В Арбитражный суд\nДолжник: Иванов');
+    expect(screen.getByTestId('section-body')).toHaveValue(
+      'ЗАЯВЛЕНИЕ о банкротстве\nМежду сторонами договор'
+    );
+    expect(screen.getByTestId('section-prayer')).toHaveValue('Прошу признать банкротом\nДоговор №1');
   });
 
-  it('правка секции меняет канонический текст, сохраняя порядок index', async () => {
+  it('правка блока меняет канонический текст, сохраняя порядок index', async () => {
     const onChange = jest.fn();
     render(<SectionedEditor sections={SECTIONS} onChange={onChange} />);
 
-    const debtor = screen.getByTestId('section-debtor');
-    await userEvent.clear(debtor);
-    await userEvent.type(debtor, 'Должник: Петров');
+    const prayer = screen.getByTestId('section-prayer');
+    await userEvent.clear(prayer);
+    await userEvent.type(prayer, 'Прошу отказать');
 
     expect(onChange).toHaveBeenLastCalledWith(
-      'В Арбитражный суд\nДолжник: Петров\nДоговор №1\nКредитор: Сбербанк\nПрошу признать банкротом\nИНН 6100000000'
+      'В Арбитражный суд\nДолжник: Иванов\nЗАЯВЛЕНИЕ о банкротстве\nМежду сторонами договор\nПрошу отказать'
     );
   });
 });

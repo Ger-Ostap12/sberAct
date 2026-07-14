@@ -631,90 +631,81 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
         return results
 
+    # Якорь заголовка-титула документа («ЗАЯВЛЕНИЕ», «Исковое заявление»,
+    # «Ходатайство…»): строка, НАЧИНАЮЩАЯСЯ с одного из этих слов. Служебные
+    # упоминания («…обращается с заявлением…») в начале строки не стоят.
+    _TITLE_ANCHOR_RE = re.compile(
+        r"^\s*(?:исковое\s+)?(?:заявлени[ея]|ходатайство|исковое\s+заявление)\b",
+        re.IGNORECASE,
+    )
+    # Якорь просительной части — строка со словом «Прошу» (в т.ч. «прошу суд»,
+    # «Прошу:»); ищется только в теле, начиная с титула.
+    _PRAYER_ANCHOR_RE = re.compile(r"(?:^|[^а-яё])прошу\b", re.IGNORECASE)
+
     def extract_sections(self, file_path: str) -> List[Dict[str, Any]]:
-        """Тот же текст, что `extract_text`, сгруппированный по секциям — ТОЛЬКО
-        для предпросмотра/правки (`/docx-text`). Анализ и baseline «Скачать с
+        """Тот же текст, что `extract_text`, разбитый на ТРИ блока — ТОЛЬКО для
+        предпросмотра/правки (`/docx-text`). Анализ и baseline «Скачать с
         правками» продолжают работать с плоским `extract_text`.
 
         Каждая строка несёт глобальный индекс `index` (позиция части в плоском
-        тексте). Инвариант: соединение строк ВСЕХ секций, отсортированных по
+        тексте). Инвариант: соединение строк ВСЕХ блоков, отсортированных по
         `index`, байт-в-байт равно `extract_text(file)`. Пока он держится —
         порядок анализа и правок не меняется (нулевой риск для golden).
 
-        Секции — привязка к меткам-заголовкам (`label_synonyms`), а не к позиции:
-        `intro` (до первого заголовка), `debtor`, `creditor`, `manager`,
-        `third_party`, `finances` (просительная часть), `tables` (ячейки таблиц),
-        `other` (колонтитулы/надписи/сноски). Нераспознанная строка тела остаётся
-        в текущей открытой секции — строки НЕ теряются.
+        Блоки — непрерывные диапазоны по двум якорям в ТЕЛЕ документа:
+          `header` — шапка: всё до строки-титула («ЗАЯВЛЕНИЕ»/«Ходатайство»);
+          `body`   — основной текст: от титула до строки со словом «Прошу»;
+          `prayer` — просительная часть: от «Прошу» и до конца (включая таблицы
+                     и колонтитулы, которые в плоском тексте идут за телом).
+        Якорь не найден → соответствующая граница схлопывается (например, нет
+        «Прошу» → `prayer` пуст). Строки НИКОГДА не теряются.
 
-        Не-DOCX (PDF-fallback) секций не даёт — вызывающая сторона использует
+        Не-DOCX (PDF-fallback) блоков не даёт — вызывающая сторона использует
         плоский `text`.
         """
-        from label_synonyms import (
-            CREDITOR_HEADER_LABELS,
-            DEBTOR_HEADER_LABELS,
-            MANAGER_HEADER_LABELS,
-            THIRD_PARTY_HEADER_LABELS,
-            header_pattern,
-        )
-
         if Path(file_path).suffix.lower() not in (".docx", ".doc"):
             return []
 
-        # Якорь-заголовок в начале части (возможна нумерация «1.», «2)»).
-        def _anchor(labels: List[str]) -> "re.Pattern":
-            return re.compile(r"^\s*(?:\d+[.)]\s*)?(?:" + header_pattern(labels) + r")", re.IGNORECASE)
+        parts = self._docx_text_parts(file_path)
 
-        debtor_re = _anchor(DEBTOR_HEADER_LABELS)
-        creditor_re = _anchor(CREDITOR_HEADER_LABELS)
-        manager_re = _anchor(MANAGER_HEADER_LABELS)
-        third_party_re = _anchor(THIRD_PARTY_HEADER_LABELS)
-        # Начало просительной части — дальше всё тело до таблиц считаем финансами.
-        prayer_re = re.compile(
-            r"(?:^|\n)\s*(?:на\s+основании\s+изложенного|руководствуясь\s+ст|прошу\s+суд|прошу\s*:)",
-            re.IGNORECASE,
-        )
+        # Границы ищем только по телу (origin == "body"); таблицы/колонтитулы в
+        # плоском тексте идут ПОСЛЕ тела и попадают в prayer как «до конца».
+        title_idx: Optional[int] = None
+        prayer_idx: Optional[int] = None
+        for index, (text, origin) in enumerate(parts):
+            if origin != "body":
+                continue
+            if title_idx is None and self._TITLE_ANCHOR_RE.match(text):
+                title_idx = index
+                continue
+            # «Прошу» учитываем только после титула (если он найден).
+            if prayer_idx is None and self._PRAYER_ANCHOR_RE.search(text):
+                if title_idx is None or index >= title_idx:
+                    prayer_idx = index
 
-        buckets: Dict[str, List[Dict[str, Any]]] = {
-            key: [] for key in
-            ("intro", "debtor", "creditor", "manager", "third_party", "finances", "tables", "other")
-        }
+        header_end = title_idx if title_idx is not None else 0
+        body_end = prayer_idx if prayer_idx is not None else len(parts)
+        if body_end < header_end:
+            body_end = header_end  # аномалия «Прошу» раньше титула — body пуст
 
-        current = "intro"
-        for index, (text, origin) in enumerate(self._docx_text_parts(file_path)):
-            if origin == "table":
-                target = "tables"
-            elif origin in ("colophon", "raw"):
-                target = "other"
-            elif debtor_re.match(text):
-                current = target = "debtor"
-            elif creditor_re.match(text):
-                current = target = "creditor"
-            elif manager_re.match(text):
-                current = target = "manager"
-            elif third_party_re.match(text):
-                current = target = "third_party"
-            elif current != "finances" and prayer_re.search(text):
-                current = target = "finances"
+        buckets: Dict[str, List[Dict[str, Any]]] = {"header": [], "body": [], "prayer": []}
+        for index, (text, _origin) in enumerate(parts):
+            if index < header_end:
+                key = "header"
+            elif index < body_end:
+                key = "body"
             else:
-                target = current
-            buckets[target].append({"text": text, "index": index})
+                key = "prayer"
+            buckets[key].append({"text": text, "index": index})
 
         titles = {
-            "intro": "Вводная часть",
-            "debtor": "Должник",
-            "creditor": "Кредитор / Заявитель",
-            "manager": "Управляющий",
-            "third_party": "Третьи лица",
-            "finances": "Требования",
-            "tables": "Таблицы",
-            "other": "Реквизиты и примечания",
+            "header": "Шапка",
+            "body": "Основной текст",
+            "prayer": "Просительная часть",
         }
-        # Порядок отображения: таблицы рядом с финансами, а не в хвосте.
-        display_order = ("intro", "debtor", "creditor", "manager", "third_party", "finances", "tables", "other")
         return [
             {"id": key, "title": titles[key], "lines": buckets[key]}
-            for key in display_order
+            for key in ("header", "body", "prayer")
             if buckets[key]
         ]
 

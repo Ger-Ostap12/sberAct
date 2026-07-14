@@ -50,24 +50,24 @@ def test_sections_reassemble_to_extract_text(path):
 
 
 def _build_docx(tmp_path):
-    """Синтетический DOCX: интро, блок должника, таблица, блок кредитора, просьба."""
+    """Синтетический DOCX: шапка, титул, основной текст, таблица, просьба."""
     from docx import Document
 
     doc = Document()
-    doc.add_paragraph("В Арбитражный суд Ростовской области")
-    doc.add_paragraph("Должник: ИП Иванов Иван Иванович")
-    doc.add_paragraph("ИНН 6100000000")
-    table = doc.add_table(rows=1, cols=2)
+    doc.add_paragraph("В Арбитражный суд Ростовской области")           # шапка
+    doc.add_paragraph("Должник: ИП Иванов Иван Иванович")               # шапка
+    doc.add_paragraph("ЗАЯВЛЕНИЕ о признании должника банкротом")       # титул → body
+    doc.add_paragraph("Между сторонами заключён кредитный договор.")     # body
+    table = doc.add_table(rows=1, cols=2)                                # таблица (после тела)
     table.rows[0].cells[0].text = "Договор №1"
     table.rows[0].cells[1].text = "1 000 000 руб."
-    doc.add_paragraph("Кредитор: ПАО Сбербанк")
-    doc.add_paragraph("Прошу суд признать должника банкротом")
+    doc.add_paragraph("Прошу суд признать должника банкротом")           # титул → prayer
     out = os.path.join(tmp_path, "synthetic.docx")
     doc.save(out)
     return out
 
 
-def test_sections_segment_debtor_creditor_tables(tmp_path):
+def test_sections_three_blocks_header_body_prayer(tmp_path):
     da = DocumentAnalyzer()
     path = _build_docx(tmp_path)
 
@@ -79,10 +79,16 @@ def test_sections_segment_debtor_creditor_tables(tmp_path):
     assert reassembled == text
     assert sorted(indices) == list(range(n_parts))
 
+    # Ровно три блока в фиксированном порядке.
+    assert [s["id"] for s in sections] == ["header", "body", "prayer"]
+
     by_id = {s["id"]: " ".join(ln["text"] for ln in s["lines"]) for s in sections}
-    assert "Иванов" in by_id.get("debtor", "")
-    assert "Сбербанк" in by_id.get("creditor", "")
-    assert "Договор" in by_id.get("tables", "")
-    assert "банкротом" in by_id.get("finances", "")
-    # Должник и кредитор — РАЗНЫЕ секции (не слиты).
-    assert "Сбербанк" not in by_id.get("debtor", "")
+    # Шапка — до титула; титул и текст — в основном; «Прошу»+таблица — в просительной.
+    assert "Арбитражный суд" in by_id["header"]
+    assert "ЗАЯВЛЕНИЕ" in by_id["body"]
+    assert "кредитный договор" in by_id["body"]
+    assert "Прошу" in by_id["prayer"]
+    # Таблица идёт за телом → попадает в prayer («до конца»), не в шапку/основной.
+    assert "Договор №1" in by_id["prayer"]
+    assert "Прошу" not in by_id["header"]
+    assert "ЗАЯВЛЕНИЕ" not in by_id["header"]
