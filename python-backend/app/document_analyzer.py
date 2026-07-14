@@ -328,6 +328,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # («…"МТС-» + «Банк"» ниже) — дотягиваем по тексту.
             self._fix_truncated_creditor_name(extracted_fields, text)
 
+            # Артефакты грязной вёрстки в кредиторе: хвост-реквизиты в имени
+            # («ПАО Сбербанк Место нахождения: …») и врезка «Исх. № … от ДД.ММ.ГГГГ»
+            # в адресе (pdf2docx вклеил исходящий номер письма).
+            self._clean_creditor_artifacts(extracted_fields, text)
+
             # Адрес управляющего — фолбэк для многострочного «Адрес регистрации:»,
             # когда ФИО и адрес на разных строках (общие паттерны не справляются).
             self._fill_manager_address(extracted_fields, text)
@@ -1627,6 +1632,44 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         joiner = "" if base.endswith("-") else " "
         fixed = re.sub(r"\s+", " ", (base + joiner + tail)).strip()
         fields["creditorName"] = fixed
+
+    # Метки-реквизиты, приклеенные к имени кредитора из stacked-шапки банка
+    # («Заявитель (кредитор): ПАО Сбербанк Место нахождения: ул. Вавилова…»):
+    # с любой из них начинается блок реквизитов, а не название — режем имя по ней.
+    _CREDITOR_NAME_TAIL_RE = re.compile(
+        r"\s*(?:Мест\w*\s+нахожд\w*|Юридическ\w+\s+адрес|Почтов\w+(?:\s+адрес)?|"
+        r"Адрес\s+для\s+корреспонденции|Адрес[:\s]|ОГРН|ИНН|Телефон|e-?mail|"
+        r"Дата\s+(?:государственн\w+\s+)?регистрац\w+)",
+        re.IGNORECASE,
+    )
+    # Исходящий номер письма, вклеенный pdf2docx в середину адреса
+    # («…Муниципальный Округ Исх. №б/н от 29.04.2026 Замоскворечье…»).
+    _DISPATCH_NUMBER_RE = re.compile(
+        r"\s*Исх\.?\s*№\s*\S+\s+от\s+\d{1,2}[.,]\d{1,2}[.,]\d{4}\s*",
+        re.IGNORECASE,
+    )
+
+    def _clean_creditor_artifacts(self, fields: Dict[str, Any], text: str) -> None:
+        """Убирает из кредитора артефакты грязной вёрстки/stacked-шапки банка:
+        1) хвост-реквизиты в creditorName («… Место нахождения: …» и т.п.);
+        2) врезку исходящего номера «Исх. № … от ДД.ММ.ГГГГ» в creditorAddress.
+        Реквизиты (ИНН/ОГРН/адрес) при этом не теряются — они берутся отдельно
+        из блока кредитора/реестра, а сопоставление с реестром по обрезанному имени
+        (напр. «ПАО Сбербанк») продолжает работать."""
+        name = fields.get("creditorName")
+        if isinstance(name, str) and name.strip():
+            m = self._CREDITOR_NAME_TAIL_RE.search(name)
+            if m and m.start() > 0:
+                cut = name[: m.start()].strip(" ,;:-")
+                if len(cut) >= 3:
+                    fields["creditorName"] = cut
+
+        addr = fields.get("creditorAddress")
+        if isinstance(addr, str) and "исх" in addr.lower():
+            cleaned = self._DISPATCH_NUMBER_RE.sub(" ", addr)
+            cleaned = re.sub(r"\s+", " ", cleaned).strip(" ,;")
+            if cleaned and cleaned != addr:
+                fields["creditorAddress"] = cleaned
 
     def _apply_table_breakdown_finances(self, fields: Dict[str, Any], text: str) -> None:
         """Табличная разбивка задолженности: столбцы «Структура задолженности |
