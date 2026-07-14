@@ -1322,6 +1322,21 @@ class PartiesMixin:
                 ogrn_clean = re.sub(r"\D", "", ogrn_m.group(1))
                 if len(ogrn_clean) in (13, 15):
                     doc_ogrn = ogrn_clean
+
+        # Фолбэк: реквизиты кредитора не в шапке, а в блоке «Реквизиты для
+        # перечисления … <кредитор>: ИНН: N, ОГРН: N» в конце заявления (форма
+        # ЦДУ Инвест) — это ИНН/ОГРН именно кредитора-получателя, берём их.
+        if not doc_inn or not doc_ogrn:
+            pay = re.search(
+                r"Реквизит\w*\s+для\s+перечислен\w+[^\n]*:\s*\n?\s*"
+                r"ИНН[:\s]*([0-9]{10,12})[,\s]+ОГРН[:\s]*([0-9]{13,15})",
+                text, re.IGNORECASE,
+            )
+            if pay:
+                if not doc_inn and len(pay.group(1)) in (10, 12):
+                    doc_inn = pay.group(1)
+                if not doc_ogrn and len(pay.group(2)) in (13, 15):
+                    doc_ogrn = pay.group(2)
         doc_addr = self._extract_creditor_address(text)
 
         inn = doc_inn or (matched["inn"] if matched else None)

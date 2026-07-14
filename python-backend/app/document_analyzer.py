@@ -909,9 +909,18 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 )
                 if cont:
                     creditor = (creditor + " " + self.clean_extracted_value(cont.group(1))).strip(" ,;")
-            # Срезаем хвостовую скобку с дублем/ОПФ: «… «ТБАНК» (АО «ТБАНК»…)» -> «… «ТБАНК»»,
-            # «ББР Банк (акционерное общество)» -> «ББР Банк».
-            creditor = re.split(r"\s*\(", creditor, maxsplit=1)[0].strip(" ,;")
+            # Срезаем хвостовую скобку с ДУБЛЕМ названия («… «ТБАНК» (АО «ТБАНК»…)»
+            # -> «… «ТБАНК»»). НО скобку из ЧИСТОЙ правовой формы («ББР Банк
+            # (акционерное общество)») сохраняем — это часть наименования, а не дубль.
+            _paren = re.search(r"\(([^)]*)\)", creditor)
+            _pure_opf = _paren and re.fullmatch(
+                r"\s*(?:публичн\w+\s+|непубличн\w+\s+)?"
+                r"(?:акционерн\w+\s+обществ\w+|обществ\w+\s+с\s+ограниченн\w+\s+ответственност\w+|"
+                r"АО|ПАО|ООО|ОАО|ЗАО)\s*",
+                _paren.group(1), re.IGNORECASE,
+            )
+            if not _pure_opf:
+                creditor = re.split(r"\s*\(", creditor, maxsplit=1)[0].strip(" ,;")
             cl = creditor.lower()
             # Отсекаем мусор: маркеры шаблона [12]/[987], boilerplate-фразы, описания.
             has_marker = bool(re.search(r"\[\d", creditor))
@@ -960,6 +969,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             r"Кредитор\s*:\s*",
             # «Заявитель Акционерное общество …» — без «(кредитор)» и двоеточия.
             r"Заявитель\s+(?=(?:Акционерн|Публичн|Общество|ООО|АО|ПАО|ЗАО|ОАО|ИП|ФНС|«))",
+            # «Заявитель: <имя>» с двоеточием и именем без ОПФ-префикса («ББР Банк»,
+            # «ООО ПКО …»). Последним, чтобы не перебивать более специфичные якоря.
+            r"Заявитель\s*:\s*",
         ]:
             m = re.search(start_pattern, header, re.IGNORECASE)
             if m:
@@ -976,7 +988,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 )
                 if cut:
                     block = block[: cut.start()]
-                if re.search(r"ИНН|ОГРН|адрес|место\s+нахождения", block, re.IGNORECASE):
+                # Блок валиден, если содержит реквизит-метку ИЛИ строку-адрес с
+                # почтовым индексом (форма ЦДУ: имя, затем «117420, г Москва…» без
+                # метки «адрес»).
+                if re.search(r"ИНН|ОГРН|адрес|место\s+нахождения|\n\s*\d{6}[,\s]",
+                             block, re.IGNORECASE):
                     return block
         return None
 
@@ -1002,7 +1018,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             return None
         # Приоритет — явные метки юр-адреса; «почтовый/фактический адрес» исключаем.
         for addr_pattern in [
-            r"(?:место\s+нахождения|юридическ\w+\s+адрес)[:\s]*([0-9]{6}[,\s]+[^\n]+)",
+            # Индекс + улица, с ПРОДОЛЖЕНИЕМ на следующей строке (pdf2docx переносит
+            # «Место нахождения: 121099, г. Москва,\n1-ый Николощеповский пер., д. 6…»);
+            # хвост обрежет _clean_creditor_address по ИНН/ОГРН/почтовому.
+            r"(?:место\s+нахождения|юридическ\w+\s+адрес)[:\s]*([0-9]{6}[,\s]+[^\n]+(?:\n[^\n]+)?)",
             r"(?:место\s+нахождения|юридическ\w+\s+адрес)[:\s]*([^\n]+)",
             # Плоская метка «Адрес:» в начале строки (индекс + продолжение на след. строке).
             r"(?:^|\n)\s*адрес[:\s]*([0-9]{6}[,\s]+[^\n]+(?:\n[^\n]+)?)",
