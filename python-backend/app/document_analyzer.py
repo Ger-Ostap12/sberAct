@@ -6,6 +6,7 @@ from requisites_validation import is_valid_inn
 from fio_detector import (
     extract_debtor_name,
     is_person_name,
+    _normalize_fio,
     extract_debtor_details,
     extract_third_party_details,
     extract_debtors,
@@ -1944,14 +1945,24 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         """
         if not text:
             return
-        # Признак заявления ФНС — налоговый БЛАНК в самом начале (первые ~400 симв.),
-        # а не упоминание закона/органа в теле: «…ФЕДЕРАЛЬНАЯ НАЛОГОВАЯ СЛУЖБА…» или
-        # заголовок «Заявление уполномоченного органа …». Тело («Федерального закона»,
-        # «требования … уполномоченного органа») сигналом НЕ считаем.
-        if not (
+        # Признак заявления ФНС — налоговый БЛАНК в самом начале (первые ~400 симв.):
+        # «…ФЕДЕРАЛЬНАЯ НАЛОГОВАЯ СЛУЖБА…» или заголовок «Заявление уполномоченного
+        # органа …».
+        header_fns = bool(
             re.search(r"НАЛОГОВ\w+\s+СЛУЖБ", text[:400], re.IGNORECASE)
             or re.search(r"ЗАЯВЛЕНИ\w+\s+УПОЛНОМОЧЕНН\w+\s+ОРГАН", text[:700], re.IGNORECASE)
-        ):
+        )
+        # ВТОРИЧНЫЙ сигнал (шапка обобщённая «о включении в РТК ФИО», бланк ФНС ушёл в
+        # тело/подвал из-за раскладки OCR): связка НАЛОГОВОГО органа «[ИУ]ФНС» + чисто
+        # НАЛОГОВОЙ лексики «обязательных платежей». Оба маркёра встречаются ТОЛЬКО в
+        # заявлениях уполномоченного органа (у банка/ООО-кредитора их не бывает), а
+        # veto ниже (_OPF) всё равно отсекает случай реального кредитора-компании —
+        # поэтому ложных срабатываний это не даёт.
+        body_fns = bool(
+            re.search(r"\b[ИУ]ФНС\b", text, re.IGNORECASE)
+            and re.search(r"обязательн\w+\s+платеж", text, re.IGNORECASE)
+        )
+        if not (header_fns or body_fns):
             return
         # Не трогаем заявления с уже распознанным кредитором-компанией (банк/ООО/АО…):
         # налоговый бланк мог оказаться штампом суда, а кредитор — реальная организация.
@@ -1972,6 +1983,37 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if "фнс" not in cur_cred.lower() or (built_full and "в лице" not in cur_cred.lower()):
             fields["creditorName"] = creditor
         cred_now = fields.get("creditorName") or ""
+
+        # НАДЁЖНЫЙ ДОЛЖНИК ФНС по якорю. Позиционный парсер на этих заявлениях часто
+        # берёт арбитражного управляющего («Финансовым управляющим утверждён <ФИО>»)
+        # или мусор из «…реестр требований кредиторов» — в результате должник = ФИО
+        # управляющего либо «А И Кредиторов». Якоря дают НОМИНАТИВ напрямую (склонять
+        # не нужно): «<ФИО> обратил(ся/ась) в арбитражный суд» (заявления о включении
+        # в РТК) и «Должник: <ФИО> ИНН/ОГРН». Правило Андрея: ФИО должника ≠ ФИО
+        # управляющего (дедуп).
+        _PN = r"[А-ЯЁ][А-ЯЁа-яё]+(?:-[А-ЯЁ][А-ЯЁа-яё]+)?(?:\s+[А-ЯЁ][А-ЯЁа-яё]+){2}"
+        fns_debtor = None
+        _dm = re.search(r"(" + _PN + r")\s+обратил", text)
+        if not _dm:
+            _dm = re.search(r"Должник\w*\s*:\s*(" + _PN + r")\s*(?:ИНН|ОГРН)", text, re.IGNORECASE)
+        if _dm:
+            cand = _normalize_fio(_dm.group(1).strip())  # каноничный Titlecase (снимает CAPS)
+            if is_person_name(cand) and "фнс" not in cand.lower():
+                fns_debtor = cand
+        mgr_norm = _normalize_fio((fields.get("managerName") or "").strip())
+        cur_debt = (fields.get("debtorName") or "").strip()
+        cur_debt_norm = _normalize_fio(cur_debt)
+        same_as_mgr = bool(mgr_norm) and cur_debt_norm == mgr_norm
+        if fns_debtor and _normalize_fio(fns_debtor) != mgr_norm:
+            # Якорь важнее позиционного значения: ставим его, если текущий должник —
+            # дубль управляющего, не-ФИО (мусор) или просто отличается от якорного.
+            if same_as_mgr or not is_person_name(cur_debt) or _normalize_fio(fns_debtor) != cur_debt_norm:
+                fields["debtorName"] = fns_debtor
+        elif same_as_mgr:
+            # Якоря нет, но должник = управляющий — это заведомо ошибка: убираем дубль,
+            # чтобы в акт не ушло ФИО управляющего как должника.
+            fields.pop("debtorName", None)
+
         # ДОЛЖНИК остаётся в applicant* — генератор акта берёт эти поля как ДОЛЖНИКА
         # (applicantNameDative = «…требований кредиторов ДОЛЖНИКА»). ФНС держим ТОЛЬКО
         # в creditor*. Если общий парсер/ранняя версия затёрли applicantName на ФНС
@@ -2005,9 +2047,26 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             s = re.sub(r"\s+", " ", s).strip(" ,;")
             return re.split(r"\b(?:ИНН|ОГРН|ОГРНИП|СНИЛС|КПП)\b", s, flags=re.IGNORECASE)[0].strip(" ,;")
 
+        # Адрес должника нередко перенесён на 2–3 строки («улица,\nгород, индекс»).
+        # Одиночный `[^\n]+` терял продолжение (город/индекс), поэтому добавляем до
+        # трёх строк-продолжений, останавливаясь на заголовке раздела/реквизитах
+        # (ЗАЯВЛЕНИЕ/Определением/Решением/ИНН/ОГРН/пустая строка). _clean_addr
+        # схлопнет переносы в один адрес.
+        # Строка-продолжение адреса берётся, ТОЛЬКО если она сама выглядит как часть
+        # адреса — содержит адресный маркер (индекс/город/область/район/улица/дом…) и
+        # не содержит метку «X:». Позитивный признак важнее чёрного списка: у раскладок
+        # «индекс-в-начале» за адресом часто идёт мусор/шапка таблицы («Наименование
+        # налога …», OCR-артефакты) без двоеточия — их нельзя приклеивать. Настоящий
+        # хвост адреса (город/индекс/район) двоеточий не содержит.
+        _ADDR_MARK = (
+            r"(?:\d{6}|\bг\.|\bгор\b|\bгород|\bобл\b|\bобласт|\bр-?н\b|\bрайон|\bул\.|"
+            r"\bулиц|\bд\.|\bдом\b|\bкв\.|\bкорп|\bпос\b|\bпос[её]лок|\bст-ца|\bстаниц|"
+            r"\bпер\.|\bпр-кт|\bпросп|\bмкр|\bхутор|\bс\.\s|\bсело|\bдеревн)"
+        )
+        _ADDR_CONT = r"(?:\n(?=[^\n]*" + _ADDR_MARK + r")(?![^\n]*:)[^\n]+){0,3}"
         debt_addr = None
         dm = re.search(
-            r"Должник\w*[:\s][\s\S]{0,90}?\bАдрес[:\s]*([0-9А-ЯЁ][^\n]+)",
+            r"Должник\w*[:\s][\s\S]{0,90}?\bАдрес[:\s]*([0-9А-ЯЁ][^\n]+" + _ADDR_CONT + r")",
             text, re.IGNORECASE,
         )
         # Без метки «Адрес» адрес должника в бланке ФНС идёт голой строкой/фрагментом
@@ -2019,7 +2078,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         dm_bare = None
         if not dm:
             dm_bare = re.search(
-                r"Должник\w*\s*:\s*[\s\S]{0,200}?(\d{6}\s*,\s*[А-ЯЁ][^\n]+)",
+                r"Должник\w*\s*:\s*[\s\S]{0,200}?(\d{6}\s*,\s*[А-ЯЁ][^\n]+" + _ADDR_CONT + r")",
                 text, re.IGNORECASE,
             )
         # ВАЛИДАТОР: принятое значение должно ВЫГЛЯДЕТЬ как адрес, а не как набор слов /
@@ -2108,7 +2167,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         # извлёкся — вычищаем из applicantAddress чужое (адрес ФНС/суда/проза или совпадение
         # с юр-адресом ФНС), чтобы в акт не попал адрес инспекции как адрес должника.
         if debt_addr:
-            fields["applicantAddress"] = debt_addr
+            # Не затираем более полный уже найденный адрес (общий _collect_block_address
+            # часто собирает многострочный адрес точнее): берём более длинный валидный.
+            cur_aa2 = (fields.get("applicantAddress") or "").strip()
+            if cur_aa2 and _is_addr(cur_aa2) and len(cur_aa2) > len(debt_addr) and debt_addr in cur_aa2:
+                fields["applicantAddress"] = cur_aa2
+            else:
+                fields["applicantAddress"] = debt_addr
         else:
             aa = (fields.get("applicantAddress") or "").strip()
             creda = (fields.get("creditorAddress") or "").strip()

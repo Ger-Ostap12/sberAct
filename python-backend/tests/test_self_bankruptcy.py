@@ -82,7 +82,8 @@ def test_whole_corpus_no_false_positives(da):
     fp = []
     for f in sorted(glob.glob(os.path.join(CORPUS_DIR, "**", "*.docx"), recursive=True)):
         rel = os.path.relpath(f, CORPUS_DIR)
-        if "~$" in f or rel.startswith("Самобанкрот"):
+        # Папка Самобанкрот на ЛЮБОМ уровне (в т.ч. «НОвая конвертация/Самобанкрот»).
+        if "~$" in f or "Самобанкрот" in rel:
             continue
         if da._detect_self_bankruptcy(da.extract_text(f)):
             fp.append(rel)

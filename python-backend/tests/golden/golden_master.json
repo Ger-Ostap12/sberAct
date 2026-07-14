@@ -80,7 +80,7 @@
   "confidence": 1.0,
   "debtors": [
    {
-    "address": "ул. 2-я Краснодарская, 149/5, кв. 43",
+    "address": "ул. 2-я Краснодарская, 149/5, кв. 43, г. Ростов-на-Дону, 344091",
     "birthDate": "",
     "birthPlace": "",
     "inn": "",
@@ -93,7 +93,7 @@
   "documentType": "rtk_application",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "ул. 2-я Краснодарская, 149/5, кв. 43",
+   "applicantAddress": "ул. 2-я Краснодарская, 149/5, кв. 43, г. Ростов-на-Дону, 344091",
    "applicantName": "Богачева Анна Михайловна",
    "applicantNameAccusative": "Богачёву Анну Михайловну",
    "applicantNameDative": "Богачёвой Анне Михайловне",
@@ -106,7 +106,7 @@
    "creditorAddress": "344019, Ростов-на-Дону г, Мясникова ул, 52/32",
    "creditorName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
    "debtAmount": "4 590,95",
-   "debtorAddress": "ул. 2-я Краснодарская, 149/5, кв. 43",
+   "debtorAddress": "ул. 2-я Краснодарская, 149/5, кв. 43, г. Ростов-на-Дону, 344091",
    "debtorName": "Богачева Анна Михайловна",
    "entityType": "individual",
    "fnsQ3Forfeit": "90,87",
@@ -176,6 +176,7 @@
    "fnsQ3Forfeit": "2,79",
    "fnsQ3LoanDebt": "450,00",
    "fnsQ3Total": "452,79",
+   "fnsTotalComputed": "1",
    "managerName": "Лифанова Дарья Александровна",
    "messageDate": "20.03.2026",
    "sourceDocumentType": "rtk_application",
@@ -205,7 +206,7 @@
   "confidence": 1.0,
   "debtors": [
    {
-    "address": "ул. Орбитальная, д.90, к.67",
+    "address": "ул. Орбитальная, д.90, к.67, г. Ростов-на-Дону, 344114",
     "birthDate": "",
     "birthPlace": "",
     "inn": "",
@@ -218,7 +219,7 @@
   "documentType": "rtk_application",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "ул. Орбитальная, д.90, к.67",
+   "applicantAddress": "ул. Орбитальная, д.90, к.67, г. Ростов-на-Дону, 344114",
    "applicantName": "Воробьева Светлана Михайловна",
    "applicantNameAccusative": "Воробьёву Светлану Михайловну",
    "applicantNameDative": "Воробьёвой Светлане Михайловне",
@@ -231,15 +232,17 @@
    "creditorAddress": "344019, Ростов-на-Дону г, Мясникова ул, 52/32",
    "creditorName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
    "debtAmount": "255 825,84",
-   "debtorAddress": "ул. Орбитальная, д.90, к.67",
+   "debtorAddress": "ул. Орбитальная, д.90, к.67, г. Ростов-на-Дону, 344114",
    "debtorName": "Воробьева Светлана Михайловна",
    "efirsbPublicationDate": "02.02.2026",
    "entityType": "individual",
+   "fnsQ2Arrears": "55 393,70",
    "fnsQ2Total": "55 393,70",
    "fnsQ3Forfeit": "187 063,80",
    "fnsQ3LoanDebt": "7 128,34",
    "fnsQ3Penalties": "6 240,00",
    "fnsQ3Total": "200 432,14",
+   "fnsTotalComputed": "1",
    "managerName": "Васильев Николай Иванович",
    "messageDate": "02.02.2026",
    "requirementsSum": "55 393,70",
@@ -271,7 +274,7 @@
   "confidence": 0.95,
   "debtors": [
    {
-    "address": "ул. Садовая, д. 28, п. Двуречье",
+    "address": "ул. Садовая, д. 28, п. Двуречье, Кагальницкий р-н, Ростовская область, 347704",
     "birthDate": "",
     "birthPlace": "",
     "inn": "",
@@ -284,7 +287,7 @@
   "documentType": "rtk_application",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "ул. Садовая, д. 28, п. Двуречье",
+   "applicantAddress": "ул. Садовая, д. 28, п. Двуречье, Кагальницкий р-н, Ростовская область, 347704",
    "applicantName": "Мишунин Иван Александрович",
    "applicantNameAccusative": "Мишунина Ивана Александровича",
    "applicantNameDative": "Мишунину Ивану Александровичу",
@@ -297,7 +300,7 @@
    "creditorAddress": "344019, Ростов-на-Дону г, Мясникова ул, 52/32",
    "creditorName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
    "debtAmount": "24 314,99",
-   "debtorAddress": "ул. Садовая, д. 28, п. Двуречье",
+   "debtorAddress": "ул. Садовая, д. 28, п. Двуречье, Кагальницкий р-н, Ростовская область, 347704",
    "debtorName": "Мишунин Иван Александрович",
    "entityType": "individual",
    "fnsQ3Forfeit": "253,99",
@@ -335,7 +338,7 @@
   "confidence": 1.0,
   "debtors": [
    {
-    "address": "ул. Баумана, 20, кв. 15",
+    "address": "ул. Баумана, 20, кв. 15, г. Ростов-на-Дону, 344002",
     "birthDate": "",
     "birthPlace": "",
     "inn": "",
@@ -348,7 +351,7 @@
   "documentType": "rtk_application",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "ул. Баумана, 20, кв. 15",
+   "applicantAddress": "ул. Баумана, 20, кв. 15, г. Ростов-на-Дону, 344002",
    "applicantName": "Мурадьян Максим Евгеньевич",
    "applicantNameAccusative": "Мурадьяна Максима Евгеньевича",
    "applicantNameDative": "Мурадьяну Максиму Евгеньевичу",
@@ -361,10 +364,11 @@
    "creditorAddress": "344019, Ростов-на-Дону г, Мясникова ул, 52/32",
    "creditorName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
    "debtAmount": "187 348,68",
-   "debtorAddress": "ул. Баумана, 20, кв. 15",
+   "debtorAddress": "ул. Баумана, 20, кв. 15, г. Ростов-на-Дону, 344002",
    "debtorName": "Мурадьян Максим Евгеньевич",
    "efirsbPublicationDate": "05.02.2026",
    "entityType": "individual",
+   "fnsQ2Arrears": "153 398,37",
    "fnsQ2Total": "153 398,37",
    "fnsQ3Forfeit": "27 087,91",
    "fnsQ3LoanDebt": "1 312,40",
@@ -533,7 +537,7 @@
     "birthDate": "",
     "birthPlace": "",
     "inn": "610304071535",
-    "name": "Геворкян Ксения Валериевна",
+    "name": "Геворгян Ксения Валериевна",
     "ogrn": "",
     "ogrnip": "",
     "snils": ""
@@ -543,11 +547,11 @@
   "entityType": "individual",
   "fields": {
    "applicantAddress": "346611,РОССИЯ,Ростовская обл,Багаевская ст-ца,Фрунзе ул,67",
-   "applicantName": "Геворкян Ксения Валериевна",
-   "applicantNameAccusative": "Геворкян Ксению Валериевну",
-   "applicantNameDative": "Геворкян Ксении Валериевне",
+   "applicantName": "Геворгян Ксения Валериевна",
+   "applicantNameAccusative": "Геворгян Ксению Валериевну",
+   "applicantNameDative": "Геворгян Ксении Валериевне",
    "applicantNameGenitive": "Геворгян Ксении Валериевны",
-   "applicantNameInstrumental": "Геворкян Ксенией Валериевной",
+   "applicantNameInstrumental": "Геворгян Ксенией Валериевной",
    "applicationDate": "30.12.2025",
    "courtDecisionDate": "03.03.2026",
    "courtName": "Арбитражный суд Ростовской области",
@@ -555,7 +559,7 @@
    "creditorName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
    "debtAmount": "338,71",
    "debtorAddress": "346611,РОССИЯ,Ростовская обл,Багаевская ст-ца,Фрунзе ул,67",
-   "debtorName": "Геворкян Ксения Валериевна",
+   "debtorName": "Геворгян Ксения Валериевна",
    "efirsbPublicationDate": "05.03.2026",
    "entityType": "individual",
    "fnsQ3Forfeit": "15,71",
@@ -630,6 +634,7 @@
    "fnsQ3LoanDebt": "50 811 691,40",
    "fnsQ3Penalties": "3 986 365,00",
    "fnsQ3Total": "71 040 279,92",
+   "fnsTotalComputed": "1",
    "inn": "616506698400",
    "requirementsSum": "16,06",
    "snils": "045-968-519 07",
@@ -698,6 +703,7 @@
    "fnsQ3LoanDebt": "4 532 472,86",
    "fnsQ3Penalties": "23 478,88",
    "fnsQ3Total": "5 151 863,38",
+   "fnsTotalComputed": "1",
    "inn": "615014390786",
    "requirementsSum": "8,04",
    "snils": "063-843-816 80",
@@ -779,6 +785,2427 @@
   "obligations": [],
   "rawTextLen": 9682,
   "rawTextSha": "e82c0944e5289ea89ae3c1184b4d27927603c26828210ce0be82c35f0b1f28ab",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/Самобанкрот/A53-9758-2026_20260318_Zajavlenie.docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "347211, Ростовская обл, Морозовский р-н, г Морозовск, ул Калинина, двлд 38",
+    "birthDate": "21.11.1971",
+    "birthPlace": "гор.Морозовск Ростовской обл.РСФСР",
+    "inn": "612102429513",
+    "name": "Тарасенко (Матвеенко) Ольга Анатольевна",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "057-128-010 38"
+   }
+  ],
+  "documentType": "initiation_legal",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "347211, Ростовская обл, Морозовский р-н, г Морозовск, ул Калинина, двлд 38",
+   "applicantName": "Тарасенко (Матвеенко) Ольга Анатольевна",
+   "applicantNameAccusative": "Тарасенко (Матвеенко) Ольгу Анатольевну",
+   "applicantNameDative": "Тарасенко (матвеенко) Ольге Анатольевне",
+   "applicantNameGenitive": "Тарасенко (матвеенко) Ольги Анатольевны",
+   "applicantNameInstrumental": "Тарасенко (матвеенко) Ольгой Анатольевной",
+   "applicationDate": "21.11.1971",
+   "birthDate": "21.11.1971",
+   "birthPlace": "гор.Морозовск Ростовской обл.РСФСР",
+   "companyInn": "612102429513",
+   "contractNumber": "ами",
+   "courtName": "Арбитражный суд Ростовской области",
+   "debtAmount": "279 733,06",
+   "debtorAddress": "347211, Ростовская обл, Морозовский р-н, г Морозовск, ул Калинина, двлд 38",
+   "debtorName": "Тарасенко (Матвеенко) Ольга Анатольевна",
+   "entityType": "individual",
+   "inn": "612102429513",
+   "loanDebt": "279 733,06",
+   "requirementsSum": "279 733,06",
+   "snils": "057-128-010 38",
+   "sourceDocumentType": "initiation_legal",
+   "sroName": "Ассоциация Евросибирская саморегулируемая организация арбитражных управляющих",
+   "totalDebt": "279 733,06"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 4,
+   "wordCount": 1320
+  },
+  "obligations": [],
+  "rawTextLen": 9802,
+  "rawTextSha": "a8dbaf54275e891559ec3a14df002d203a0d1318ab28faf67103c63b30546efa",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/Самобанкрот/Заявление РФЛ.docx": {
+  "collaterals": [],
+  "confidence": 0.85,
+  "debtors": [
+   {
+    "address": "346404,Ростовская обл., г. Новочеркасск, ул. Флерова, д. 4, кв. 18",
+    "birthDate": "14.10.1981",
+    "birthPlace": "гор. Новочеркасск Ростовской обл",
+    "inn": "615007959197",
+    "name": "Каплунов Виталий Геннадиевич",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "049-543-767-96"
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "346404,Ростовская обл., г. Новочеркасск, ул. Флерова, д. 4, кв. 18",
+   "applicantName": "Каплунов Виталий Геннадиевич",
+   "applicantNameAccusative": "Каплунова Виталия Геннадиевича",
+   "applicantNameDative": "Каплунову Виталию Геннадиевичу",
+   "applicantNameGenitive": "Каплунова Виталия Геннадиевича",
+   "applicantNameInstrumental": "Каплуновым Виталием Геннадиевичем",
+   "applicationDate": "14.10.1981",
+   "birthDate": "14.10.1981",
+   "birthPlace": "гор. Новочеркасск Ростовской обл",
+   "companyInn": "615007959197",
+   "courtName": "Арбитражный суд Ростовской области",
+   "debtAmount": "116 000,00",
+   "debtorAddress": "346404,Ростовская обл., г. Новочеркасск, ул. Флерова, д. 4, кв. 18",
+   "debtorName": "Каплунов Виталий Геннадиевич",
+   "entityType": "individual",
+   "inn": "615007959197",
+   "loanDebt": "116 000",
+   "requirementsSum": "116 000,00",
+   "snils": "049-543-767-96",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "116 000,00"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 1571
+  },
+  "obligations": [],
+  "rawTextLen": 12423,
+  "rawTextSha": "88fb1680b3a0348d45c6060e14572bb9f3edeab59e5bb32603d471af0660ca0e",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": [
+   {
+    "address": "346400, г. Новочеркасск, пр. Платовский 59б",
+    "name": "Управление образования города Новочеркасска"
+   },
+   {
+    "address": "346407, Ростовская обл., г. Новочеркасск, Ермака пр-т, 104",
+    "name": "Межрайонная инспекция Федеральной налоговой службы № 13 по Ростовской области"
+   }
+  ]
+ },
+ "НОвая конвертация/Самобанкрот/Заявление РФЛ1.docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "347561, Ростовская область, Песчанокопский р-н, с. Развильное, ул. Соляника, д. 20",
+    "birthDate": "28.11.1988",
+    "birthPlace": "с. Развильное Песчанокопский район Ростовская область",
+    "inn": "612704321215",
+    "name": "Слабунов Сергей Сергеевич",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "129-592-432 90"
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "347561, Ростовская область, Песчанокопский р-н, с. Развильное, ул. Соляника, д. 20",
+   "applicantName": "Слабунов Сергей Сергеевич",
+   "applicantNameAccusative": "Слабунова Сергея Сергеевича",
+   "applicantNameDative": "Слабунову Сергею Сергеевичу",
+   "applicantNameGenitive": "Слабунова Сергея Сергеевича",
+   "applicantNameInstrumental": "Слабуновым Сергеем Сергеевичем",
+   "applicationDate": "28.11.1988",
+   "birthDate": "28.11.1988",
+   "birthPlace": "с. Развильное Песчанокопский район Ростовская область",
+   "companyInn": "612704321215",
+   "courtName": "Арбитражный суд Ростовской области",
+   "debtAmount": "",
+   "debtorAddress": "347561, Ростовская область, Песчанокопский р-н, с. Развильное, ул. Соляника, д. 20",
+   "debtorName": "Слабунов Сергей Сергеевич",
+   "entityType": "individual",
+   "inn": "612704321215",
+   "loanDebt": "Арбитражный суд Ростовской области",
+   "requirementsSum": "",
+   "snils": "129-592-432 90",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "25 000,00"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 1595
+  },
+  "obligations": [],
+  "rawTextLen": 12518,
+  "rawTextSha": "62134f5dd3ca74632599e8e13d621b6c4c1b496857dc8a23b08ded170efe16e3",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": [
+   {
+    "address": "347375, Ростовская обл., Волгодонск, ул. Ленинградская, 10",
+    "name": "Межрайонная инспекция Федеральной налоговой службы № 4 по Ростовской области"
+   }
+  ]
+ },
+ "НОвая конвертация/Самобанкрот/Заявление должника о признании его несостоятельным (банкротом) на 5 л..docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "346900, Ростовская обл., гор. Новошахтинск, ул. Харьковская, д. 259, кв. 103",
+    "birthDate": "05.01.1995",
+    "birthPlace": "гор. Новошахтинск Ростовской обл",
+    "inn": "615109700605",
+    "name": "Бакалов Дмитрий Александрович",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "143-252-167 28"
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "346900, Ростовская обл., гор. Новошахтинск, ул. Харьковская, д. 259, кв. 103",
+   "applicantName": "Бакалов Дмитрий Александрович",
+   "applicantNameAccusative": "Бакалова Дмитрия Александровича",
+   "applicantNameDative": "Бакалову Дмитрию Александровичу",
+   "applicantNameGenitive": "Бакалова Дмитрия Александровича",
+   "applicantNameInstrumental": "Бакаловым Дмитрием Александровичем",
+   "applicationDate": "05.01.1995",
+   "birthDate": "05.01.1995",
+   "birthPlace": "гор. Новошахтинск Ростовской обл",
+   "caseNumber": "2-1178/2024",
+   "companyInn": "615109700605",
+   "courtName": "Арбитражный суд Ростовской области",
+   "debtAmount": "301,79",
+   "debtSnapshotDate88": "10.03.2026",
+   "debtorAddress": "346900, Ростовская обл., гор. Новошахтинск, ул. Харьковская, д. 259, кв. 103",
+   "debtorName": "Бакалов Дмитрий Александрович",
+   "entityType": "individual",
+   "inn": "615109700605",
+   "loanDebt": "301,79",
+   "requirementsSum": "301,79",
+   "snils": "143-252-167 28",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "402 592,13"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 3,
+   "wordCount": 2096
+  },
+  "obligations": [],
+  "rawTextLen": 15763,
+  "rawTextSha": "e03735c3ffdb5b60d773e531e91887a5ebc8662fcfe789324fd2e0326b1f40c7",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/Самобанкрот/Заявление на банкротство Медведев М.Ю.docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "347022, Ростовская область, Белокалитвинский р-н, рп. Шолоховский, улица М. Горького, дом 46, квартира 1",
+    "birthDate": "30.08.1985",
+    "birthPlace": "пос. Шолоховский г. Белая Калитва Ростовской обл",
+    "inn": "614208901558",
+    "name": "Медведев Максим Юрьевич",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "063-128-006 22"
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "347022, Ростовская область, Белокалитвинский р-н, рп. Шолоховский, улица М. Горького, дом 46, квартира 1",
+   "applicantName": "Медведев Максим Юрьевич",
+   "applicantNameAccusative": "Медведева Максима Юрьевича",
+   "applicantNameDative": "Медведеву Максиму Юрьевичу",
+   "applicantNameGenitive": "Медведева Максима Юрьевича",
+   "applicantNameInstrumental": "Медведевым Максимом Юрьевичем",
+   "applicationDate": "30.08.1985",
+   "birthDate": "30.08.1985",
+   "birthPlace": "пос. Шолоховский г. Белая Калитва Ростовской обл",
+   "companyInn": "614208901558",
+   "contractDate": "19.04.2025, 17.04.2025, 05.03.2025, 22.02.2025, 31.01.2025, 29.01.2025, 21.04.2023, 24.05.2025, 20.04.2025, 18.04.2025, 03.02.2025, 02.01.2025, 20.11.2024",
+   "courtName": "Арбитражный суд Ростовской области",
+   "debtAmount": "",
+   "debtorAddress": "347022, Ростовская область, Белокалитвинский р-н, рп. Шолоховский, улица М. Горького, дом 46, квартира 1",
+   "debtorName": "Медведев Максим Юрьевич",
+   "entityType": "individual",
+   "inn": "614208901558",
+   "legalShortName": "Медведев Максим Юрьевич",
+   "loanDebt": "Арбитражный суд Ростовской области\nАдрес",
+   "obligationType": "Кредитный договор",
+   "procedureType": "observation",
+   "procedureTypeRaw": "наблюдение",
+   "requirementsSum": "",
+   "snils": "063-128-006 22",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": ""
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 6,
+   "wordCount": 1827
+  },
+  "obligations": [],
+  "rawTextLen": 13373,
+  "rawTextSha": "ed76f69ad0a72e25a4f52ed006d1d5f102691ee05dfb1fec03cd97076716355b",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/Самобанкрот/Заявление о признании банкротом.docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "344039, г. Ростов-на-Дону, ул. Средняя, д. 23",
+    "birthDate": "14.06.1990",
+    "birthPlace": "г. Ростов-на-Дону",
+    "inn": "",
+    "name": "Мирский Алексей Степанович",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "344039, г. Ростов-на-Дону, ул. Средняя, д. 23",
+   "applicantName": "Мирский Алексей Степанович",
+   "applicantNameAccusative": "Мирского Алексея Степановича",
+   "applicantNameDative": "Мирскому Алексею Степановичу",
+   "applicantNameGenitive": "Мирского Алексея Степановича",
+   "applicantNameInstrumental": "Мирским Алексеем Степановичем",
+   "applicationDate": "21.04.2023",
+   "birthDate": "14.06.1990",
+   "birthPlace": "г. Ростов-на-Дону",
+   "courtName": "Арбитражный суд Ростовской области",
+   "debtAmount": "158 434,00",
+   "debtorAddress": "344039, г. Ростов-на-Дону, ул. Средняя, д. 23",
+   "debtorName": "Мирский Алексей Степанович",
+   "entityType": "individual",
+   "forfeit": "0,00",
+   "forfeit15": "0,00",
+   "interest": "0,00",
+   "interest14": "0,00",
+   "legalShortName": "не имеет возможности",
+   "loanDebt": "25 000",
+   "penalties": "0,00",
+   "principalDebt": "158 434,00",
+   "principalDebt13": "158 434,00",
+   "procedureType": "observation",
+   "procedureTypeRaw": "наблюдение",
+   "requirementsSum": "25 000,00",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "158 434,00"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 7,
+   "wordCount": 2434
+  },
+  "obligations": [],
+  "rawTextLen": 18083,
+  "rawTextSha": "668509cc27beda6e90fc5850b81808d08b1e604542b56c7a0458e052532acf85",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/Самобанкрот/Заявление о признании гражданина несостоятельным (банкротом).docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "ОБЛ. РОСТОВСКАЯ, Г. РОСТОВ-НА-ДОНУ, УЛ. HOBATOPOB, Д. 6, КВ. 16",
+    "birthDate": "15.04.1999",
+    "birthPlace": "ГОР. РОСТОВ-НА-ДОНУ РОССИЯ",
+    "inn": "616118814199",
+    "name": "Федоренко Алексей Алексеевич",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "157-887-524-35"
+   }
+  ],
+  "documentType": "initiation_physical",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "ОБЛ. РОСТОВСКАЯ, Г. РОСТОВ-НА-ДОНУ, УЛ. HOBATOPOB, Д. 6, КВ. 16",
+   "applicantName": "Федоренко Алексей Алексеевич",
+   "applicantNameAccusative": "Федоренко Алексея Алексеевича",
+   "applicantNameDative": "Федоренко Алексею Алексеевичу",
+   "applicantNameGenitive": "Федоренко Алексея Алексеевича",
+   "applicantNameInstrumental": "Федоренко Алексеем Алексеевичем",
+   "applicationDate": "15.04.1999",
+   "birthDate": "15.04.1999",
+   "birthPlace": "ГОР. РОСТОВ-НА-ДОНУ РОССИЯ",
+   "companyInn": "616118814199",
+   "courtName": "Арбитражный суд Ростовской области",
+   "debtAmount": "25 000,00",
+   "debtorAddress": "ОБЛ. РОСТОВСКАЯ, Г. РОСТОВ-НА-ДОНУ, УЛ. HOBATOPOB, Д. 6, КВ. 16",
+   "debtorName": "Федоренко Алексей Алексеевич",
+   "entityType": "individual",
+   "inn": "616118814199",
+   "legalShortName": "владеет недвижимым имуществом",
+   "loanDebt": "25 000",
+   "procedureType": "observation",
+   "procedureTypeRaw": "наблюдение",
+   "snils": "157-887-524-35",
+   "sourceDocumentType": "initiation_physical",
+   "sroName": "Некоммерческое партнерство \"Саморегулируемая организация \"Гильдия арбитражных управляющих\"",
+   "totalDebt": "25 000,00"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 3,
+   "wordCount": 929
+  },
+  "obligations": [],
+  "rawTextLen": 7477,
+  "rawTextSha": "57f0b844c7e0a49c14922aa94dc2d1efd1d5ab6f889d2e95b7f021291f49fe6e",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_realization",
+    "acceptance_definition",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/Самобанкрот/Заявление физического лица о признании его несостоятельным (банкротом).docx": {
+  "collaterals": [],
+  "confidence": 0.85,
+  "debtors": [
+   {
+    "address": "347631, обл. Ростовская, р-н Сальский, гор. Сальск, ул. Севастопольская, д. 93-в, кв. 61",
+    "birthDate": "19.01.1995",
+    "birthPlace": "гор. Сальск Ростовской обл",
+    "inn": "615301047741",
+    "name": "Корсунов Вячеслав Валерьевич",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "155-161-603 44"
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "347631, обл. Ростовская, р-н Сальский, гор. Сальск, ул. Севастопольская, д. 93-в, кв. 61",
+   "applicantName": "Корсунов Вячеслав Валерьевич",
+   "applicantNameAccusative": "Корсунова Вячеслава Валерьевича",
+   "applicantNameDative": "Корсунову Вячеславу Валерьевичу",
+   "applicantNameGenitive": "Корсунова Вячеслава Валерьевича",
+   "applicantNameInstrumental": "Корсуновым Вячеславом Валерьевичем",
+   "applicationDate": "19.01.1995",
+   "birthDate": "19.01.1995",
+   "birthPlace": "гор. Сальск Ростовской обл",
+   "companyInn": "615301047741",
+   "courtName": "Арбитражный суд Ростовской области",
+   "debtAmount": "3 000,00",
+   "debtorAddress": "347631, обл. Ростовская, р-н Сальский, гор. Сальск, ул. Севастопольская, д. 93-в, кв. 61",
+   "debtorName": "Корсунов Вячеслав Валерьевич",
+   "entityType": "individual",
+   "inn": "615301047741",
+   "loanDebt": "3 000",
+   "obligationType": "кредитный договор",
+   "requirementsSum": "3 000,00",
+   "snils": "155-161-603 44",
+   "sourceDocumentType": "rtk_application",
+   "sroName": "Ассоциации РСО ПАУ (Региональной саморегулируемой организациипрофессиональных арбитражных управляющих)",
+   "totalDebt": "3 000,00"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 5,
+   "wordCount": 1547
+  },
+  "obligations": [],
+  "rawTextLen": 11511,
+  "rawTextSha": "f37c2e52186919f13707763854b5fd2ab338f952f435fb062ab763871ee24f60",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": [
+   {
+    "address": "347375, Ростовская обл, Волгодонск г, Ленинградская ул, 10",
+    "name": "Межрайонная инспекция Федеральной налоговой службы №4 по Ростовской области"
+   },
+   {
+    "address": "347631, обл. Ростовская, г. Сальск, ул. Севастопольская, д. 93Б",
+    "name": "Отдел по охране и защите прав детства управления образования Сальского района, исполняющий функции органа опеки и попечительства в отношении несовершеннолетних лиц"
+   }
+  ]
+ },
+ "НОвая конвертация/Самобанкрот/заявление.docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "347631, Ростовская область, Сальский район, г. Сальск, пер. Малый, д. 4",
+    "birthDate": "10.09.1973",
+    "birthPlace": "с/з им. Карла Маркса Энгельского р-на Саратовской обл",
+    "inn": "615398867985",
+    "name": "Галета (Карпух) Ольга Николаевна",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "049-288-075 97"
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "347631, Ростовская область, Сальский район, г. Сальск, пер. Малый, д. 4",
+   "applicantName": "Галета (Карпух) Ольга Николаевна",
+   "applicantNameAccusative": "Галету (Карпух) Ольгу Николаевну",
+   "applicantNameDative": "Галете (карпух) Ольге Николаевне",
+   "applicantNameGenitive": "Галеты (карпух) Ольги Николаевны",
+   "applicantNameInstrumental": "Галетой (карпух) Ольгой Николаевной",
+   "applicationDate": "10.09.1973",
+   "birthDate": "10.09.1973",
+   "birthPlace": "с/з им. Карла Маркса Энгельского р-на Саратовской обл",
+   "companyInn": "615398867985",
+   "contractNumber": "займа",
+   "courtName": "Арбитражный суд Ростовской области",
+   "debtAmount": "19 405,00",
+   "debtorAddress": "347631, Ростовская область, Сальский район, г. Сальск, пер. Малый, д. 4",
+   "debtorName": "Галета (Карпух) Ольга Николаевна",
+   "entityType": "individual",
+   "inn": "615398867985",
+   "loanDebt": "19405,00",
+   "obligationType": "Договор займа",
+   "requirementsSum": "19 405,00",
+   "snils": "049-288-075 97",
+   "sourceDocumentType": "rtk_application",
+   "sroName": "Союз \"Межрегиональный центр арбитражных управляющих\"",
+   "totalDebt": "19 405,00"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 1405
+  },
+  "obligations": [],
+  "rawTextLen": 10682,
+  "rawTextSha": "8262f1ca3bc6fd3c04a7255f80088a35a688ab6b3108deaac60b9ce5d7b72e27",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": [
+   {
+    "address": "344002, г. Ростов-на-Дону, ул. Социалистическая, 96-98",
+    "name": "УФНС России по Ростовской области"
+   },
+   {
+    "address": "347631, Ростовская область, Сальский район, г. Сальск, пер. Малый, д. 4",
+    "birthDate": "28.06.1969",
+    "inn": "615300015070",
+    "name": "Галета Игорь Александрович",
+    "snils": "049-288-075 97"
+   }
+  ]
+ },
+ "НОвая конвертация/ФНС/Зайцев В.В._заявление.docx": {
+  "collaterals": [
+   {
+    "address": "",
+    "brandModel": "",
+    "cadastralNumber": "",
+    "collateralType": "auto",
+    "collateralValue": "",
+    "description": "Автомобиль грузовой (кроме включенных по коду 57000) Без марки 334630000010, 2010 года выпуска, адрес: 346630, РОСТОВСКАЯ ОБЛ., Семикароческий Р-Н, СЕМИКАРАКОРСК Г, ЛЕВЧЕНКО ПЛ.,46. Средняя стоимость транспортных средств по данным Интернет-ресурсов (avito.ru, drom.ru и domofond.ru), составляет 250 тыс. руб",
+    "id": "collateral-0",
+    "objectName": "Грузовой, 2010 г.в.",
+    "otherDescription": "",
+    "vin": ""
+   },
+   {
+    "address": "",
+    "brandModel": "УАЗ 3741",
+    "cadastralNumber": "",
+    "collateralType": "auto",
+    "collateralValue": "",
+    "description": "Автомобиль грузовой УАЗ 3741, 1987 года выпуска, адрес: 346630, Ростовская обл., г. Семикаракорск, ул. М.И. Левченко, 46. Дата отчуждения 20.04.2023 г",
+    "id": "collateral-1",
+    "objectName": "Грузовой УАЗ 3741, 1987 г.в.",
+    "otherDescription": "",
+    "vin": ""
+   },
+   {
+    "address": "",
+    "brandModel": "",
+    "cadastralNumber": "",
+    "collateralType": "auto",
+    "collateralValue": "",
+    "description": "Автомобиль легковой КИА JF (ОПТИМА), 2019 год выпуска, адрес: 346630, Ростовская обл., г. Семикаракорск, ул. М.И. Левченко, 46. Дата отчуждения 19.09.2023 г. Владельцем с 19.09.2023 г. по настоящее время является ЗАЙЦЕВА ЛЮБОВЬ НИКОЛАЕВНА MHH613206534572",
+    "id": "collateral-2",
+    "objectName": "Легковой, 2019 г.в.",
+    "otherDescription": "",
+    "vin": ""
+   }
+  ],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "346630, РОСТОВСКАЯ ОБЛ, Семикаракорский Р-Н, СЕМИКАРАКОРСК Г, ЛЕВЧЕНКО ПЛ,46",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "613205503003",
+    "name": "Зайцев Виталий Владимирович",
+    "ogrn": "",
+    "ogrnip": "318619600149696",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "ip",
+  "fields": {
+   "applicantAddress": "346630, РОСТОВСКАЯ ОБЛ, Семикаракорский Р-Н, СЕМИКАРАКОРСК Г, ЛЕВЧЕНКО ПЛ,46",
+   "applicantName": "Зайцев Виталий Владимирович",
+   "applicantNameAccusative": "Зайцева Виталия Владимировича",
+   "applicantNameDative": "Зайцеву Виталию Владимировичу",
+   "applicantNameGenitive": "Зайцева Виталия Владимировича",
+   "applicantNameInstrumental": "Зайцевым Виталием Владимировичем",
+   "applicationDate": "29.05.2004",
+   "collaterals": [
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Арбитражный суд Ростовской области 344002, г. Ростов-на-Дону, ул. Станиславского, 10/11-13",
+     "id": "collateral-0",
+     "objectName": "Арбитражный суд Ростовской области 344002",
+     "otherDescription": "г. Ростов-на-Дону, ул. Станиславского, 10/11-13",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Заявитель: ФНС России 127381, г. Москва, ул. Неглинная, 23",
+     "id": "collateral-1",
+     "objectName": "Заявитель",
+     "otherDescription": "ФНС России 127381, г. Москва, ул. Неглинная, 23",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Адрес для корреспонденции: ФНС России, адрес для корреспонденции: 344019, г. Ростов-на-Дону, ул. Мясникова, 52/32",
+     "id": "collateral-2",
+     "objectName": "Адрес для корреспонденции",
+     "otherDescription": "ФНС России, адрес для корреспонденции: 344019, г. Ростов-на-Дону, ул. Мясникова, 52/32",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Должник: ЗАЙЦЕВ ВИТАЛИЙ ВЛАДИМИРОВИЧ ИНН 613205503003 ОГРНИП 318619600149696 346630, РОСТОВСКАЯ ОБЛ, Семикаракорский Р-Н, СЕМИКАРАКОРСК Г, ЛЕВЧЕНКО ПЛ,46",
+     "id": "collateral-3",
+     "objectName": "Должник",
+     "otherDescription": "ЗАЙЦЕВ ВИТАЛИЙ ВЛАДИМИРОВИЧ ИНН 613205503003 ОГРНИП 318619600149696 346630, РОСТОВСКАЯ ОБЛ, Семикаракорский Р-Н, СЕМИКАРАКОРСК Г, ЛЕВЧЕНКО ПЛ,46",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "доходов, полученных от осуществления деятельности физическими лицами, зарегистрированными в качестве индивидуальных предпринимателей, нотариусов, занимающихся частной практикой, адвокатов, учредивших адвокатские кабинеты, и других лиц, занимающихся частной практикой в соответствии со статьей — 227 Налогового кодекса Российской Федерации (в части суммы налога, не превышающей 650 тысяч рублей за налоговые периоды до 1 января 2025 года, а также в части суммы налога, не превышающей 312 тысяч рублей за налоговые периоды после 1 января Налог на доходы физических лиц с",
+     "id": "collateral-4",
+     "objectName": "Доходов",
+     "otherDescription": "полученных от осуществления деятельности физическими лицами, зарегистрированными в качестве индивидуальных предпринимателей, нотариусов, занимающихся частной практикой, адвокатов, учредивших адвокатские кабинеты, и других лиц, занимающихся частной практикой в соответствии со статьей — 227 Налогового кодекса Российской Федерации (в части суммы налога, не превышающей 650 тысяч рублей за налоговые периоды до 1 января 2025 года, а также в части суммы налога, не превышающей 312 тысяч рублей за налоговые периоды после 1 января Налог на доходы физических лиц с",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "650 000,00",
+     "id": "collateral-5",
+     "objectName": "650 000",
+     "otherDescription": "00",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "663 137,88",
+     "id": "collateral-6",
+     "objectName": "663 137",
+     "otherDescription": "88",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Налог на доходы физических лиц в части суммы налога, превышающей 650 000 рублей, относящейся к части налоговой базы, превышающей 5 000 000 рублей (за исключением налога на доходы физических лиц с сумм прибыли контролируемой иностранной компании, в том числе фиксированной прибыли контролируемой иностранной компании, а также налога на доходы физических лиц в отношении доходов от долевого участия в организации, полученных физическим лицом - налоговым резидентом Российской Федерации в виде дивидендов) за налоговые периоды до 1 января 2025",
+     "id": "collateral-7",
+     "objectName": "Налог на доходы физических лиц в части суммы налога",
+     "otherDescription": "превышающей 650 000 рублей, относящейся к части налоговой базы, превышающей 5 000 000 рублей (за исключением налога на доходы физических лиц с сумм прибыли контролируемой иностранной компании, в том числе фиксированной прибыли контролируемой иностранной компании, а также налога на доходы физических лиц в отношении доходов от долевого участия в организации, полученных физическим лицом - налоговым резидентом Российской Федерации в виде дивидендов) за налоговые периоды до 1 января 2025",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "2 142 007,00",
+     "id": "collateral-8",
+     "objectName": "2 142 007",
+     "otherDescription": "00",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "2 182 139,25",
+     "id": "collateral-9",
+     "objectName": "2 182 139",
+     "otherDescription": "25",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "физически Страховые взносы, предусмотренные законодательством Российской Федерации о налогах и сборах, уплачиваемые отдельными категориями плательщиков страховых взносов в совокупном фиксированном размере",
+     "id": "collateral-10",
+     "objectName": "Физически Страховые взносы",
+     "otherDescription": "предусмотренные законодательством Российской Федерации о налогах и сборах, уплачиваемые отдельными категориями плательщиков страховых взносов в совокупном фиксированном размере",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "149 000,00",
+     "id": "collateral-11",
+     "objectName": "149 000",
+     "otherDescription": "00",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "149 000,00",
+     "id": "collateral-12",
+     "objectName": "149 000",
+     "otherDescription": "00",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Страховые взносы на обязательное пенсионное страхование, уплачиваемые отдельными категориями плательщиков страховых взносов в соответствии с законодательством Российской Федерации о налогах и сборах с дохода, превышающего 300 000 рублей за расчетный период",
+     "id": "collateral-13",
+     "objectName": "Страховые взносы на обязательное пенсионное страхование",
+     "otherDescription": "уплачиваемые отдельными категориями плательщиков страховых взносов в соответствии с законодательством Российской Федерации о налогах и сборах с дохода, превышающего 300 000 рублей за расчетный период",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "136 614,29",
+     "id": "collateral-14",
+     "objectName": "136 614",
+     "otherDescription": "29",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "136 614,29",
+     "id": "collateral-15",
+     "objectName": "136 614",
+     "otherDescription": "29",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Страховые взносы на обязательное пенсионное страхование за расчетные периоды, истекшие до 1 января 2023 года (в фиксированном размере,",
+     "id": "collateral-16",
+     "objectName": "Страховые взносы на обязательное пенсионное страхование за расчетные периоды",
+     "otherDescription": "истекшие до 1 января 2023 года (в фиксированном размере",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "пенсии, за расчетные периоды с 1 января 2017 года по 31 декабря 2022 года)",
+     "id": "collateral-17",
+     "objectName": "Пенсии",
+     "otherDescription": "за расчетные периоды с 1 января 2017 года по 31 декабря 2022 года)",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Налог на добавленную стоимость на товары (работы, услуги), реализуемые на территории Российской Федерации",
+     "id": "collateral-18",
+     "objectName": "Налог на добавленную стоимость на товары (работы",
+     "otherDescription": "услуги), реализуемые на территории Российской Федерации",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "2033 683,00",
+     "id": "collateral-19",
+     "objectName": "2033 683",
+     "otherDescription": "00",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "2043 576,80",
+     "id": "collateral-20",
+     "objectName": "2043 576",
+     "otherDescription": "80",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Транспортный налог с физических лиц",
+     "id": "collateral-21",
+     "objectName": "Транспортный налог с физических лиц",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Государственная пошлина по делам, рассматриваемым в арбитражных судах (государственная пошлина, уплачиваемая на основании судебных актов по результатам рассмотрения дел по существ",
+     "id": "collateral-22",
+     "objectName": "Государственная пошлина по делам",
+     "otherDescription": "рассматриваемым в арбитражных судах (государственная пошлина, уплачиваемая на основании судебных актов по результатам рассмотрения дел по существ",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Штрафы за налоговые правонарущения, установленные Главой 16 Налогового кодекса Российской Федерации (штрафы за непредставление налоговой декларации (расчета финансового результата инвестиционного товарищества, расчета по страховым",
+     "id": "collateral-23",
+     "objectName": "Штрафы за налоговые правонарущения",
+     "otherDescription": "установленные Главой 16 Налогового кодекса Российской Федерации (штрафы за непредставление налоговой декларации (расчета финансового результата инвестиционного товарищества, расчета по страховым",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Административные штрафы, установленные Главой 14 Кодекса Российской Федерации об административных правонарушениях, за административные правонарушения в области предпринимательской деятельности и деятельности саморегулируемых организаций, налагаемые судьями федеральных судов, должностными лицами федеральных государственных органов, учреждений, Центрального банка Российской Федерации (иные штрафы, за исключением штрафов за административные правонарушения в области производства и оборота этилового спирта, алкогольной и спиртосодержащей продукции)",
+     "id": "collateral-24",
+     "objectName": "Административные штрафы",
+     "otherDescription": "установленные Главой 14 Кодекса Российской Федерации об административных правонарушениях, за административные правонарушения в области предпринимательской деятельности и деятельности саморегулируемых организаций, налагаемые судьями федеральных судов, должностными лицами федеральных государственных органов, учреждений, Центрального банка Российской Федерации (иные штрафы, за исключением штрафов за административные правонарушения в области производства и оборота этилового спирта, алкогольной и спиртосодержащей продукции)",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "2 121 308,66",
+     "id": "collateral-25",
+     "objectName": "2 121 308",
+     "otherDescription": "66",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "2 121 308,66",
+     "id": "collateral-26",
+     "objectName": "2 121 308",
+     "otherDescription": "66",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "5 176 909,79",
+     "id": "collateral-27",
+     "objectName": "5 176 909",
+     "otherDescription": "79",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "2 121 308,66",
+     "id": "collateral-28",
+     "objectName": "2 121 308",
+     "otherDescription": "66",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "105 555,43",
+     "id": "collateral-29",
+     "objectName": "105 555",
+     "otherDescription": "43",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "7 404 480,88",
+     "id": "collateral-30",
+     "objectName": "7 404 480",
+     "otherDescription": "88",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "№ требования",
+     "id": "collateral-31",
+     "objectName": "№ требования",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Дата требования",
+     "id": "collateral-32",
+     "objectName": "Дата требования",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "14.11.2023",
+     "id": "collateral-33",
+     "objectName": "14.11.2023",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "369 393,83",
+     "id": "collateral-34",
+     "objectName": "369 393",
+     "otherDescription": "83",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Дата решения",
+     "id": "collateral-35",
+     "objectName": "Дата решения",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "08.12.2023",
+     "id": "collateral-36",
+     "objectName": "08.12.2023",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "763 038,30",
+     "id": "collateral-37",
+     "objectName": "763 038",
+     "otherDescription": "30",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Номер документа",
+     "id": "collateral-38",
+     "objectName": "Номер документа",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Сумма, руб.",
+     "id": "collateral-39",
+     "objectName": "Сумма",
+     "otherDescription": "руб",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "11.12.2023",
+     "id": "collateral-40",
+     "objectName": "11.12.2023",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Номер документа",
+     "id": "collateral-41",
+     "objectName": "Номер документа",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Сумма, руб.",
+     "id": "collateral-42",
+     "objectName": "Сумма",
+     "otherDescription": "руб",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "2а-1-130/2024",
+     "id": "collateral-43",
+     "objectName": "2а-1-130/2024",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "25.01.2024",
+     "id": "collateral-44",
+     "objectName": "25.01.2024",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "№ постановления",
+     "id": "collateral-45",
+     "objectName": "№ постановления",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Дата постановления",
+     "id": "collateral-46",
+     "objectName": "Дата постановления",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "14.08.2024",
+     "id": "collateral-47",
+     "objectName": "14.08.2024",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "3 841 881,39",
+     "id": "collateral-48",
+     "objectName": "3 841 881",
+     "otherDescription": "39",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "13.03.2025",
+     "id": "collateral-49",
+     "objectName": "13.03.2025",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "2355 055,89",
+     "id": "collateral-50",
+     "objectName": "2355 055",
+     "otherDescription": "89",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "11.08.2025",
+     "id": "collateral-51",
+     "objectName": "11.08.2025",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "680 677,02",
+     "id": "collateral-52",
+     "objectName": "680 677",
+     "otherDescription": "02",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "№ постановления",
+     "id": "collateral-53",
+     "objectName": "№ постановления",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Дата постановления",
+     "id": "collateral-54",
+     "objectName": "Дата постановления",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "50511/24/61074-ИП",
+     "id": "collateral-55",
+     "objectName": "50511/24/61074-ИП",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "30.05.2024",
+     "id": "collateral-56",
+     "objectName": "30.05.2024",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "255349/24/98061-ИП",
+     "id": "collateral-57",
+     "objectName": "255349/24/98061-ИП",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "15.08.2024",
+     "id": "collateral-58",
+     "objectName": "15.08.2024",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "3 841 881,39",
+     "id": "collateral-59",
+     "objectName": "3 841 881",
+     "otherDescription": "39",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "99260/25/98061-ИП",
+     "id": "collateral-60",
+     "objectName": "99260/25/98061-ИП",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "19.03.2025",
+     "id": "collateral-61",
+     "objectName": "19.03.2025",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "2355 055,89",
+     "id": "collateral-62",
+     "objectName": "2355 055",
+     "otherDescription": "89",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "286424/25/98061-ИП",
+     "id": "collateral-63",
+     "objectName": "286424/25/98061-ИП",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "13.08.2025",
+     "id": "collateral-64",
+     "objectName": "13.08.2025",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "680 677,02",
+     "id": "collateral-65",
+     "objectName": "680 677",
+     "otherDescription": "02",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "КО: Наименование",
+     "id": "collateral-66",
+     "objectName": "КО",
+     "otherDescription": "Наименование",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Счет: Номер",
+     "id": "collateral-67",
+     "objectName": "Счет",
+     "otherDescription": "Номер",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Счет: Категория",
+     "id": "collateral-68",
+     "objectName": "Счет",
+     "otherDescription": "Категория",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Публичное акционерное общество «Сбербанк России», филиал Ростовское отделение № 5221",
+     "id": "collateral-69",
+     "objectName": "Публичное акционерное общество «Сбербанк России»",
+     "otherDescription": "филиал Ростовское отделение № 5221",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "408028 10852090022104",
+     "id": "collateral-70",
+     "objectName": "408028 10852090022104",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Расчетный счет",
+     "id": "collateral-71",
+     "objectName": "Расчетный счет",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Публичное акционерное общество «Сбербанк России», филиал Ростовское отделение № 5221",
+     "id": "collateral-72",
+     "objectName": "Публичное акционерное общество «Сбербанк России»",
+     "otherDescription": "филиал Ростовское отделение № 5221",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "40802810052090014488",
+     "id": "collateral-73",
+     "objectName": "40802810052090014488",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Расчетный счет",
+     "id": "collateral-74",
+     "objectName": "Расчетный счет",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "наименована операции",
+     "id": "collateral-75",
+     "objectName": "Наименована операции",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Сумма руб.",
+     "id": "collateral-76",
+     "objectName": "Сумма руб",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Инкассация",
+     "id": "collateral-77",
+     "objectName": "Инкассация",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "-20 000,00",
+     "id": "collateral-78",
+     "objectName": "20 000",
+     "otherDescription": "00",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "Безналичная операция.Списание с карты на карту по оп. &It;mep- да с карты на KapTy&gt; через Моб.банк(с ком)",
+     "id": "collateral-79",
+     "objectName": "Безналичная операция.Списание с карты на",
+     "otherDescription": "карту по оп. &It;mep- да с карты на KapTy&gt; через Моб.банк(с ком)",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "-61 000.00 ;",
+     "id": "collateral-80",
+     "objectName": "61 000.00",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "5 езналичная операция.Частичная выдача",
+     "id": "collateral-81",
+     "objectName": "5 езналичная операция.Частичная выдача",
+     "otherDescription": "",
+     "vin": ""
+    },
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "-81 890,55",
+     "id": "collateral-82",
+     "objectName": "81 890",
+     "otherDescription": "55",
+     "vin": ""
+    }
+   ],
+   "companyInn": "613205503003",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "346407, Ростовская обл, Новочеркасск г, Ермака пр-кт, 104",
+   "creditorName": "ФНС России в лице Межрайонной ИФНС России № 13 по Ростовской области",
+   "debtAmount": "7 401 719,87",
+   "debtSnapshotDate88": "16.01.2026",
+   "debtorAddress": "346630, РОСТОВСКАЯ ОБЛ, Семикаракорский Р-Н, СЕМИКАРАКОРСК Г, ЛЕВЧЕНКО ПЛ,46",
+   "debtorName": "Зайцев Виталий Владимирович",
+   "entityType": "ip",
+   "fnsQ2LoanDebt": "3 131 130,79",
+   "fnsQ2Total": "3 131 130,79",
+   "fnsQ3Forfeit": "2 118 547,65",
+   "fnsQ3LoanDebt": "2 045 779,00",
+   "fnsQ3LoanDuty": "707,00",
+   "fnsQ3Penalties": "105 555,43",
+   "fnsQ3Total": "4 270 589,08",
+   "inn": "613205503003",
+   "mortgageCollateralDescription1221": "На№ у\nАрбитражный суд Ростовской области 344002, г. Ростов-на-Дону, ул. Станиславского, 10/11-13\nЗаявитель: ФНС России 127381, г. Москва, ул. Неглинная, 23\nАдрес для корреспонденции: ФНС России, адрес для корреспонденции: 344019, г. Ростов-на-Дону, ул. Мясникова, 52/32\nДолжник: ЗАЙЦЕВ ВИТАЛИЙ ВЛАДИМИРОВИЧ ИНН 613205503003 ОГРНИП 318619600149696 346630, РОСТОВСКАЯ ОБЛ, Семикаракорский Р-Н, СЕМИКАРАКОРСК Г, ЛЕВЧЕНКО ПЛ,46\nдоходов, полученных от осуществления деятельности физическими лицами, зарегистрированными в качестве индивидуальных предпринимателей, нотариусов, занимающихся частной практикой, адвокатов, учредивших адвокатские кабинеты, и других лиц, занимающихся частной практикой в соответствии со статьей — 227 Налогового кодекса Российской Федерации (в части суммы налога, не превышающей 650 тысяч рублей за налоговые периоды до 1 января 2025 года, а также в части суммы налога, не превышающей 312 тысяч рублей за налоговые периоды после 1 января Налог на доходы физических лиц с\n650 000,00\n0,00\n13 137,88\n0,00\n663 137,88\nНалог на доходы физических лиц в части суммы налога, превышающей 650 000 рублей, относящейся к части налоговой базы, превышающей 5 000 000 рублей (за исключением налога на доходы физических лиц с сумм прибыли контролируемой иностранной компании, в том числе фиксированной прибыли контролируемой иностранной компании, а также налога на доходы физических лиц в отношении доходов от долевого участия в организации, полученных физическим лицом - налоговым резидентом Российской Федерации в виде дивидендов) за налоговые периоды до 1 января 2025\n2 142 007,00\n0,00\n40 132,25\n2 182 139,25\nфизически Страховые взносы, предусмотренные законодательством Российской Федерации о налогах и сборах, уплачиваемые отдельными категориями плательщиков страховых взносов в совокупном фиксированном размере\n149 000,00\n0,00\n149 000,00\nСтраховые взносы на обязательное пенсионное страхование, уплачиваемые отдельными категориями плательщиков страховых взносов в соответствии с законодательством Российской Федерации о налогах и сборах с дохода, превышающего 300 000 рублей за расчетный период\n136 614,29\n0,00\n0,00\n136 614,29\nСтраховые взносы на обязательное пенсионное страхование за расчетные периоды, истекшие до 1 января 2023 года (в фиксированном размере,\n53 509,50\n0,00\n0,00\n0,00\n53 509,50\nпенсии, за расчетные периоды с 1 января 2017 года по 31 декабря 2022 года)\nНалог на добавленную стоимость на товары (работы, услуги), реализуемые на территории Российской Федерации\n2033 683,00\n2043 576,80\nТранспортный налог с физических лиц\n12 096,00\n12 096,00\nГосударственная пошлина по делам, рассматриваемым в арбитражных судах (государственная пошлина, уплачиваемая на основании судебных актов по результатам рассмотрения дел по существ\n0,00\n707,00\nШтрафы за налоговые правонарущения, установленные Главой 16 Налогового кодекса Российской Федерации (штрафы за непредставление налоговой декларации (расчета финансового результата инвестиционного товарищества, расчета по страховым\n0,00\n0,00\n37 391,50\n0,00\n37 391,50\nАдминистративные штрафы, установленные Главой 14 Кодекса Российской Федерации об административных правонарушениях, за административные правонарушения в области предпринимательской деятельности и деятельности саморегулируемых организаций, налагаемые судьями федеральных судов, должностными лицами федеральных государственных органов, учреждений, Центрального банка Российской Федерации (иные штрафы, за исключением штрафов за административные правонарушения в области производства и оборота этилового спирта, алкогольной и спиртосодержащей продукции)\n0,00\n0,00\n5000,00\n0,00\n5000,00\nПеня\n0,00\n2 121 308,66\n0,00\n0,00\n2 121 308,66\nИтого\n5 176 909,79\n2 121 308,66\n105 555,43\n707,00\n7 404 480,88\n№ требования\nДата требования\nсумма\n14.11.2023\n369 393,83\nWn\n№ решения\nДата решения\nсумма\n1.\n2807\n08.12.2023\n763 038,30\n№ п/п\nНомер документа\nДата\nСумма, руб.\n1.\n645\n11.12.2023\n11 056,00\n№ n/n\nНомер документа\nДата\nСумма, руб.\n1.\n2а-1-130/2024\n25.01.2024\n11 056,00\n№ постановления\nДата постановления\nсумма\n5217\n14.08.2024\n3 841 881,39\n13.03.2025\n2355 055,89\n11.08.2025\n680 677,02\nпт\n№ постановления\nДата постановления\nсумма\n50511/24/61074-ИП\n30.05.2024\n11 056,00\n255349/24/98061-ИП\n15.08.2024\n3 841 881,39\n99260/25/98061-ИП\n19.03.2025\n2355 055,89\n286424/25/98061-ИП\n13.08.2025\n680 677,02\nКО: Наименование\nСчет: Номер\nСчет: Категория\nПубличное акционерное общество «Сбербанк России», филиал Ростовское отделение № 5221\n408028 10852090022104\nРасчетный счет\nПубличное акционерное общество «Сбербанк России», филиал Ростовское отделение № 5221\n40802810052090014488\nРасчетный счет\nнаименована операции\nСумма руб.\nИнкассация\n-20 000,00\nБезналичная операция.Списание с карты на карту по оп. &It;mep- да с карты на KapTy&gt; через Моб.банк(с ком)\n-61 000.00 ;\n5 езналичная операция.Частичная выдача\n-890,55\nИтого\n-81 890,55",
+   "ogrnip": "318619600149696",
+   "requirementsSum": "298 892,00",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "7 401 719,87"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 4,
+   "wordCount": 2207
+  },
+  "obligations": [],
+  "rawTextLen": 16289,
+  "rawTextSha": "1740a4f353fcb417b8fecdbbde2640c781bcb6c7feaa94d80b10d86ce1bb4fc6",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "ip",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/ФНС/Заявление РТК Богачева.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "ул. 2-я Краснодарская, 149/5, кв. 43, г. Ростов-на-Дону, 344091",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "",
+    "name": "Богачева Анна Михайловна",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "ул. 2-я Краснодарская, 149/5, кв. 43, г. Ростов-на-Дону, 344091",
+   "applicantName": "Богачева Анна Михайловна",
+   "applicantNameAccusative": "Богачёву Анну Михайловну",
+   "applicantNameDative": "Богачёвой Анне Михайловне",
+   "applicantNameGenitive": "Богачевой Анны Михайловны",
+   "applicantNameInstrumental": "Богачёвой Анной Михайловной",
+   "applicationDate": "04.09.2025",
+   "caseNumber": "А53-31358/2025",
+   "courtDecisionDate": "04.09.2025",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "344019, Ростов-на-Дону г, Мясникова ул, 52/32",
+   "creditorName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
+   "debtAmount": "4 590,95",
+   "debtorAddress": "ул. 2-я Краснодарская, 149/5, кв. 43, г. Ростов-на-Дону, 344091",
+   "debtorName": "Богачева Анна Михайловна",
+   "entityType": "individual",
+   "fnsQ3Forfeit": "90,87",
+   "fnsQ3LoanDebt": "4 500,08",
+   "fnsQ3Total": "4 590,95",
+   "fnsTotalComputed": "1",
+   "managerName": "Бубнова Светлана Васильевна",
+   "messageDate": "02.12.2025",
+   "requirementsSum": "4 590,95",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "4 590,95"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 677
+  },
+  "obligations": [],
+  "rawTextLen": 5197,
+  "rawTextSha": "fbfb07d6192548f392ed6a6323dffb301d28f42595466231d0440da5b22e3388",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/ФНС/Заявление РТК Бузнякова Е В.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "пер Рязанова, 31, х Елкин, Багаевский р-н, ,346621",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "",
+    "name": "Бузнякова Елена Васильевна",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "пер Рязанова, 31, х Елкин, Багаевский р-н, ,346621",
+   "applicantName": "Бузнякова Елена Васильевна",
+   "applicantNameAccusative": "Бузнякову Елену Васильевну",
+   "applicantNameDative": "Бузняковой Елене Васильевне",
+   "applicantNameGenitive": "Бузняковой Елены Васильевны",
+   "applicantNameInstrumental": "Бузняковой Еленой Васильевной",
+   "applicationDate": "10.02.2026",
+   "caseNumber": "А53-3438/2026",
+   "courtDecisionDate": "17.03.2026",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "344019, Ростов-на-Дону г, Мясникова ул, 52/32",
+   "creditorName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
+   "debtAmount": "452,79",
+   "debtorAddress": "пер Рязанова, 31, х Елкин, Багаевский р-н, ,346621",
+   "debtorName": "Бузнякова Елена Васильевна",
+   "efirsbPublicationDate": "20.03.2026",
+   "entityType": "individual",
+   "fnsQ3Forfeit": "2,79",
+   "fnsQ3LoanDebt": "450,00",
+   "fnsQ3Total": "452,79",
+   "fnsTotalComputed": "1",
+   "managerName": "Лифанова Дарья Александровна",
+   "messageDate": "20.03.2026",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "452,79"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 1,
+   "wordCount": 724
+  },
+  "obligations": [],
+  "rawTextLen": 5649,
+  "rawTextSha": "b7a54aee5fe003b588e8f2fddc366842cdf46b67aec682a1a7f4168481613611",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/ФНС/Заявление РТК Воробьева С.М.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "ул. Орбитальная, д.90, к.67, г. Ростов-на-Дону, 344114",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "",
+    "name": "Воробьева Светлана Михайловна",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "ул. Орбитальная, д.90, к.67, г. Ростов-на-Дону, 344114",
+   "applicantName": "Воробьева Светлана Михайловна",
+   "applicantNameAccusative": "Воробьёву Светлану Михайловну",
+   "applicantNameDative": "Воробьёвой Светлане Михайловне",
+   "applicantNameGenitive": "Воробьёвой Светланы Михайловны",
+   "applicantNameInstrumental": "Воробьёвой Светланой Михайловной",
+   "applicationDate": "23.10.2025",
+   "caseNumber": "А53-30857/2025",
+   "courtDecisionDate": "30.01.2026",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "344019, Ростов-на-Дону г, Мясникова ул, 52/32",
+   "creditorName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
+   "debtAmount": "255 825,84",
+   "debtorAddress": "ул. Орбитальная, д.90, к.67, г. Ростов-на-Дону, 344114",
+   "debtorName": "Воробьева Светлана Михайловна",
+   "efirsbPublicationDate": "02.02.2026",
+   "entityType": "individual",
+   "fnsQ2Arrears": "55 393,70",
+   "fnsQ2Total": "55 393,70",
+   "fnsQ3Forfeit": "187 063,80",
+   "fnsQ3LoanDebt": "7 128,34",
+   "fnsQ3Penalties": "6 240,00",
+   "fnsQ3Total": "200 432,14",
+   "fnsTotalComputed": "1",
+   "managerName": "Васильев Николай Иванович",
+   "messageDate": "02.02.2026",
+   "requirementsSum": "55 393,70",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "255 825,84"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 1164
+  },
+  "obligations": [],
+  "rawTextLen": 9036,
+  "rawTextSha": "fd80ff50735871e9e944d582b86202f5d5bdabc9f03963fc91b4b812dcf3937e",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/ФНС/Заявление РТК Мишунин И.А..docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "ул. Садовая, д. 28, п. Двуречье, Кагальницкий р-н, Ростовская область, 347704",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "",
+    "name": "Мишунин Иван Александрович",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "ул. Садовая, д. 28, п. Двуречье, Кагальницкий р-н, Ростовская область, 347704",
+   "applicantName": "Мишунин Иван Александрович",
+   "applicantNameAccusative": "Мишунина Ивана Александровича",
+   "applicantNameDative": "Мишунину Ивану Александровичу",
+   "applicantNameGenitive": "Мишунина Ивана Александровича",
+   "applicantNameInstrumental": "Мишуниным Иваном Александровичем",
+   "applicationDate": "09.10.2025",
+   "caseNumber": "А53-31320/2025",
+   "courtDecisionDate": "09.10.2025",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "344019, Ростов-на-Дону г, Мясникова ул, 52/32",
+   "creditorName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
+   "debtAmount": "24 314,99",
+   "debtorAddress": "ул. Садовая, д. 28, п. Двуречье, Кагальницкий р-н, Ростовская область, 347704",
+   "debtorName": "Мишунин Иван Александрович",
+   "entityType": "individual",
+   "fnsQ3LoanDebt": "24 061,00",
+   "fnsQ3Total": "24 314,99",
+   "fnsTotalComputed": "1",
+   "messageDate": "15.12.2025",
+   "procedureType": "restructuring",
+   "procedureTypeRaw": "реструктуризации долгов гражданина",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "24 314,99"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 1,
+   "wordCount": 647
+  },
+  "obligations": [],
+  "rawTextLen": 5067,
+  "rawTextSha": "3afaaecbb50134a6fe53048a95ae8efa822b6e0aad0a054548c18e74640960d4",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/ФНС/Заявление РТК Мурадьян М.Е.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "ул. Баумана, 20, кв. 15, г. Ростов-на-Дону, 344002",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "",
+    "name": "Мурадьян Максим Евгеньевич",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "ул. Баумана, 20, кв. 15, г. Ростов-на-Дону, 344002",
+   "applicantName": "Мурадьян Максим Евгеньевич",
+   "applicantNameAccusative": "Мурадьяна Максима Евгеньевича",
+   "applicantNameDative": "Мурадьяну Максиму Евгеньевичу",
+   "applicantNameGenitive": "Мурадьяна Максима Евгеньевича",
+   "applicantNameInstrumental": "Мурадьяном Максимом Евгеньевичем",
+   "applicationDate": "03.10.2025",
+   "caseNumber": "А53-31612/2025",
+   "courtDecisionDate": "03.10.2025",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "344019, Ростов-на-Дону г, Мясникова ул, 52/32",
+   "creditorName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
+   "debtAmount": "187 348,68",
+   "debtorAddress": "ул. Баумана, 20, кв. 15, г. Ростов-на-Дону, 344002",
+   "debtorName": "Мурадьян Максим Евгеньевич",
+   "efirsbPublicationDate": "05.02.2026",
+   "entityType": "individual",
+   "fnsQ2Arrears": "153 398,37",
+   "fnsQ2Total": "153 398,37",
+   "fnsQ3Forfeit": "27 087,91",
+   "fnsQ3LoanDebt": "1 312,40",
+   "fnsQ3Penalties": "5 550,00",
+   "fnsQ3Total": "33 950,31",
+   "managerName": "Гутников Кирилл Александрович",
+   "messageDate": "05.02.2026",
+   "requirementsSum": "300,00",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "187 348,68"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 3,
+   "wordCount": 1717
+  },
+  "obligations": [],
+  "rawTextLen": 13363,
+  "rawTextSha": "eb5342a658a9392b46dc1cceeef1f715cf2a513709b0fc06837d1d8bab5d0a57",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/ФНС/Заявление на 6 л. в 1 экз (1).docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "ул. Социалистическая, д. 26, г. Сальск, Сальский р-н., Ростовская обл., 347636",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "615308542625",
+    "name": "Карагезова ЛИЛИЯ АРКАДЬЕВНА",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "unknown",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "ул. Социалистическая, д. 26, г. Сальск, Сальский р-н., Ростовская обл., 347636",
+   "applicantName": "Карагезова ЛИЛИЯ АРКАДЬЕВНА",
+   "applicantNameAccusative": "Карагезову ЛИЛИЮ АРКАДЬЕВНУ",
+   "applicantNameDative": "Карагезовой ЛИЛИИ АРКАДЬЕВНЕ",
+   "applicantNameGenitive": "Карагезовой ЛИЛИИ АРКАДЬЕВНЫ",
+   "applicantNameInstrumental": "Карагезовой ЛИЛИЕЙ АРКАДЬЕВНОЙ",
+   "applicationDate": "30.09.2004",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "347375, Ростовская обл, Волгодонск г, Ленинградская ул, 10",
+   "creditorName": "ФНС России в лице Межрайонной ИФНС России № 4 по Ростовской области",
+   "debtAmount": "1 712 229,07",
+   "debtSnapshotDate88": "26.08.2025",
+   "debtorAddress": "ул. Социалистическая, д. 26, г. Сальск, Сальский р-н., Ростовская обл., 347636",
+   "debtorName": "Карагезова ЛИЛИЯ АРКАДЬЕВНА",
+   "entityType": "individual",
+   "fnsQ2Forfeit": "0,00",
+   "fnsQ2LoanDebt": "208 472,30",
+   "fnsQ2Penalties": "0,00",
+   "fnsQ2Total": "208 472,30",
+   "fnsQ3Forfeit": "684 091,42",
+   "fnsQ3LoanDebt": "745 735,35",
+   "fnsQ3LoanDuty": "2 608,00",
+   "fnsQ3Penalties": "71 322,00",
+   "fnsQ3Total": "1 503 756,77",
+   "fnsTotalComputed": "1",
+   "inn": "615308542625",
+   "requirementsSum": "208 472,00",
+   "sourceDocumentType": "unknown",
+   "sroName": "Ассоциация \"Московская саморегулируемая организация профессиональных арбитражных управляющих\"",
+   "totalDebt": "1 712 229,07"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 1501
+  },
+  "obligations": [],
+  "rawTextLen": 11466,
+  "rawTextSha": "ee026215dd2bc3e30cb98915232438982831a767a854af71f25bd86792f605a6",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/ФНС/Заявление о включении в ртк  Артемов И.Г..docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "346406, РОССИЯ, Ростовская обл, ‚ горно-черкасск, , ул Речная, 43",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "",
+    "name": "Артемов Игорь Геннадьевич",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "346406, РОССИЯ, Ростовская обл, ‚ горно-черкасск, , ул Речная, 43",
+   "applicantName": "Артемов Игорь Геннадьевич",
+   "applicantNameAccusative": "Артемова Игоря Геннадьевича",
+   "applicantNameDative": "Артемову Игорю Геннадьевичу",
+   "applicantNameGenitive": "Артемова Игоря Геннадьевича",
+   "applicantNameInstrumental": "Артемовым Игорем Геннадьевичем",
+   "applicationDate": "30.01.2026",
+   "caseNumber": "А53-1975/2026",
+   "courtDecisionDate": "26.02.2026",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "346407, Ростовская обл, Новочеркасск г, Ермака пр-кт, 104",
+   "creditorName": "ФНС России в лице Межрайонной ИФНС России № 13 по Ростовской области",
+   "debtAmount": "855,35",
+   "debtorAddress": "346406, РОССИЯ, Ростовская обл, ‚ горно-черкасск, , ул Речная, 43",
+   "debtorName": "Артемов Игорь Геннадьевич",
+   "entityType": "individual",
+   "fnsQ3Forfeit": "24,35",
+   "fnsQ3LoanDebt": "831,00",
+   "fnsQ3Penalties": "0,00",
+   "fnsQ3Total": "855,35",
+   "fnsTotalComputed": "1",
+   "managerAddress": "350075, г.Краснодар",
+   "managerName": "Колос Екатерина Александровна",
+   "messageDate": "04.03.2026",
+   "requirementsSum": "5 319 752 026,00",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "855,35"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 950
+  },
+  "obligations": [],
+  "rawTextLen": 7324,
+  "rawTextSha": "b5dc64277c3d35a8e6eec9c47a48192f0522cb855e62bac537d8f3e20c893151",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/ФНС/Заявление о включении в ртк  Геворгян К.В..docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "346611,РОССИЯ,Ростовская обл,Багаевская ст-ца, Фрунзе ул,67",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "610304071535",
+    "name": "Геворгян Ксения Валериевна",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "346611,РОССИЯ,Ростовская обл,Багаевская ст-ца, Фрунзе ул,67",
+   "applicantName": "Геворгян Ксения Валериевна",
+   "applicantNameAccusative": "Геворгян Ксению Валериевну",
+   "applicantNameDative": "Геворгян Ксении Валериевне",
+   "applicantNameGenitive": "Геворгян Ксении Валериевны",
+   "applicantNameInstrumental": "Геворгян Ксенией Валериевной",
+   "applicationDate": "30.12.2025",
+   "courtDecisionDate": "03.03.2026",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "344019, Ростов-на-Дону г, Мясникова ул, 52/32",
+   "creditorName": "ФНС России в лице Межрайонной ИФНС России № 26 по Ростовской области",
+   "debtAmount": "338,71",
+   "debtorAddress": "346611,РОССИЯ,Ростовская обл,Багаевская ст-ца, Фрунзе ул,67",
+   "debtorName": "Геворгян Ксения Валериевна",
+   "entityType": "individual",
+   "fnsQ3Forfeit": "15,71",
+   "fnsQ3LoanDebt": "323,00",
+   "fnsQ3Penalties": "0,00",
+   "fnsQ3Total": "338,71",
+   "fnsTotalComputed": "1",
+   "inn": "610304071535",
+   "managerAddress": "344082, Ростовская область, Ростов-на-Дону, пр-т Будённовский, 31, а/я 2717",
+   "managerName": "Теслёлкин Дмитрий Сергеевич",
+   "messageDate": "05.03.2026",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "338,71"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 1,
+   "wordCount": 948
+  },
+  "obligations": [],
+  "rawTextLen": 7403,
+  "rawTextSha": "94385eab05b7ed0d108fa72af623c16512b3ac36a3b7739cc4d054d517a40dc4",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_realization"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/ФНС/Заявление_Базов Георгий Николаевич_20.docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "346731, Россия, обл. Ростовская, Аксайский р-н, Щепкин п., Адмирала Нахимова ул., д.14",
+    "birthDate": "28.01.1980",
+    "birthPlace": "гор. Астрахань",
+    "inn": "616506698400",
+    "name": "Базов Георгий Николаевич",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "045-968-519 07"
+   }
+  ],
+  "documentType": "initiation_physical",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "346731, Россия, обл. Ростовская, Аксайский р-н, Щепкин п., Адмирала Нахимова ул., д.14",
+   "applicantName": "Базов Георгий Николаевич",
+   "applicantNameAccusative": "Базова Георгия Николаевича",
+   "applicantNameDative": "Базову Георгию Николаевичу",
+   "applicantNameGenitive": "Базова Георгия Николаевича",
+   "applicantNameInstrumental": "Базовым Георгием Николаевичем",
+   "applicationDate": "28.01.1980",
+   "birthDate": "28.01.1980",
+   "birthPlace": "гор. Астрахань",
+   "companyInn": "616506698400",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "450075, Башкортостан Респ, Уфа г, Октября проспект, 95, 2",
+   "creditorName": "ФНС России в лице Межрайонной ИФНС России № 4 по Республике Башкортостан",
+   "debtAmount": "71 145 066,58",
+   "debtSnapshotDate88": "16.06.2026",
+   "debtorAddress": "346731, Россия, обл. Ростовская, Аксайский р-н, Щепкин п., Адмирала Нахимова ул., д.14",
+   "debtorName": "Базов Георгий Николаевич",
+   "entityType": "individual",
+   "fnsQ2Insurance": "96 396,39",
+   "fnsQ2Ndfl": "8 390,27",
+   "fnsQ2Total": "104 786,66",
+   "fnsQ3Forfeit": "16 242 223,52",
+   "fnsQ3LoanDebt": "50 811 691,40",
+   "fnsQ3Penalties": "3 986 365,00",
+   "fnsQ3Total": "71 040 279,92",
+   "fnsTotalComputed": "1",
+   "inn": "616506698400",
+   "requirementsSum": "16,06",
+   "snils": "045-968-519 07",
+   "sourceDocumentType": "initiation_physical",
+   "sroName": "Союз арбитражных управляющих \"Саморегулируемая организация \"ДЕЛО\"",
+   "totalDebt": "71 145 066,58"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 3,
+   "wordCount": 1498
+  },
+  "obligations": [],
+  "rawTextLen": 11542,
+  "rawTextSha": "e699499bf2ce707c3cd166deb0da46c7ae335331a98e6f3d2d520210bc1e2ce9",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/ФНС/ФНС Заявление (1).docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "346404, Россия, Ростовская обл, Новочеркасск г, Флерова А.Ф. ул, 4, кв. 66",
+    "birthDate": "02.02.1982",
+    "birthPlace": "ГОР. НОВОЧЕРКАССК",
+    "inn": "615014390786",
+    "name": "Бирюкова Елена Андреевна",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "063-843-816 80"
+   }
+  ],
+  "documentType": "initiation_physical",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "346404, Россия, Ростовская обл, Новочеркасск г, Флерова А.Ф. ул, 4, кв. 66",
+   "applicantName": "Бирюкова Елена Андреевна",
+   "applicantNameAccusative": "Бирюкову Елену Андреевну",
+   "applicantNameDative": "Бирюковой Елене Андреевне",
+   "applicantNameGenitive": "Бирюковой Елены Андреевны",
+   "applicantNameInstrumental": "Бирюковой Еленой Андреевной",
+   "applicationDate": "02.02.1982",
+   "birthDate": "02.02.1982",
+   "birthPlace": "ГОР. НОВОЧЕРКАССК",
+   "companyInn": "615014390786",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "450075, Башкортостан Респ, Уфа г, Октября проспект, 95, 2",
+   "creditorName": "ФНС России в лице Межрайонной ИФНС России № 4 по Республике Башкортостан",
+   "debtAmount": "5 631 934,26",
+   "debtSnapshotDate88": "08.04.2026",
+   "debtorAddress": "346404, Россия, Ростовская обл, Новочеркасск г, Флерова А.Ф. ул, 4, кв. 66",
+   "debtorName": "Бирюкова Елена Андреевна",
+   "entityType": "individual",
+   "fnsQ2Insurance": "480 070,88",
+   "fnsQ2Total": "480 070,88",
+   "fnsQ3Forfeit": "595 911,64",
+   "fnsQ3LoanDebt": "4 532 472,86",
+   "fnsQ3Penalties": "23 478,88",
+   "fnsQ3Total": "5 151 863,38",
+   "fnsTotalComputed": "1",
+   "inn": "615014390786",
+   "requirementsSum": "8,04",
+   "snils": "063-843-816 80",
+   "sourceDocumentType": "initiation_physical",
+   "totalDebt": "5 631 934,26"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 3,
+   "wordCount": 1565
+  },
+  "obligations": [],
+  "rawTextLen": 11805,
+  "rawTextSha": "34ba44b1b300483269dcbf4fc463180610344ac71d0c2a04e6ea841c493e21eb",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition",
+    "final_restructuring"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/ФНС/Чернов Николай Николаевич_95.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "346414, Ростовская обл,,Новочеркасск г,,Харьковская ул,47",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "615014093624",
+    "name": "Чернов Николай Николаевич",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "346414, Ростовская обл,,Новочеркасск г,,Харьковская ул,47",
+   "applicantName": "Чернов Николай Николаевич",
+   "applicantNameAccusative": "Чернова Николая Николаевича",
+   "applicantNameDative": "Чернову Николаю Николаевичу",
+   "applicantNameGenitive": "Чернова Николая Николаевича",
+   "applicantNameInstrumental": "Черновым Николаем Николаевичем",
+   "applicationDate": "06.04.2026",
+   "caseNumber": "А53-4124/2026",
+   "companyInn": "615014093624",
+   "courtDecisionDate": "06.04.2026",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "450075, Башкортостан Респ, Уфа г, Октября проспект, 95, 2",
+   "creditorName": "ФНС России в лице Межрайонной ИФНС России № 4 по Республике Башкортостан",
+   "debtAmount": "54 558,94",
+   "debtorAddress": "346414, Ростовская обл,,Новочеркасск г,,Харьковская ул,47",
+   "debtorName": "Чернов Николай Николаевич",
+   "entityType": "individual",
+   "fnsQ2LoanDebt": "51 927,10",
+   "fnsQ2Total": "51 927,10",
+   "fnsQ3Forfeit": "2 631,84",
+   "fnsQ3Total": "2 631,84",
+   "inn": "615014093624",
+   "kommersantDate": "18.04.2026",
+   "managerName": "Березина Марина Вячеславовна",
+   "procedureType": "realization",
+   "procedureTypeRaw": "реализации имущества гражданина",
+   "requirementsSum": "54 558,94",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "54 558,94"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 4,
+   "wordCount": 1260
+  },
+  "obligations": [],
+  "rawTextLen": 9684,
+  "rawTextSha": "59b27ef4d2b019dac3dddd35536332e7bb666e80f352edf965f47c2ff3ba3573",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "individual",
