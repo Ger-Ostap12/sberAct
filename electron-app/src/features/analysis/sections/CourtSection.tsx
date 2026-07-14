@@ -9,6 +9,9 @@ import {
   FormControl,
   Select,
   MenuItem,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
 } from '@mui/material';
 import { JUDGES } from '../../../shared/constants/judges';
 import { formatJudgeName } from '../../../shared/lib/judges';
@@ -87,6 +90,42 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                           ))}
                         </Select>
                       </FormControl>
+                    </Box>
+                  </Grid>
+
+                  {/* Роль составителя: меняет абзац «кем подготовлен акт» при генерации */}
+                  <Grid item xs={12}>
+                    <Box sx={LABEL_OVERLAP_BOX}>
+                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Акт подготовил:</Typography>
+                      <RadioGroup
+                        row
+                        value={editedFields.authorRole || ''}
+                        onChange={(e) => onFieldChange('authorRole', e.target.value)}
+                        sx={{ pl: 1, pt: 0.5 }}
+                      >
+                        <FormControlLabel value="Помощник" control={<Radio size="small" />} label="Помощник" />
+                        <FormControlLabel value="Секретарь" control={<Radio size="small" />} label="Секретарь" />
+                      </RadioGroup>
+                    </Box>
+                  </Grid>
+
+                  {/* ФИО составителя — метка зависит от выбранной роли */}
+                  <Grid item xs={12}>
+                    <Box sx={LABEL_OVERLAP_BOX}>
+                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>
+                        {editedFields.authorRole === 'Секретарь'
+                          ? 'ФИО секретаря:'
+                          : editedFields.authorRole === 'Помощник'
+                            ? 'ФИО помощника:'
+                            : 'ФИО помощника/секретаря:'}
+                      </Typography>
+                      <TextField
+                        fullWidth
+                        value={editedFields.authorName || ''}
+                        onChange={(e) => onFieldChange('authorName', e.target.value)}
+                        size="small"
+                        margin="dense"
+                      />
                     </Box>
                   </Grid>
 

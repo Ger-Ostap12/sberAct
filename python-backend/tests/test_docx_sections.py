@@ -108,6 +108,33 @@ def test_prayer_anchor_variants(tmp_path, petition):
     assert petition.split()[0] in by_id.get("prayer", ""), f"не распознан якорь: {petition}"
 
 
+def test_prayer_anchor_ignores_inline_proshu_in_body(tmp_path):
+    """«…управляющего прошу назначить…» в мотивировке НЕ открывает просительную —
+    prayer стартует на строке-маркере «ПРОШУ:» (реальный кейс Андрея)."""
+    da = DocumentAnalyzer()
+    from docx import Document
+
+    doc = Document()
+    doc.add_paragraph("ЗАЯВЛЕНИЕ о признании банкротом")
+    doc.add_paragraph(
+        "Кандидатуру финансового управляющего прошу назначить из числа членов союза"
+    )
+    doc.add_paragraph("На основании вышеизложенного, руководствуясь ст. 213.4 Закона,")
+    doc.add_paragraph("ПРОШУ:")
+    doc.add_paragraph("1. Ввести реструктуризацию долгов гражданина.")
+    p = os.path.join(tmp_path, "candidacy.docx")
+    doc.save(p)
+
+    sections = da.extract_sections(p)
+    by_id = {s["id"]: "\n".join(ln["text"] for ln in s["lines"]) for s in sections}
+    # Кандидатура — в мотивировочной части, не в просительной.
+    assert "Кандидатуру" in by_id.get("body", "")
+    assert "Кандидатуру" not in by_id.get("prayer", "")
+    # Просительная открывается ровно на «ПРОШУ:».
+    assert by_id.get("prayer", "").startswith("ПРОШУ:")
+    assert "Ввести реструктуризацию" in by_id.get("prayer", "")
+
+
 def test_prayer_anchor_ignores_prositelnoy(tmp_path):
     """«просительной» НЕ должно ложно срабатывать как якорь просьбы."""
     da = DocumentAnalyzer()

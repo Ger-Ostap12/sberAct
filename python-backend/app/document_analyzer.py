@@ -638,35 +638,82 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         r"^\s*(?:исковое\s+)?(?:заявлени[ея]|ходатайство)\b",
         re.IGNORECASE,
     )
-    # Якорь просительной части — глагол-просьба: прошу/просим/просит/просят,
-    # ходатайствую/ходатайствуем/ходатайствует (в т.ч. «ПРОСИТ СУД», «Прошу:»).
-    # Границы слова кириллицей вручную: `\b` в re не отделяет «просит» от
-    # «просительной». Ищется только в теле, начиная с титула.
-    _PRAYER_ANCHOR_RE = re.compile(
-        r"(?:^|[^а-яёА-ЯЁ])(?:прошу|просим|просит|просят|ходатайству(?:ю|ем|ет))(?![а-яёА-ЯЁ])",
-        re.IGNORECASE,
-    )
+    # Глагол-просьба: прошу/просим/просит/просят, ходатайствую/ходатайствуем/
+    # ходатайствует. Границы слова кириллицей вручную: `\b` в re не отделяет
+    # «просит» от «просительной».
+    _PRAYER_VERB = r"(?:прошу|просим|просит|просят|ходатайству(?:ю|ем|ет))(?![а-яёА-ЯЁ])"
+    # Якорь просительной части — НЕ любое «прошу», а операционный маркер:
+    #   (A) глагол-просьба + [суд] + ДВОЕТОЧИЕ где угодно в абзаце («…, ПРОШУ:»,
+    #       «прошу суд:») — двоеточие вводит перечень требований;
+    #   (B) ИЛИ строка НАЧИНАЕТСЯ с глагола-просьбы («Прошу суд признать…» прозой).
+    # Так «…управляющего прошу назначить…» в середине мотивировки НЕ триггерит
+    # (нет двоеточия сразу за глаголом и абзац начинается не с него).
+    _PRAYER_COLON_RE = re.compile(_PRAYER_VERB + r"(?:\s+суд)?\s*:", re.IGNORECASE)
+    _PRAYER_START_RE = re.compile(r"^\s*(?:\d+[.)]\s*)?" + _PRAYER_VERB, re.IGNORECASE)
     # Якорь блока приложений — строка, начинающаяся с «Приложение(я/й)».
     _ATTACH_ANCHOR_RE = re.compile(r"^\s*приложени[еяй]", re.IGNORECASE)
+
+    def _docx_parts_true_order(self, file_path: str) -> List[Tuple[str, str, int]]:
+        """Части DOCX в РЕАЛЬНОМ порядке чтения документа + их ПЛОСКИЙ индекс.
+
+        Возвращает `(text, origin, flat_index)`, где `flat_index` — позиция части
+        в `extract_text` (плоский порядок «абзацы → таблицы → колонтитулы»).
+        Порядок же самих элементов — истинный (таблицы стоят там, где они в теле,
+        а не свалены в конец). Нужно секциям: в ФНС-сканах шапка (суд/ФНС) лежит
+        в таблице В НАЧАЛЕ документа — по плоскому порядку она уезжала в конец и
+        попадала в «Приложения». Классификация идёт по истинному порядку, а
+        `flat_index` сохраняет инвариант пересборки (== extract_text).
+        """
+        from docx.oxml.ns import qn
+        from docx.table import Table
+        from docx.text.paragraph import Paragraph
+
+        flat = self._docx_text_parts(file_path)
+        pn = sum(1 for _text, origin in flat if origin == "body")   # абзацев тела
+        cn = sum(1 for _text, origin in flat if origin == "table")  # ячеек таблиц
+
+        doc = Document(file_path)
+        result: List[Tuple[str, str, int]] = []
+        p_i = 0
+        c_i = 0
+        for child in doc.element.body.iterchildren():
+            if child.tag == qn("w:p"):
+                para = Paragraph(child, doc)
+                if para.text.strip():
+                    result.append((para.text.strip(), "body", p_i))
+                    p_i += 1
+            elif child.tag == qn("w:tbl"):
+                table = Table(child, doc)
+                for row in table.rows:
+                    for cell in row.cells:
+                        if cell.text.strip():
+                            result.append((cell.text.strip(), "table", pn + c_i))
+                            c_i += 1
+        # Хвост плоского текста (колонтитулы/надписи/сноски) — с их плоскими
+        # индексами; в теле их нет, порядок для классификации не важен.
+        for k, (text, origin) in enumerate(flat[pn + cn:]):
+            result.append((text, origin, pn + cn + k))
+        return result
 
     def extract_sections(self, file_path: str) -> List[Dict[str, Any]]:
         """Тот же текст, что `extract_text`, разбитый на ЧЕТЫРЕ блока — ТОЛЬКО
         для предпросмотра/правки (`/docx-text`). Анализ и baseline «Скачать с
         правками» продолжают работать с плоским `extract_text`.
 
-        Каждая строка несёт глобальный индекс `index` (позиция части в плоском
-        тексте). Инвариант: соединение строк ВСЕХ блоков, отсортированных по
-        `index`, байт-в-байт равно `extract_text(file)`. Пока он держится —
-        порядок анализа и правок не меняется (нулевой риск для golden).
+        Классификация идёт по РЕАЛЬНОМУ порядку документа
+        (`_docx_parts_true_order`), а каждая строка несёт ПЛОСКИЙ `index`.
+        Инвариант: соединение строк ВСЕХ блоков, отсортированных по `index`,
+        байт-в-байт равно `extract_text(file)` (нулевой риск для golden).
 
         Блоки — непрерывные диапазоны по якорям в ТЕЛЕ документа:
-          `header`      — вводная часть: всё до строки-титула;
-          `body`        — описательно-мотивировочная: от титула до просьбы;
+          `header`      — вводная часть: всё до строки-титула (сюда же шапка-
+                          таблица ФНС, которая в реальном порядке стоит первой);
+          `body`        — описательно-мотивировочная: от титула до просьбы
+                          (включая таблицы, встроенные в текст);
           `prayer`      — просительная: от глагола-просьбы до «Приложение»;
-          `attachments` — приложения: от «Приложение» и до конца (включая
-                          таблицы/колонтитулы, идущие в плоском тексте за телом).
-        Якорь не найден → соответствующая граница схлопывается (нет «Приложение»
-        → всё до конца остаётся в `prayer`). Строки НИКОГДА не теряются.
+          `attachments` — приложения: от «Приложение» и до конца.
+        Якорь не найден → соответствующая граница схлопывается. Строки НИКОГДА
+        не теряются.
 
         Не-DOCX (PDF-fallback) блоков не даёт — вызывающая сторона использует
         плоский `text`.
@@ -674,54 +721,53 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if Path(file_path).suffix.lower() not in (".docx", ".doc"):
             return []
 
-        parts = self._docx_text_parts(file_path)
+        parts = self._docx_parts_true_order(file_path)
 
-        # Границы ищем только по телу (origin == "body"); таблицы/колонтитулы в
-        # плоском тексте идут ПОСЛЕ тела и попадают в последний непустой блок.
-        title_idx: Optional[int] = None
-        prayer_idx: Optional[int] = None
-        attach_idx: Optional[int] = None
-        for index, (text, origin) in enumerate(parts):
+        # Якоря ищем только по телу (origin == "body"), в реальном порядке;
+        # позиции — по СЕКВЕНЦИИ (seq), таблицы шапки/текста наследуют блок.
+        title_seq: Optional[int] = None
+        prayer_seq: Optional[int] = None
+        attach_seq: Optional[int] = None
+        for seq, (text, origin, _fidx) in enumerate(parts):
             if origin != "body":
                 continue
-            if title_idx is None and self._TITLE_ANCHOR_RE.match(text):
-                title_idx = index
+            if title_seq is None and self._TITLE_ANCHOR_RE.match(text):
+                title_seq = seq
                 continue
-            # Просьбу учитываем только после титула (если он найден).
-            if prayer_idx is None and self._PRAYER_ANCHOR_RE.search(text):
-                if title_idx is None or index >= title_idx:
-                    prayer_idx = index
+            if prayer_seq is None and (
+                self._PRAYER_COLON_RE.search(text) or self._PRAYER_START_RE.match(text)
+            ):
+                if title_seq is None or seq >= title_seq:
+                    prayer_seq = seq
                 continue
-            # «Приложение» — только после начала просительной части.
             if (
-                attach_idx is None
-                and prayer_idx is not None
-                and index >= prayer_idx
+                attach_seq is None
+                and prayer_seq is not None
+                and seq >= prayer_seq
                 and self._ATTACH_ANCHOR_RE.match(text)
             ):
-                attach_idx = index
+                attach_seq = seq
 
         n = len(parts)
-        header_end = title_idx if title_idx is not None else 0
-        body_end = prayer_idx if prayer_idx is not None else n
-        prayer_end = attach_idx if attach_idx is not None else n
-        # Монотонность границ (на случай аномального порядка якорей).
+        header_end = title_seq if title_seq is not None else 0
+        body_end = prayer_seq if prayer_seq is not None else n
+        prayer_end = attach_seq if attach_seq is not None else n
         body_end = max(body_end, header_end)
         prayer_end = max(prayer_end, body_end)
 
         buckets: Dict[str, List[Dict[str, Any]]] = {
             "header": [], "body": [], "prayer": [], "attachments": []
         }
-        for index, (text, _origin) in enumerate(parts):
-            if index < header_end:
+        for seq, (text, _origin, fidx) in enumerate(parts):
+            if seq < header_end:
                 key = "header"
-            elif index < body_end:
+            elif seq < body_end:
                 key = "body"
-            elif index < prayer_end:
+            elif seq < prayer_end:
                 key = "prayer"
             else:
                 key = "attachments"
-            buckets[key].append({"text": text, "index": index})
+            buckets[key].append({"text": text, "index": fidx})
 
         titles = {
             "header": "Вводная часть",
