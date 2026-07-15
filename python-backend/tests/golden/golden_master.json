@@ -404,7 +404,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_physical",
   "entityType": "individual",
   "fields": {
    "applicantAddress": "ул. Социалистическая, д. 26, г. Сальск, Сальский р-н., Ростовская обл., 347636",
@@ -434,7 +434,7 @@
    "fnsTotalComputed": "1",
    "inn": "615308542625",
    "requirementsSum": "208 472,00",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_physical",
    "sroName": "Ассоциация \"Московская саморегулируемая организация профессиональных арбитражных управляющих\"",
    "totalDebt": "1 712 229,07"
   },
@@ -450,7 +450,7 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
+    "final_restructuring",
     "acceptance_definition"
    ]
   },
@@ -996,7 +996,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_legal",
   "entityType": "legal",
   "fields": {
    "applicantAddress": "346404, Ростовская область, гор.Новочеркасск, Харьковское шоссе, д.10",
@@ -1055,7 +1055,7 @@
    "procedureType": "observation",
    "procedureTypeRaw": "наблюдение",
    "requirementsSum": "1 871 897 982,82",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_legal",
    "sroName": "Некоммерческое партнерство \"Объединение арбитражных управляющих \"Авангард\"",
    "stateDuty": "5 017 245,00",
    "stateDuty16": "5 017 245,00",
@@ -1092,8 +1092,9 @@
    "collateralOption": "no_collateral",
    "entityType": "legal",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition"
+    "final_observation",
+    "acceptance_definition",
+    "final_competition"
    ]
   },
   "thirdParties": []
@@ -1113,7 +1114,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_legal",
   "entityType": "legal",
   "fields": {
    "applicantAddress": "346404, Ростовская область гор.Новочеркасск, Харьковское шоссе, д.10, офис 27",
@@ -1172,7 +1173,7 @@
    "procedureType": "observation",
    "procedureTypeRaw": "наблюдение",
    "requirementsSum": "1 871 897 982,82",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_legal",
    "sroName": "Некоммерческое партнерство \"Объединение арбитражных управляющих \"Авангард\"",
    "stateDuty": "5 017 245,00",
    "stateDuty16": "5 017 245,00",
@@ -1209,8 +1210,9 @@
    "collateralOption": "no_collateral",
    "entityType": "legal",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition"
+    "final_observation",
+    "acceptance_definition",
+    "final_competition"
    ]
   },
   "thirdParties": []
@@ -1230,7 +1232,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_legal",
   "entityType": "legal",
   "fields": {
    "applicantAddress": "346404, Ростовская область, г. Новочеркасск, Харьковское ш., д. 10",
@@ -1338,7 +1340,7 @@
    "procedureType": "observation",
    "procedureTypeRaw": "наблюдение",
    "requirementsSum": "2 549 999 707,35",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_legal",
    "sroName": "Некоммерческое партнерство \"Саморегулируемая организация арбитражных управляющих \"Меркурий\"",
    "stateDuty": "5 100 000,00",
    "stateDuty16": "5 100 000,00",
@@ -1423,8 +1425,9 @@
    "collateralOption": "no_collateral",
    "entityType": "legal",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition"
+    "final_observation",
+    "acceptance_definition",
+    "final_competition"
    ]
   },
   "thirdParties": []
@@ -2771,7 +2774,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_legal",
   "entityType": "legal",
   "fields": {
    "applicantAddress": "344006, РОСТОВСКАЯ ОБЛАСТЬ, ГОРОД РОСТОВ-НА-ДОНУ, ПРОСПЕКТ КИРОВСКИЙ, ЗД. 51, КОМ. 7-10",
@@ -2818,7 +2821,7 @@
    "procedureTypeRaw": "наблюдение",
    "registrationDate": "20.06.1991",
    "requirementsSum": "2 789 060,93",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_legal",
    "sroName": "Некоммерческое партнерство \"Центр финансового оздоровления предприятий агропромышленного комплекса\"",
    "stateDuty": "154 336,00",
    "stateDuty16": "154 336,00",
@@ -2843,8 +2846,9 @@
    "collateralOption": "no_collateral",
    "entityType": "legal",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition"
+    "final_observation",
+    "acceptance_definition",
+    "final_competition"
    ]
   },
   "thirdParties": []
@@ -2864,7 +2868,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_legal",
   "entityType": "legal",
   "fields": {
    "applicantAddress": "344006, РОСТОВСКАЯ ОБЛАСТЬ, ГОРОД РОСТОВ-НА-ДОНУ, УЛИЦА ПУШКИНСКАЯ, Д. 116, КОМ. 16",
@@ -2918,7 +2922,7 @@
    "procedureTypeRaw": "наблюдение",
    "registrationDate": "20.06.1991",
    "requirementsSum": "2 789 060,93",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_legal",
    "sroName": "Некоммерческое партнерство \"Центр финансового оздоровления предприятий агропромышленного комплекса\"",
    "stateDuty": "154 336,00",
    "stateDuty16": "154 336,00",
@@ -2950,8 +2954,9 @@
    "collateralOption": "no_collateral",
    "entityType": "legal",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition"
+    "final_observation",
+    "acceptance_definition",
+    "final_competition"
    ]
   },
   "thirdParties": []
@@ -2971,7 +2976,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_legal",
   "entityType": "individual",
   "fields": {
    "applicantAddress": "ОБЛАСТЬ РОСТОВСКАЯ, РАЙОН РОДИОНОВО-НЕСВЕТАЙСКИЙ, СЛОБОДА РОДИОНОВО-НЕСВЕТАЙСКАЯ, ПЕРЕУЛОК ЧЕХОВА, 11",
@@ -3018,13 +3023,12 @@
      "penalty0071Value": 0.0
     }
    ],
-   "obligationsTotalDebt": "7 371 840,00",
    "penalties": "0,00",
    "principalDebt": "6 545 133,36",
    "principalDebt13": "6 545 133,36",
    "registrationDate": "20.06.1991",
    "requirementsSum": "7 371 840,00",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_legal",
    "sroName": "Союз арбитражных управляющих \"Саморегулируемая организация \"ДЕЛО\"",
    "stateDuty": "223 078,00",
    "stateDuty16": "223 078,00",
@@ -3056,7 +3060,7 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
+    "final_restructuring",
     "acceptance_definition"
    ]
   },
@@ -3077,7 +3081,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_physical",
   "entityType": "individual",
   "fields": {
    "applicantAddress": "ОБЛАСТЬ РОСТОВСКАЯ, ГОРОД РОСТОВ-НА-ДОНУ, УЛИЦА ПИРАМИДНАЯ, 28",
@@ -3140,7 +3144,7 @@
    "principalDebt13": "20 865 698,85",
    "registrationDate": "20.06.1991",
    "requirementsSum": "27 297 873,00",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_physical",
    "sroName": "Ассоциация \"Московская саморегулируемая организация профессиональных арбитражных управляющих\"",
    "stateDuty": "348 989,00",
    "stateDuty16": "348 989,00",
@@ -3183,7 +3187,7 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
+    "final_restructuring",
     "acceptance_definition"
    ]
   },
@@ -3339,7 +3343,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_legal",
   "entityType": "ip",
   "fields": {
    "applicantAddress": "РОСТОВСКАЯ ОБЛАСТЬ, ГОРОД РОСТОВ-НА-ДОНУ, УЛИЦА 3-Я КОЛЬЦЕВАЯ, 44, 11",
@@ -3388,14 +3392,13 @@
      "penalty0071Value": 0.0
     }
    ],
-   "obligationsTotalDebt": "9 313 520,00",
    "ogrnip": "320619600092709",
    "penalties": "0,00",
    "principalDebt": "7 157 894,72",
    "principalDebt13": "7 157 894,72",
    "registrationDate": "20.06.1991",
    "requirementsSum": "9 313 520,00",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_legal",
    "sroName": "Союз \"Саморегулируемая организация арбитражных управляющих \"Стратегия\"",
    "stateDuty": "252 203,00",
    "stateDuty16": "252 203,00",
@@ -3427,7 +3430,7 @@
    "collateralOption": "no_collateral",
    "entityType": "ip",
    "recommendedActIds": [
-    "final_rtk_inclusion",
+    "final_realization",
     "acceptance_definition"
    ]
   },
@@ -9131,7 +9134,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_legal",
   "entityType": "legal",
   "fields": {
    "applicantAddress": "344011, РОСТОВСКАЯ ОБЛАСТЬ, Г РОСТОВ-НА-ДОНУ, ПЕР ДОЛОМАНОВСКИЙ, ЗД 70Д, ОФИС 22",
@@ -9254,7 +9257,6 @@
      "penalty0071Value": 0.0
     }
    ],
-   "obligationsTotalDebt": "31 633 546,28",
    "ogrn": "1176196047884",
    "penalties": "0,00",
    "principalDebt": "25 336 868,83",
@@ -9263,7 +9265,7 @@
    "procedureTypeRaw": "наблюдение",
    "registrationDate": "20.06.1991",
    "requirementsSum": "31 633 546,28",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_legal",
    "sroName": "Ассоциация \"Саморегулируемая организация арбитражных управляющих Центрального федерального  округа\"",
    "stateDuty": "370 668,00",
    "stateDuty16": "370 668,00",
@@ -9373,8 +9375,9 @@
    "collateralOption": "no_collateral",
    "entityType": "legal",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition"
+    "final_observation",
+    "acceptance_definition",
+    "final_competition"
    ]
   },
   "thirdParties": []
@@ -10022,7 +10025,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_physical",
   "entityType": "ip",
   "fields": {
    "applicantAddress": "346630, РОСТОВСКАЯ ОБЛ, Семикаракорский Р-Н, СЕМИКАРАКОРСК Г, ЛЕВЧЕНКО ПЛ,46",
@@ -11050,7 +11053,7 @@
    "mortgageCollateralDescription1221": "На№ у\nАрбитражный суд Ростовской области 344002, г. Ростов-на-Дону, ул. Станиславского, 10/11-13\nЗаявитель: ФНС России 127381, г. Москва, ул. Неглинная, 23\nАдрес для корреспонденции: ФНС России, адрес для корреспонденции: 344019, г. Ростов-на-Дону, ул. Мясникова, 52/32\nДолжник: ЗАЙЦЕВ ВИТАЛИЙ ВЛАДИМИРОВИЧ ИНН 613205503003 ОГРНИП 318619600149696 346630, РОСТОВСКАЯ ОБЛ, Семикаракорский Р-Н, СЕМИКАРАКОРСК Г, ЛЕВЧЕНКО ПЛ,46\nдоходов, полученных от осуществления деятельности физическими лицами, зарегистрированными в качестве индивидуальных предпринимателей, нотариусов, занимающихся частной практикой, адвокатов, учредивших адвокатские кабинеты, и других лиц, занимающихся частной практикой в соответствии со статьей — 227 Налогового кодекса Российской Федерации (в части суммы налога, не превышающей 650 тысяч рублей за налоговые периоды до 1 января 2025 года, а также в части суммы налога, не превышающей 312 тысяч рублей за налоговые периоды после 1 января Налог на доходы физических лиц с\n650 000,00\n0,00\n13 137,88\n0,00\n663 137,88\nНалог на доходы физических лиц в части суммы налога, превышающей 650 000 рублей, относящейся к части налоговой базы, превышающей 5 000 000 рублей (за исключением налога на доходы физических лиц с сумм прибыли контролируемой иностранной компании, в том числе фиксированной прибыли контролируемой иностранной компании, а также налога на доходы физических лиц в отношении доходов от долевого участия в организации, полученных физическим лицом - налоговым резидентом Российской Федерации в виде дивидендов) за налоговые периоды до 1 января 2025\n2 142 007,00\n0,00\n40 132,25\n2 182 139,25\nфизически Страховые взносы, предусмотренные законодательством Российской Федерации о налогах и сборах, уплачиваемые отдельными категориями плательщиков страховых взносов в совокупном фиксированном размере\n149 000,00\n0,00\n149 000,00\nСтраховые взносы на обязательное пенсионное страхование, уплачиваемые отдельными категориями плательщиков страховых взносов в соответствии с законодательством Российской Федерации о налогах и сборах с дохода, превышающего 300 000 рублей за расчетный период\n136 614,29\n0,00\n0,00\n136 614,29\nСтраховые взносы на обязательное пенсионное страхование за расчетные периоды, истекшие до 1 января 2023 года (в фиксированном размере,\n53 509,50\n0,00\n0,00\n0,00\n53 509,50\nпенсии, за расчетные периоды с 1 января 2017 года по 31 декабря 2022 года)\nНалог на добавленную стоимость на товары (работы, услуги), реализуемые на территории Российской Федерации\n2033 683,00\n2043 576,80\nТранспортный налог с физических лиц\n12 096,00\n12 096,00\nГосударственная пошлина по делам, рассматриваемым в арбитражных судах (государственная пошлина, уплачиваемая на основании судебных актов по результатам рассмотрения дел по существ\n0,00\n707,00\nШтрафы за налоговые правонарущения, установленные Главой 16 Налогового кодекса Российской Федерации (штрафы за непредставление налоговой декларации (расчета финансового результата инвестиционного товарищества, расчета по страховым\n0,00\n0,00\n37 391,50\n0,00\n37 391,50\nАдминистративные штрафы, установленные Главой 14 Кодекса Российской Федерации об административных правонарушениях, за административные правонарушения в области предпринимательской деятельности и деятельности саморегулируемых организаций, налагаемые судьями федеральных судов, должностными лицами федеральных государственных органов, учреждений, Центрального банка Российской Федерации (иные штрафы, за исключением штрафов за административные правонарушения в области производства и оборота этилового спирта, алкогольной и спиртосодержащей продукции)\n0,00\n0,00\n5000,00\n0,00\n5000,00\nПеня\n0,00\n2 121 308,66\n0,00\n0,00\n2 121 308,66\nИтого\n5 176 909,79\n2 121 308,66\n105 555,43\n707,00\n7 404 480,88\n№ требования\nДата требования\nсумма\n14.11.2023\n369 393,83\nWn\n№ решения\nДата решения\nсумма\n1.\n2807\n08.12.2023\n763 038,30\n№ п/п\nНомер документа\nДата\nСумма, руб.\n1.\n645\n11.12.2023\n11 056,00\n№ n/n\nНомер документа\nДата\nСумма, руб.\n1.\n2а-1-130/2024\n25.01.2024\n11 056,00\n№ постановления\nДата постановления\nсумма\n5217\n14.08.2024\n3 841 881,39\n13.03.2025\n2355 055,89\n11.08.2025\n680 677,02\nпт\n№ постановления\nДата постановления\nсумма\n50511/24/61074-ИП\n30.05.2024\n11 056,00\n255349/24/98061-ИП\n15.08.2024\n3 841 881,39\n99260/25/98061-ИП\n19.03.2025\n2355 055,89\n286424/25/98061-ИП\n13.08.2025\n680 677,02\nКО: Наименование\nСчет: Номер\nСчет: Категория\nПубличное акционерное общество «Сбербанк России», филиал Ростовское отделение № 5221\n408028 10852090022104\nРасчетный счет\nПубличное акционерное общество «Сбербанк России», филиал Ростовское отделение № 5221\n40802810052090014488\nРасчетный счет\nнаименована операции\nСумма руб.\nИнкассация\n-20 000,00\nБезналичная операция.Списание с карты на карту по оп. &It;mep- да с карты на KapTy&gt; через Моб.банк(с ком)\n-61 000.00 ;\n5 езналичная операция.Частичная выдача\n-890,55\nИтого\n-81 890,55",
    "ogrnip": "318619600149696",
    "requirementsSum": "298 892,00",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_physical",
    "sroName": "Союз арбитражных управляющих \"Саморегулируемая организация \"ДЕЛО\"",
    "totalDebt": "7 267 312,82"
   },
@@ -11066,8 +11069,9 @@
    "collateralOption": "no_collateral",
    "entityType": "ip",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition"
+    "final_realization",
+    "acceptance_definition",
+    "final_restructuring"
    ]
   },
   "thirdParties": []
