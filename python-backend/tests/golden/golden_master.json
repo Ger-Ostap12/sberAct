@@ -770,6 +770,7 @@
    "procedureTypeRaw": "реализации имущества гражданина",
    "requirementsSum": "54 558,94",
    "sourceDocumentType": "rtk_application",
+   "sroName": "Ассоциация Евросибирская саморегулируемая организация арбитражных управляющих",
    "totalDebt": "54 558,94"
   },
   "metadata": {
@@ -966,6 +967,7 @@
    "requirementsSum": "20 854,44",
    "snils": "15775903207",
    "sourceDocumentType": "rtk_application",
+   "sroName": "Некоммерческое партнерство \"Саморегулируемая организация \"Гильдия арбитражных управляющих\"",
    "totalDebt": "20 854,44"
   },
   "metadata": {
@@ -2258,7 +2260,7 @@
    "requirementsSum": "10 138,00",
    "snils": "118-781-995 07",
    "sourceDocumentType": "rtk_application",
-   "sroName": "Ассоциация \"Краснодарская межрегиональная саморегулируемая организация арбитражных управляющих \"Единство\"",
+   "sroName": "Ассоциация \"Межрегиональная саморегулируемая организация арбитражных управляющих\"",
    "stateDuty": "10 138,00",
    "stateDuty16": "10 138,00",
    "totalDebt": "305 513,35"
@@ -2748,7 +2750,7 @@
    "requirementsSum": "30 529,00",
    "snils": "112-979-523 77",
    "sourceDocumentType": "rtk_application",
-   "sroName": "Ассоциации \"Саморегулируемая организация арбитражных управляющих \"Меркурий\"",
+   "sroName": "Некоммерческое партнерство \"Саморегулируемая организация арбитражных управляющих \"Меркурий\"",
    "stateDuty": "30 529,00",
    "stateDuty16": "30 529,00",
    "totalDebt": "1 201 910,33"
@@ -2849,7 +2851,7 @@
    "registrationDate": "20.06.1991",
    "requirementsSum": "2 789 060,93",
    "sourceDocumentType": "rtk_application",
-   "sroName": "НП \"ЦФОП АПК\"",
+   "sroName": "Некоммерческое партнерство \"Центр финансового оздоровления предприятий агропромышленного комплекса\"",
    "stateDuty": "154 336,00",
    "stateDuty16": "154 336,00",
    "totalDebt": "2 789 060,93"
@@ -2951,7 +2953,7 @@
    "registrationDate": "20.06.1991",
    "requirementsSum": "2 789 060,93",
    "sourceDocumentType": "rtk_application",
-   "sroName": "НП\"ЦФОП АПК\"",
+   "sroName": "Некоммерческое партнерство \"Центр финансового оздоровления предприятий агропромышленного комплекса\"",
    "stateDuty": "154 336,00",
    "stateDuty16": "154 336,00",
    "totalDebt": "2 789 060,93"
@@ -7157,7 +7159,7 @@
    "procedureTypeRaw": "наблюдение",
    "requirementsSum": "1 000 000 000,00",
    "sourceDocumentType": "initiation_legal",
-   "sroName": "Ассоциации «Межрегиональная",
+   "sroName": "Ассоциация \"Межрегиональная саморегулируемая организация арбитражных управляющих \"Содействие\"",
    "totalDebt": "1 000 000 000,00"
   },
   "metadata": {
@@ -9070,7 +9072,7 @@
    "registrationDate": "20.06.1991",
    "requirementsSum": "91 120 214,12",
    "sourceDocumentType": "competition_collateral",
-   "sroName": "саморегулируемой организации ААУ «СЦЭАУ»",
+   "sroName": "Ассоциация арбитражных управляющих \"СИБИРСКИЙ ЦЕНТР ЭКСПЕРТОВ АНТИКРИЗИСНОГО УПРАВЛЕНИЯ\"",
    "stateDuty": "665 301,00",
    "stateDuty16": "665 301,00",
    "totalDebt": "91 120 214,12"
@@ -9525,6 +9527,7 @@
    "requirementsSum": "116 000,00",
    "snils": "049-543-767-96",
    "sourceDocumentType": "rtk_application",
+   "sroName": "Саморегулируемая межрегиональная общественная организация «Ассоциация антикризисных управляющих»",
    "totalDebt": "116 000,00"
   },
   "metadata": {
@@ -9726,6 +9729,7 @@
    "requirementsSum": "",
    "snils": "063-128-006 22",
    "sourceDocumentType": "rtk_application",
+   "sroName": "Ассоциация \"Национальная организация арбитражных управляющих\"",
    "totalDebt": ""
   },
   "metadata": {
@@ -9792,6 +9796,7 @@
    "procedureTypeRaw": "наблюдение",
    "requirementsSum": "25 000,00",
    "sourceDocumentType": "rtk_application",
+   "sroName": "Саморегулируемая организация \"Ассоциация арбитражных управляющих \"Паритет\"",
    "totalDebt": "158 434,00"
   },
   "metadata": {
@@ -9915,7 +9920,7 @@
    "requirementsSum": "3 000,00",
    "snils": "155-161-603 44",
    "sourceDocumentType": "rtk_application",
-   "sroName": "Ассоциации РСО ПАУ (Региональной саморегулируемой организации профессиональных арбитражных управляющих)",
+   "sroName": "Ассоциация \"Региональная саморегулируемая организация профессиональных арбитражных управляющих\"",
    "totalDebt": "3 000,00"
   },
   "metadata": {
@@ -11823,6 +11828,7 @@
    "procedureTypeRaw": "реализации имущества гражданина",
    "requirementsSum": "54 558,94",
    "sourceDocumentType": "rtk_application",
+   "sroName": "Ассоциация Евросибирская саморегулируемая организация арбитражных управляющих",
    "totalDebt": "54 558,94"
   },
   "metadata": {
@@ -11943,6 +11949,7 @@
    "requirementsSum": "116 000,00",
    "snils": "049-543-767-96",
    "sourceDocumentType": "rtk_application",
+   "sroName": "Саморегулируемая межрегиональная общественная организация «Ассоциация антикризисных управляющих»",
    "totalDebt": "116 000,00"
   },
   "metadata": {
@@ -12144,6 +12151,7 @@
    "requirementsSum": "",
    "snils": "063-128-006 22",
    "sourceDocumentType": "rtk_application",
+   "sroName": "Ассоциация \"Национальная организация арбитражных управляющих\"",
    "totalDebt": ""
   },
   "metadata": {
@@ -12210,6 +12218,7 @@
    "procedureTypeRaw": "наблюдение",
    "requirementsSum": "25 000,00",
    "sourceDocumentType": "rtk_application",
+   "sroName": "Саморегулируемая организация \"Ассоциация арбитражных управляющих \"Паритет\"",
    "totalDebt": "158 434,00"
   },
   "metadata": {
@@ -12333,7 +12342,7 @@
    "requirementsSum": "3 000,00",
    "snils": "155-161-603 44",
    "sourceDocumentType": "rtk_application",
-   "sroName": "Ассоциации РСО ПАУ (Региональной саморегулируемой организациипрофессиональных арбитражных управляющих)",
+   "sroName": "Ассоциация \"Региональная саморегулируемая организация профессиональных арбитражных управляющих\"",
    "totalDebt": "3 000,00"
   },
   "metadata": {
