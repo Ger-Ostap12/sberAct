@@ -886,7 +886,7 @@
   "rawTextLen": 6843,
   "rawTextSha": "efac5baf7d6f2b53b2e514e868302912c63a367ad902827603a3dfc7ad177e96",
   "recommendedActs": {
-   "collateralOption": "collateral",
+   "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
@@ -2151,7 +2151,7 @@
   "rawTextLen": 5950,
   "rawTextSha": "339c6322a07cfa7bdc9e71153852cf4c689270a60b51decc0c40e5685275d055",
   "recommendedActs": {
-   "collateralOption": "collateral",
+   "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
@@ -2263,7 +2263,7 @@
   "rawTextSha": "f815863f87acd0bbf812bedd4f468ed5e6ae21e2b45e5cc8e7a91cbb7c36631a",
   "recommendedActs": {
    "collateralOption": "no_collateral",
-   "entityType": "legal",
+   "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
     "acceptance_definition"
@@ -2748,7 +2748,7 @@
   "rawTextSha": "62863eefc393c4b7e57b623fa7293b3971158cc2ef6f346be317d610544bf826",
   "recommendedActs": {
    "collateralOption": "no_collateral",
-   "entityType": "legal",
+   "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
     "acceptance_definition"

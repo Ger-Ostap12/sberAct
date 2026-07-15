@@ -395,6 +395,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # должника «Самобанкрот» и скрывает блоки кредитора/финансов.
             application_kind = "self_bankruptcy" if is_self_bk else None
 
+            # Авторитетный пересчёт рекомендаций — ПОСЛЕ финализации entityType.
+            # Ранние вызовы (до разбора должников/NLP) могли считать по промежуточному
+            # типу лица: у ВКЛ-в-РТК ВТБ тип на входе был 'legal' (утёкшее «ПАО» банка +
+            # мусорный debtorName), а корректный 'individual' проставлялся позже —
+            # recommendedActs.entityType расходился с top-level. Пересчёт по итоговым
+            # полям синхронизирует их (и набор актов) с финальным типом лица.
+            recommended_acts = self._get_recommended_acts(document_type, extracted_fields, text)
+
             # Формируем результат
             result = {
                 "documentType": document_type,
