@@ -5004,13 +5004,26 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         is_observation = "observation" in document_type or "наблюден" in text_lower
         is_competition = "competition" in document_type or "конкурсн" in text_lower
 
-        # Базовые акты для включения в РТК (если это заявление о включении)
-        if document_type == "rtk_application" or "включ" in text_lower or "ртк" in text_lower:
+        # ВКЛ-в-РТК и процедурные акты ВЗАИМОИСКЛЮЧАЮЩИ. Заявление о включении в реестр
+        # подаётся, когда банкротство уже идёт: суд лишь определяет включение
+        # (final_rtk_inclusion), процедуру (реализация/наблюдение/…) им НЕ вводят.
+        # Дискриминатор — documentType (вердикт классификатора), а НЕ наличие слова
+        # «включ/реализац» где угодно в тексте: у заявления-инициирования есть
+        # boilerplate «включении в реестр», у ВКЛ-в-РТК — упоминание «реализации
+        # имущества» должника. Смешение и давало ложный final_realization на РТК
+        # (из-за чего всплывало поле СРО) и ложный final_rtk_inclusion на инициированиях.
+        # Самобанкротство — инициирование должником (предлагает СРО управляющего),
+        # а не включение кредитора в реестр: даже если классификатор дал
+        # rtk_application, процедурные акты ему нужны, поле СРО должно показываться.
+        is_rtk_inclusion = document_type == "rtk_application" and not self._detect_self_bankruptcy(text)
+
+        # Базовые акты для включения в РТК.
+        if is_rtk_inclusion:
             recommended_act_ids.append("final_rtk_inclusion")
             recommended_act_ids.append("acceptance_definition")
 
         # Для реализации
-        if is_realization:
+        if is_realization and not is_rtk_inclusion:
             recommended_act_ids.append("final_realization")
             if recommended_collateral_option != "no_collateral":
                 recommended_act_ids.append("acceptance_no_motion_no_duty_collateral")
@@ -5018,7 +5031,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 recommended_act_ids.append("acceptance_definition")
 
         # Для реструктуризации
-        if is_restructuring:
+        if is_restructuring and not is_rtk_inclusion:
             recommended_act_ids.append("final_restructuring")
             if recommended_collateral_option != "no_collateral":
                 recommended_act_ids.append("acceptance_no_motion_no_duty_collateral")
@@ -5026,7 +5039,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 recommended_act_ids.append("acceptance_definition")
 
         # Для наблюдения (только не для физлиц — ФЛ не бывает процедура наблюдение/конкурс)
-        if is_observation and recommended_entity_type != "individual":
+        if is_observation and recommended_entity_type != "individual" and not is_rtk_inclusion:
             recommended_act_ids.append("final_observation")
             if recommended_collateral_option != "no_collateral":
                 recommended_act_ids.append("acceptance_no_motion_no_duty_collateral")
@@ -5034,7 +5047,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 recommended_act_ids.append("acceptance_definition")
 
         # Для конкурсного производства (только не для физлиц)
-        if is_competition and recommended_entity_type != "individual":
+        if is_competition and recommended_entity_type != "individual" and not is_rtk_inclusion:
             recommended_act_ids.append("final_competition")
             if recommended_collateral_option != "no_collateral":
                 recommended_act_ids.append("acceptance_no_motion_no_duty_collateral")
@@ -5042,7 +5055,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 recommended_act_ids.append("acceptance_definition")
 
         # Для ИП с залогом
-        if recommended_entity_type == "ip" and recommended_collateral_option != "no_collateral":
+        if recommended_entity_type == "ip" and recommended_collateral_option != "no_collateral" and not is_rtk_inclusion:
             if "realization" in document_type:
                 recommended_act_ids.append("final_realization")
             elif "restructuring" in document_type:
@@ -5050,7 +5063,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             recommended_act_ids.append("acceptance_no_motion_no_duty_collateral")
 
         # Для ИП без залога
-        if recommended_entity_type == "ip" and recommended_collateral_option == "no_collateral":
+        if recommended_entity_type == "ip" and recommended_collateral_option == "no_collateral" and not is_rtk_inclusion:
             if "realization" in document_type:
                 recommended_act_ids.append("final_realization")
             elif "restructuring" in document_type:
@@ -5058,7 +5071,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             recommended_act_ids.append("acceptance_definition")
 
         # Для КФХ (всегда наблюдение)
-        if recommended_entity_type == "kfh":
+        if recommended_entity_type == "kfh" and not is_rtk_inclusion:
             recommended_act_ids.append("final_observation")
             if recommended_collateral_option != "no_collateral":
                 recommended_act_ids.append("acceptance_no_motion_no_duty_collateral")
@@ -5066,7 +5079,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 recommended_act_ids.append("acceptance_definition")
 
         # Для ЮЛ без залога (наблюдение по умолчанию)
-        if recommended_entity_type == "legal" and recommended_collateral_option == "no_collateral" and not is_realization and not is_restructuring:
+        if recommended_entity_type == "legal" and recommended_collateral_option == "no_collateral" and not is_realization and not is_restructuring and not is_rtk_inclusion:
             recommended_act_ids.append("final_observation")
             recommended_act_ids.append("acceptance_definition")
 

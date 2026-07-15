@@ -131,8 +131,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -193,8 +192,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -259,9 +257,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization",
-    "final_restructuring"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -323,8 +319,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -389,8 +384,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -457,8 +451,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -519,8 +512,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -582,8 +574,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -650,9 +641,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "final_restructuring",
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -717,9 +707,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "final_restructuring",
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -786,8 +775,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -902,9 +890,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization",
-    "acceptance_no_motion_no_duty_collateral"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -990,8 +976,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -1108,9 +1093,7 @@
    "entityType": "legal",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_observation",
-    "final_competition"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -1227,9 +1210,7 @@
    "entityType": "legal",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_observation",
-    "final_competition"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -1443,9 +1424,7 @@
    "entityType": "legal",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_observation",
-    "final_competition"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -1554,8 +1533,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -1886,8 +1864,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -2089,9 +2066,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization",
-    "acceptance_no_motion_no_duty_collateral"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -2291,8 +2266,7 @@
    "entityType": "legal",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -2578,9 +2552,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization",
-    "final_restructuring"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -2669,9 +2641,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization",
-    "final_restructuring"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -2781,9 +2751,7 @@
    "entityType": "legal",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization",
-    "final_restructuring"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -2876,9 +2844,7 @@
    "entityType": "legal",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_observation",
-    "final_competition"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -2985,9 +2951,7 @@
    "entityType": "legal",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_observation",
-    "final_competition"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -3093,8 +3057,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -3221,8 +3184,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -3356,9 +3318,8 @@
    "collateralOption": "no_collateral",
    "entityType": "ip",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "final_restructuring",
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -3467,8 +3428,7 @@
    "entityType": "ip",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -6210,9 +6170,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "final_restructuring",
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -6385,9 +6344,8 @@
    "collateralOption": "no_collateral",
    "entityType": "legal",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
     "final_observation",
+    "acceptance_definition",
     "final_competition"
    ]
   },
@@ -6666,9 +6624,8 @@
    "collateralOption": "no_collateral",
    "entityType": "legal",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
     "final_observation",
+    "acceptance_definition",
     "final_competition"
    ]
   },
@@ -6909,9 +6866,8 @@
    "collateralOption": "no_collateral",
    "entityType": "legal",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
     "final_observation",
+    "acceptance_definition",
     "final_competition"
    ]
   },
@@ -7095,9 +7051,8 @@
    "collateralOption": "no_collateral",
    "entityType": "legal",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
     "final_observation",
+    "acceptance_definition",
     "final_competition"
    ]
   },
@@ -7181,9 +7136,8 @@
    "collateralOption": "no_collateral",
    "entityType": "legal",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
     "final_observation",
+    "acceptance_definition",
     "final_competition"
    ]
   },
@@ -9155,9 +9109,8 @@
    "collateralOption": "no_collateral",
    "entityType": "legal",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
     "final_observation",
+    "acceptance_definition",
     "final_competition"
    ]
   },
@@ -9421,9 +9374,7 @@
    "entityType": "legal",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_observation",
-    "final_competition"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -9482,9 +9433,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization"
+    "final_realization",
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -9542,9 +9492,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "final_restructuring",
+    "acceptance_definition"
    ]
   },
   "thirdParties": [
@@ -9611,9 +9560,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "final_restructuring",
+    "acceptance_definition"
    ]
   },
   "thirdParties": [
@@ -9678,9 +9626,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
     "final_realization",
+    "acceptance_definition",
     "final_restructuring"
    ]
   },
@@ -9744,9 +9691,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "final_restructuring",
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -9811,9 +9757,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
     "final_realization",
+    "acceptance_definition",
     "final_restructuring"
    ]
   },
@@ -9935,9 +9880,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
     "final_realization",
+    "acceptance_definition",
     "final_restructuring"
    ]
   },
@@ -10007,9 +9951,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
     "final_realization",
+    "acceptance_definition",
     "final_restructuring"
    ]
   },
@@ -11124,9 +11067,7 @@
    "entityType": "ip",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization",
-    "final_restructuring"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -11187,8 +11128,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -11249,8 +11189,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -11315,9 +11254,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization",
-    "final_restructuring"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -11379,8 +11316,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -11445,8 +11381,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -11512,9 +11447,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "final_restructuring",
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -11577,8 +11511,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -11640,8 +11573,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -11708,9 +11640,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "final_restructuring",
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -11775,9 +11706,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "final_restructuring",
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -11844,8 +11774,7 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization"
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -11904,9 +11833,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_realization"
+    "final_realization",
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -11964,9 +11892,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "final_restructuring",
+    "acceptance_definition"
    ]
   },
   "thirdParties": [
@@ -12033,9 +11960,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "final_restructuring",
+    "acceptance_definition"
    ]
   },
   "thirdParties": [
@@ -12100,9 +12026,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
     "final_realization",
+    "acceptance_definition",
     "final_restructuring"
    ]
   },
@@ -12166,9 +12091,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
-    "final_restructuring"
+    "final_restructuring",
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
@@ -12233,9 +12157,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
     "final_realization",
+    "acceptance_definition",
     "final_restructuring"
    ]
   },
@@ -12357,9 +12280,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
     "final_realization",
+    "acceptance_definition",
     "final_restructuring"
    ]
   },
@@ -12429,9 +12351,8 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition",
     "final_realization",
+    "acceptance_definition",
     "final_restructuring"
    ]
   },
