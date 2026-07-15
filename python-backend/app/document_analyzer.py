@@ -322,7 +322,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # ФНС-заявления: финансы по ОЧЕРЕДЯМ реестра (недоимка/налог/пени/штраф/
             # НДФЛ/взносы/госпошлина по 1/2/3 очереди). Гейт по кредитору-ФНС;
             # перекрывает общий парсер и чистит скрытый общий блок финансов.
-            self._apply_fns_queue_finances(extracted_fields, text)
+            # У САМОБАНКРОТА финансов/кредитора нет вовсе — ФНС-очереди не применяем
+            # (иначе OCR-текст с «уполномоченным органом» ложно давал блок fnsQ*).
+            if not is_self_bk:
+                self._apply_fns_queue_finances(extracted_fields, text)
 
             # Имя кредитора, обрезанное на переносе строки внутри названия
             # («…"МТС-» + «Банк"» ниже) — дотягиваем по тексту.
@@ -1957,6 +1960,19 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if is_person_name(fio_c):
                 fio = fio_c
                 break
+        if not fio and m_label:
+            # OCR иногда переставляет «От Должника: <ФИО>» → «<ФИО> от Должника:»:
+            # ФИО оказывается ПЕРЕД меткой. Фолбэк — ищем персональное ФИО в участке
+            # непосредственно перед меткой (исключая суд/регион), иначе в applicantName
+            # протекал бы «Арбитражный суд …» из генерик-парсера.
+            pre = header[max(0, m_label.start() - 150) : m_label.start()]
+            for cand in self._SB_FIO_RE.finditer(pre):
+                fio_c = re.sub(r"\s+", " ", cand.group(0)).strip()
+                if re.search(r"суд|банкрот|заявл|област|район", fio_c, re.IGNORECASE):
+                    continue
+                if is_person_name(fio_c):
+                    fio = fio_c
+                    break
         if not fio:
             return None
 
