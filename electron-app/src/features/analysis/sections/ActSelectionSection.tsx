@@ -20,7 +20,7 @@ import {
   MenuItem,
 } from '@mui/material';
 import { ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
-import { EntityType, CollateralOption, DebtorStatus, SelectedAct } from '../../../types';
+import { EntityType, CollateralOption, ApplicationVariant, SelectedAct } from '../../../types';
 
 interface ActSelectionSectionProps {
   entityType: EntityType | null;
@@ -28,8 +28,10 @@ interface ActSelectionSectionProps {
   collateralOption: CollateralOption | null;
   collateralKinds: { realEstate: boolean; auto: boolean; other: boolean };
   setCollateralKinds: React.Dispatch<React.SetStateAction<{ realEstate: boolean; auto: boolean; other: boolean }>>;
-  debtorStatus: DebtorStatus | null;
-  toggleDebtorStatus: (status: DebtorStatus) => void;
+  /** Единый выбор «Вид заявления» (ВКЛ в РТК / инициирование / статус должника).
+   *  Значение 'rtk' скрывает поле СРО, остальные — показывают. */
+  applicationVariant: ApplicationVariant;
+  setApplicationVariant: (v: ApplicationVariant) => void;
   selectedActs: SelectedAct[];
   toggleActSelection: (actId: string) => void;
   updateActAdditionalFields: (actId: string, field: 'reason' | 'forParties' | 'courtRequests', value: string) => void;
@@ -44,8 +46,8 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
   collateralOption,
   collateralKinds,
   setCollateralKinds,
-  debtorStatus,
-  toggleDebtorStatus,
+  applicationVariant,
+  setApplicationVariant,
   selectedActs,
   toggleActSelection,
   updateActAdditionalFields,
@@ -86,46 +88,46 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
               </RadioGroup>
               </Box>
 
-            {/* Статус должника (банкротство) — влияет на финальный СА.
-                «Умерший» доступен только для Физ.лица, «Отсутствующий»/«Ликвидируемый» —
-                только для Юр.лица, «Самобанкрот» (заявление подал сам должник) —
-                для ЛЮБОЙ категории; он скрывает блок «Информация о кредиторе».
-                Выбор взаимоисключающий → круглые radio; повторный клик снимает выбор. */}
-            {entityType && (
+            {/* Вид заявления — один взаимоисключающий селектор: вид («Включение в РТК»
+                / «Инициирование») + статус должника. Набор опций зависит от типа лица:
+                ФЛ — +Умерший; ЮЛ — +Отсутствующий/Ликвидируемый; «Самобанкрот» — всем.
+                «Включение в РТК» скрывает поле СРО (управляющий уже утверждён), остальные
+                показывают (суд утверждает из предложенной СРО). Драйвер ВКЛ в РТК — акт
+                final_rtk_inclusion (синхронен с чекбоксом в «3. Финальные СА»), статусы —
+                debtorStatus (его useEffect проставляет финальный СА). */}
             <Box sx={{ mb: 4 }}>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 1 }}>
-                Статус должника
-              </Typography>
-              <RadioGroup row value={debtorStatus || ''}>
-                {entityType === 'legal' && (
-                  <FormControlLabel
-                    value="absent"
-                    control={<Radio onClick={() => toggleDebtorStatus('absent')} />}
-                    label="Отсутствующий"
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 0 }}>
+                  Вид заявления
+                </Typography>
+                {recommendationsApplied && recommendedActs?.entityType && (
+                  <Chip
+                    label="Автоматически определено"
+                    size="small"
+                    color="info"
+                    sx={{ fontSize: '0.7rem' }}
                   />
                 )}
-                {entityType === 'legal' && (
-                  <FormControlLabel
-                    value="liquidation"
-                    control={<Radio onClick={() => toggleDebtorStatus('liquidation')} />}
-                    label="Ликвидируемый"
-                  />
-                )}
+              </Box>
+              <RadioGroup
+                row
+                value={applicationVariant}
+                onChange={(e) => setApplicationVariant(e.target.value as ApplicationVariant)}
+              >
+                <FormControlLabel value="rtk" control={<Radio />} label="Включение в РТК" />
+                <FormControlLabel value="other" control={<Radio />} label="Инициирование" />
                 {entityType === 'individual' && (
-                  <FormControlLabel
-                    value="deceased"
-                    control={<Radio onClick={() => toggleDebtorStatus('deceased')} />}
-                    label="Умерший"
-                  />
+                  <FormControlLabel value="deceased" control={<Radio />} label="Умерший" />
                 )}
-                <FormControlLabel
-                  value="self"
-                  control={<Radio onClick={() => toggleDebtorStatus('self')} />}
-                  label="Самобанкрот"
-                />
+                {entityType === 'legal' && (
+                  <FormControlLabel value="absent" control={<Radio />} label="Отсутствующий" />
+                )}
+                {entityType === 'legal' && (
+                  <FormControlLabel value="liquidation" control={<Radio />} label="Ликвидируемый" />
+                )}
+                <FormControlLabel value="self" control={<Radio />} label="Самобанкрот" />
               </RadioGroup>
             </Box>
-            )}
 
             {/* Выбор залога */}
             <Box sx={{ mb: 4 }}>

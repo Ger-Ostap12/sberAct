@@ -12,7 +12,7 @@ import {
   Divider
 } from '@mui/material';
 import { ArrowBack as BackIcon, CheckCircle as CheckIcon } from '@mui/icons-material';
-import { DocumentData, ExtractedData, Obligation, Collateral, CollateralType, EntityType, CollateralOption, DebtorStatus, SelectedAct, ThirdParty, Debtor } from '../../types';
+import { DocumentData, ExtractedData, Obligation, Collateral, CollateralType, EntityType, CollateralOption, DebtorStatus, ApplicationVariant, SelectedAct, ThirdParty, Debtor } from '../../types';
 import { useBanks } from './hooks/useBanks';
 import { extractCollateralData } from '../../shared/lib/collateral';
 import { isFnsCreditor, FNS_CREDITOR_KEY } from '../../shared/lib/banks';
@@ -60,10 +60,6 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   // Статус должника (банкротство): отсутствующий / ликвидируемый / умерший.
   // Взаимоисключающие: выбор одного снимает остальные.
   const [debtorStatus, setDebtorStatus] = useState<DebtorStatus | null>(null);
-
-  const toggleDebtorStatus = (status: DebtorStatus) => {
-    setDebtorStatus(prev => (prev === status ? null : status));
-  };
 
   // Статус должника влияет на рекомендацию финального СА:
   // отсутствующий/ликвидируемый ЮЛ → «Решение конкурсное»; умерший ФЛ → «Решение реализация».
@@ -593,6 +589,30 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     );
   };
 
+  // Единый радио-блок «Вид заявления» объединяет две оси: вид (ВКЛ в РТК /
+  // инициирование) и статус должника (умерший/отсутствующий/ликвидируемый/
+  // самобанкрот). Взаимоисключающи, поэтому один селектор. Драйвер ВКЛ в РТК —
+  // акт final_rtk_inclusion (синхронен с чекбоксом в «3. Финальные СА»); статусы —
+  // debtorStatus (его useEffect сам проставляет финальный СА, кроме «self»).
+  const setApplicationVariant = (v: ApplicationVariant) => {
+    if (v === 'rtk') {
+      setDebtorStatus(null);
+      // Только ВКЛ в РТК среди финальных.
+      setSelectedActs(prev => prev.map(a =>
+        a.category === 'final' ? { ...a, selected: a.id === 'final_rtk_inclusion' } : a));
+    } else if (v === 'other') {
+      setDebtorStatus(null);
+      // Снять ВКЛ в РТК; процедурный финальный акт оставляем на рекомендацию/выбор.
+      setSelectedActs(prev => prev.map(a =>
+        a.id === 'final_rtk_inclusion' ? { ...a, selected: false } : a));
+    } else {
+      // Статус должника: снять ВКЛ в РТК, дальше финальный СА проставит useEffect.
+      setSelectedActs(prev => prev.map(a =>
+        a.id === 'final_rtk_inclusion' ? { ...a, selected: false } : a));
+      setDebtorStatus(v);
+    }
+  };
+
   const updateActAdditionalFields = (actId: string, field: 'reason' | 'forParties' | 'courtRequests', value: string) => {
     setSelectedActs(prevActs =>
       prevActs.map(act => {
@@ -669,12 +689,14 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     return null;
   }
 
-  // Поле «Саморегулируемая организация» в блоке управляющего показываем, когда выбран
-  // инициирующий финальный акт (реализация/конкурсное/реструктуризация/наблюдение) —
-  // для них СРО обязательна. Определение ВКЛ в РТК сюда НЕ входит.
-  const showSroField = selectedActs.some(
-    (a) => a.selected && ['final_realization', 'final_competition', 'final_restructuring', 'final_observation'].includes(a.id),
-  );
+  // Поле «Саморегулируемая организация» управляется видом заявления: «Включение в
+  // РТК» → управляющий уже утверждён, СРО скрыта; иначе (инициирование/статус
+  // должника) — суд утверждает управляющего из предложенной СРО, поле показывается.
+  const rtkInclusion = selectedActs.some((a) => a.selected && a.id === 'final_rtk_inclusion');
+  const showSroField = !rtkInclusion;
+  // Текущее значение единого радио «Вид заявления»: ВКЛ в РТК → 'rtk'; иначе статус
+  // должника, если задан; иначе рядовое «Инициирование».
+  const applicationVariant: ApplicationVariant = rtkInclusion ? 'rtk' : (debtorStatus ?? 'other');
 
   return (
     <Box sx={{ width: '100%', maxWidth: 1600, mx: 'auto', px: 1 }}>
@@ -737,8 +759,8 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
             collateralOption={collateralOption}
             collateralKinds={collateralKinds}
             setCollateralKinds={setCollateralKinds}
-            debtorStatus={debtorStatus}
-            toggleDebtorStatus={toggleDebtorStatus}
+            applicationVariant={applicationVariant}
+            setApplicationVariant={setApplicationVariant}
             selectedActs={selectedActs}
             toggleActSelection={toggleActSelection}
             updateActAdditionalFields={updateActAdditionalFields}

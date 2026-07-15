@@ -254,6 +254,10 @@ export type CollateralOption = 'collateral' | 'collateral_auto' | 'no_collateral
 // Влияет на рекомендацию финального СА; «self» скрывает блок кредитора.
 export type DebtorStatus = 'absent' | 'liquidation' | 'deceased' | 'self';
 
+// Единый выбор «Вид заявления»: вид (ВКЛ в РТК / рядовое инициирование) и статус
+// должника объединены в один взаимоисключающий радио-селектор.
+export type ApplicationVariant = 'rtk' | 'other' | DebtorStatus;
+
 export interface SelectedAct {
   id: string;
   name: string;

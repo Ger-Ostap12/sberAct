@@ -148,7 +148,7 @@ describe('DocumentAnalysis — самобанкротство', () => {
     expect(screen.getByRole('radio', { name: 'Самобанкрот' })).toBeInTheDocument();
   });
 
-  it('выбор «Самобанкрот» скрывает «Информация о кредиторе» и «Финансовые данные», повторный клик возвращает', () => {
+  it('выбор «Самобанкрот» скрывает «Информация о кредиторе» и «Финансовые данные», возврат через «Инициирование»', () => {
     renderSelf();
     fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));
     expect(screen.getByText('Информация о кредиторе')).toBeInTheDocument();
@@ -158,7 +158,8 @@ describe('DocumentAnalysis — самобанкротство', () => {
     expect(screen.queryByText('Информация о кредиторе')).not.toBeInTheDocument();
     expect(screen.queryByText('Финансовые данные')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Самобанкрот' })); // toggle: снять
+    // Радио взаимоисключающее — возврат через выбор «Инициирование».
+    fireEvent.click(screen.getByRole('radio', { name: 'Инициирование' }));
     expect(screen.getByText('Информация о кредиторе')).toBeInTheDocument();
     expect(screen.getByText('Финансовые данные')).toBeInTheDocument();
   });
@@ -196,15 +197,22 @@ describe('DocumentAnalysis — поле СРО у управляющего', () 
     );
   };
 
-  it('поле СРО скрыто, пока не выбран инициирующий финальный акт', () => {
+  it('поле СРО показано, когда «ВКЛ в РТК» выключена (инициирование)', () => {
     renderWithSro();
+    expect(screen.getByText('Саморегулируемая организация:')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Ассоциация "Содействие"')).toBeInTheDocument();
+  });
+
+  it('выбор радио «Включение в РТК» скрывает поле СРО', () => {
+    renderWithSro();
+    fireEvent.click(screen.getByRole('radio', { name: 'Включение в РТК' }));
     expect(screen.queryByText('Саморегулируемая организация:')).not.toBeInTheDocument();
   });
 
-  it('выбор акта «Решение реализация» показывает поле СРО', () => {
+  it('возврат на «Инициирование» снова показывает поле СРО', () => {
     renderWithSro();
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Решение реализация' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Включение в РТК' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Инициирование' }));
     expect(screen.getByText('Саморегулируемая организация:')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Ассоциация "Содействие"')).toBeInTheDocument();
   });
 });
