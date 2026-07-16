@@ -169,7 +169,7 @@ class TemplatesResolverMixin:
             ),
             "corrected": entry(
                 "Реализация ВКЛ",
-                realization_dir / "Реализация ВКЛ.docx",
+                realization_dir / "Реализация ВКЛ несколько договоров.docx",
                 4
             ),
         }
@@ -230,22 +230,50 @@ class TemplatesResolverMixin:
                 }
                 logger.info("⚖️ Используются шаблоны для ИП реализация с залогом.")
         else:
-            # Базовые шаблоны для ИП без залога (одинаковые для реализации и реструктуризации)
-            base_dir = root_dir / "СУдебные акты физики" / "Взыскание"
-            templates = {
-                "acceptance": entry(
-                    "Принятие иска о взыскании с ИП",
-                    base_dir / "Принятие иска о взыскании с ИП.docx",
-                    1
-                ),
-                "decision": entry(
-                    "Решение взыскание с ИП",
-                    base_dir / "Решение взыскание с ИП.docx",
-                    2
-                )
-            }
+            # Без залога: ИП использует те же акты РТК-включения, что и физлица
+            # (тексты содержат слово "должник" — заменяется на "индивидуальный
+            # предприниматель" в replace_document_data через _apply_ip_debtor_wording).
+            base_dir = root_dir / "шаблоны актов без залогов"
+            if procedure_type == "restructuring":
+                no_collateral_dir = base_dir / "физ реструк ВКЛ в РТК"
+                templates = {
+                    "acceptance": entry(
+                        "Реструктуризация принятие РТК",
+                        no_collateral_dir / "Реструктуризация принятие РТК.docx",
+                        1
+                    ),
+                    "decision": entry(
+                        "Реструктуризация ВКЛ",
+                        no_collateral_dir / "Реструктуризация ВКЛ.docx",
+                        2
+                    ),
+                    "resolution": entry(
+                        "Резолютивка ВКЛ реструктуризация",
+                        no_collateral_dir / "Резолютивка ВКЛ реструктуризация.docx",
+                        3
+                    )
+                }
+            else:  # realization по умолчанию
+                no_collateral_dir = base_dir / "физ реализация ВКЛ в РТК"
+                templates = {
+                    "acceptance": entry(
+                        "Реализация принятие РТК",
+                        no_collateral_dir / "Реализация принятие РТК.docx",
+                        1
+                    ),
+                    "decision": entry(
+                        "Реализация ВКЛ",
+                        no_collateral_dir / "Реализация ВКЛ несколько договоров.docx",
+                        2
+                    ),
+                    "resolution": entry(
+                        "Резолютивка ВКЛ реализация",
+                        no_collateral_dir / "Резолютивка ВКЛ реализация.docx",
+                        3
+                    )
+                }
             procedure_label = "реструктуризация" if procedure_type == "restructuring" else "реализация"
-            logger.info(f"ℹ️ Используются базовые шаблоны для взыскания с ИП {procedure_label} (без залога).")
+            logger.info(f"ℹ️ Используются акты РТК-включения физлиц для ИП {procedure_label} (без залога).")
 
         for info in templates.values():
             logger.info(f"📁 Шаблон: {info['name']} -> {info['path'].absolute()} (существует: {info['path'].exists()})")
@@ -615,7 +643,7 @@ class TemplatesResolverMixin:
         Возвращает шаблон решения суда по ипотечному иску.
         """
         root_dir = self._templates_root()
-        base_dir = root_dir / "Проект Никите" / "ипотека"
+        base_dir = root_dir / "ипотека"
 
         def entry(name: str, filename: str, order: int) -> Dict[str, Any]:
             path = base_dir / filename
@@ -648,8 +676,8 @@ class TemplatesResolverMixin:
 
         root_dir = self._templates_root()
         base_dir = root_dir / "шаблоны актов без залогов"
-        # Папка с новыми судебными актами (на 19.02)
-        new_acts_dir = root_dir / "на 19.02"
+        # Папка с промежуточными/особыми судебными актами
+        new_acts_dir = root_dir / "промежуточные_особые"
         # Залог: обычный залог — папка "Залог"; залог авто — папка "Залог авто" (если есть)
         has_collateral = collateral_option in ('collateral', 'collateral_auto')
         is_auto_collateral = collateral_option == 'collateral_auto'
@@ -753,7 +781,7 @@ class TemplatesResolverMixin:
                         d = _no_collateral_dir("реализация", entity_type)
                         templates[act_id] = entry(
                             "Реализация ВКЛ",
-                            d / "Реализация ВКЛ.docx",
+                            d / "Реализация ВКЛ несколько договоров.docx",
                             order
                         )
                 order += 1
@@ -951,7 +979,7 @@ class TemplatesResolverMixin:
                 if entity_type == "kfh":
                     path = root_dir / "КФХ" / "Принятие иницирование КФХ.docx"
                 else:
-                    # Используем шаблон из "на 19.02\заменить Принятие\принятие ртк.docx"
+                    # Используем шаблон из "промежуточные_особые\заменить Принятие\принятие ртк.docx"
                     path = new_acts_dir / "заменить Принятие" / "принятие ртк.docx"
                     # Если файл не найден, используем старый путь как fallback
                     if not path.exists():

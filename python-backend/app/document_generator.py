@@ -797,6 +797,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             "applicantAddress": "6",     # [6] - Адрес регистрации
             "courtDecisionDate": "7",    # [7] - Дата решения суда
             "managerName": "8",          # [8] - ФИО финансового управляющего
+            "managerInn": "41",           # [41] - ИНН финансового управляющего
+            "managerAddress": "42",       # [42] - Почтовый адрес финансового управляющего
             "messageNumber": "9",        # [9] - Номер сообщения ЕФРСБ
             "mortgagePeriodAmount10": "10",  # [10] - Сумма за период (ипотека)
             "efirsbPublicationDate": "11",  # [11] - Дата публикации на сайте ЕФРСБ
@@ -831,6 +833,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             "objectionsDeadline18": "18",  # [18] - Установка срока на предоставление возражений
             "considerationDeadline19": "19",  # [19] - На рассмотрение заявления в срок
             "withoutMovementDeadline20": "20",  # [20] - Срок для оставления без движения
+            "authorName": "29",          # [29] - ФИО секретаря/помощника судьи
             "separateDisputeNumber22": "22",  # [22] - Номер обособленного спора
             "applicationReceiptDate23": "23",  # [23] - Дата поступления заявления в суд (согласно штампу)
             "courtSubmissionDate24": "24",     # [24] - Дата направления в суд
@@ -1016,6 +1019,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # is_ip нужен ниже по методу; пролог его не возвращает — пересчёт из cleaned_data
         is_ip = "ip_enforcement" in (cleaned_data.get("sourceDocumentType") or "").lower()
 
+        # Приоритет публикации ЕФРСБ/«Коммерсантъ» — до замены маркеров, пока текст ещё содержит [9]/[11]/[67]/[68]
+        self._apply_efrsb_kommersant_priority(doc, cleaned_data)
+
         field_mapping = self._base_field_mapping()
 
         is_mortgage_document = (cleaned_data.get("sourceDocumentType") or "").lower() == "mortgage_claim"
@@ -1128,10 +1134,78 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # Удаляем все пустые маркеры, для которых нет значений
         self._remove_empty_placeholders(doc, cleaned_data, field_mapping)
 
+        # ИП: акты реализации/реструктуризации переиспользуются от физлиц и содержат
+        # литеральное слово "должник" — заменяем его на "индивидуальный предприниматель"
+        # в нужном падеже (не применяется к ip_collection — там свои акты со словом "ответчик").
+        if is_ip:
+            self._apply_ip_debtor_wording(doc)
+
+        # Секретарь/помощник судьи: разные шаблоны по умолчанию говорят "помощником судьи [29]"
+        # или "секретарем/секретарём судьи [29]" — приводим к роли, выбранной пользователем.
+        # Ипотека использует свою отдельную схему ("при секретаре ФИО секретаря") — не трогаем.
+        if not is_mortgage_document:
+            self._apply_secretary_wording(doc, str(cleaned_data.get("authorRole") or "").strip().lower())
+
         # Финальный пост-процессинг всего документа:
         # подчищаем форматы дат, номера дел и оставшиеся маркеры,
         # чтобы в итоговом акте всё выглядело идеально.
         self._postprocess_document_formatting(doc, cleaned_data)
+
+    def _apply_efrsb_kommersant_priority(self, doc: Document, cleaned_data: Dict[str, Any]) -> None:
+        """В части актов рядом упомянуты обе публикации — ЕФРСБ (обёрнута в
+        квадратные скобки как опциональный блок) и «Коммерсантъ» (без скобок).
+        Приоритет — «Коммерсантъ»: если для него есть данные, блок ЕФРСБ убирается
+        целиком вместе со скобками; если данных «Коммерсантъ» нет, а ЕФРСБ есть —
+        оставляем ЕФРСБ, но снимаем скобки-разметку и убираем упоминание «Коммерсантъ».
+        Должно вызываться до замены маркеров [9]/[11]/[67]/[68] на значения.
+        """
+        has_kommersant = bool(str(cleaned_data.get("kommersantNumber") or "").strip()) and \
+            bool(str(cleaned_data.get("kommersantDate") or "").strip())
+
+        efrsb_block_pattern = r"\[\s*на сайте ЕФРСБ\s*№\s*\[9\]\s*от\s*\[11\]\s*\]\s*"
+        kommersant_block_pattern = r"в газете\s*«Коммерсантъ»\s*№\s*\[67\]\s*от\s*\[68\]\s*"
+
+        if has_kommersant:
+            self._replace_regex_in_doc(doc, efrsb_block_pattern, "")
+        else:
+            def _strip_brackets(match) -> str:
+                inner = match.group(0).strip()
+                return inner[1:-1].strip() + " "
+            self._replace_regex_in_doc(doc, efrsb_block_pattern, _strip_brackets)
+            self._replace_regex_in_doc(doc, kommersant_block_pattern, "")
+
+    def _apply_ip_debtor_wording(self, doc: Document) -> None:
+        """Заменяет "должник/должника/должнику" на "индивидуальный предприниматель"
+        в соответствующем падеже (им./род./дат.), сохраняя регистр первой буквы."""
+        replacements = [
+            (r"\bдолжнику\b", "индивидуальному предпринимателю"),
+            (r"\bдолжника\b", "индивидуального предпринимателя"),
+            (r"\bдолжник\b", "индивидуальный предприниматель"),
+        ]
+        for pattern, phrase in replacements:
+            def _sub(match, phrase=phrase):
+                word = match.group(0)
+                return phrase[:1].upper() + phrase[1:] if word[:1].isupper() else phrase
+            self._replace_regex_in_doc(doc, pattern, _sub)
+
+    def _apply_secretary_wording(self, doc: Document, author_role: str) -> None:
+        """Шаблоны по умолчанию по-разному называют роль ведущего протокол — где-то
+        "помощником судьи [29]", где-то "секретарем"/"секретарём судьи [29]" (е/ё —
+        встречаются оба написания). Приводим словоформу к роли, выбранной пользователем
+        в интерфейсе; если роль не выбрана — оставляем текст шаблона как есть."""
+        if author_role not in ("секретарь", "помощник"):
+            return
+
+        def _make_sub(phrase: str):
+            def _sub(match) -> str:
+                word = match.group(0)
+                return phrase[:1].upper() + phrase[1:] if word[:1].isupper() else phrase
+            return _sub
+
+        if author_role == "секретарь":
+            self._replace_regex_in_doc(doc, r"\bпомощником\b", _make_sub("секретарём"))
+        else:
+            self._replace_regex_in_doc(doc, r"\bсекретар[её]м\b", _make_sub("помощником"))
 
     def _remove_empty_placeholders(self, doc: Document, cleaned_data: Dict[str, Any], field_mapping: Dict[str, str]):
         """
