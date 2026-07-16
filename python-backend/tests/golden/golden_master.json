@@ -10066,6 +10066,102 @@
    }
   ]
  },
+ "НОвая конвертация/Умерший ким клим.docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "344002, г. Ростов-на-Дону",
+    "birthDate": "02.04.1985",
+    "birthPlace": "",
+    "inn": "614104690687",
+    "name": "Ким Клим",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "initiation_physical",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "344002, г. Ростов-на-Дону",
+   "applicantName": "Ким Клим",
+   "applicantNameAccusative": "Кима Клима",
+   "applicantNameGenitive": "Кима Клима",
+   "applicantNameInstrumental": "Кимом Климом",
+   "applicationDate": "26.10.2002",
+   "birthDate": "02.04.1985",
+   "companyInn": "614104690687",
+   "contractDate": "21.11.2013",
+   "contractNumber": "1221/5221/0890/033/13/И01, 1221/5221/0890/034/13/М01",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "117997, г. Москва, ул. Вавилова, д. 19",
+   "creditorInn": "7707083893",
+   "creditorName": "ПАО Сбербанк России в лице Юго-Западного банка 344068",
+   "creditorOgrn": "1027700132195",
+   "debtAmount": "15 353 052,99",
+   "debtSnapshotDate88": "30.08.2017",
+   "debtorName": "Ким Клим",
+   "entityType": "individual",
+   "forfeit": "366 332,31",
+   "forfeit15": "366 332,31",
+   "inn": "614104690687",
+   "interest": "0,00",
+   "interest14": "0,00",
+   "loanDebt": "8 340 246,57",
+   "obligations": [
+    {
+     "contractDate": "21.11.2013",
+     "contractNumber": "1221/5221/0890/033/13/И01",
+     "id": "obligation_p_0",
+     "obligationType": "Договор ипотеки"
+    },
+    {
+     "contractDate": "21.11.2013",
+     "contractNumber": "1221/5221/0890/034/13/М01",
+     "id": "obligation_p_1",
+     "obligationType": "Договор ипотеки"
+    }
+   ],
+   "penalties": "0,00",
+   "principalDebt": "14 986 720,68",
+   "principalDebt13": "14 986 720,68",
+   "procedureType": "deceased",
+   "procedureTypeRaw": "умерший",
+   "requirementsSum": "15 353 052,99",
+   "sourceDocumentType": "initiation_physical",
+   "sroName": "Ассоциация арбитражных управляющих \"СИБИРСКИЙ ЦЕНТР ЭКСПЕРТОВ АНТИКРИЗИСНОГО УПРАВЛЕНИЯ\"",
+   "stateDuty": "6 000,00",
+   "totalDebt": "15 353 052,99"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 830
+  },
+  "obligations": [
+   {
+    "contractDate": "21.11.2013",
+    "contractNumber": "1221/5221/0890/033/13/И01",
+    "id": "obligation_p_0",
+    "obligationType": "Договор ипотеки"
+   },
+   {
+    "contractDate": "21.11.2013",
+    "contractNumber": "1221/5221/0890/034/13/М01",
+    "id": "obligation_p_1",
+    "obligationType": "Договор ипотеки"
+   }
+  ],
+  "rawTextLen": 6149,
+  "rawTextSha": "0117dbb11993e49d0fd98ac5edf2f5514ac5b499ff8146c4686ac1884b04bf18",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": []
+  },
+  "thirdParties": []
+ },
  "НОвая конвертация/ФНС/Зайцев В.В._заявление.docx": {
   "collaterals": [
    {
@@ -11941,6 +12037,129 @@
     "acceptance_definition",
     "final_restructuring",
     "final_competition"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/умерший сос.docx": {
+  "collaterals": [
+   {
+    "address": "Ростовская область, г Каменск-Шахтинский, ул. Ленина, 65 2) Объект недвижимости-Жилой дом, общей",
+    "brandModel": "",
+    "cadastralNumber": "",
+    "collateralType": "real_estate",
+    "collateralValue": "",
+    "description": "Жилой дом, общей площадью 114,8 кв. м, расположенный \t\tпо адресу: Ростовская область, г Каменск-Шахтинский, ул. Ленина, 65 2) Объект недвижимости-Жилой дом, общей площадью 207,1 кв. м, расположенный \t\tпо адресу: Ростовская область, г Каменск-Шахтинский, ул. Ленина, 65",
+    "id": "collateral-0",
+    "objectName": "Жилой дом, площадь 114,8 кв.м",
+    "otherDescription": "",
+    "vin": ""
+   },
+   {
+    "address": "Ростовская область, г Каменск-Шахтинский, ул. Ленина, 65",
+    "brandModel": "",
+    "cadastralNumber": "",
+    "collateralType": "real_estate",
+    "collateralValue": "",
+    "description": "Жилой дом, общей площадью 207,1 кв. м, расположенный \t\tпо адресу: Ростовская область, г Каменск-Шахтинский, ул. Ленина, 65",
+    "id": "collateral-1",
+    "objectName": "Жилой дом, площадь 207,1 кв.м",
+    "otherDescription": "",
+    "vin": ""
+   }
+  ],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "347810, Ростовская область г. Каменск-Шахтинский, ул. Ленина, д.65",
+    "birthDate": "30.01.1962",
+    "birthPlace": "",
+    "inn": "",
+    "name": "Манукян Сос Жораевич",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "initiation_physical",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "347810, Ростовская область г. Каменск-Шахтинский, ул. Ленина, д.65",
+   "applicantName": "Манукян Сос Жораевич",
+   "applicantNameAccusative": "Манукяна Сос Жораевич",
+   "applicantNameDative": "Манукяну Сос Жораевич",
+   "applicantNameGenitive": "Манукян Соса Жораевича",
+   "applicantNameInstrumental": "Манукяном Сос Жораевич",
+   "applicationDate": "30.01.1962",
+   "birthDate": "30.01.1962",
+   "caseNumber": "2-1142/2010",
+   "collaterals": [
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "2 867 955,21",
+     "id": "collateral-0",
+     "objectName": "2 867 955",
+     "otherDescription": "21",
+     "vin": ""
+    }
+   ],
+   "contractDate": "21.03.2008",
+   "contractNumber": "716994",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "344068, г. Ростов-на-Дону, ул. Евдокимова, д. 37",
+   "creditorInn": "7707083893",
+   "creditorName": "Публичное акционерное общество «Сбербанк России» (ПАО Сбербанк)",
+   "creditorOgrn": "1027700132195",
+   "debtAmount": "22,04",
+   "debtSnapshotDate88": "22.04.2021",
+   "debtorName": "Манукян Сос Жораевич",
+   "entityType": "individual",
+   "interest": "7 559,11",
+   "loanDebt": "2 438 262,70",
+   "mortgageCollateralDescription1221": "2 867 955,21",
+   "obligationType": "кредитный договор",
+   "obligations": [
+    {
+     "contractDate": "21.03.2008",
+     "contractNumber": "716994",
+     "id": "obligation_p_0",
+     "obligationType": "Кредитный договор"
+    }
+   ],
+   "principalDebt": "0,00",
+   "procedureType": "deceased",
+   "procedureTypeRaw": "умерший",
+   "requirementsSum": "22,04",
+   "sourceDocumentType": "initiation_physical",
+   "sroName": "Ассоциация \"Дальневосточная межрегиональная саморегулируемая организация профессиональных арбитражных управляющих\"",
+   "stateDuty": "22 568,82",
+   "totalDebt": "7 559,11"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 1098
+  },
+  "obligations": [
+   {
+    "contractDate": "21.03.2008",
+    "contractNumber": "716994",
+    "id": "obligation_p_0",
+    "obligationType": "Кредитный договор"
+   }
+  ],
+  "rawTextLen": 8775,
+  "rawTextSha": "910b5325ed87413a718be9a493f610a165dd5140bbfe694fa2e32d30f74d57b6",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_realization",
+    "acceptance_definition"
    ]
   },
   "thirdParties": []

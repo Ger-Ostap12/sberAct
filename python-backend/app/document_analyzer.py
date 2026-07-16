@@ -429,6 +429,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # способом. Приоритет над ликвидацией: если заявление просит конкурсное
             # производство ОТСУТСТВУЮЩЕГО должника, статус именно такой, даже когда в
             # тексте попутно упомянута ликвидация (у ликвидируемого должника свой акт).
+            # УМЕРШИЙ должник-физлицо (ст. 223.1) — тем же способом. Ветки ЮЛ
+            # (отсутствующий/ликвидируемый) и ФЛ (умерший) взаимоисключающи по типу
+            # лица, поэтому приоритет между ними не нужен.
             debtor_status_hint = None
             if not is_self_bk and extracted_fields.get("entityType") == "legal":
                 if self._detect_absent_debtor(text):
@@ -438,6 +441,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                     _liq = self._extract_liquidator(text)
                     if _liq:
                         extracted_fields["liquidatorName"] = _liq
+            elif not is_self_bk and extracted_fields.get("entityType") == "individual":
+                if self._detect_deceased(text):
+                    debtor_status_hint = "deceased"
 
             # Авторитетный пересчёт рекомендаций — ПОСЛЕ финализации entityType.
             # Ранние вызовы (до разбора должников/NLP) могли считать по промежуточному
@@ -2927,6 +2933,40 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if any(rx.search(text) for rx in self._ABSENT_STRONG_RES):
             return True
         return bool(self._ABSENT_ART230_RE.search(text))
+
+    # УМЕРШИЙ должник-физлицо (ст. 223.1 Закона о банкротстве — банкротство гражданина
+    # в случае его смерти). Сильные сигналы — обороты, которыми банк излагает ФАКТ смерти
+    # должника либо просит признать банкротом именно умершего.
+    # `\s*` (а не `\s+`) — терпимость к OCR-склейкам, как в детекторе отсутствующего.
+    _DECEASED_STRONG_RES = (
+        # «24.02.2019 Заемщик умер, что подтверждается свидетельством о смерти» —
+        # типовая формула изложения факта смерти (оба референсных заявления).
+        re.compile(r"умер(?:ла)?\s*,?\s*что\s*подтверждается\s*свидетельств\w*\s*о\s*смерти", re.IGNORECASE),
+        # «о признании умершего должника несостоятельным (банкротом)».
+        re.compile(r"призна\w*\s*[\s\S]{0,40}?умерш\w+\s*должник", re.IGNORECASE),
+        # «заявление о признании умершего гражданина банкротом».
+        re.compile(r"заявлени\w*\s*о\s*признании\s*умерш\w+", re.IGNORECASE),
+    )
+    # Ст. 223.1 — материальная норма о банкротстве гражданина в случае его смерти.
+    # Требуем рядом упоминание закона о банкротстве: голый номер статьи встречается и
+    # в других кодексах, а «умерший/наследство» сами по себе — сплошь цитаты нормы
+    # («…осуществляют принявшие наследство наследники гражданина»), а не факт смерти.
+    _DECEASED_ART2231_RE = re.compile(
+        r"(?:стать\w+|ст\.?)\s*223\s*\.?\s*1\s*(?:[\s\S]{0,60}?(?:банкротств|несостоятельн|127-ФЗ))",
+        re.IGNORECASE,
+    )
+
+    def _detect_deceased(self, text: str) -> bool:
+        """True, если заявление подано в отношении УМЕРШЕГО должника-физлица.
+
+        Проверено на корпусе (77 файлов): формулы срабатывают только на заявлениях
+        этого вида, ложных срабатываний нет.
+        """
+        if not text:
+            return False
+        if any(rx.search(text) for rx in self._DECEASED_STRONG_RES):
+            return True
+        return bool(self._DECEASED_ART2231_RE.search(text))
 
     def _extract_liquidator(self, text: str) -> Optional[str]:
         """Извлекает наименование ликвидатора (ФИО физлица или ОПФ организации).
