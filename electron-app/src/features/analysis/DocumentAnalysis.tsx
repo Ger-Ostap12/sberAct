@@ -22,6 +22,7 @@ import CollateralSection from './sections/CollateralSection';
 import CourtSection from './sections/CourtSection';
 import DatesSection from './sections/DatesSection';
 import ManagerSection from './sections/ManagerSection';
+import LiquidationSection from './sections/LiquidationSection';
 import ThirdPartiesSection from './sections/ThirdPartiesSection';
 import DebtorsSection from './sections/DebtorsSection';
 import CreditorSection from './sections/CreditorSection';
@@ -849,6 +850,13 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 {!isFnsCreditor(editedFields.creditorName) && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
               <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} showSro={showSroField} showFio={showFioField} />
+                </Grid>
+                )}
+
+                {/* Объявление о ликвидации — только при статусе «Ликвидируемый» (ЮЛ). */}
+                {debtorStatus === 'liquidation' && (
+                <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
+              <LiquidationSection editedFields={editedFields} onFieldChange={handleFieldChange} />
                 </Grid>
                 )}
 

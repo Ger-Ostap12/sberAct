@@ -287,3 +287,39 @@ describe('DocumentAnalysis — матрица полей управляющег�
     expect(hasFio()).toBe(false);
   });
 });
+
+// Блок «Объявление о ликвидации» виден только при статусе «Ликвидируемый».
+describe('DocumentAnalysis — блок «Объявление о ликвидации»', () => {
+  const renderForm = () =>
+    render(
+      <DocumentAnalysis
+        documentData={documentData}
+        extractedData={makeData()}
+        onAnalysisComplete={() => {}}
+        onBack={() => {}}
+      />,
+    );
+
+  it('по умолчанию блок скрыт', () => {
+    renderForm();
+    expect(screen.queryByText('Объявление о ликвидации')).not.toBeInTheDocument();
+  });
+
+  it('выбор «Ликвидируемый» (ЮЛ) показывает блок, снятие — скрывает', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('radio', { name: 'Юр.лицо' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ликвидируемый' }));
+    expect(screen.getByText('Объявление о ликвидации')).toBeInTheDocument();
+    expect(screen.getByText('Наименование ликвидатора:')).toBeInTheDocument();
+    // Повторный клик снимает статус — блок исчезает.
+    fireEvent.click(screen.getByRole('button', { name: 'Ликвидируемый' }));
+    expect(screen.queryByText('Объявление о ликвидации')).not.toBeInTheDocument();
+  });
+
+  it('статус «Отсутствующий» блок не показывает', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('radio', { name: 'Юр.лицо' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Отсутствующий' }));
+    expect(screen.queryByText('Объявление о ликвидации')).not.toBeInTheDocument();
+  });
+});

@@ -141,6 +141,23 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                 size="small"
                 value={debtorStatus}
                 onChange={(_e, v) => setDebtorStatus((v as DebtorStatus | null) ?? null)}
+                sx={{
+                  // Акцент выбранной кнопки: залитый primary + жирный белый текст,
+                  // иначе активное состояние почти не отличалось от неактивного.
+                  '& .MuiToggleButton-root': {
+                    px: 2,
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    border: '1px solid',
+                    borderColor: 'primary.main',
+                    color: 'primary.main',
+                  },
+                  '& .MuiToggleButton-root.Mui-selected': {
+                    bgcolor: 'primary.main',
+                    color: 'primary.contrastText',
+                    '&:hover': { bgcolor: 'primary.dark' },
+                  },
+                }}
               >
                 {entityType === 'legal' && (
                   <ToggleButton value="liquidation">Ликвидируемый</ToggleButton>
