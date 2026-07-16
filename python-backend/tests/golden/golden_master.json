@@ -56,6 +56,7 @@
    "sourceDocumentType": "initiation_physical",
    "totalDebt": "7 404 480,88"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 4,
@@ -118,6 +119,7 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "4 590,95"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
@@ -179,6 +181,7 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "452,79"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
@@ -244,6 +247,7 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "255 825,84"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
@@ -306,6 +310,7 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "24 314,99"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
@@ -371,6 +376,7 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "187 348,68"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
@@ -404,7 +410,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_physical",
   "entityType": "individual",
   "fields": {
    "applicantAddress": "ул. Социалистическая, д. 26, г. Сальск, Сальский р-н., Ростовская обл., 347636",
@@ -434,10 +440,11 @@
    "fnsTotalComputed": "1",
    "inn": "615308542625",
    "requirementsSum": "208 472,00",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_physical",
    "sroName": "Ассоциация \"Московская саморегулируемая организация профессиональных арбитражных управляющих\"",
    "totalDebt": "1 712 229,07"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
@@ -450,7 +457,7 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
+    "final_restructuring",
     "acceptance_definition"
    ]
   },
@@ -499,6 +506,7 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "855,35"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
@@ -561,6 +569,7 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "338,71"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
@@ -629,6 +638,7 @@
    "sroName": "Союз арбитражных управляющих \"Саморегулируемая организация \"ДЕЛО\"",
    "totalDebt": "71 145 066,58"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
@@ -695,6 +705,7 @@
    "sourceDocumentType": "initiation_physical",
    "totalDebt": "5 631 934,26"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
@@ -762,6 +773,7 @@
    "sroName": "Ассоциация Евросибирская саморегулируемая организация арбитражных управляющих",
    "totalDebt": "54 558,94"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 4,
@@ -776,6 +788,99 @@
    "recommendedActIds": [
     "final_rtk_inclusion",
     "acceptance_definition"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/Заявл_Ликвидир_Оргтехника.docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "344064, г. РОСТОВ-НА-ДОНУ, ул. ВАВИЛОВА, зд. 59В/101, эт 3, ком. 314",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "6163105360",
+    "name": "ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «ОРГТЕХНИКА»",
+    "ogrn": "1106195009800",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "initiation_legal",
+  "entityType": "legal",
+  "fields": {
+   "applicantAddress": "344064, г. РОСТОВ-НА-ДОНУ, ул. ВАВИЛОВА, зд. 59В/101, эт 3, ком. 314",
+   "applicantName": "ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «ОРГТЕХНИКА»",
+   "applicantNameAccusative": "Оленченко Олега Игоревича Сообщение",
+   "applicantNameDative": "Оленченко Олегу Игоревичу Сообщению",
+   "applicantNameGenitive": "Оленченко Олега Игоревича Сообщения",
+   "applicantNameInstrumental": "Оленченко Олегом Игоревичем Сообщением",
+   "applicationDate": "20.06.1991",
+   "companyInn": "6163105360",
+   "contractDate": "30.06.2025",
+   "contractNumber": "7M-520CPIS-BV0-П1",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditTermMonths": "4",
+   "creditorAddress": "117312, г. Москва, ул. Вавилова, д.19",
+   "creditorInn": "7707083893",
+   "creditorName": "ПАО Сбербанк",
+   "creditorOgrn": "1027700132195",
+   "debtAmount": "501 365 000,90",
+   "debtSnapshotDate88": "07.04.2026",
+   "debtorName": "ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «ОРГТЕХНИКА»",
+   "entityType": "legal",
+   "inn": "6163105360",
+   "interest": "494 171 335,67",
+   "interest14": "494 171 335,67",
+   "legalShortName": "ОРГТЕХНИКА\" (ООО \"ОРГТЕХНИКА\")",
+   "liquidatorName": "Оленченко Олег Игоревич",
+   "loanDebt": "494 171 335,67",
+   "messageDate": "05.06.2026",
+   "messageNumber": "36504402",
+   "obligationType": "Кредитный договор",
+   "obligations": [
+    {
+     "contractDate": "30.06.2025",
+     "contractNumber": "7M-520CPIS-BV0-П1",
+     "id": "obligation_p_0",
+     "obligationType": "Договор поручительства"
+    }
+   ],
+   "ogrn": "1106195009800",
+   "procedureType": "observation",
+   "procedureTypeRaw": "наблюдение",
+   "registrationDate": "20.06.1991",
+   "requirementsSum": "501 365 000,90",
+   "sourceDocumentType": "initiation_legal",
+   "sroName": "Некоммерческое партнерство \"Саморегулируемая организация арбитражных управляющих \"Меркурий\"",
+   "stateDuty": "1 590 913,00",
+   "stateDuty16": "1 590 913,00",
+   "totalDebt": "988 342 671,34"
+  },
+  "heirs": [],
+  "metadata": {
+   "language": "ru",
+   "pageCount": 5,
+   "wordCount": 5629
+  },
+  "obligations": [
+   {
+    "contractDate": "30.06.2025",
+    "contractNumber": "7M-520CPIS-BV0-П1",
+    "id": "obligation_p_0",
+    "obligationType": "Договор поручительства"
+   }
+  ],
+  "rawTextLen": 42847,
+  "rawTextSha": "0622264069117ae575aa7b030e71ff641752f30e0da89c510378f6fc94f19954",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "legal",
+   "recommendedActIds": [
+    "final_observation",
+    "acceptance_definition",
+    "final_competition"
    ]
   },
   "thirdParties": []
@@ -858,6 +963,7 @@
    "stateDuty16": "16 136,00",
    "totalDebt": "545 418,01"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
@@ -948,6 +1054,10 @@
      "obligationType": "Договор займа"
     }
    ],
+   "priorAmount": "20 854,44",
+   "priorCaseNumber": "2-253/2026",
+   "priorCourtName": "Мировой судья судебного участка № 1 Обливского судебного района Ростовской области",
+   "priorDecisionDate": "16.03.2026",
    "procedureType": "realization",
    "procedureTypeRaw": "реализации имущества должника",
    "requirementsSum": "20 854,44",
@@ -956,6 +1066,7 @@
    "sroName": "Некоммерческое партнерство \"Саморегулируемая организация \"Гильдия арбитражных управляющих\"",
    "totalDebt": "20 854,44"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
@@ -996,7 +1107,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_legal",
   "entityType": "legal",
   "fields": {
    "applicantAddress": "346404, Ростовская область, гор.Новочеркасск, Харьковское шоссе, д.10",
@@ -1055,12 +1166,13 @@
    "procedureType": "observation",
    "procedureTypeRaw": "наблюдение",
    "requirementsSum": "1 871 897 982,82",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_legal",
    "sroName": "Некоммерческое партнерство \"Объединение арбитражных управляющих \"Авангард\"",
    "stateDuty": "5 017 245,00",
    "stateDuty16": "5 017 245,00",
    "totalDebt": "1 871 897 982,82"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 5,
@@ -1092,8 +1204,9 @@
    "collateralOption": "no_collateral",
    "entityType": "legal",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition"
+    "final_observation",
+    "acceptance_definition",
+    "final_competition"
    ]
   },
   "thirdParties": []
@@ -1113,7 +1226,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_legal",
   "entityType": "legal",
   "fields": {
    "applicantAddress": "346404, Ростовская область гор.Новочеркасск, Харьковское шоссе, д.10, офис 27",
@@ -1172,12 +1285,13 @@
    "procedureType": "observation",
    "procedureTypeRaw": "наблюдение",
    "requirementsSum": "1 871 897 982,82",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_legal",
    "sroName": "Некоммерческое партнерство \"Объединение арбитражных управляющих \"Авангард\"",
    "stateDuty": "5 017 245,00",
    "stateDuty16": "5 017 245,00",
    "totalDebt": "1 871 897 982,82"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 5,
@@ -1209,8 +1323,9 @@
    "collateralOption": "no_collateral",
    "entityType": "legal",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition"
+    "final_observation",
+    "acceptance_definition",
+    "final_competition"
    ]
   },
   "thirdParties": []
@@ -1230,7 +1345,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_legal",
   "entityType": "legal",
   "fields": {
    "applicantAddress": "346404, Ростовская область, г. Новочеркасск, Харьковское ш., д. 10",
@@ -1338,12 +1453,13 @@
    "procedureType": "observation",
    "procedureTypeRaw": "наблюдение",
    "requirementsSum": "2 549 999 707,35",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_legal",
    "sroName": "Некоммерческое партнерство \"Саморегулируемая организация арбитражных управляющих \"Меркурий\"",
    "stateDuty": "5 100 000,00",
    "stateDuty16": "5 100 000,00",
    "totalDebt": "4 593 842 279,40"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 22,
@@ -1423,8 +1539,9 @@
    "collateralOption": "no_collateral",
    "entityType": "legal",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition"
+    "final_observation",
+    "acceptance_definition",
+    "final_competition"
    ]
   },
   "thirdParties": []
@@ -1506,6 +1623,7 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "3 779 221,49"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
@@ -1598,6 +1716,7 @@
    "stateDuty16": "5 000,00",
    "totalDebt": "65 835,14"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
@@ -1683,6 +1802,7 @@
    "stateDuty16": "5 000,00",
    "totalDebt": "80 015,88"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
@@ -1811,6 +1931,7 @@
    "stateDuty16": "14 997,00",
    "totalDebt": "499 895,57"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
@@ -2013,6 +2134,7 @@
    "stateDuty16": "105 544,00",
    "totalDebt": "4 536 273,95"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
@@ -2135,6 +2257,7 @@
    "stateDuty16": "0,00",
    "totalDebt": "37 490,52"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
@@ -2240,6 +2363,7 @@
    "stateDuty16": "10 138,00",
    "totalDebt": "305 513,35"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
@@ -2339,6 +2463,7 @@
    "stateDuty16": "9 636,00",
    "totalDebt": "285 423,75"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
@@ -2431,6 +2556,7 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "53 476,48"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
@@ -2526,6 +2652,7 @@
    "stateDuty16": "5 000,00",
    "totalDebt": "100 000,00"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
@@ -2621,6 +2748,7 @@
    "stateDuty16": "5 000,00",
    "totalDebt": "100 000,00"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
@@ -2725,6 +2853,7 @@
    "stateDuty16": "30 529,00",
    "totalDebt": "1 201 910,33"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
@@ -2771,7 +2900,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_legal",
   "entityType": "legal",
   "fields": {
    "applicantAddress": "344006, РОСТОВСКАЯ ОБЛАСТЬ, ГОРОД РОСТОВ-НА-ДОНУ, ПРОСПЕКТ КИРОВСКИЙ, ЗД. 51, КОМ. 7-10",
@@ -2818,12 +2947,13 @@
    "procedureTypeRaw": "наблюдение",
    "registrationDate": "20.06.1991",
    "requirementsSum": "2 789 060,93",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_legal",
    "sroName": "Некоммерческое партнерство \"Центр финансового оздоровления предприятий агропромышленного комплекса\"",
    "stateDuty": "154 336,00",
    "stateDuty16": "154 336,00",
    "totalDebt": "2 789 060,93"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
@@ -2843,8 +2973,9 @@
    "collateralOption": "no_collateral",
    "entityType": "legal",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition"
+    "final_observation",
+    "acceptance_definition",
+    "final_competition"
    ]
   },
   "thirdParties": []
@@ -2864,7 +2995,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_legal",
   "entityType": "legal",
   "fields": {
    "applicantAddress": "344006, РОСТОВСКАЯ ОБЛАСТЬ, ГОРОД РОСТОВ-НА-ДОНУ, УЛИЦА ПУШКИНСКАЯ, Д. 116, КОМ. 16",
@@ -2918,12 +3049,13 @@
    "procedureTypeRaw": "наблюдение",
    "registrationDate": "20.06.1991",
    "requirementsSum": "2 789 060,93",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_legal",
    "sroName": "Некоммерческое партнерство \"Центр финансового оздоровления предприятий агропромышленного комплекса\"",
    "stateDuty": "154 336,00",
    "stateDuty16": "154 336,00",
    "totalDebt": "2 789 060,93"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
@@ -2950,8 +3082,9 @@
    "collateralOption": "no_collateral",
    "entityType": "legal",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition"
+    "final_observation",
+    "acceptance_definition",
+    "final_competition"
    ]
   },
   "thirdParties": []
@@ -2971,7 +3104,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_legal",
   "entityType": "individual",
   "fields": {
    "applicantAddress": "ОБЛАСТЬ РОСТОВСКАЯ, РАЙОН РОДИОНОВО-НЕСВЕТАЙСКИЙ, СЛОБОДА РОДИОНОВО-НЕСВЕТАЙСКАЯ, ПЕРЕУЛОК ЧЕХОВА, 11",
@@ -3018,18 +3151,18 @@
      "penalty0071Value": 0.0
     }
    ],
-   "obligationsTotalDebt": "7 371 840,00",
    "penalties": "0,00",
    "principalDebt": "6 545 133,36",
    "principalDebt13": "6 545 133,36",
    "registrationDate": "20.06.1991",
    "requirementsSum": "7 371 840,00",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_legal",
    "sroName": "Союз арбитражных управляющих \"Саморегулируемая организация \"ДЕЛО\"",
    "stateDuty": "223 078,00",
    "stateDuty16": "223 078,00",
    "totalDebt": "7 371 840,35"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
@@ -3056,7 +3189,7 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
+    "final_restructuring",
     "acceptance_definition"
    ]
   },
@@ -3077,7 +3210,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_physical",
   "entityType": "individual",
   "fields": {
    "applicantAddress": "ОБЛАСТЬ РОСТОВСКАЯ, ГОРОД РОСТОВ-НА-ДОНУ, УЛИЦА ПИРАМИДНАЯ, 28",
@@ -3140,12 +3273,13 @@
    "principalDebt13": "20 865 698,85",
    "registrationDate": "20.06.1991",
    "requirementsSum": "27 297 873,00",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_physical",
    "sroName": "Ассоциация \"Московская саморегулируемая организация профессиональных арбитражных управляющих\"",
    "stateDuty": "348 989,00",
    "stateDuty16": "348 989,00",
    "totalDebt": "27 297 873,89"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 4,
@@ -3183,7 +3317,7 @@
    "collateralOption": "no_collateral",
    "entityType": "individual",
    "recommendedActIds": [
-    "final_rtk_inclusion",
+    "final_restructuring",
     "acceptance_definition"
    ]
   },
@@ -3279,6 +3413,7 @@
    "stateDuty16": "320 907,00",
    "totalDebt": "21 681 376,81"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
@@ -3339,7 +3474,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_legal",
   "entityType": "ip",
   "fields": {
    "applicantAddress": "РОСТОВСКАЯ ОБЛАСТЬ, ГОРОД РОСТОВ-НА-ДОНУ, УЛИЦА 3-Я КОЛЬЦЕВАЯ, 44, 11",
@@ -3388,19 +3523,19 @@
      "penalty0071Value": 0.0
     }
    ],
-   "obligationsTotalDebt": "9 313 520,00",
    "ogrnip": "320619600092709",
    "penalties": "0,00",
    "principalDebt": "7 157 894,72",
    "principalDebt13": "7 157 894,72",
    "registrationDate": "20.06.1991",
    "requirementsSum": "9 313 520,00",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_legal",
    "sroName": "Союз \"Саморегулируемая организация арбитражных управляющих \"Стратегия\"",
    "stateDuty": "252 203,00",
    "stateDuty16": "252 203,00",
    "totalDebt": "9 313 520,81"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
@@ -3427,7 +3562,7 @@
    "collateralOption": "no_collateral",
    "entityType": "ip",
    "recommendedActIds": [
-    "final_rtk_inclusion",
+    "final_realization",
     "acceptance_definition"
    ]
   },
@@ -5988,6 +6123,7 @@
    "stateDuty16": "144 007,00",
    "totalDebt": "3 349 600,15"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 9,
@@ -6283,6 +6419,7 @@
    "stateDuty16": "5 100 000,00",
    "totalDebt": "4 826 804 161,25"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 13,
@@ -6557,6 +6694,7 @@
    "stateDuty16": "5 200 000,00",
    "totalDebt": "5 032 544 855,59"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 15,
@@ -6799,6 +6937,7 @@
    "stateDuty16": "5 125 000,00",
    "totalDebt": "5 032 544 855,59"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 14,
@@ -6984,6 +7123,7 @@
    "stateDuty16": "5 100 000,00",
    "totalDebt": "5 032 544 855,59"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 7,
@@ -7098,6 +7238,7 @@
    "legalShortName": "Форте Пром Стил ГМБХ",
    "loanDebt": "1 000 000 000",
    "managerInn": "644923704326",
+   "managerName": "Панин Александр Владимирович",
    "messageDate": "02.03.2026",
    "messageNumber": "34277008",
    "obligationType": "кредитный договор",
@@ -7117,6 +7258,7 @@
    "sroName": "Ассоциация \"Межрегиональная саморегулируемая организация арбитражных управляющих \"Содействие\"",
    "totalDebt": "1 000 000 000,00"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 5,
@@ -9031,6 +9173,7 @@
    "stateDuty16": "665 301,00",
    "totalDebt": "91 120 214,12"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 5,
@@ -9131,7 +9274,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_legal",
   "entityType": "legal",
   "fields": {
    "applicantAddress": "344011, РОСТОВСКАЯ ОБЛАСТЬ, Г РОСТОВ-НА-ДОНУ, ПЕР ДОЛОМАНОВСКИЙ, ЗД 70Д, ОФИС 22",
@@ -9254,7 +9397,6 @@
      "penalty0071Value": 0.0
     }
    ],
-   "obligationsTotalDebt": "31 633 546,28",
    "ogrn": "1176196047884",
    "penalties": "0,00",
    "principalDebt": "25 336 868,83",
@@ -9263,12 +9405,13 @@
    "procedureTypeRaw": "наблюдение",
    "registrationDate": "20.06.1991",
    "requirementsSum": "31 633 546,28",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_legal",
    "sroName": "Ассоциация \"Саморегулируемая организация арбитражных управляющих Центрального федерального  округа\"",
    "stateDuty": "370 668,00",
    "stateDuty16": "370 668,00",
    "totalDebt": "31 633 546,28"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 4,
@@ -9373,8 +9516,9 @@
    "collateralOption": "no_collateral",
    "entityType": "legal",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition"
+    "final_observation",
+    "acceptance_definition",
+    "final_competition"
    ]
   },
   "thirdParties": []
@@ -9421,6 +9565,7 @@
    "sroName": "Ассоциация Евросибирская саморегулируемая организация арбитражных управляющих",
    "totalDebt": "279 733,06"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 4,
@@ -9480,6 +9625,7 @@
    "sroName": "Саморегулируемая межрегиональная общественная организация «Ассоциация антикризисных управляющих»",
    "totalDebt": "116 000,00"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
@@ -9548,6 +9694,7 @@
    "sroName": "Саморегулируемая межрегиональная общественная организация «Ассоциация антикризисных управляющих»",
    "totalDebt": "25 000,00"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
@@ -9614,6 +9761,7 @@
    "sroName": "саморегулируемой организации арбитражных управляющих Союз АУ «Созидание»",
    "totalDebt": "402 592,13"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
@@ -9679,6 +9827,7 @@
    "sroName": "Ассоциация \"Национальная организация арбитражных управляющих\"",
    "totalDebt": ""
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 6,
@@ -9745,6 +9894,7 @@
    "sroName": "Саморегулируемая организация \"Ассоциация арбитражных управляющих \"Паритет\"",
    "totalDebt": "158 434,00"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 6,
@@ -9807,6 +9957,7 @@
    "sroName": "Некоммерческое партнерство \"Саморегулируемая организация \"Гильдия арбитражных управляющих\"",
    "totalDebt": "25 000,00"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
@@ -9868,6 +10019,7 @@
    "sroName": "Ассоциация \"Региональная саморегулируемая организация профессиональных арбитражных управляющих\"",
    "totalDebt": "3 000,00"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 5,
@@ -9939,6 +10091,7 @@
    "sroName": "Союз \"Межрегиональный центр арбитражных управляющих\"",
    "totalDebt": "19 405,00"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
@@ -9969,6 +10122,109 @@
     "snils": "049-288-075 97"
    }
   ]
+ },
+ "НОвая конвертация/Умерший ким клим.docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "344002, г. Ростов-на-Дону",
+    "birthDate": "02.04.1985",
+    "birthPlace": "",
+    "inn": "614104690687",
+    "name": "Ким Клим",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "initiation_physical",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "344002, г. Ростов-на-Дону",
+   "applicantName": "Ким Клим",
+   "applicantNameAccusative": "Кима Клима",
+   "applicantNameGenitive": "Кима Клима",
+   "applicantNameInstrumental": "Кимом Климом",
+   "applicationDate": "26.10.2002",
+   "birthDate": "02.04.1985",
+   "companyInn": "614104690687",
+   "contractDate": "21.11.2013",
+   "contractNumber": "1221/5221/0890/033/13/И01, 1221/5221/0890/034/13/М01",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "117997, г. Москва, ул. Вавилова, д. 19",
+   "creditorInn": "7707083893",
+   "creditorName": "ПАО Сбербанк России в лице Юго-Западного банка 344068",
+   "creditorOgrn": "1027700132195",
+   "deathDate": "13.05.2015",
+   "debtAmount": "15 353 052,99",
+   "debtSnapshotDate88": "30.08.2017",
+   "debtorName": "Ким Клим",
+   "entityType": "individual",
+   "forfeit": "366 332,31",
+   "forfeit15": "366 332,31",
+   "inn": "614104690687",
+   "interest": "0,00",
+   "interest14": "0,00",
+   "loanDebt": "8 340 246,57",
+   "obligations": [
+    {
+     "contractDate": "21.11.2013",
+     "contractNumber": "1221/5221/0890/033/13/И01",
+     "id": "obligation_p_0",
+     "obligationType": "Договор ипотеки"
+    },
+    {
+     "contractDate": "21.11.2013",
+     "contractNumber": "1221/5221/0890/034/13/М01",
+     "id": "obligation_p_1",
+     "obligationType": "Договор ипотеки"
+    }
+   ],
+   "penalties": "0,00",
+   "principalDebt": "14 986 720,68",
+   "principalDebt13": "14 986 720,68",
+   "procedureType": "deceased",
+   "procedureTypeRaw": "умерший",
+   "requirementsSum": "15 353 052,99",
+   "sourceDocumentType": "initiation_physical",
+   "sroName": "Ассоциация арбитражных управляющих \"СИБИРСКИЙ ЦЕНТР ЭКСПЕРТОВ АНТИКРИЗИСНОГО УПРАВЛЕНИЯ\"",
+   "stateDuty": "6 000,00",
+   "totalDebt": "15 353 052,99"
+  },
+  "heirs": [
+   {
+    "address": "346744, Ростовская обл., Азовский р-н, с. Кулешовка, Автомагистраль «Дон», 9 км. а/д «Ростов-на-Дону — Азов»",
+    "name": "Ким Эмма Николаевна"
+   }
+  ],
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 830
+  },
+  "obligations": [
+   {
+    "contractDate": "21.11.2013",
+    "contractNumber": "1221/5221/0890/033/13/И01",
+    "id": "obligation_p_0",
+    "obligationType": "Договор ипотеки"
+   },
+   {
+    "contractDate": "21.11.2013",
+    "contractNumber": "1221/5221/0890/034/13/М01",
+    "id": "obligation_p_1",
+    "obligationType": "Договор ипотеки"
+   }
+  ],
+  "rawTextLen": 6149,
+  "rawTextSha": "0117dbb11993e49d0fd98ac5edf2f5514ac5b499ff8146c4686ac1884b04bf18",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": []
+  },
+  "thirdParties": []
  },
  "НОвая конвертация/ФНС/Зайцев В.В._заявление.docx": {
   "collaterals": [
@@ -10022,7 +10278,7 @@
     "snils": ""
    }
   ],
-  "documentType": "rtk_application",
+  "documentType": "initiation_physical",
   "entityType": "ip",
   "fields": {
    "applicantAddress": "346630, РОСТОВСКАЯ ОБЛ, Семикаракорский Р-Н, СЕМИКАРАКОРСК Г, ЛЕВЧЕНКО ПЛ,46",
@@ -11050,10 +11306,11 @@
    "mortgageCollateralDescription1221": "На№ у\nАрбитражный суд Ростовской области 344002, г. Ростов-на-Дону, ул. Станиславского, 10/11-13\nЗаявитель: ФНС России 127381, г. Москва, ул. Неглинная, 23\nАдрес для корреспонденции: ФНС России, адрес для корреспонденции: 344019, г. Ростов-на-Дону, ул. Мясникова, 52/32\nДолжник: ЗАЙЦЕВ ВИТАЛИЙ ВЛАДИМИРОВИЧ ИНН 613205503003 ОГРНИП 318619600149696 346630, РОСТОВСКАЯ ОБЛ, Семикаракорский Р-Н, СЕМИКАРАКОРСК Г, ЛЕВЧЕНКО ПЛ,46\nдоходов, полученных от осуществления деятельности физическими лицами, зарегистрированными в качестве индивидуальных предпринимателей, нотариусов, занимающихся частной практикой, адвокатов, учредивших адвокатские кабинеты, и других лиц, занимающихся частной практикой в соответствии со статьей — 227 Налогового кодекса Российской Федерации (в части суммы налога, не превышающей 650 тысяч рублей за налоговые периоды до 1 января 2025 года, а также в части суммы налога, не превышающей 312 тысяч рублей за налоговые периоды после 1 января Налог на доходы физических лиц с\n650 000,00\n0,00\n13 137,88\n0,00\n663 137,88\nНалог на доходы физических лиц в части суммы налога, превышающей 650 000 рублей, относящейся к части налоговой базы, превышающей 5 000 000 рублей (за исключением налога на доходы физических лиц с сумм прибыли контролируемой иностранной компании, в том числе фиксированной прибыли контролируемой иностранной компании, а также налога на доходы физических лиц в отношении доходов от долевого участия в организации, полученных физическим лицом - налоговым резидентом Российской Федерации в виде дивидендов) за налоговые периоды до 1 января 2025\n2 142 007,00\n0,00\n40 132,25\n2 182 139,25\nфизически Страховые взносы, предусмотренные законодательством Российской Федерации о налогах и сборах, уплачиваемые отдельными категориями плательщиков страховых взносов в совокупном фиксированном размере\n149 000,00\n0,00\n149 000,00\nСтраховые взносы на обязательное пенсионное страхование, уплачиваемые отдельными категориями плательщиков страховых взносов в соответствии с законодательством Российской Федерации о налогах и сборах с дохода, превышающего 300 000 рублей за расчетный период\n136 614,29\n0,00\n0,00\n136 614,29\nСтраховые взносы на обязательное пенсионное страхование за расчетные периоды, истекшие до 1 января 2023 года (в фиксированном размере,\n53 509,50\n0,00\n0,00\n0,00\n53 509,50\nпенсии, за расчетные периоды с 1 января 2017 года по 31 декабря 2022 года)\nНалог на добавленную стоимость на товары (работы, услуги), реализуемые на территории Российской Федерации\n2033 683,00\n2043 576,80\nТранспортный налог с физических лиц\n12 096,00\n12 096,00\nГосударственная пошлина по делам, рассматриваемым в арбитражных судах (государственная пошлина, уплачиваемая на основании судебных актов по результатам рассмотрения дел по существ\n0,00\n707,00\nШтрафы за налоговые правонарущения, установленные Главой 16 Налогового кодекса Российской Федерации (штрафы за непредставление налоговой декларации (расчета финансового результата инвестиционного товарищества, расчета по страховым\n0,00\n0,00\n37 391,50\n0,00\n37 391,50\nАдминистративные штрафы, установленные Главой 14 Кодекса Российской Федерации об административных правонарушениях, за административные правонарушения в области предпринимательской деятельности и деятельности саморегулируемых организаций, налагаемые судьями федеральных судов, должностными лицами федеральных государственных органов, учреждений, Центрального банка Российской Федерации (иные штрафы, за исключением штрафов за административные правонарушения в области производства и оборота этилового спирта, алкогольной и спиртосодержащей продукции)\n0,00\n0,00\n5000,00\n0,00\n5000,00\nПеня\n0,00\n2 121 308,66\n0,00\n0,00\n2 121 308,66\nИтого\n5 176 909,79\n2 121 308,66\n105 555,43\n707,00\n7 404 480,88\n№ требования\nДата требования\nсумма\n14.11.2023\n369 393,83\nWn\n№ решения\nДата решения\nсумма\n1.\n2807\n08.12.2023\n763 038,30\n№ п/п\nНомер документа\nДата\nСумма, руб.\n1.\n645\n11.12.2023\n11 056,00\n№ n/n\nНомер документа\nДата\nСумма, руб.\n1.\n2а-1-130/2024\n25.01.2024\n11 056,00\n№ постановления\nДата постановления\nсумма\n5217\n14.08.2024\n3 841 881,39\n13.03.2025\n2355 055,89\n11.08.2025\n680 677,02\nпт\n№ постановления\nДата постановления\nсумма\n50511/24/61074-ИП\n30.05.2024\n11 056,00\n255349/24/98061-ИП\n15.08.2024\n3 841 881,39\n99260/25/98061-ИП\n19.03.2025\n2355 055,89\n286424/25/98061-ИП\n13.08.2025\n680 677,02\nКО: Наименование\nСчет: Номер\nСчет: Категория\nПубличное акционерное общество «Сбербанк России», филиал Ростовское отделение № 5221\n408028 10852090022104\nРасчетный счет\nПубличное акционерное общество «Сбербанк России», филиал Ростовское отделение № 5221\n40802810052090014488\nРасчетный счет\nнаименована операции\nСумма руб.\nИнкассация\n-20 000,00\nБезналичная операция.Списание с карты на карту по оп. &It;mep- да с карты на KapTy&gt; через Моб.банк(с ком)\n-61 000.00 ;\n5 езналичная операция.Частичная выдача\n-890,55\nИтого\n-81 890,55",
    "ogrnip": "318619600149696",
    "requirementsSum": "298 892,00",
-   "sourceDocumentType": "rtk_application",
+   "sourceDocumentType": "initiation_physical",
    "sroName": "Союз арбитражных управляющих \"Саморегулируемая организация \"ДЕЛО\"",
    "totalDebt": "7 267 312,82"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 4,
@@ -11066,8 +11323,9 @@
    "collateralOption": "no_collateral",
    "entityType": "ip",
    "recommendedActIds": [
-    "final_rtk_inclusion",
-    "acceptance_definition"
+    "final_realization",
+    "acceptance_definition",
+    "final_restructuring"
    ]
   },
   "thirdParties": []
@@ -11115,6 +11373,7 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "4 590,95"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
@@ -11176,6 +11435,7 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "452,79"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
@@ -11241,6 +11501,7 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "255 825,84"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
@@ -11303,6 +11564,7 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "24 314,99"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
@@ -11368,6 +11630,7 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "187 348,68"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
@@ -11435,6 +11698,7 @@
    "sroName": "Ассоциация \"Московская саморегулируемая организация профессиональных арбитражных управляющих\"",
    "totalDebt": "1 712 229,07"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
@@ -11498,6 +11762,7 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "855,35"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
@@ -11560,6 +11825,7 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "338,71"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
@@ -11628,6 +11894,7 @@
    "sroName": "Союз арбитражных управляющих \"Саморегулируемая организация \"ДЕЛО\"",
    "totalDebt": "71 145 066,58"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
@@ -11694,6 +11961,7 @@
    "sourceDocumentType": "initiation_physical",
    "totalDebt": "5 631 934,26"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
@@ -11761,6 +12029,7 @@
    "sroName": "Ассоциация Евросибирская саморегулируемая организация арбитражных управляющих",
    "totalDebt": "54 558,94"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 4,
@@ -11774,6 +12043,335 @@
    "entityType": "individual",
    "recommendedActIds": [
     "final_rtk_inclusion",
+    "acceptance_definition"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/коллекторы пришли включаться.docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "347022, Ростовская обл, Белокалитвинский р-н, рп Шолоховский, ул М.Горького, д 46, кв 1",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "",
+    "name": "Медведев Максим Юрьевич",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "347022, Ростовская обл, Белокалитвинский р-н, рп Шолоховский, ул М.Горького, д 46, кв 1",
+   "applicantName": "Медведев Максим Юрьевич",
+   "applicantNameAccusative": "Медведева Максима Юрьевича",
+   "applicantNameDative": "Медведеву Максиму Юрьевичу",
+   "applicantNameGenitive": "Медведева Максима Юрьевича",
+   "applicantNameInstrumental": "Медведевым Максимом Юрьевичем",
+   "applicationDate": "30.08.1985",
+   "caseNumber": "А53-2848/2026",
+   "creditorName": "Общество с ограниченной ответственностью \"Профессиональная",
+   "debtAmount": "47 999,00",
+   "debtorName": "Медведев Максим Юрьевич",
+   "entityType": "individual",
+   "loanDebt": "47999",
+   "loanStateDuty17": "2 000,00",
+   "priorAmount": "47 999,98",
+   "priorCaseNumber": "2-3-2444/2025",
+   "priorDecisionDate": "19.12.2025",
+   "priorStateDuty": "2 000,00",
+   "requirementsSum": "47 999,00",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "47 999,00"
+  },
+  "heirs": [],
+  "metadata": {
+   "language": "ru",
+   "pageCount": 1,
+   "wordCount": 552
+  },
+  "obligations": [],
+  "rawTextLen": 4506,
+  "rawTextSha": "16e57e49671c0b790bcd83ca687319d3e9edea6ac7b66d46f6be857830cea884",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/отсутствующий заявление.docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "248030, Калужская обл., г. Калуга, ул. Труда, д. 29А",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "4028073775",
+    "name": "ООО «СМТ 40»",
+    "ogrn": "1234000001256",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "initiation_legal",
+  "entityType": "legal",
+  "fields": {
+   "applicantAddress": "248030, Калужская обл., г. Калуга, ул. Труда, д. 29А",
+   "applicantName": "ООО «СМТ 40»",
+   "applicantNameAccusative": "ООО «СМТ 40»",
+   "applicantNameDative": "ООО «СМТ 40»",
+   "applicantNameGenitive": "ООО «СМТ 40»",
+   "applicantNameInstrumental": "ООО «СМТ 40»",
+   "applicationDate": "29.05.2004",
+   "courtName": "Арбитражный суд Калужской области",
+   "creditorAddress": "248021, Калуга г, Московская ул, 282",
+   "creditorName": "ФНС России в лице УФНС России по Калужской области",
+   "debtAmount": "6 226 721,88",
+   "debtSnapshotDate88": "31.03.2025",
+   "debtorAddress": "248030, Калужская обл., г. Калуга, ул. Труда, д. 29А",
+   "debtorName": "СМТ 40",
+   "entityType": "legal",
+   "fnsQ2LoanDebt": "936 691,19",
+   "fnsQ2Total": "936 691,19",
+   "fnsQ3Forfeit": "922 372,41",
+   "fnsQ3LoanDebt": "0,00",
+   "fnsQ3Penalties": "768 513,28",
+   "fnsQ3Total": "5 290 030,69",
+   "fnsTotalComputed": "1",
+   "inn": "4028073775",
+   "legalShortName": "СМТ 40",
+   "managerName": "Белов Иван Алексеевич",
+   "ogrn": "1234000001256",
+   "requirementsSum": "10 015 333,99",
+   "sourceDocumentType": "initiation_legal",
+   "sroName": "Ассоциация саморегулируемая организация арбитражных управляющих \"Эгида\"",
+   "totalDebt": "6 226 721,88"
+  },
+  "heirs": [],
+  "metadata": {
+   "language": "ru",
+   "pageCount": 4,
+   "wordCount": 1537
+  },
+  "obligations": [],
+  "rawTextLen": 11777,
+  "rawTextSha": "97bb916f9c504218f3e75afddb100821e790178587df6a984974d6aa47d4ab95",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "legal",
+   "recommendedActIds": [
+    "final_realization",
+    "acceptance_definition",
+    "final_restructuring",
+    "final_competition"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/пришли коллекторы включаться.docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "344039, Ростовская обл, г Ростов-на-Дону, ул Средняя, д 23",
+    "birthDate": "14.06.1990",
+    "birthPlace": "",
+    "inn": "616511409929",
+    "name": "Мирский Алексей Степанович",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "136-024-294 28"
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "344039, Ростовская обл, г Ростов-на-Дону, ул Средняя, д 23",
+   "applicantName": "Мирский Алексей Степанович",
+   "applicantNameAccusative": "Мирского Алексея Степановича",
+   "applicantNameDative": "Мирскому Алексею Степановичу",
+   "applicantNameGenitive": "Мирского Алексея Степановича",
+   "applicantNameInstrumental": "Мирским Алексеем Степановичем",
+   "applicationDate": "14.06.1990",
+   "birthDate": "14.06.1990",
+   "caseNumber": "А53-8843/2026",
+   "companyInn": "616511409929",
+   "creditorInn": "6670056296",
+   "creditorName": "ООО «ПКО Воксис»",
+   "creditorOgrn": "1046603500426",
+   "debtAmount": "36 658,28",
+   "debtorName": "Мирский Алексей Степанович",
+   "entityType": "individual",
+   "forfeit": "0,00",
+   "forfeit15": "0,00",
+   "inn": "616511409929",
+   "interest": "17 768,28",
+   "interest14": "17 768,28",
+   "loanDebt": "36658",
+   "loanStateDuty17": "2 000,00",
+   "managerAddress": "404101, Волгоградская область, г. Волжский, а/я 620",
+   "managerName": "Шиленко Юлия Борисовна",
+   "penalties": "0,00",
+   "principalDebt": "16 890,00",
+   "principalDebt13": "16 890,00",
+   "priorAmount": "36 658,28",
+   "priorCaseNumber": "2-4-436/2025",
+   "priorCourtName": "Судебный участок № 4 Октябрьского судебного района г. Ростова-на-Дону",
+   "priorDecisionDate": "18.03.2025",
+   "priorStateDuty": "2 000,00",
+   "requirementsSum": "36 658,00",
+   "snils": "136-024-294 28",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "36 658,28"
+  },
+  "heirs": [],
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 649
+  },
+  "obligations": [],
+  "rawTextLen": 5004,
+  "rawTextSha": "c96ab0519b5a2ffb9379e73071b2bf64e4d71957f09c4f88fcd8b3995858d192",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/умерший сос.docx": {
+  "collaterals": [
+   {
+    "address": "Ростовская область, г Каменск-Шахтинский, ул. Ленина, 65 2) Объект недвижимости-Жилой дом, общей",
+    "brandModel": "",
+    "cadastralNumber": "",
+    "collateralType": "real_estate",
+    "collateralValue": "",
+    "description": "Жилой дом, общей площадью 114,8 кв. м, расположенный \t\tпо адресу: Ростовская область, г Каменск-Шахтинский, ул. Ленина, 65 2) Объект недвижимости-Жилой дом, общей площадью 207,1 кв. м, расположенный \t\tпо адресу: Ростовская область, г Каменск-Шахтинский, ул. Ленина, 65",
+    "id": "collateral-0",
+    "objectName": "Жилой дом, площадь 114,8 кв.м",
+    "otherDescription": "",
+    "vin": ""
+   },
+   {
+    "address": "Ростовская область, г Каменск-Шахтинский, ул. Ленина, 65",
+    "brandModel": "",
+    "cadastralNumber": "",
+    "collateralType": "real_estate",
+    "collateralValue": "",
+    "description": "Жилой дом, общей площадью 207,1 кв. м, расположенный \t\tпо адресу: Ростовская область, г Каменск-Шахтинский, ул. Ленина, 65",
+    "id": "collateral-1",
+    "objectName": "Жилой дом, площадь 207,1 кв.м",
+    "otherDescription": "",
+    "vin": ""
+   }
+  ],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "347810, Ростовская область г. Каменск-Шахтинский, ул. Ленина, д.65",
+    "birthDate": "30.01.1962",
+    "birthPlace": "",
+    "inn": "",
+    "name": "Манукян Сос Жораевич",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "initiation_physical",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "347810, Ростовская область г. Каменск-Шахтинский, ул. Ленина, д.65",
+   "applicantName": "Манукян Сос Жораевич",
+   "applicantNameAccusative": "Манукяна Сос Жораевич",
+   "applicantNameDative": "Манукяну Сос Жораевич",
+   "applicantNameGenitive": "Манукян Соса Жораевича",
+   "applicantNameInstrumental": "Манукяном Сос Жораевич",
+   "applicationDate": "30.01.1962",
+   "birthDate": "30.01.1962",
+   "caseNumber": "2-1142/2010",
+   "collaterals": [
+    {
+     "address": "",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "other",
+     "collateralValue": "",
+     "description": "2 867 955,21",
+     "id": "collateral-0",
+     "objectName": "2 867 955",
+     "otherDescription": "21",
+     "vin": ""
+    }
+   ],
+   "contractDate": "21.03.2008",
+   "contractNumber": "716994",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "344068, г. Ростов-на-Дону, ул. Евдокимова, д. 37",
+   "creditorInn": "7707083893",
+   "creditorName": "Публичное акционерное общество «Сбербанк России» (ПАО Сбербанк)",
+   "creditorOgrn": "1027700132195",
+   "deathDate": "24.02.2019",
+   "debtAmount": "22,04",
+   "debtSnapshotDate88": "22.04.2021",
+   "debtorName": "Манукян Сос Жораевич",
+   "entityType": "individual",
+   "interest": "7 559,11",
+   "loanDebt": "2 438 262,70",
+   "mortgageCollateralDescription1221": "2 867 955,21",
+   "obligationType": "кредитный договор",
+   "obligations": [
+    {
+     "contractDate": "21.03.2008",
+     "contractNumber": "716994",
+     "id": "obligation_p_0",
+     "obligationType": "Кредитный договор"
+    }
+   ],
+   "principalDebt": "0,00",
+   "procedureType": "deceased",
+   "procedureTypeRaw": "умерший",
+   "requirementsSum": "22,04",
+   "sourceDocumentType": "initiation_physical",
+   "sroName": "Ассоциация \"Дальневосточная межрегиональная саморегулируемая организация профессиональных арбитражных управляющих\"",
+   "stateDuty": "22 568,82",
+   "totalDebt": "7 559,11"
+  },
+  "heirs": [],
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 1098
+  },
+  "obligations": [
+   {
+    "contractDate": "21.03.2008",
+    "contractNumber": "716994",
+    "id": "obligation_p_0",
+    "obligationType": "Кредитный договор"
+   }
+  ],
+  "rawTextLen": 8775,
+  "rawTextSha": "910b5325ed87413a718be9a493f610a165dd5140bbfe694fa2e32d30f74d57b6",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_realization",
     "acceptance_definition"
    ]
   },
@@ -11821,6 +12419,7 @@
    "sroName": "Ассоциация Евросибирская саморегулируемая организация арбитражных управляющих",
    "totalDebt": "35 000,00"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 4,
@@ -11880,6 +12479,7 @@
    "sroName": "Саморегулируемая межрегиональная общественная организация «Ассоциация антикризисных управляющих»",
    "totalDebt": "116 000,00"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
@@ -11948,6 +12548,7 @@
    "sroName": "Саморегулируемая межрегиональная общественная организация «Ассоциация антикризисных управляющих»",
    "totalDebt": "25 000,00"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
@@ -12014,6 +12615,7 @@
    "sroName": "саморегулируемой организации арбитражных управляющих Союз АУ «Созидание»",
    "totalDebt": "402 592,13"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
@@ -12079,6 +12681,7 @@
    "sroName": "Ассоциация \"Национальная организация арбитражных управляющих\"",
    "totalDebt": ""
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 6,
@@ -12145,6 +12748,7 @@
    "sroName": "Саморегулируемая организация \"Ассоциация арбитражных управляющих \"Паритет\"",
    "totalDebt": "158 434,00"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 8,
@@ -12207,6 +12811,7 @@
    "sroName": "Некоммерческое партнерство \"Саморегулируемая организация \"Гильдия арбитражных управляющих\"",
    "totalDebt": "25 000,00"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
@@ -12268,6 +12873,7 @@
    "sroName": "Ассоциация \"Региональная саморегулируемая организация профессиональных арбитражных управляющих\"",
    "totalDebt": "3 000,00"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 5,
@@ -12339,6 +12945,7 @@
    "sroName": "Союз \"Межрегиональный центр арбитражных управляющих\"",
    "totalDebt": "19 405,00"
   },
+  "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,

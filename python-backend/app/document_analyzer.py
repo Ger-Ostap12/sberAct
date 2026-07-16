@@ -11,6 +11,7 @@ from fio_detector import (
     extract_third_party_details,
     extract_debtors,
     extract_third_parties,
+    extract_heirs,
 )
 from org_normalizer import (
     base_org_name,
@@ -25,6 +26,7 @@ from amounts_mixin import AmountsMixin
 from ip_mixin import IpExtractionMixin
 from obligations_mixin import ObligationsMixin
 from inflection_mixin import InflectionMixin
+from prior_collection_mixin import PriorCollectionMixin
 from patterns import build_patterns
 from creditor_registry import _match_creditor_registry
 import nlp_natasha as _nlp
@@ -47,7 +49,7 @@ except ImportError:  # pragma: no cover - pymorphy3 может отсутств�
 # Реестр известных банков/кредиторов: при совпадении названия подставляем ИНН, ОГРН, адрес из кода
 
 
-class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMixin, ObligationsMixin, InflectionMixin):
+class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMixin, ObligationsMixin, InflectionMixin, PriorCollectionMixin):
     def __init__(self):
         """
         Инициализация анализатора документов
@@ -327,6 +329,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if not is_self_bk:
                 self._apply_fns_queue_finances(extracted_fields, text)
 
+            # Банкротная госпошлина двумя слагаемыми под одной меткой («… 1 490 913
+            # руб.+ 100 000 руб.») — суммируем в банкротную, убираем ложную ссудную.
+            if not is_self_bk:
+                self._sum_bankruptcy_duty(extracted_fields, text)
+
             # Имя кредитора, обрезанное на переносе строки внутри названия
             # («…"МТС-» + «Банк"» ниже) — дотягиваем по тексту.
             self._fix_truncated_creditor_name(extracted_fields, text)
@@ -351,6 +358,17 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # Адрес не может содержать реквизиты (ИНН/ОГРН/ОГРНИП/СНИЛС/КПП) —
             # обрезаем хвост, а полностью мусорные адреса (без букв) убираем.
             self._sanitize_address_fields(extracted_fields)
+
+            # Адреса в записях должников/третьих лиц строятся отдельным путём (не через
+            # fields) — чистим их той же обрезкой склейки (хвост «В лице ликвидатора: …
+            # Сообщение №… о намерении обратиться в суд» при однострочной PDF→docx склейке).
+            for _entry_list in (debtors_result, third_parties_result):
+                for _entry in (_entry_list or []):
+                    _ea = _entry.get("address")
+                    if isinstance(_ea, str) and _ea.strip():
+                        _clean = re.split(r"\b(?:ИНН|ОГРНИП|ОГРН|СНИЛС|КПП)\b", _ea,
+                                          flags=re.IGNORECASE)[0].strip(" ,;-")
+                        _entry["address"] = self._truncate_glued_address(_clean)
 
             # Банкротная госпошлина не должна совпадать с итогом/осн.долгом —
             # это мусор (в документе отдельной банкротной госпошлины нет). Чистим.
@@ -395,6 +413,45 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # должника «Самобанкрот» и скрывает блоки кредитора/финансов.
             application_kind = "self_bankruptcy" if is_self_bk else None
 
+            # ЛИКВИДАЦИЯ должника-ЮЛ: детект по тексту + извлечение ликвидатора.
+            # Флаг top-level (по образцу applicationKind, НЕ в fields) — фронт
+            # автопроставляет статус «Ликвидируемый». Только ЮЛ и не самобанкрот.
+            # liquidatorName — реальное извлечённое поле, кладём в fields (как managerName).
+            # КАНДИДАТ В УПРАВЛЯЮЩИЕ из инициирующего заявления («…утвердить <ФИО>
+            # (ИНН …)»). Заполняем, только если управляющий не распознан: существующие
+            # парсеры кладут в поле либо чистое ФИО, либо форму «ФИО (ИНН …)» —
+            # проверяем часть до скобки, чтобы такую форму не затереть.
+            _mgr_cur = (extracted_fields.get("managerName") or "").split("(")[0].strip()
+            if not is_person_name(_mgr_cur):
+                _mgr_cand = self._extract_manager_candidate(text)
+                if _mgr_cand:
+                    extracted_fields["managerName"] = _mgr_cand
+
+            # ОТСУТСТВУЮЩИЙ должник-ЮЛ (упрощённая процедура § 2 гл. XI) — тем же
+            # способом. Приоритет над ликвидацией: если заявление просит конкурсное
+            # производство ОТСУТСТВУЮЩЕГО должника, статус именно такой, даже когда в
+            # тексте попутно упомянута ликвидация (у ликвидируемого должника свой акт).
+            # УМЕРШИЙ должник-физлицо (ст. 223.1) — тем же способом. Ветки ЮЛ
+            # (отсутствующий/ликвидируемый) и ФЛ (умерший) взаимоисключающи по типу
+            # лица, поэтому приоритет между ними не нужен.
+            debtor_status_hint = None
+            heirs_result = []
+            if not is_self_bk and extracted_fields.get("entityType") == "legal":
+                if self._detect_absent_debtor(text):
+                    debtor_status_hint = "absent"
+                elif self._detect_liquidation(text):
+                    debtor_status_hint = "liquidation"
+                    _liq = self._extract_liquidator(text)
+                    if _liq:
+                        extracted_fields["liquidatorName"] = _liq
+            elif not is_self_bk and extracted_fields.get("entityType") == "individual":
+                if self._detect_deceased(text):
+                    debtor_status_hint = "deceased"
+                    # Сведения о смерти извлекаем ТОЛЬКО внутри этой ветки: якорь
+                    # «нотариус»/«умер» вне контекста смерти должника — чужие факты.
+                    extracted_fields.update(self._extract_death_details(text))
+                    heirs_result = extract_heirs(text)
+
             # Авторитетный пересчёт рекомендаций — ПОСЛЕ финализации entityType.
             # Ранние вызовы (до разбора должников/NLP) могли считать по промежуточному
             # типу лица: у ВКЛ-в-РТК ВТБ тип на входе был 'legal' (утёкшее «ПАО» банка +
@@ -412,6 +469,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 "collaterals": collaterals_final,
                 "financeBreakdown": finance_breakdown,
                 "applicationKind": application_kind,
+                "debtorStatusHint": debtor_status_hint,
                 "rawText": text,
                 "metadata": {
                     "pageCount": page_count if page_count is not None else 1,
@@ -420,7 +478,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 },
                 "recommendedActs": recommended_acts,
                 "debtors": debtors_result,
-                "thirdParties": third_parties_result
+                "thirdParties": third_parties_result,
+                # Наследники умершего должника — массив, как thirdParties: их может
+                # быть несколько, и у каждого свои реквизиты.
+                "heirs": heirs_result
             }
 
             entity_type = extracted_fields.get("entityType")
@@ -1436,90 +1497,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             return "ip"
         return None
 
-    # Канонический формат номера судебного дела. Структура:
-    #   [опц. буква][цифры региона/типа][опц. буква] - [цифры номера] / ГОД
-    # Покрывает все суды:
-    #   • Арбитражные:  А53-2222/2024  (А=арбитражный, 53=регион, 2222=№, 2024=год)
-    #   • СОЮ (гражд./угол./админ.): 2-1234/2024, 1-123/2024, 5-67/2024
-    #   • КАС / апелляция / кассация (буква ПОСЛЕ цифры): 2а-1234/2024, 33а-456/2024
-    # Обязательны дефис перед номером и «/ГОД» (19xx/20xx) в конце — это отсекает
-    # доверенности (ЮЗБ/415-Д, ЮЗБ-РД/158-Д), договоры и прочие №… без года.
-    _CASE_NUMBER_RE = re.compile(
-        r"^[А-ЯA-Z]?\d{1,4}[А-ЯA-Z]?[-–]\d{1,15}/(?:19|20)\d{2}$"
-    )
-
-    def _is_valid_case_number(self, value: Optional[str]) -> bool:
-        """True, если строка похожа на реальный номер судебного дела (любой суд)."""
-        if not value:
-            return False
-        # Без учёта пробелов, регистра и Ё (буквы дел приводим к верхнему регистру)
-        v = re.sub(r"\s+", "", str(value)).strip().upper().replace("Ё", "Е")
-        return bool(self._CASE_NUMBER_RE.match(v))
-
-    def _extract_prior_court_decision(self, text: str) -> Dict[str, Any]:
-        """Распознаёт РАНЕЕ вынесенное решение ДРУГОГО суда (взыскание до банкротства).
-
-        Пример: «…23.06.2025 Ворошиловским районным судом г.Ростова-на-Дону по делу
-        №2-2523/2025 с должника взыскана сумма задолженности в размере ___» либо
-        «Вступившим в законную силу решением … по делу №… взыскана …». Возвращает
-        priorCourtName / priorCaseNumber / priorAmount / priorDecisionDate (что нашлось).
-        Формулировка может отличаться — опираемся на якорь «по делу №<дело>» рядом со
-        словами вступивш/вынесен/взыскан/решени.
-        """
-        if not text:
-            return {}
-        flat = re.sub(r"[ \t]+", " ", text)
-        for m in re.finditer(r"по\s+делу\s*№\s*([А-ЯЁA-Z0-9/–\-]{3,30})", flat, re.IGNORECASE):
-            case_raw = m.group(1).strip(" .,;")
-            if not self._is_valid_case_number(case_raw):
-                continue
-            win = flat[max(0, m.start() - 220): min(len(flat), m.end() + 220)]
-            win_low = win.lower()
-            # Контекст должен говорить о ранее вынесенном/вступившем решении/взыскании.
-            if not re.search(r"взыскан|вступивш|вынесен\w*\s+решени|решени\w+\s+суд", win_low):
-                continue
-            result: Dict[str, Any] = {"priorCaseNumber": case_raw}
-            # Суд — фраза «[прилагательные] суд[падеж] [город/область]» БЛИЖАЙШАЯ
-            # перед «по делу» (после «суд» может идти локация: «судом г.Ростова-на-Дону»,
-            # «суда Ростовской области»).
-            before = flat[max(0, m.start() - 160): m.start()]
-            court_matches = list(re.finditer(
-                r"((?:[А-ЯЁ][а-яё]+(?:им|ым|ого|ой|ом|ому|ыми)\s+){1,3}"
-                r"суд(?:ом|а|е|у)?"
-                r"(?:\s+(?:г\.?\s*[А-ЯЁ][А-Яа-яё\-]+|[А-ЯЁ][а-яё]+\s+(?:области|края|республики|округа|город\w*)))?)",
-                before, re.IGNORECASE,
-            ))
-            if court_matches:
-                court = re.sub(r"\s+", " ", court_matches[-1].group(1)).strip(" ,.;")
-                if 5 <= len(court) <= 120:
-                    result["priorCourtName"] = court
-            # Сумма — «взыскан… в размере <сумма>» (может отсутствовать: «___»).
-            am = re.search(
-                r"взыскан\w*[^\n]{0,140}?в\s+размере\s*([0-9][0-9   .,]*)",
-                win, re.IGNORECASE,
-            )
-            if am:
-                v = self._fin_amount(am.group(1))
-                if v > 0:
-                    result["priorAmount"] = self._fin_fmt(v)
-            # Госпошлина по ПРОШЛОМУ делу (если упомянута рядом с прежним решением).
-            _gmoney = r"([0-9][0-9   .,]*)"
-            gm = re.search(r"(?:госпошлин\w*|государственн\w+\s+пошлин\w*)[^\d]{0,40}?" + _gmoney + r"\s*(?:\[\d+\])?\s*руб", win, re.IGNORECASE)
-            if not gm:
-                gm = re.search(_gmoney + r"\s*(?:\[\d+\])?\s*руб[^\d]{0,40}?(?:госпошлин\w*|государственн\w+\s+пошлин\w*)", win, re.IGNORECASE)
-            if gm:
-                gv = self._fin_amount(gm.group(1))
-                if gv > 0:
-                    result["priorStateDuty"] = self._fin_fmt(gv)
-            # Дата решения: приоритет дате ПЕРЕД судом/«по делу» (это дата решения,
-            # а не дата кредитного договора, идущая дальше по тексту).
-            dm = re.search(r"(\d{1,2}[.,]\d{1,2}[.,]\d{4})", before)
-            if not dm:
-                dm = re.search(r"(\d{1,2}[.,]\d{1,2}[.,]\d{4})", win)
-            if dm:
-                result["priorDecisionDate"] = dm.group(1).replace(",", ".")
-            return result
-        return {}
 
 
     def _apply_stacked_party_layout(self, fields: Dict[str, Any], text: str) -> None:
@@ -2255,6 +2232,27 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             fields["creditorName"] = creditor
         cred_now = fields.get("creditorName") or ""
 
+        # НОВОЕ (справочник ФНС): выверенный юр-адрес КРЕДИТОРА в блок «Данные о
+        # кредиторе» → поле creditorAddress. Заполняем ТОЛЬКО его и ТОЛЬКО когда
+        # кредитор — налоговый орган; адресов заявителя/должника не касаемся (иначе
+        # юр-адрес инспекции подмешивается в адрес должника). Справочник fns_registry
+        # находит адрес по имени органа — он инвариантен к тому, как оформлена шапка
+        # конкретного заявления (и работает, даже если адреса в шапке нет).
+        # Подсказка для дизамбигуации ТОРМ (один № инспекции обслуживает несколько
+        # городов): шапка ДО блока «Должник», чтобы город/индекс инспекции не спутать
+        # с городом должника — реестр выберет кандидата по городу/индексу из шапки.
+        # Общий для должника-физлица и должника-ЮЛ — поэтому ДО развилки по типу лица.
+        if "фнс" in (cred_now or "").lower():
+            _dpos = re.search(r"Должник", text, re.IGNORECASE)
+            _hint = text[: _dpos.start()] if _dpos else text[:1800]
+            reg_addr = None
+            try:
+                reg_addr = _fns_reg.resolve_address(cred_now, _hint)
+            except Exception as exc:  # справочник недоступен — тихо пропускаем
+                logger.warning(f"Реестр ФНС не ответил: {exc}")
+            if reg_addr:
+                fields["creditorAddress"] = reg_addr
+
         # НАДЁЖНЫЙ ДОЛЖНИК ФНС по якорю. Позиционный парсер на этих заявлениях часто
         # берёт арбитражного управляющего («Финансовым управляющим утверждён <ФИО>»)
         # или мусор из «…реестр требований кредиторов» — в результате должник = ФИО
@@ -2295,6 +2293,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 _madr = re.sub(r"\s+", " ", _ma.group(1)).strip().rstrip(" ,;")
                 if re.search(r"[А-Яа-яЁё]{3}", _madr):
                     fields["managerAddress"] = _madr
+
+        # РАЗВИЛКА ПО ТИПУ ДОЛЖНИКА. Всё, что ниже, написано под должника-ФИЗЛИЦО
+        # (якоря «<ФИО> обратился», «Должник: <ФИО> ИНН», гейты is_person_name). У ФНС
+        # против ЮЛ должник называется иначе — «…(далее – должник, ООО «X»)» — и ни
+        # один из этих якорей не срабатывает: должником становился мусор из прозы.
+        if self._apply_fns_legal_debtor(fields, text):
+            return
 
         fns_debtor = None
         _dm = re.search(r"(" + _PN + r")\s+обратил", text)
@@ -2396,7 +2401,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 return False
             # Стоп-слова заявления: если есть — это проза, а не адрес.
             if re.search(r"руководству|федеральн\w+\s+закон|уведомл|задолженност|приложен|"
-                         r"направлен|уплач|несостоятельн|банкротств|\bстать\w+|\bст\.?\s*\d",
+                         r"направлен|уплач|несостоятельн|банкротств|\bстать\w+|\bст\.?\s*\d|"
+                         r"в\s+лице|ликвидатор|сообщени|о\s+намерении|обратил|обратиться\s+в\s+суд",
                          s, re.IGNORECASE):
                 return False
             # 1) Почтовый индекс — однозначный признак адреса (покрывает большинство).
@@ -2446,26 +2452,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if debt_addr and not (fields.get("debtorAddress") or "").strip():
             fields["debtorAddress"] = debt_addr
 
-        # НОВОЕ (справочник ФНС): выверенный юр-адрес КРЕДИТОРА в блок «Данные о
-        # кредиторе» → поле creditorAddress. Заполняем ТОЛЬКО его и ТОЛЬКО когда
-        # кредитор — налоговый орган; адресов заявителя/должника не касаемся (иначе
-        # юр-адрес инспекции подмешивается в адрес должника). Справочник fns_registry
-        # находит адрес по имени органа — он инвариантен к тому, как оформлена шапка
-        # конкретного заявления (и работает, даже если адреса в шапке нет).
-        # Подсказка для дизамбигуации ТОРМ (один № инспекции обслуживает несколько
-        # городов): шапка ДО блока «Должник», чтобы город/индекс инспекции не спутать
-        # с городом должника — реестр выберет кандидата по городу/индексу из шапки.
-        if "фнс" in (cred_now or "").lower():
-            _dpos = re.search(r"Должник", text, re.IGNORECASE)
-            _hint = text[: _dpos.start()] if _dpos else text[:1800]
-            reg_addr = None
-            try:
-                reg_addr = _fns_reg.resolve_address(cred_now, _hint)
-            except Exception as exc:  # справочник недоступен — тихо пропускаем
-                logger.warning(f"Реестр ФНС не ответил: {exc}")
-            if reg_addr:
-                fields["creditorAddress"] = reg_addr
-
         # applicantAddress — это АДРЕС ДОЛЖНИКА (генератор берёт его как адрес должника;
         # юр-адрес ФНС живёт в creditorAddress). Ставим сюда адрес должника; если он не
         # извлёкся — вычищаем из applicantAddress чужое (адрес ФНС/суда/проза или совпадение
@@ -2484,6 +2470,117 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if aa and (not _is_addr(aa) or (creda and aa == creda)
                        or re.search(r"Неглинн|Станиславског|www\.nalog|Адрес\s+для", aa, re.IGNORECASE)):
                 fields.pop("applicantAddress", None)
+
+    # Организация с правовой формой и названием в кавычках («ООО «СМТ 40»», «Общество
+    # с ограниченной ответственностью «СМТ 40»»). Полные формы — ДО аббревиатур,
+    # иначе «Общество…» отдаст короткое «АО» из середины слова.
+    _FNS_ORG = (
+        r"(?:Общество\s+с\s+ограниченной\s+ответственностью|Публичное\s+акционерное\s+общество|"
+        r"Закрытое\s+акционерное\s+общество|Открытое\s+акционерное\s+общество|"
+        r"Непубличное\s+акционерное\s+общество|Акционерное\s+общество|"
+        r"ООО|ПАО|ЗАО|ОАО|НАО|АО)\s*«[^»]{1,80}»"
+    )
+
+    def _apply_fns_legal_debtor(self, fields: Dict[str, Any], text: str) -> bool:
+        """Должник-ЮЛ в заявлении уполномоченного органа (ФНС). Возвращает True, если
+        ветка отработала (тогда физлицо-логика вызывающего пропускается).
+
+        В ФНС-заявлении против ЮЛ нет ни блока «Должник:», ни метки «Адрес:» — должник
+        вводится оборотом «Общество … «X» ИНН … ОГРН … (далее – должник, ООО «X»)
+        зарегистрировано <дата> по адресу: <адрес>.». Шапка как источник НЕНАДЁЖНА:
+        она двухколоночная (бланк инспекции слева, адресат справа), и конвертер рвёт
+        адрес должника между колонками («…г. Калуга, ул.» | «Труда, д. 29А»). Поэтому
+        якоримся на предложение о регистрации — оно одноколоночное и есть всегда.
+        """
+        if not text:
+            return False
+
+        # Имя должника — только обороты, которые НАЗЫВАЮТ должника явно:
+        # (1) «(далее – должник, ООО «X»)»; (2) «призна(ть|нии) ООО «X» несостоятельным»
+        # — одна форма покрывает и заголовок («о признании X несостоятельным»), и
+        # просительную часть («признать X несостоятельным (банкротом)»).
+        # Общий слой «<ОПФ> «X» ИНН …» намеренно НЕ используем: первая организация с
+        # реквизитами в тексте — сплошь и рядом КРЕДИТОР (в самобанкротном заявлении
+        # физлица так подхватывался «ПАО «Сбербанк»»).
+        org = None
+        for rx in (
+            r"\(\s*далее\s*[–—-]\s*должник\w*\s*,\s*(" + self._FNS_ORG + r")\s*\)",
+            r"призна(?:ть|нии)\s+(" + self._FNS_ORG + r")\s+несостоятельн",
+        ):
+            m = re.search(rx, text, re.IGNORECASE)
+            if m:
+                org = re.sub(r"\s+", " ", m.group(1)).strip()
+                break
+        if not org:
+            return False
+
+        # Дальше всё якорим на СОБСТВЕННОЕ имя должника в кавычках: и реквизиты, и
+        # адрес принадлежат должнику, только если стоят вплотную к его имени. Полная
+        # и краткая формы («Общество с ограниченной ответственностью «X»» / «ООО «X»»)
+        # различаются ОПФ, но не именем — по нему и матчим.
+        qm = re.search(r"«([^»]{1,80})»", org)
+        if not qm:
+            return False
+        quoted = re.escape(qm.group(1))
+
+        # Реквизиты ДОЛЖНИКА: «… «X» ИНН 4028073775 КПП 402801001 ОГРН 1234000001256».
+        req = re.search(
+            r"«" + quoted + r"»\s*ИНН\s*(?P<inn>\d{10})(?:\s*КПП\s*\d{9})?\s*ОГРН\s*(?P<ogrn>\d{13})",
+            text, re.IGNORECASE,
+        )
+        debtor_inn = req.group("inn") if req else ""
+        debtor_ogrn = req.group("ogrn") if req else ""
+
+        # Соглашение для ЮЛ (как в _finalize_debtor_type): debtorName — краткое имя без
+        # ОПФ, applicantName — с ОПФ. Генератор берёт должника именно из applicant*
+        # (ФНС остаётся только в creditor*).
+        short = self._strip_ooo_prefix(org) or org
+        fields["debtorName"] = short
+        fields["legalShortName"] = short
+        fields["applicantName"] = org
+        # Падежи организации не склоняем: в ФНС-ветке они до сих пор считались от
+        # ошибочного заявителя («МИНФИНА РОССИИ ФЕДЕРАЛЬНОЙ»). Склонение ОПФ —
+        # отдельная тема; равенство именительному честнее мусора.
+        for case_key in ("applicantNameGenitive", "applicantNameDative",
+                         "applicantNameAccusative", "applicantNameInstrumental"):
+            fields[case_key] = org
+
+        if debtor_inn:
+            fields["inn"] = debtor_inn
+        if debtor_ogrn:
+            fields["ogrn"] = debtor_ogrn
+        # Реквизиты должника, утёкшие в кредитора: общий парсер берёт первые ИНН/ОГРН
+        # в тексте, а они принадлежат должнику. У налогового органа реквизитов в
+        # документе нет (и в fns_registry их нет) — пусто лучше чужого ИНН в акте.
+        for cred_key, debtor_val in (("creditorInn", debtor_inn), ("creditorOgrn", debtor_ogrn)):
+            cur = re.sub(r"\D", "", str(fields.get(cred_key) or ""))
+            if debtor_val and cur == debtor_val:
+                fields.pop(cred_key, None)
+
+        # Адрес — из предложения о регистрации, до конца абзаца. Хвост чистим
+        # общими правилами (§J.3): при одностраничной PDF→docx склейке к адресу
+        # прилипает проза следующего предложения.
+        addr_m = re.search(
+            r"«" + quoted + r"»[^\n]{0,150}?зарегистрирован\w*\s+"
+            r"(?:\d{1,2}[.,]\d{1,2}[.,]\d{4}\s+)?по\s+адресу\s*:\s*([^\n]{10,300})",
+            text, re.IGNORECASE,
+        )
+        if addr_m:
+            addr = re.sub(r"\s+", " ", addr_m.group(1)).strip()
+            addr = re.split(r"\b(?:ИНН|ОГРН|КПП)\b", addr, flags=re.IGNORECASE)[0]
+            addr = self._truncate_glued_address(addr).strip(" .,;")
+            if 10 <= len(addr) <= 200 and re.search(r"\d", addr):
+                fields["debtorAddress"] = addr
+                fields["applicantAddress"] = addr
+
+        # Тип лица — штатным детектором по обновлённым именам («ООО» в debtorName даёт
+        # legal). Раньше он видел мусорного должника и решал individual → в акт шли
+        # рекомендации для физлица.
+        entity = self.detect_entity_type(fields)
+        if entity:
+            fields["entityType"] = entity
+        logger.info(f"ФНС против ЮЛ: должник={org}, тип лица={fields.get('entityType')}")
+        return True
 
     # СРО по формуле членства/принадлежности. Ловим разные якоря:
     # «из числа членов <СРО>», «член(а/ом) <СРО>», «членство: <СРО>»,
@@ -2699,20 +2796,285 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         mb = re.search(r"([А-ЯЁ][А-ЯЁа-яё-]{1,})[\s,]*$", addr[: m.start()])
         return mb.group(1).casefold() if mb else ""
 
+    # Ликвидатор: ФИО из 2-3 titlecase-токенов (Оленченко Олег Игоревич / Иванов Иван).
+    _LIQ_PN = r"[А-ЯЁ][А-ЯЁа-яё]+(?:-[А-ЯЁ][А-ЯЁа-яё]+)?(?:\s+[А-ЯЁ][А-ЯЁа-яё]+){1,2}"
+
+    def _detect_liquidation(self, text: str) -> bool:
+        """True, если в заявлении есть сведения о ликвидации должника-ЮЛ.
+
+        Сильные (однозначные) сигналы: «ликвидатор…», «ликвидационная комиссия»,
+        «ликвидируемого должника». Слабые («решение/стадия/процесс … ликвидации»)
+        засчитываются, только если это не «ликвидация задолженности/последствий/
+        аварии» (иной смысл слова «ликвидация»). `\\s+` терпимо к переносам слов.
+        """
+        strong = (r"ликвидатор", r"ликвидационн\w*\s+комисси", r"ликвидируем\w*\s+должник")
+        for rx in strong:
+            if re.search(rx, text, re.IGNORECASE):
+                return True
+        weak = (r"(?:решени\w+|постановлени\w+)\s+о\s+ликвидаци",
+                r"(?:стади\w+|процесс\w*)\s+ликвидаци")
+        for rx in weak:
+            for m in re.finditer(rx, text, re.IGNORECASE):
+                tail = text[m.end():m.end() + 24]
+                if not re.match(r"\s+(?:задолженност|последстви|авари)", tail, re.IGNORECASE):
+                    return True
+        return False
+
+    # Отсутствующий должник (§ 2 гл. XI Закона о банкротстве, ст. 227–230). Сильные
+    # сигналы — оборот «отсутствующ… должник…» в связке с процедурой/признаками:
+    # в заявлении такая формула встречается ТОЛЬКО в этом правовом смысле.
+    # `\s*` (а не `\s+`) — терпимость к OCR-склейкам, как в детекторе самобанкротства.
+    _ABSENT_STRONG_RES = (
+        # «ввести … процедуру конкурсного производства отсутствующего должника» —
+        # ключевая формула просительной части (правило Андрея).
+        re.compile(r"конкурсн\w*\s*производств\w*\s*отсутствующ\w*\s*должник", re.IGNORECASE),
+        # «§ 2 Банкротство отсутствующего должника», «упрощённая процедура банкротства
+        # отсутствующего должника».
+        re.compile(r"банкротств\w*\s*отсутствующ\w*\s*должник", re.IGNORECASE),
+        # «для ведения процедуры отсутствующего должника».
+        re.compile(r"процедур\w*\s*отсутствующ\w*\s*должник", re.IGNORECASE),
+        # «у должника имеются признаки отсутствующего должника», «отвечает критериям…».
+        re.compile(r"(?:признак\w*|критери\w*)\s*отсутствующ\w*\s*должник", re.IGNORECASE),
+        # «признать должника отсутствующим должником».
+        re.compile(r"призна\w*\s*[\s\S]{0,40}?отсутствующ\w+\s*должник", re.IGNORECASE),
+    )
+    # Ст. 230 — материальная норма об отсутствующем должнике. САМА ПО СЕБЕ ненадёжна:
+    # ст. 230 есть и в НК РФ (налоговые агенты), а заявления ФНС ссылаются на НК
+    # постоянно. Поэтому засчитываем, только если рядом назван закон о банкротстве.
+    _ABSENT_ART230_RE = re.compile(
+        r"(?:стать\w+|ст\.?)\s*230\s*(?:[\s\S]{0,60}?(?:банкротств|несостоятельн|127-ФЗ))",
+        re.IGNORECASE,
+    )
+
+    def _detect_absent_debtor(self, text: str) -> bool:
+        """True, если заявление подано в отношении ОТСУТСТВУЮЩЕГО должника-ЮЛ.
+
+        Признак — упрощённая процедура § 2 гл. XI Закона о банкротстве: имущество
+        должника заведомо не покрывает судебные расходы либо по счетам год нет
+        операций. Проверено на корпусе (75 файлов): формулы срабатывают только на
+        заявлениях этого вида.
+        """
+        if not text:
+            return False
+        if any(rx.search(text) for rx in self._ABSENT_STRONG_RES):
+            return True
+        return bool(self._ABSENT_ART230_RE.search(text))
+
+    # УМЕРШИЙ должник-физлицо (ст. 223.1 Закона о банкротстве — банкротство гражданина
+    # в случае его смерти). Сильные сигналы — обороты, которыми банк излагает ФАКТ смерти
+    # должника либо просит признать банкротом именно умершего.
+    # `\s*` (а не `\s+`) — терпимость к OCR-склейкам, как в детекторе отсутствующего.
+    _DECEASED_STRONG_RES = (
+        # «24.02.2019 Заемщик умер, что подтверждается свидетельством о смерти» —
+        # типовая формула изложения факта смерти (оба референсных заявления).
+        re.compile(r"умер(?:ла)?\s*,?\s*что\s*подтверждается\s*свидетельств\w*\s*о\s*смерти", re.IGNORECASE),
+        # «о признании умершего должника несостоятельным (банкротом)».
+        re.compile(r"призна\w*\s*[\s\S]{0,40}?умерш\w+\s*должник", re.IGNORECASE),
+        # «заявление о признании умершего гражданина банкротом».
+        re.compile(r"заявлени\w*\s*о\s*признании\s*умерш\w+", re.IGNORECASE),
+    )
+    # Ст. 223.1 — материальная норма о банкротстве гражданина в случае его смерти.
+    # Требуем рядом упоминание закона о банкротстве: голый номер статьи встречается и
+    # в других кодексах, а «умерший/наследство» сами по себе — сплошь цитаты нормы
+    # («…осуществляют принявшие наследство наследники гражданина»), а не факт смерти.
+    _DECEASED_ART2231_RE = re.compile(
+        r"(?:стать\w+|ст\.?)\s*223\s*\.?\s*1\s*(?:[\s\S]{0,60}?(?:банкротств|несостоятельн|127-ФЗ))",
+        re.IGNORECASE,
+    )
+
+    def _detect_deceased(self, text: str) -> bool:
+        """True, если заявление подано в отношении УМЕРШЕГО должника-физлица.
+
+        Проверено на корпусе (77 файлов): формулы срабатывают только на заявлениях
+        этого вида, ложных срабатываний нет.
+        """
+        if not text:
+            return False
+        if any(rx.search(text) for rx in self._DECEASED_STRONG_RES):
+            return True
+        return bool(self._DECEASED_ART2231_RE.search(text))
+
+    # Дата смерти. Основная форма — дата ПЕРЕД сказуемым: «24.02.2019 Заемщик умер,
+    # что подтверждается свидетельством о смерти», «13.05.2015 Ким Клим умер».
+    # Между датой и «умер» стоит подлежащее (ФИО/«Заемщик»/«Должник»), поэтому
+    # допускаем до 40 символов без переноса строки.
+    _DEATH_DATE_BEFORE_RE = re.compile(
+        r"(\d{1,2}[.,]\d{1,2}[.,]\d{4})\s*[^\n]{0,40}?\bумер(?:ла)?\b", re.IGNORECASE
+    )
+    # Обратный порядок: «Заемщик умер 24.02.2019», «умерла 07.11.2020 г.».
+    _DEATH_DATE_AFTER_RE = re.compile(
+        r"\bумер(?:ла)?\b\s*(?:\w+\s+){0,3}?(\d{1,2}[.,]\d{1,2}[.,]\d{4})", re.IGNORECASE
+    )
+    # Свидетельство о смерти: римская серия + две русские буквы + шесть цифр
+    # («II-МЮ № 123456»). Разделители (дефис, №, пробелы) — необязательны и
+    # варьируются, у OCR тем более. Якорь на «свидетельств… о смерти» слева
+    # обязателен: сам по себе такой набор — это и свидетельство о рождении, и о браке.
+    _DEATH_CERT_RE = re.compile(
+        r"свидетельств\w*\s*о\s*смерти[\s\S]{0,80}?"
+        r"\b([IVXLC]{1,7})\s*[-–—]?\s*([А-ЯЁ]{2})\s*(?:№|N)?\s*[-–—]?\s*(\d{6})\b",
+        re.IGNORECASE,
+    )
+    def _extract_death_details(self, text: str) -> Dict[str, str]:
+        """Сведения о смерти должника: дата смерти и свидетельство о смерти.
+
+        Вызывается только для заявлений об умершем должнике. ФИО и адрес нотариуса
+        здесь НЕ извлекаются — по решению Андрея эти два поля заполняет пользователь
+        вручную. Серии свидетельства в референсных заявлениях тоже нет — извлекаем,
+        только если банк её всё же указал.
+        """
+        out: Dict[str, str] = {}
+        if not text:
+            return out
+
+        m = self._DEATH_DATE_BEFORE_RE.search(text) or self._DEATH_DATE_AFTER_RE.search(text)
+        if m:
+            out["deathDate"] = m.group(1).replace(",", ".")
+
+        m = self._DEATH_CERT_RE.search(text)
+        if m:
+            out["deathCertificate"] = "%s-%s № %s" % (
+                m.group(1).upper(), m.group(2).upper(), m.group(3)
+            )
+        return out
+
+    def _extract_liquidator(self, text: str) -> Optional[str]:
+        """Извлекает наименование ликвидатора (ФИО физлица или ОПФ организации).
+
+        Слои с приоритетом: (1) ликвидатор-ЮЛ (управляющая организация) → наименование =
+        организация; (2) ликвидационная комиссия (председатель/руководитель/в составе);
+        (3) единственный ликвидатор-физлицо (разные формулировки, вкл. официальную по
+        ЕГРЮЛ). ФИО прогоняется через `_normalize_fio` + `is_person_name`.
+        """
+        pn = self._LIQ_PN
+        # Слой 1 — ликвидатор-ЮЛ (управляющая организация): наименование = организация.
+        m = re.search(
+            r"(?:управляющ\w+\s+организаци\w+\s*\(ликвидатора\)|ликвидатора?)\s*[—–\-]?\s*"
+            r"((?:ООО|ОАО|ЗАО|ПАО|НАО|АО)\s*[«\"][^»\"\n]{2,60}[»\"])\s+в\s+лице",
+            text, re.IGNORECASE)
+        if m:
+            return re.sub(r"\s+", " ", m.group(1)).strip()
+        # Слой 2 — ликвидационная комиссия.
+        for rx in (
+            r"(?:председател\w+|руководител\w+)\s+ликвидационн\w+\s+комисси\w+\s+(" + pn + r")",
+            r"ликвидационн\w+\s+комисси\w+\s+в\s+составе\s+председател\w+\s+(" + pn + r")",
+        ):
+            cand = self._liquidator_person(text, rx)
+            if cand:
+                return cand
+        # Слой 3 — единственный ликвидатор-физлицо.
+        for rx in (
+            r"в\s+лице\s+(?:единственного\s+)?ликвидатора\b\s*[:—–\-]*\s*(" + pn + r")",
+            r"ликвидатором\s+назначен\w*\s+(" + pn + r")",
+            r"полномочи\w+\s+ликвидатора\s+возложены\s+на\s+(" + pn + r")",
+            r"лица,?\s*ответственного\s+за\s+ликвидацию,?\s*(" + pn + r")",
+            r"органа,?\s*осуществляющего\s+ликвидацию,?\s*в\s+лице\s+(" + pn + r")",
+            r"от\s+имени\s+юридического\s+лица\s*\(ликвидатора\)[,\s]*(" + pn + r")",
+            r"ликвидатор\w*\s*:\s*(" + pn + r")",
+        ):
+            cand = self._liquidator_person(text, rx)
+            if cand:
+                return cand
+        return None
+
+    def _liquidator_person(self, text: str, rx: str) -> Optional[str]:
+        """Матч ФИО ликвидатора по паттерну rx → нормализация регистра + приведение к
+        именительному падежу (грамматика «в лице ликвидатора <кого>» даёт косвенный
+        падеж). Возвращает ФИО или None, если не похоже на имя."""
+        m = re.search(rx, text, re.IGNORECASE)
+        if not m:
+            return None
+        cand = self._fio_to_nominative(_normalize_fio(m.group(1).strip()))
+        return cand if is_person_name(cand) else None
+
+    # Кандидат в управляющие: ФИО из 3 titlecase-токенов вплотную перед скобкой
+    # «(ИНН <12 цифр>». 12-значный ИНН бывает ТОЛЬКО у физлица — у СРО в такой же
+    # скобке стоит 10-значный, поэтому организация сюда не попадает.
+    _MGR_CAND_RE = re.compile(
+        r"([А-ЯЁ][А-ЯЁа-яё]+(?:-[А-ЯЁ][А-ЯЁа-яё]+)?(?:\s+[А-ЯЁ][А-ЯЁа-яё]+){2})"
+        r"\s*\(\s*ИНН\s*\d{12}\b",
+        re.IGNORECASE,
+    )
+
+    def _extract_manager_candidate(self, text: str) -> Optional[str]:
+        """ФИО кандидата в арбитражные управляющие из ИНИЦИИРУЮЩЕГО заявления.
+
+        Существующие якоря ищут «управляющим утверждён <ФИО>» — прошедшее время, т.е.
+        заявления о включении в РТК, где управляющий уже назначен судом. В заявлении о
+        признании банкротом управляющего только ПРОСЯТ утвердить, и грамматика другая:
+          • «конкурсным управляющим ООО «X» утвердить члена <СРО> (…) Белов Иван
+            Алексеевич (ИНН 632127553358, регистрационный номер 22962)» — именительный;
+          • «просит в качестве кандидатуры арбитражного управляющего утвердить Панина
+            Александра Владимировича (ИНН 644923704326, СНИЛС …)» — родительный.
+        Общее у обеих форм — ФИО вплотную перед скобкой с 12-значным ИНН; на него и
+        якоримся, а слева требуем контекст утверждения (иначе это чьё-то другое ИНН).
+        """
+        if not text:
+            return None
+        for m in self._MGR_CAND_RE.finditer(text):
+            left = text[max(0, m.start() - 250): m.start()]
+            if not re.search(r"утвердит|кандидатур|управляющ", left, re.IGNORECASE):
+                continue
+            # Родительный → именительный (см. §J.2): «Панина Александра Владимировича».
+            cand = self._fio_to_nominative(_normalize_fio(m.group(1).strip()))
+            if is_person_name(cand) and "фнс" not in cand.lower():
+                return cand
+        return None
+
+    def _fio_to_nominative(self, fio: str) -> str:
+        """Приводит ФИО к именительному падежу («Иванова Ивана Ивановича» → «Иванов
+        Иван Иванович»). Несклоняемые/уже-именительные токены не трогаются. Род —
+        по подстроке отчества (вич→masc, вна→femn), чтобы фамилия-омоним склонялась
+        верно («Иванова» masc → «Иванов», femn → «Иванова»)."""
+        morph = self._ensure_morph()
+        if not morph or not fio:
+            return fio
+        low = fio.lower()
+        gender = "masc" if "вич" in low else ("femn" if "вна" in low else None)
+        return " ".join(self._token_to_nominative(morph, t, gender) for t in fio.split())
+
+    def _token_to_nominative(self, morph, tok: str, gender: Optional[str]) -> str:
+        if "-" in tok:
+            return "-".join(self._token_to_nominative(morph, p, gender) for p in tok.split("-"))
+        parses = morph.parse(tok)
+        if not parses:
+            return tok
+        # Предпочитаем разбор как имя собственное (фамилия/имя/отчество).
+        p = next((x for x in parses if any(k in str(x.tag) for k in ("Surn", "Name", "Patr"))), parses[0])
+        gramm = {"nomn"}
+        if gender and "Surn" in str(p.tag):
+            gramm.add(gender)
+        inflected = p.inflect(gramm) or p.inflect({"nomn"})
+        if inflected and inflected.word:
+            return self._match_original_case(tok, inflected.word)
+        return tok
+
     def _truncate_glued_address(self, addr: str) -> str:
         """Обрезает склейку двух адресов в одном поле.
 
         Пример (Корсунов): «347631, обл. Ростовская, …, кв. 61 Кредиторы ООО МКК
         Эквазайм 432071, Ульяновская область, …» — за адресом должника продолжен
         список кредиторов. Правила: (1) слово «кредитор» внутри адреса — обрезка
-        по нему; (2) повтор адресной категории (индекс/область/город/улица/дом)
-        с ДРУГИМ значением — обрезка перед самым ранним повтором. Повтор с тем же
-        значением («г. о. город Новочеркасск, г. Новочеркасск …») — ФИАС-стиль
-        одного адреса, не склейка.
+        по нему; (1a) «мягкий» маркер начала прозы (в лице/ликвидатор/сообщение/
+        о намерении/обратиться в суд) — при однострочной PDF→docx склейке к адресу
+        приклеивается хвост «…ком. 314 В лице ликвидатора: … Сообщение №… о
+        намерении обратиться в суд»; (2) повтор адресной категории (индекс/область/
+        город/улица/дом) с ДРУГИМ значением — обрезка перед самым ранним повтором.
+        Повтор с тем же значением («г. о. город Новочеркасск, г. Новочеркасск …») —
+        ФИАС-стиль одного адреса, не склейка.
         """
+        # Неразрывные пробелы (PDF→docx) → обычные, иначе `\s` местами промахивается.
+        addr = addr.replace("\xa0", " ")
         m_cred = re.search(r"[\s,;]кредитор\w*", addr, re.IGNORECASE)
         if m_cred:
             addr = addr[: m_cred.start()]
+        # Мягкие маркеры конца адреса / начала прозы заявления. «№ N» НЕ маркер —
+        # в адресе бывает «дом № 5»; хвост «Сообщение №…» отсекает «сообщени».
+        m_soft = re.search(
+            r"\s+(?:в\s+лице\b|ликвидатор|председател\w+\s+ликвидационн|сообщени\w*\b|"
+            r"о\s+намерении\b|обратил\w*\b|обратиться\s+в\s+суд)",
+            addr, re.IGNORECASE)
+        if m_soft:
+            addr = addr[: m_soft.start()]
         cut = len(addr)
         for kind, rx in self._ADDR_COMPONENT_RES:
             first_val = None
@@ -2735,7 +3097,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         обрезаем хвост по первому такому маркеру; если осмысленного адреса (букв)
         не осталось — поле было мусором, удаляем. Затем режем склейку двух
         адресов (повтор индекса/области/города/улицы/дома, «Кредиторы …» внутри)."""
-        for k in ("applicantAddress", "creditorAddress", "managerAddress",
+        for k in ("address", "applicantAddress", "creditorAddress", "managerAddress",
                   "thirdPartyAddress", "debtorAddress"):
             v = fields.get(k)
             if not v or not isinstance(v, str):

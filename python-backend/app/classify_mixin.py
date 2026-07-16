@@ -82,6 +82,32 @@ _SELF_BK_SUPPORT_RES = (
 )
 
 
+# ---------------------------------------------------------------------------
+# Инициирующая просьба vs чистое ВКЛ-в-РТК. Инициирующее заявление (в т.ч.
+# кредиторское) просит СУД ПРИЗНАТЬ должника банкротом и/или ВВЕСТИ процедуру —
+# и заодно включить своё требование. Чистое включение в реестр просит ТОЛЬКО
+# «включить в реестр» (банкротство уже введено, процедуру не вводят). Общие
+# rtk-слова («банкротство», «арбитражный суд», «реестр требований») есть у обоих,
+# поэтому различаем по этой просьбе в просительной части.
+# ---------------------------------------------------------------------------
+_INIT_DECLARE_RE = re.compile(
+    # «Признать <должника> несостоятельным (банкротом)». Инфинитив/1л мн.ч., НЕ
+    # «признан» (прошедшее — ссылка на уже введённое банкротство в теле РТК).
+    r"призна(?:ть|ем)\b[\s\S]{0,90}?(?:несостоятельн\w*|банкрот\w*)",
+    re.IGNORECASE,
+)
+# «Ввести … процедуру …» — порядок «в отношении» и «процедуру» у банков разный
+# («ввести в отношении должника процедуру» vs «ввести процедуру наблюдения в
+# отношении»), поэтому только «ввести … процедур». У включения такого пункта нет
+# (процедура уже введена — в теле «введена процедура», прошедшее, а не «ввести»).
+_INIT_PROCEDURE_RE = re.compile(
+    r"ввести\b[\s\S]{0,60}?процедур", re.IGNORECASE
+)
+# Правовая форма ДОЛЖНИКА в просьбе «Признать <должника> …» (не реквизиты кредитора).
+_INIT_LEGAL_FORM_RE = re.compile(r"\b(?:ООО|ОАО|ОДО|ПАО|ЗАО|АО|НАО)\b|обществ\w*\s+с\s+ограниченн", re.IGNORECASE)
+_INIT_IP_FORM_RE = re.compile(r"\bИП\b|индивидуальн\w+\s+предпринимател", re.IGNORECASE)
+
+
 class ClassifyMixin:
 
     def _self_bk_header_debtor_first(self, text: str) -> bool:
@@ -151,6 +177,50 @@ class ClassifyMixin:
         support = [name for name, rx in _SELF_BK_SUPPORT_RES if rx.search(text)]
         logger.info(f"✅ Самобанкротство: сильные сигналы {strong}, поддерживающие {support}")
         return True
+
+    def _initiation_petition_window(self, text: str) -> str:
+        """Окно просительной части (от последнего «ПРОШУ/ПРОСИТ:»). Если метки нет —
+        весь текст (консервативно)."""
+        ps = 0
+        for m in _SELF_BK_PRAYER_RE.finditer(text):
+            ps = m.start()
+        return text[ps:] if ps else text
+
+    def _is_initiation_petition(self, text: str) -> bool:
+        """Заявление ИНИЦИИРУЕТ банкротство: в просительной части просит суд признать
+        должника банкротом и/или ввести процедуру. Отличает инициирование (в т.ч.
+        кредиторское «о признании банкротом») от чистого ВКЛ-в-РТК, где просят лишь
+        включить требование в реестр. Якорь — окно просьбы, чтобы не ловить прошедшее
+        «должник признан банкротом решением от …» в теле включения."""
+        if not text:
+            return False
+        window = self._initiation_petition_window(text)
+        return bool(_INIT_DECLARE_RE.search(window) or _INIT_PROCEDURE_RE.search(window))
+
+    def _initiation_type_by_entity(self, text: str, has_ip_name: bool, text_lower: str) -> str:
+        """Тип инициирующего заявления по ДОЛЖНИКУ: ЮЛ → initiation_legal; ИП →
+        ip_enforcement_* (процедура из текста); ФЛ → initiation_physical.
+
+        Форму берём из сегментов, называющих ДОЛЖНИКА («о признании <должника>…»,
+        «в отношении <должника>…», «Признать <должника> …банкротом»), а НЕ из
+        реквизитов кредитора (иначе «ПАО»/«АО» банка-заявителя утекает в ЮЛ)."""
+        window = self._initiation_petition_window(text)[:2500]
+        # Сегменты, называющие ДОЛЖНИКА (после «о признании …»/«в отношении …»).
+        parts = re.findall(r"(?:о\s+признани\w+|в\s+отношени\w+)\s+([^\n]{0,90})", window, re.IGNORECASE)
+        # Фолбэк — прямая форма «Признать <должника> …», НО не «Признать ЗАЯВЛЕНИЕ
+        # <банка> …» (там за «Признать» идёт кредитор, а должник — дальше, в «о
+        # признании …», уже пойманном выше).
+        if not parts:
+            md = _INIT_DECLARE_RE.search(window)
+            if md and not re.match(r"призна\w+\s+заявлени", window[md.start(): md.start() + 25], re.IGNORECASE):
+                parts.append(window[md.start(): md.start() + 90])
+        debtor_blob = " ".join(parts) if parts else window[:300]
+        if _INIT_LEGAL_FORM_RE.search(debtor_blob):
+            return "initiation_legal"
+        if has_ip_name or _INIT_IP_FORM_RE.search(debtor_blob):
+            is_restructuring = bool(re.search(r"реструктуризац", text_lower))
+            return "ip_enforcement_restructuring" if is_restructuring else "ip_enforcement_realization"
+        return "initiation_physical"
 
     def _detect_ip_debtor_name(self, text: str) -> bool:
         """Есть ли в тексте явное указание «ИП ФИО» в имени должника/ответчика.
@@ -442,6 +512,17 @@ class ClassifyMixin:
                 elif is_observation:
                     logger.info("Определен тип документа: observation_collateral (Наблюдение с залогом)")
                     return "observation_collateral"
+
+            # Общие rtk-слова набрали балл, но если это ПРОСЬБА признать банкротом/
+            # ввести процедуру — это ИНИЦИИРОВАНИЕ (кредиторское «о признании
+            # банкротом»), а не включение в реестр. Маршрутизируем по типу должника.
+            # Самобанкротов НЕ трогаем: их RTK-vs-инициирование ловит отдельный
+            # детектор (is_rtk_inclusion), а смена documentType лишь тянет лишний
+            # финансовый каскад — сохраняем их прежний тип.
+            if self._is_initiation_petition(text) and not self._detect_self_bankruptcy(text):
+                itype = self._initiation_type_by_entity(text, has_ip_name, text_lower)
+                logger.info(f"Определен тип документа: {itype} (инициирующая просьба, не ВКЛ-в-РТК)")
+                return itype
 
             return "rtk_application"
 

@@ -1025,6 +1025,43 @@ class AmountsMixin:
                 % (grand, totals_sum, grand - totals_sum)
             )
 
+    def _sum_bankruptcy_duty(self, fields: Dict[str, Any], text: str) -> None:
+        """Банкротная госпошлина ДВУМЯ слагаемыми после одной метки.
+
+        Банки указывают банкротную госпошлину суммой двух чисел под одной меткой:
+        «Госпошлина: 1 490 913 руб.+ 100 000 руб.» / «(судебные расходы по оплате
+        государственной) пошлины в размере 100 000 рублей и 1 490 913 руб.». Общая
+        логика разносила первое число в банкротную, второе — в ссудную [17] (или
+        брала max). Здесь суммируем ОБА в банкротную госпошлину (stateDuty) и убираем
+        ложную ссудную, равную одному из слагаемых. Срабатывает только на редком
+        паттерне «метка + N (+|и|,) M …» в контексте банкротного заявления, поэтому
+        прочий корпус не задевает. Госпошлина в итог долга не входит (её тут не трогаем).
+        """
+        flat = re.sub(r"[  \t]", " ", text)
+        if not re.search(r"банкрот|несостоятельн", flat, re.IGNORECASE):
+            return
+        NUM = r"\d[\d ]*(?:[.,]\d{1,2})?"
+        run_re = re.compile(
+            r"(?:гос)?пошлин\w*[^\d]{0,40}?"
+            r"(" + NUM + r"\s*руб\w*\.?\s*[+и,]\s*" + NUM
+            + r"(?:\s*руб\w*\.?\s*[+и,]\s*" + NUM + r")*)",
+            re.IGNORECASE,
+        )
+        m = run_re.search(flat)
+        if not m:
+            return
+        parts = [self._fin_amount(x) for x in re.findall(NUM, m.group(1))]
+        parts = [p for p in parts if p and p >= 100]
+        if len(parts) < 2:
+            return
+        total_duty = sum(parts)
+        fields["stateDuty16"] = self._fin_fmt(total_duty)
+        fields["stateDuty"] = self._fin_fmt(total_duty)
+        # Ссудная госпошлина, равная одному из слагаемых, — тот же платёж; убираем.
+        sd17 = self._fin_amount(fields.get("loanStateDuty17") or "0")
+        if any(abs(sd17 - p) < 0.01 for p in parts):
+            fields.pop("loanStateDuty17", None)
+
     def _normalize_financial_block(self, fields: Dict[str, Any], text: str) -> None:
         """Нормализует поля блока «Финансовые данные» по явным формулировкам.
 

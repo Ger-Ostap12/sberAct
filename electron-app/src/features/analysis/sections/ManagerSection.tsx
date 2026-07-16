@@ -8,15 +8,19 @@ interface ManagerSectionProps {
   /** Показывать поле «Саморегулируемая организация» — только для инициирующих актов
    *  (реализация/конкурсное/реструктуризация/наблюдение), где СРО обязательна. */
   showSro?: boolean;
+  /** Показывать поле «ФИО» управляющего. Скрывается при банк-инициировании и у
+   *  самобанкрота, где конкретный управляющий ещё не утверждён (называется только СРО). */
+  showFio?: boolean;
 }
 
 /** Секция «Арбитражный управляющий» (ФИО, адрес, при инициировании — СРО). */
-const ManagerSection: React.FC<ManagerSectionProps> = ({ editedFields, onFieldChange, showSro }) => (
+const ManagerSection: React.FC<ManagerSectionProps> = ({ editedFields, onFieldChange, showSro, showFio = true }) => (
   <Box sx={{ ...BLOCK_BOX_SX, mt: 3 }}>
     <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
       Арбитражный управляющий
     </Typography>
     <Grid container spacing={2}>
+      {showFio && (
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
         <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО:</Typography>
@@ -29,6 +33,7 @@ const ManagerSection: React.FC<ManagerSectionProps> = ({ editedFields, onFieldCh
         />
       </Box>
       </Grid>
+      )}
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
         <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес:</Typography>

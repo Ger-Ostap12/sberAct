@@ -12,7 +12,7 @@ import {
   Divider
 } from '@mui/material';
 import { ArrowBack as BackIcon, CheckCircle as CheckIcon } from '@mui/icons-material';
-import { DocumentData, ExtractedData, Obligation, Collateral, CollateralType, EntityType, CollateralOption, DebtorStatus, SelectedAct, ThirdParty, Debtor } from '../../types';
+import { DocumentData, ExtractedData, Obligation, Collateral, CollateralType, EntityType, CollateralOption, DebtorStatus, ApplicationKind, SelectedAct, ThirdParty, Debtor, Heir } from '../../types';
 import { useBanks } from './hooks/useBanks';
 import { extractCollateralData } from '../../shared/lib/collateral';
 import { isFnsCreditor, FNS_CREDITOR_KEY } from '../../shared/lib/banks';
@@ -22,6 +22,9 @@ import CollateralSection from './sections/CollateralSection';
 import CourtSection from './sections/CourtSection';
 import DatesSection from './sections/DatesSection';
 import ManagerSection from './sections/ManagerSection';
+import LiquidationSection from './sections/LiquidationSection';
+import AbsentDebtorSection from './sections/AbsentDebtorSection';
+import DeceasedSection from './sections/DeceasedSection';
 import ThirdPartiesSection from './sections/ThirdPartiesSection';
 import DebtorsSection from './sections/DebtorsSection';
 import CreditorSection from './sections/CreditorSection';
@@ -58,20 +61,20 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   const [selectedActs, setSelectedActs] = useState<SelectedAct[]>([]);
   const [recommendationsApplied, setRecommendationsApplied] = useState(false);
   // Статус должника (банкротство): отсутствующий / ликвидируемый / умерший.
-  // Взаимоисключающие: выбор одного снимает остальные.
+  // Взаимоисключающие, но ОПЦИОНАЛЬНЫ и НЕЗАВИСИМЫ от вида заявления.
   const [debtorStatus, setDebtorStatus] = useState<DebtorStatus | null>(null);
+  // Вид заявления (независимый блок): ВКЛ в РТК / инициирование / самобанкрот.
+  // По умолчанию — рядовое инициирование.
+  const [applicationKind, setApplicationKind] = useState<ApplicationKind>('other');
 
-  const toggleDebtorStatus = (status: DebtorStatus) => {
-    setDebtorStatus(prev => (prev === status ? null : status));
-  };
-
-  // Статус должника влияет на рекомендацию финального СА:
+  // Статус лица влияет на рекомендацию финального СА:
   // отсутствующий/ликвидируемый ЮЛ → «Решение конкурсное»; умерший ФЛ → «Решение реализация».
   useEffect(() => {
     if (!debtorStatus) return;
-    // «Самобанкрот» совместим с ЛЮБОЙ категорией лица: не диктует ни финальный СА,
-    // ни тип лица (его роль — скрыть блок кредитора: в заявлении должника его нет).
-    if (debtorStatus === 'self') return;
+    // Статус подразумевает тип лица: отсутствующий/ликвидируемый — ЮЛ, умерший — ФЛ.
+    setEntityType(debtorStatus === 'deceased' ? 'individual' : 'legal');
+    // При ВКЛ в РТК финал уже занят (final_rtk_inclusion) — процедурный не навязываем.
+    if (applicationKind === 'rtk') return;
     const finalByStatus: Partial<Record<DebtorStatus, string>> = {
       absent: 'final_competition',
       liquidation: 'final_competition',
@@ -81,9 +84,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     setSelectedActs(prev => prev.map(act =>
       act.category === 'final' ? { ...act, selected: act.id === targetFinal } : act
     ));
-    // Статус подразумевает тип лица: отсутствующий/ликвидируемый — ЮЛ, умерший — ФЛ.
-    setEntityType(debtorStatus === 'deceased' ? 'individual' : 'legal');
-  }, [debtorStatus]);
+  }, [debtorStatus, applicationKind]);
 
   // Если тип лица сменили на несовместимый со статусом — сбрасываем статус
   // (умерший только у ФЛ; отсутствующий/ликвидируемый только у ЮЛ).
@@ -145,18 +146,27 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           setCollateralOption(recommendedActs.collateralOption as CollateralOption);
         }
 
-        // Авто-статус должника: умерший — по процедуре; конкурсное (отсутствующий/
-        // ликвидируемый) оставляем на ручной выбор (по тексту не различить).
+        // Авто-статус должника: по флагу backend (debtorStatusHint) либо, для
+        // умершего, по процедуре — процедурный путь остаётся как запасной для
+        // документов, где детект по тексту не сработал.
         const procType = (analysisResult.fields as any)?.procedureType
           || (analysisResult.fields as any)?.procedureTypeRaw || '';
         if (String(procType).toLowerCase().includes('умер') || String(procType).toLowerCase() === 'deceased') {
           setDebtorStatus('deceased');
+        } else if (analysisResult.debtorStatusHint === 'liquidation') {
+          setDebtorStatus('liquidation');
+        } else if (analysisResult.debtorStatusHint === 'absent') {
+          setDebtorStatus('absent');
+        } else if (analysisResult.debtorStatusHint === 'deceased') {
+          setDebtorStatus('deceased');
         }
 
-        // Самобанкротство (детектор backend: заявление подал сам должник) →
-        // статус «Самобанкрот»; блок «Информация о кредиторе» при нём скрыт.
+        // Вид заявления из рекомендаций: самобанкротство (детектор backend) →
+        // «Самобанкрот» (скрывает блок кредитора); рекомендация ВКЛ в РТК → 'rtk'.
         if (analysisResult.applicationKind === 'self_bankruptcy') {
-          setDebtorStatus('self');
+          setApplicationKind('self');
+        } else if (recommendedActs.recommendedActIds?.includes('final_rtk_inclusion')) {
+          setApplicationKind('rtk');
         }
 
         // Устанавливаем рекомендуемые акты
@@ -345,12 +355,20 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           }];
         }
 
+        // Наследники умершего должника: backend отдаёт их без id (как третьих лиц) —
+        // проставляем свои, иначе ключи карточек и правка по индексу поедут.
+        const initialHeirs: Heir[] = (propExtractedData.heirs || []).map((h, i) => ({
+          ...h,
+          id: h.id || `heir-${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`
+        }));
+
         const fullAnalysisResult = {
           ...propExtractedData,
           obligations: propExtractedData.obligations || [],
           collaterals: initialCollaterals,
           thirdParties: initialThirdParties,
-          debtors: initialDebtors
+          debtors: initialDebtors,
+          heirs: initialHeirs
         };
         setAnalysisResult(fullAnalysisResult);
 
@@ -548,6 +566,31 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     setAnalysisResult({ ...analysisResult, thirdParties: updated });
   };
 
+  // --- Наследники умершего должника: динамический список (как третьи лица) ---
+  const addHeir = () => {
+    if (!analysisResult) return;
+    const newHeir: Heir = {
+      id: `heir-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name: '',
+      address: ''
+    };
+    const heirs = [...(analysisResult.heirs || []), newHeir];
+    setAnalysisResult({ ...analysisResult, heirs });
+  };
+
+  const updateHeir = (index: number, field: keyof Heir, value: string) => {
+    if (!analysisResult?.heirs) return;
+    const updated = [...analysisResult.heirs];
+    updated[index] = { ...updated[index], [field]: value };
+    setAnalysisResult({ ...analysisResult, heirs: updated });
+  };
+
+  const removeHeir = (index: number) => {
+    if (!analysisResult?.heirs) return;
+    const updated = analysisResult.heirs.filter((_, i) => i !== index);
+    setAnalysisResult({ ...analysisResult, heirs: updated });
+  };
+
   // --- Должники (со-ответчики): динамический список ---
   const DEBTOR_FLAT_MAP: Record<string, string> = {
     name: 'applicantName', address: 'applicantAddress', inn: 'inn',
@@ -593,6 +636,29 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     );
   };
 
+  // Единый радио-блок «Вид заявления» объединяет две оси: вид (ВКЛ в РТК /
+  // Вид заявления (независимый от статуса лица блок). Драйвер ВКЛ в РТК — акт
+  // final_rtk_inclusion (синхронен с чекбоксом в «3. Финальные СА»). При уходе из
+  // РТК, если задан статус лица, возвращаем его процедурный финал (competition/
+  // realization); иначе просто снимаем ВКЛ в РТК, оставляя финал рекомендации/выбору.
+  const handleApplicationKindChange = (v: ApplicationKind) => {
+    setApplicationKind(v);
+    if (v === 'rtk') {
+      // Только ВКЛ в РТК среди финальных.
+      setSelectedActs(prev => prev.map(a =>
+        a.category === 'final' ? { ...a, selected: a.id === 'final_rtk_inclusion' } : a));
+      return;
+    }
+    const procFinal = debtorStatus === 'deceased' ? 'final_realization'
+      : (debtorStatus === 'absent' || debtorStatus === 'liquidation') ? 'final_competition'
+      : null;
+    setSelectedActs(prev => prev.map(a => {
+      if (a.category !== 'final') return a;
+      if (procFinal) return { ...a, selected: a.id === procFinal };
+      return a.id === 'final_rtk_inclusion' ? { ...a, selected: false } : a;
+    }));
+  };
+
   const updateActAdditionalFields = (actId: string, field: 'reason' | 'forParties' | 'courtRequests', value: string) => {
     setSelectedActs(prevActs =>
       prevActs.map(act => {
@@ -632,6 +698,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         entityType,
         collateralOption,
         debtorStatus,
+        applicationKind,
         selectedActs,
       })
     );
@@ -669,12 +736,18 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     return null;
   }
 
-  // Поле «Саморегулируемая организация» в блоке управляющего показываем, когда выбран
-  // инициирующий финальный акт (реализация/конкурсное/реструктуризация/наблюдение) —
-  // для них СРО обязательна. Определение ВКЛ в РТК сюда НЕ входит.
-  const showSroField = selectedActs.some(
-    (a) => a.selected && ['final_realization', 'final_competition', 'final_restructuring', 'final_observation'].includes(a.id),
-  );
+  // Поле «Саморегулируемая организация» управляется видом заявления: «Включение в
+  // РТК» → управляющий уже утверждён, СРО скрыта; иначе (инициирование/самобанкрот)
+  // — суд утверждает управляющего из предложенной СРО, поле показывается.
+  const rtkInclusion = applicationKind === 'rtk';
+  const showSroField = !rtkInclusion;
+  // Поле «ФИО» управляющего скрывается там, где конкретный управляющий ещё не
+  // утверждён и в заявлении названа только СРО: банк-инициирование и самобанкрот.
+  // Показывается при РТК (управляющий уже утверждён) и во всех ФНС-заявлениях
+  // (уполномоченный орган указывает кандидатуру). Матрица: см. блок «Управляющий».
+  const isSelf = applicationKind === 'self';
+  const isFns = isFnsCreditor(editedFields.creditorName);
+  const showFioField = !isSelf && (rtkInclusion || isFns);
 
   return (
     <Box sx={{ width: '100%', maxWidth: 1600, mx: 'auto', px: 1 }}>
@@ -737,8 +810,10 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
             collateralOption={collateralOption}
             collateralKinds={collateralKinds}
             setCollateralKinds={setCollateralKinds}
+            applicationKind={applicationKind}
+            setApplicationKind={handleApplicationKindChange}
             debtorStatus={debtorStatus}
-            toggleDebtorStatus={toggleDebtorStatus}
+            setDebtorStatus={setDebtorStatus}
             selectedActs={selectedActs}
             toggleActSelection={toggleActSelection}
             updateActAdditionalFields={updateActAdditionalFields}
@@ -783,7 +858,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
 
                 {/* Информация о кредиторе. У самобанкрота (заявление подаёт сам
                     должник) кредитора-заявителя нет — блок скрываем. */}
-                {debtorStatus !== 'self' && (
+                {!isSelf && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
               <CreditorSection
                 editedFields={editedFields}
@@ -801,7 +876,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 <Grid item xs={12}>
                   <Grid container spacing={3}>
                     <Grid item xs={12} md={6}>
-                      <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} showSro={showSroField} />
+                      <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} showSro={showSroField} showFio={showFioField} />
                       <Box sx={{ mt: 3 }}>
                         <FinancesSection editedFields={editedFields} onFieldChange={handleFieldChange} financeBreakdown={analysisResult?.financeBreakdown} />
                       </Box>
@@ -816,7 +891,35 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 {/* Арбитражный управляющий (не-ФНС; у ФНС — в колонке выше) */}
                 {!isFnsCreditor(editedFields.creditorName) && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
-              <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} showSro={showSroField} />
+              <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} showSro={showSroField} showFio={showFioField} />
+                </Grid>
+                )}
+
+                {/* Объявление о ликвидации — только при статусе «Ликвидируемый» (ЮЛ). */}
+                {debtorStatus === 'liquidation' && (
+                <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
+              <LiquidationSection editedFields={editedFields} onFieldChange={handleFieldChange} />
+                </Grid>
+                )}
+
+                {/* Информация по счетам — только при статусе «Отсутствующий» (ЮЛ). */}
+                {debtorStatus === 'absent' && (
+                <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
+              <AbsentDebtorSection editedFields={editedFields} onFieldChange={handleFieldChange} />
+                </Grid>
+                )}
+
+                {/* Сведения о смерти — только при статусе «Умерший» (физлицо). */}
+                {debtorStatus === 'deceased' && (
+                <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
+              <DeceasedSection
+                editedFields={editedFields}
+                onFieldChange={handleFieldChange}
+                heirs={analysisResult?.heirs || []}
+                onHeirUpdate={updateHeir}
+                onHeirAdd={addHeir}
+                onHeirRemove={removeHeir}
+              />
                 </Grid>
                 )}
 
@@ -837,7 +940,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 {/* Финансовые данные (не-ФНС; у ФНС — в колонке выше). У самобанкрота
                     финансов из просительной нет (суммы по каждому кредитору в теле) —
                     блок скрываем вместе с кредитором. */}
-                {!isFnsCreditor(editedFields.creditorName) && debtorStatus !== 'self' && (
+                {!isFnsCreditor(editedFields.creditorName) && !isSelf && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
               <FinancesSection editedFields={editedFields} onFieldChange={handleFieldChange} financeBreakdown={analysisResult?.financeBreakdown} />
                 </Grid>

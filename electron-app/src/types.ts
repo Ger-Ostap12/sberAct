@@ -21,6 +21,14 @@ export interface ThirdParty {
   snils?: string;
 }
 
+/** Наследник умершего должника (ст. 223.1 Закона о банкротстве). Наследников
+ *  может быть несколько — храним массивом, как третьих лиц. */
+export interface Heir {
+  id: string;
+  name: string;
+  address?: string;
+}
+
 export interface Debtor {
   id: string;
   name: string;
@@ -124,7 +132,15 @@ export interface ExtractedData {
    *  (заявитель = должник, кредитора-заявителя нет). Фронт автопроставляет
    *  статус должника «Самобанкрот» и скрывает блок «Информация о кредиторе». */
   applicationKind?: 'self_bankruptcy' | null;
+  /** Подсказка статуса должника из backend: 'liquidation' — в заявлении есть
+   *  сведения о ликвидации ЮЛ; 'absent' — заявление по упрощённой процедуре
+   *  отсутствующего должника (§ 2 гл. XI Закона о банкротстве); 'deceased' —
+   *  заявление в отношении умершего должника-физлица (ст. 223.1). Фронт
+   *  автопроставляет соответствующий статус. */
+  debtorStatusHint?: 'liquidation' | 'absent' | 'deceased' | null;
   thirdParties?: ThirdParty[];
+  /** Наследники умершего должника — заполняется только для статуса «Умерший». */
+  heirs?: Heir[];
   debtors?: Debtor[];
   rawText: string;
   metadata: {
@@ -249,10 +265,16 @@ export interface RTKDecision {
 // Типы для выбора судебных актов
 export type EntityType = 'individual' | 'legal' | 'ip' | 'kfh';
 export type CollateralOption = 'collateral' | 'collateral_auto' | 'no_collateral';
-// Статус должника (банкротство): отсутствующий / ликвидируемый ЮЛ, умерший ФЛ,
-// либо самобанкрот (заявление подал сам должник) — доступен ЛЮБОЙ категории лица.
-// Влияет на рекомендацию финального СА; «self» скрывает блок кредитора.
-export type DebtorStatus = 'absent' | 'liquidation' | 'deceased' | 'self';
+// Статус должника (банкротство): отсутствующий / ликвидируемый ЮЛ, умерший ФЛ.
+// Взаимоисключающий, но ОПЦИОНАЛЬНЫЙ (может быть не задан) и НЕЗАВИСИМЫЙ от вида
+// заявления — выбирается отдельным блоком «Статус лица». Влияет на рекомендацию
+// финального СА. «Самобанкрот» сюда НЕ входит — он в ApplicationKind.
+export type DebtorStatus = 'absent' | 'liquidation' | 'deceased';
+
+// Вид заявления — независимый от статуса лица взаимоисключающий блок:
+// ВКЛ в РТК / рядовое инициирование / самобанкрот. «rtk» скрывает поле СРО;
+// «self» (заявление подал сам должник) скрывает блок кредитора.
+export type ApplicationKind = 'rtk' | 'other' | 'self';
 
 export interface SelectedAct {
   id: string;

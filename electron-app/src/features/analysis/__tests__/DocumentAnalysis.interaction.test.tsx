@@ -130,25 +130,39 @@ describe('DocumentAnalysis — самобанкротство', () => {
     );
   };
 
-  it('статус «Самобанкрот» доступен каждой категории лица; чужие статусы не показаны', () => {
+  it('«Самобанкрот» — всем категориям (вид заявления); статусы лица гейтятся типом лица', () => {
     renderSelf();
-    // ИП: только «Самобанкрот» (ни умершего, ни отсутствующего/ликвидируемого).
+    // «Самобанкрот» — радио в блоке «Вид заявления», доступно всегда.
+    // Статусы лица (Умерший/Отсутствующий/Ликвидируемый) — ToggleButton (role button).
+    // ИП: статусов лица нет.
     fireEvent.click(screen.getByRole('radio', { name: 'ИП' }));
     expect(screen.getByRole('radio', { name: 'Самобанкрот' })).toBeInTheDocument();
-    expect(screen.queryByRole('radio', { name: 'Умерший' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('radio', { name: 'Отсутствующий' })).not.toBeInTheDocument();
-    // ФЛ: «Умерший» + «Самобанкрот».
+    expect(screen.queryByRole('button', { name: 'Умерший' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Отсутствующий' })).not.toBeInTheDocument();
+    // ФЛ: «Умерший».
     fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));
-    expect(screen.getByRole('radio', { name: 'Умерший' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Умерший' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Самобанкрот' })).toBeInTheDocument();
-    // ЮЛ: «Отсутствующий»/«Ликвидируемый» + «Самобанкрот».
+    // ЮЛ: «Отсутствующий»/«Ликвидируемый».
     fireEvent.click(screen.getByRole('radio', { name: 'Юр.лицо' }));
-    expect(screen.getByRole('radio', { name: 'Отсутствующий' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Ликвидируемый' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Отсутствующий' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ликвидируемый' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Самобанкрот' })).toBeInTheDocument();
   });
 
-  it('выбор «Самобанкрот» скрывает «Информация о кредиторе» и «Финансовые данные», повторный клик возвращает', () => {
+  it('вид заявления и статус лица независимы: Инициирование + Ликвидируемый одновременно', () => {
+    renderSelf();
+    fireEvent.click(screen.getByRole('radio', { name: 'Юр.лицо' }));
+    // По умолчанию вид — «Инициирование»; выбираем статус «Ликвидируемый».
+    fireEvent.click(screen.getByRole('button', { name: 'Ликвидируемый' }));
+    expect(screen.getByRole('radio', { name: 'Инициирование' })).toBeChecked();
+    expect(screen.getByRole('button', { name: 'Ликвидируемый' })).toHaveAttribute('aria-pressed', 'true');
+    // Повторный клик по активному статусу снимает выбор (ToggleButton exclusive).
+    fireEvent.click(screen.getByRole('button', { name: 'Ликвидируемый' }));
+    expect(screen.getByRole('button', { name: 'Ликвидируемый' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('выбор «Самобанкрот» скрывает «Информация о кредиторе» и «Финансовые данные», возврат через «Инициирование»', () => {
     renderSelf();
     fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));
     expect(screen.getByText('Информация о кредиторе')).toBeInTheDocument();
@@ -158,7 +172,8 @@ describe('DocumentAnalysis — самобанкротство', () => {
     expect(screen.queryByText('Информация о кредиторе')).not.toBeInTheDocument();
     expect(screen.queryByText('Финансовые данные')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Самобанкрот' })); // toggle: снять
+    // Радио взаимоисключающее — возврат через выбор «Инициирование».
+    fireEvent.click(screen.getByRole('radio', { name: 'Инициирование' }));
     expect(screen.getByText('Информация о кредиторе')).toBeInTheDocument();
     expect(screen.getByText('Финансовые данные')).toBeInTheDocument();
   });
@@ -196,15 +211,258 @@ describe('DocumentAnalysis — поле СРО у управляющего', () 
     );
   };
 
-  it('поле СРО скрыто, пока не выбран инициирующий финальный акт', () => {
+  it('поле СРО показано, когда «ВКЛ в РТК» выключена (инициирование)', () => {
     renderWithSro();
+    expect(screen.getByText('Саморегулируемая организация:')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Ассоциация "Содействие"')).toBeInTheDocument();
+  });
+
+  it('выбор радио «Включение в РТК» скрывает поле СРО', () => {
+    renderWithSro();
+    fireEvent.click(screen.getByRole('radio', { name: 'Включение в РТК' }));
     expect(screen.queryByText('Саморегулируемая организация:')).not.toBeInTheDocument();
   });
 
-  it('выбор акта «Решение реализация» показывает поле СРО', () => {
+  it('возврат на «Инициирование» снова показывает поле СРО', () => {
     renderWithSro();
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Решение реализация' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Включение в РТК' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Инициирование' }));
     expect(screen.getByText('Саморегулируемая организация:')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Ассоциация "Содействие"')).toBeInTheDocument();
+  });
+});
+
+// Матрица полей блока «Арбитражный управляющий»:
+//   банк+инициирование → СРО+адрес (ФИО скрыт)
+//   ФНС+инициирование  → ФИО+СРО+адрес
+//   банк/ФНС+РТК       → ФИО+адрес (СРО скрыт)
+//   самобанкрот        → СРО+адрес (ФИО скрыт)
+describe('DocumentAnalysis — матрица полей управляющего (ФИО/СРО)', () => {
+  const FNS = 'ФНС России в лице Межрайонной ИФНС России № 13 по Ростовской области';
+  const renderMatrix = (creditorName?: string) => {
+    const data = makeData();
+    data.fields = { ...data.fields, creditorName: creditorName || '', sroName: 'СРО', managerName: 'Иванов И.И.' };
+    return render(
+      <DocumentAnalysis
+        documentData={documentData}
+        extractedData={data}
+        onAnalysisComplete={() => {}}
+        onBack={() => {}}
+      />,
+    );
+  };
+  const hasFio = () => screen.queryByText('ФИО:') !== null;
+  const hasSro = () => screen.queryByText('Саморегулируемая организация:') !== null;
+
+  it('банк + инициирование: СРО есть, ФИО скрыт', () => {
+    renderMatrix('ПАО Сбербанк');
+    expect(hasSro()).toBe(true);
+    expect(hasFio()).toBe(false);
+  });
+
+  it('ФНС + инициирование: ФИО и СРО показаны', () => {
+    renderMatrix(FNS);
+    expect(hasSro()).toBe(true);
+    expect(hasFio()).toBe(true);
+  });
+
+  it('банк + РТК: ФИО есть, СРО скрыт', () => {
+    renderMatrix('ПАО Сбербанк');
+    fireEvent.click(screen.getByRole('radio', { name: 'Включение в РТК' }));
+    expect(hasFio()).toBe(true);
+    expect(hasSro()).toBe(false);
+  });
+
+  it('ФНС + РТК: ФИО есть, СРО скрыт', () => {
+    renderMatrix(FNS);
+    fireEvent.click(screen.getByRole('radio', { name: 'Включение в РТК' }));
+    expect(hasFio()).toBe(true);
+    expect(hasSro()).toBe(false);
+  });
+
+  it('самобанкрот: СРО есть, ФИО скрыт', () => {
+    renderMatrix('ПАО Сбербанк');
+    fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Самобанкрот' }));
+    expect(hasSro()).toBe(true);
+    expect(hasFio()).toBe(false);
+  });
+});
+
+// Блок «Объявление о ликвидации» виден только при статусе «Ликвидируемый».
+describe('DocumentAnalysis — блок «Объявление о ликвидации»', () => {
+  const renderForm = () =>
+    render(
+      <DocumentAnalysis
+        documentData={documentData}
+        extractedData={makeData()}
+        onAnalysisComplete={() => {}}
+        onBack={() => {}}
+      />,
+    );
+
+  it('по умолчанию блок скрыт', () => {
+    renderForm();
+    expect(screen.queryByText('Объявление о ликвидации')).not.toBeInTheDocument();
+  });
+
+  it('выбор «Ликвидируемый» (ЮЛ) показывает блок, снятие — скрывает', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('radio', { name: 'Юр.лицо' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ликвидируемый' }));
+    expect(screen.getByText('Объявление о ликвидации')).toBeInTheDocument();
+    expect(screen.getByText('Наименование ликвидатора:')).toBeInTheDocument();
+    // Повторный клик снимает статус — блок исчезает.
+    fireEvent.click(screen.getByRole('button', { name: 'Ликвидируемый' }));
+    expect(screen.queryByText('Объявление о ликвидации')).not.toBeInTheDocument();
+  });
+
+  it('статус «Отсутствующий» блок не показывает', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('radio', { name: 'Юр.лицо' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Отсутствующий' }));
+    expect(screen.queryByText('Объявление о ликвидации')).not.toBeInTheDocument();
+  });
+
+  it('debtorStatusHint=liquidation с бэка автопоказывает блок и заполняет ликвидатора', () => {
+    const data = makeData();
+    (data as any).debtorStatusHint = 'liquidation';
+    (data as any).recommendedActs = { entityType: 'legal' };
+    data.fields = { ...data.fields, liquidatorName: 'Оленченко Олег Игоревич' };
+    render(
+      <DocumentAnalysis
+        documentData={documentData}
+        extractedData={data}
+        onAnalysisComplete={() => {}}
+        onBack={() => {}}
+      />,
+    );
+    expect(screen.getByText('Объявление о ликвидации')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Оленченко Олег Игоревич')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ликвидируемый' })).toHaveAttribute('aria-pressed', 'true');
+  });
+});
+
+// Блок «Информация по счетам» виден только при статусе «Отсутствующий» (ЮЛ).
+describe('DocumentAnalysis — блок «Информация по счетам»', () => {
+  const renderForm = () =>
+    render(
+      <DocumentAnalysis
+        documentData={documentData}
+        extractedData={makeData()}
+        onAnalysisComplete={() => {}}
+        onBack={() => {}}
+      />,
+    );
+
+  it('по умолчанию блок скрыт', () => {
+    renderForm();
+    expect(screen.queryByText('Информация по счетам')).not.toBeInTheDocument();
+  });
+
+  it('выбор «Отсутствующий» (ЮЛ) показывает блок с тремя датами, снятие — скрывает', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('radio', { name: 'Юр.лицо' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Отсутствующий' }));
+    expect(screen.getByText('Информация по счетам')).toBeInTheDocument();
+    expect(screen.getByText('Дата последней налоговой отчётности:')).toBeInTheDocument();
+    expect(screen.getByText('Дата последней бухгалтерской отчётности:')).toBeInTheDocument();
+    expect(screen.getByText('Последняя операция по расчётным счетам:')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Отсутствующий' }));
+    expect(screen.queryByText('Информация по счетам')).not.toBeInTheDocument();
+  });
+
+  it('статус «Ликвидируемый» блок не показывает', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('radio', { name: 'Юр.лицо' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ликвидируемый' }));
+    expect(screen.queryByText('Информация по счетам')).not.toBeInTheDocument();
+  });
+
+  it('debtorStatusHint=absent с бэка автопроставляет статус и показывает блок', () => {
+    const data = makeData();
+    (data as any).debtorStatusHint = 'absent';
+    (data as any).recommendedActs = { entityType: 'legal' };
+    render(
+      <DocumentAnalysis
+        documentData={documentData}
+        extractedData={data}
+        onAnalysisComplete={() => {}}
+        onBack={() => {}}
+      />,
+    );
+    expect(screen.getByText('Информация по счетам')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Отсутствующий' })).toHaveAttribute('aria-pressed', 'true');
+  });
+});
+
+// Блок «Сведения о смерти» виден только при статусе «Умерший» (физлицо).
+describe('DocumentAnalysis — блок «Сведения о смерти»', () => {
+  const renderForm = () =>
+    render(
+      <DocumentAnalysis
+        documentData={documentData}
+        extractedData={makeData()}
+        onAnalysisComplete={() => {}}
+        onBack={() => {}}
+      />,
+    );
+
+  it('по умолчанию блок скрыт', () => {
+    renderForm();
+    expect(screen.queryByText('Сведения о смерти')).not.toBeInTheDocument();
+  });
+
+  it('выбор «Умерший» (физлицо) показывает блок, снятие — скрывает', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Умерший' }));
+    expect(screen.getByText('Сведения о смерти')).toBeInTheDocument();
+    expect(screen.getByText('ФИО нотариуса:')).toBeInTheDocument();
+    expect(screen.getByText('Адрес нотариуса:')).toBeInTheDocument();
+    expect(screen.getByText('Дата смерти:')).toBeInTheDocument();
+    expect(screen.getByText('Свидетельство о смерти:')).toBeInTheDocument();
+    // Повторный клик снимает статус — блок исчезает.
+    fireEvent.click(screen.getByRole('button', { name: 'Умерший' }));
+    expect(screen.queryByText('Сведения о смерти')).not.toBeInTheDocument();
+  });
+
+  it('у ЮЛ кнопки «Умерший» нет — блок недостижим', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('radio', { name: 'Юр.лицо' }));
+    expect(screen.queryByRole('button', { name: 'Умерший' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Сведения о смерти')).not.toBeInTheDocument();
+  });
+
+  it('debtorStatusHint=deceased с бэка автопроставляет статус, показывает блок и наследников', () => {
+    const data = makeData();
+    (data as any).debtorStatusHint = 'deceased';
+    (data as any).recommendedActs = { entityType: 'individual' };
+    (data as any).heirs = [{ name: 'Ким Эмма Николаевна', address: '346744, Ростовская обл.' }];
+    data.fields = { ...data.fields, deathDate: '13.05.2015' };
+    render(
+      <DocumentAnalysis
+        documentData={documentData}
+        extractedData={data}
+        onAnalysisComplete={() => {}}
+        onBack={() => {}}
+      />,
+    );
+    expect(screen.getByText('Сведения о смерти')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Умерший' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByDisplayValue('13.05.2015')).toBeInTheDocument();
+    // Наследник из заявления подставлен, хотя backend отдал его без id.
+    expect(screen.getByText('Наследник 1')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Ким Эмма Николаевна')).toBeInTheDocument();
+  });
+
+  it('добавление наследника создаёт новую карточку', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Умерший' }));
+    expect(screen.queryByText('Наследник 1')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Добавить наследника' }));
+    expect(screen.getByText('Наследник 1')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Удалить наследника' }));
+    expect(screen.queryByText('Наследник 1')).not.toBeInTheDocument();
   });
 });

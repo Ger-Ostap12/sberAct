@@ -3,6 +3,7 @@ import {
   EntityType,
   CollateralOption,
   DebtorStatus,
+  ApplicationKind,
   SelectedAct,
 } from '../../../types';
 import { formatJudgeName } from '../../../shared/lib/judges';
@@ -13,6 +14,7 @@ export interface SubmitDataInput {
   entityType: EntityType | null;
   collateralOption: CollateralOption | null;
   debtorStatus: DebtorStatus | null;
+  applicationKind: ApplicationKind;
   selectedActs: SelectedAct[];
 }
 
@@ -23,7 +25,7 @@ export interface SubmitDataInput {
  * penalties→forfeit, stateDuty↔stateDuty16). Чистая функция — тестируется напрямую.
  */
 export const buildSubmitData = (input: SubmitDataInput): ExtractedData => {
-  const { analysisResult, editedFields, entityType, collateralOption, debtorStatus, selectedActs } =
+  const { analysisResult, editedFields, entityType, collateralOption, debtorStatus, applicationKind, selectedActs } =
     input;
 
   // Финальный тип лица: выбранный пользователем (с приведением) или автоопределённый
@@ -47,12 +49,14 @@ export const buildSubmitData = (input: SubmitDataInput): ExtractedData => {
       selectedEntityType: entityType || undefined,
       selectedCollateralOption: collateralOption || undefined,
       selectedDebtorStatus: debtorStatus || undefined,
+      selectedApplicationKind: applicationKind || undefined,
       selectedActsIds: selected.map((a) => a.id).join(',') || undefined,
       selectedActsData: JSON.stringify(selected) || undefined,
     },
     collaterals: analysisResult.collaterals || [],
     thirdParties: analysisResult.thirdParties || [],
     debtors: analysisResult.debtors || [],
+    heirs: analysisResult.heirs || [],
   };
 
   // ФИО судьи → «Фамилия И.О.»
