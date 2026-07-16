@@ -341,3 +341,56 @@ describe('DocumentAnalysis — блок «Объявление о ликвида
     expect(screen.getByRole('button', { name: 'Ликвидируемый' })).toHaveAttribute('aria-pressed', 'true');
   });
 });
+
+// Блок «Информация по счетам» виден только при статусе «Отсутствующий» (ЮЛ).
+describe('DocumentAnalysis — блок «Информация по счетам»', () => {
+  const renderForm = () =>
+    render(
+      <DocumentAnalysis
+        documentData={documentData}
+        extractedData={makeData()}
+        onAnalysisComplete={() => {}}
+        onBack={() => {}}
+      />,
+    );
+
+  it('по умолчанию блок скрыт', () => {
+    renderForm();
+    expect(screen.queryByText('Информация по счетам')).not.toBeInTheDocument();
+  });
+
+  it('выбор «Отсутствующий» (ЮЛ) показывает блок с тремя датами, снятие — скрывает', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('radio', { name: 'Юр.лицо' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Отсутствующий' }));
+    expect(screen.getByText('Информация по счетам')).toBeInTheDocument();
+    expect(screen.getByText('Дата последней налоговой отчётности:')).toBeInTheDocument();
+    expect(screen.getByText('Дата последней бухгалтерской отчётности:')).toBeInTheDocument();
+    expect(screen.getByText('Последняя операция по расчётным счетам:')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Отсутствующий' }));
+    expect(screen.queryByText('Информация по счетам')).not.toBeInTheDocument();
+  });
+
+  it('статус «Ликвидируемый» блок не показывает', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('radio', { name: 'Юр.лицо' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ликвидируемый' }));
+    expect(screen.queryByText('Информация по счетам')).not.toBeInTheDocument();
+  });
+
+  it('debtorStatusHint=absent с бэка автопроставляет статус и показывает блок', () => {
+    const data = makeData();
+    (data as any).debtorStatusHint = 'absent';
+    (data as any).recommendedActs = { entityType: 'legal' };
+    render(
+      <DocumentAnalysis
+        documentData={documentData}
+        extractedData={data}
+        onAnalysisComplete={() => {}}
+        onBack={() => {}}
+      />,
+    );
+    expect(screen.getByText('Информация по счетам')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Отсутствующий' })).toHaveAttribute('aria-pressed', 'true');
+  });
+});

@@ -16,6 +16,25 @@ export const toInputDate = (value?: string): string => {
   return `${year}-${mm}-${dd}`;
 };
 
+/** Маска ручного ввода даты: берём цифры (макс 8) и расставляем точки — дд.мм.гггг. */
+export const maskDate = (raw: string): string => {
+  const d = raw.replace(/\D/g, '').slice(0, 8);
+  const parts = [d.slice(0, 2), d.slice(2, 4), d.slice(4, 8)].filter(Boolean);
+  return parts.join('.');
+};
+
+/** Полная ли и существующая ли дата дд.мм.гггг. Пустая строка считается валидной:
+ *  поле необязательно, ошибку показываем только на заведомо неверной дате (31.02). */
+export const isValidDateStr = (value?: string): boolean => {
+  if (!value) return true;
+  const match = value.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (!match) return false;
+  const [, dd, mm, yyyy] = match.map(Number) as unknown as [string, number, number, number];
+  const date = new Date(yyyy, mm - 1, dd);
+  // Date молча переносит перелёт («31.02» → 3 марта) — сверяем компоненты обратно.
+  return date.getFullYear() === yyyy && date.getMonth() === mm - 1 && date.getDate() === dd;
+};
+
 /** ГГГГ-ММ-ДД → ДД.ММ.ГГГГ. Возвращает вход как есть, если это не ISO-дата. */
 export const fromInputDate = (value: string): string => {
   if (!value) return '';

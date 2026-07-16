@@ -23,6 +23,7 @@ import CourtSection from './sections/CourtSection';
 import DatesSection from './sections/DatesSection';
 import ManagerSection from './sections/ManagerSection';
 import LiquidationSection from './sections/LiquidationSection';
+import AbsentDebtorSection from './sections/AbsentDebtorSection';
 import ThirdPartiesSection from './sections/ThirdPartiesSection';
 import DebtorsSection from './sections/DebtorsSection';
 import CreditorSection from './sections/CreditorSection';
@@ -861,6 +862,13 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 {debtorStatus === 'liquidation' && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
               <LiquidationSection editedFields={editedFields} onFieldChange={handleFieldChange} />
+                </Grid>
+                )}
+
+                {/* Информация по счетам — только при статусе «Отсутствующий» (ЮЛ). */}
+                {debtorStatus === 'absent' && (
+                <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
+              <AbsentDebtorSection editedFields={editedFields} onFieldChange={handleFieldChange} />
                 </Grid>
                 )}
 
