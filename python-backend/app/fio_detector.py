@@ -439,6 +439,84 @@ def extract_third_parties(text: str) -> list:
     return out
 
 
+# ── Наследники умершего должника (ст. 223.1) ────────────────────────────────
+# Метка шапки: «Наследник:», «Наследники:», «Наследник должника:». Ищем ТОЛЬКО в
+# шапке и только по метке: в прозе заявления слово «наследник» — сплошь цитаты нормы
+# («…осуществляют принявшие наследство наследники гражданина») и лица, ОТКАЗАВШИЕСЯ
+# от наследства («дети умершего: … отказались от доли»), — они наследниками не являются.
+_HEIR_LABEL_RE = re.compile(
+    r"^[ \t]*Наследник(?:и|а)?(?:\s+должника)?\s*:[ \t]*", re.IGNORECASE | re.MULTILINE
+)
+# Метки шапки, на которых запись наследника заканчивается (следующее поле бланка).
+_HEIR_STOP_RE = re.compile(
+    r"^[ \t]*(?:Должник|Заявитель|Кредитор|Истец|Ответчик|Треть[ие]\s+лиц|Третье\s+лицо|"
+    r"Нотариус|Государственн\w*\s+пошлин|Общий\s+размер|Сумма\s+требован|Дело\s*№|"
+    r"Арбитражный\s+суд|ЗАЯВЛЕНИЕ|ПРОШУ|ПРОСИТ|Финансов\w+\s+управляющ|Согласно)",
+    re.IGNORECASE | re.MULTILINE,
+)
+# ФИО в начале записи: «Ким Эмма Николаевна». В шапке имя и адрес идут ОДНОЙ строкой
+# без разделителя («Наследник: Ким Эмма Николаевна 346744, Ростовская обл., …»),
+# поэтому имя отрезаем по границе «первая цифра / запятая», а не по концу строки.
+_HEIR_FIO_RE = re.compile(
+    r"^\s*([А-ЯЁ][А-ЯЁа-яё]+(?:-[А-ЯЁ][А-ЯЁа-яё]+)?(?:\s+[А-ЯЁ][А-ЯЁа-яё]+){1,2})\b"
+)
+
+
+def _heir_block(text: str, start: int) -> str:
+    """Запись наследника: от метки до следующей метки шапки (или 400 символов)."""
+    rest = text[start:]
+    stop = _HEIR_STOP_RE.search(rest)
+    return rest[: stop.start()] if stop else rest[:400]
+
+
+def _parse_heir_record(rec_text: str):
+    """Разбирает запись наследника: name + address. Возвращает None, если ФИО не распознано."""
+    rec = re.sub(r"\s*\n\s*", " ", rec_text).strip()
+    m = _HEIR_FIO_RE.match(rec)
+    if not m:
+        return None
+    name = _normalize_fio(m.group(1))
+    if not is_person_name(name):
+        return None
+    d = {"name": name}
+
+    addr = rec[m.end():].strip().lstrip(",;–—-").strip()
+    addr = _strip_address_label(addr).strip()
+    # Хвост прозы/следующего поля отрезаем по тем же меткам, что и у третьих лиц.
+    addr = re.split(
+        r"\s*(?:Контактн\w*\s+тел\w*\.?|Телефон|Тел\.?|E-?mail|СНИЛС|ИНН|ОГРН\w*|Паспорт|"
+        r"Дата\s+рождения|Государственн\w*\s+пошлин|Общий\s+размер)[:\s.]",
+        addr, maxsplit=1, flags=re.IGNORECASE,
+    )[0]
+    addr = addr.strip().rstrip(",;")
+    if addr and len(addr) >= 8:
+        d["address"] = addr
+    return d
+
+
+def extract_heirs(text: str) -> list:
+    """Извлекает наследников умершего должника из шапки заявления.
+
+    Наследников может быть несколько — каждый под своей меткой «Наследник:».
+    Возвращает список словарей {name, address?}; пустой список — валидный
+    результат (в заявлении наследник может быть не назван).
+    """
+    if not text:
+        return []
+    out = []
+    seen = set()
+    for m in _HEIR_LABEL_RE.finditer(text):
+        parsed = _parse_heir_record(_heir_block(text, m.end()))
+        if not parsed:
+            continue
+        key = parsed["name"].casefold()
+        if key in seen:  # одно и то же лицо в шапке и в приложении к заявлению
+            continue
+        seen.add(key)
+        out.append(parsed)
+    return out
+
+
 def extract_third_party_details(text: str) -> dict:
     """Извлекает реквизиты ПЕРВОГО третьего лица: ИНН, дата рождения, СНИЛС.
 

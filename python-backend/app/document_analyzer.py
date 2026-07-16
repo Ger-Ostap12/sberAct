@@ -11,6 +11,7 @@ from fio_detector import (
     extract_third_party_details,
     extract_debtors,
     extract_third_parties,
+    extract_heirs,
 )
 from org_normalizer import (
     base_org_name,
@@ -433,6 +434,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # (отсутствующий/ликвидируемый) и ФЛ (умерший) взаимоисключающи по типу
             # лица, поэтому приоритет между ними не нужен.
             debtor_status_hint = None
+            heirs_result = []
             if not is_self_bk and extracted_fields.get("entityType") == "legal":
                 if self._detect_absent_debtor(text):
                     debtor_status_hint = "absent"
@@ -444,6 +446,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             elif not is_self_bk and extracted_fields.get("entityType") == "individual":
                 if self._detect_deceased(text):
                     debtor_status_hint = "deceased"
+                    # Сведения о смерти извлекаем ТОЛЬКО внутри этой ветки: якорь
+                    # «нотариус»/«умер» вне контекста смерти должника — чужие факты.
+                    extracted_fields.update(self._extract_death_details(text))
+                    heirs_result = extract_heirs(text)
 
             # Авторитетный пересчёт рекомендаций — ПОСЛЕ финализации entityType.
             # Ранние вызовы (до разбора должников/NLP) могли считать по промежуточному
@@ -471,7 +477,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 },
                 "recommendedActs": recommended_acts,
                 "debtors": debtors_result,
-                "thirdParties": third_parties_result
+                "thirdParties": third_parties_result,
+                # Наследники умершего должника — массив, как thirdParties: их может
+                # быть несколько, и у каждого свои реквизиты.
+                "heirs": heirs_result
             }
 
             entity_type = extracted_fields.get("entityType")
@@ -2967,6 +2976,49 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if any(rx.search(text) for rx in self._DECEASED_STRONG_RES):
             return True
         return bool(self._DECEASED_ART2231_RE.search(text))
+
+    # Дата смерти. Основная форма — дата ПЕРЕД сказуемым: «24.02.2019 Заемщик умер,
+    # что подтверждается свидетельством о смерти», «13.05.2015 Ким Клим умер».
+    # Между датой и «умер» стоит подлежащее (ФИО/«Заемщик»/«Должник»), поэтому
+    # допускаем до 40 символов без переноса строки.
+    _DEATH_DATE_BEFORE_RE = re.compile(
+        r"(\d{1,2}[.,]\d{1,2}[.,]\d{4})\s*[^\n]{0,40}?\bумер(?:ла)?\b", re.IGNORECASE
+    )
+    # Обратный порядок: «Заемщик умер 24.02.2019», «умерла 07.11.2020 г.».
+    _DEATH_DATE_AFTER_RE = re.compile(
+        r"\bумер(?:ла)?\b\s*(?:\w+\s+){0,3}?(\d{1,2}[.,]\d{1,2}[.,]\d{4})", re.IGNORECASE
+    )
+    # Свидетельство о смерти: римская серия + две русские буквы + шесть цифр
+    # («II-МЮ № 123456»). Разделители (дефис, №, пробелы) — необязательны и
+    # варьируются, у OCR тем более. Якорь на «свидетельств… о смерти» слева
+    # обязателен: сам по себе такой набор — это и свидетельство о рождении, и о браке.
+    _DEATH_CERT_RE = re.compile(
+        r"свидетельств\w*\s*о\s*смерти[\s\S]{0,80}?"
+        r"\b([IVXLC]{1,7})\s*[-–—]?\s*([А-ЯЁ]{2})\s*(?:№|N)?\s*[-–—]?\s*(\d{6})\b",
+        re.IGNORECASE,
+    )
+    def _extract_death_details(self, text: str) -> Dict[str, str]:
+        """Сведения о смерти должника: дата смерти и свидетельство о смерти.
+
+        Вызывается только для заявлений об умершем должнике. ФИО и адрес нотариуса
+        здесь НЕ извлекаются — по решению Андрея эти два поля заполняет пользователь
+        вручную. Серии свидетельства в референсных заявлениях тоже нет — извлекаем,
+        только если банк её всё же указал.
+        """
+        out: Dict[str, str] = {}
+        if not text:
+            return out
+
+        m = self._DEATH_DATE_BEFORE_RE.search(text) or self._DEATH_DATE_AFTER_RE.search(text)
+        if m:
+            out["deathDate"] = m.group(1).replace(",", ".")
+
+        m = self._DEATH_CERT_RE.search(text)
+        if m:
+            out["deathCertificate"] = "%s-%s № %s" % (
+                m.group(1).upper(), m.group(2).upper(), m.group(3)
+            )
+        return out
 
     def _extract_liquidator(self, text: str) -> Optional[str]:
         """Извлекает наименование ликвидатора (ФИО физлица или ОПФ организации).

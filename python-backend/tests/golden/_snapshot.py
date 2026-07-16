@@ -29,7 +29,7 @@ GOLDEN_PATH = os.path.join(_THIS, "golden_master.json")
 # Поля верхнего уровня результата analyze(), которые фиксируем (rawText — отдельно).
 _TOP_FIELDS = (
     "documentType", "confidence", "fields", "obligations", "collaterals",
-    "recommendedActs", "debtors", "thirdParties", "entityType", "metadata",
+    "recommendedActs", "debtors", "thirdParties", "heirs", "entityType", "metadata",
 )
 
 
