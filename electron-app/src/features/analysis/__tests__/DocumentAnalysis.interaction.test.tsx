@@ -322,4 +322,22 @@ describe('DocumentAnalysis — блок «Объявление о ликвида
     fireEvent.click(screen.getByRole('button', { name: 'Отсутствующий' }));
     expect(screen.queryByText('Объявление о ликвидации')).not.toBeInTheDocument();
   });
+
+  it('debtorStatusHint=liquidation с бэка автопоказывает блок и заполняет ликвидатора', () => {
+    const data = makeData();
+    (data as any).debtorStatusHint = 'liquidation';
+    (data as any).recommendedActs = { entityType: 'legal' };
+    data.fields = { ...data.fields, liquidatorName: 'Оленченко Олег Игоревич' };
+    render(
+      <DocumentAnalysis
+        documentData={documentData}
+        extractedData={data}
+        onAnalysisComplete={() => {}}
+        onBack={() => {}}
+      />,
+    );
+    expect(screen.getByText('Объявление о ликвидации')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Оленченко Олег Игоревич')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ликвидируемый' })).toHaveAttribute('aria-pressed', 'true');
+  });
 });

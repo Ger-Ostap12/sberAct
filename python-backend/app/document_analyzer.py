@@ -395,6 +395,18 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # должника «Самобанкрот» и скрывает блоки кредитора/финансов.
             application_kind = "self_bankruptcy" if is_self_bk else None
 
+            # ЛИКВИДАЦИЯ должника-ЮЛ: детект по тексту + извлечение ликвидатора.
+            # Флаг top-level (по образцу applicationKind, НЕ в fields) — фронт
+            # автопроставляет статус «Ликвидируемый». Только ЮЛ и не самобанкрот.
+            # liquidatorName — реальное извлечённое поле, кладём в fields (как managerName).
+            debtor_status_hint = None
+            if (not is_self_bk and extracted_fields.get("entityType") == "legal"
+                    and self._detect_liquidation(text)):
+                debtor_status_hint = "liquidation"
+                _liq = self._extract_liquidator(text)
+                if _liq:
+                    extracted_fields["liquidatorName"] = _liq
+
             # Авторитетный пересчёт рекомендаций — ПОСЛЕ финализации entityType.
             # Ранние вызовы (до разбора должников/NLP) могли считать по промежуточному
             # типу лица: у ВКЛ-в-РТК ВТБ тип на входе был 'legal' (утёкшее «ПАО» банка +
@@ -412,6 +424,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 "collaterals": collaterals_final,
                 "financeBreakdown": finance_breakdown,
                 "applicationKind": application_kind,
+                "debtorStatusHint": debtor_status_hint,
                 "rawText": text,
                 "metadata": {
                     "pageCount": page_count if page_count is not None else 1,
@@ -2698,6 +2711,107 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             return ma.group(1).casefold()
         mb = re.search(r"([А-ЯЁ][А-ЯЁа-яё-]{1,})[\s,]*$", addr[: m.start()])
         return mb.group(1).casefold() if mb else ""
+
+    # Ликвидатор: ФИО из 2-3 titlecase-токенов (Оленченко Олег Игоревич / Иванов Иван).
+    _LIQ_PN = r"[А-ЯЁ][А-ЯЁа-яё]+(?:-[А-ЯЁ][А-ЯЁа-яё]+)?(?:\s+[А-ЯЁ][А-ЯЁа-яё]+){1,2}"
+
+    def _detect_liquidation(self, text: str) -> bool:
+        """True, если в заявлении есть сведения о ликвидации должника-ЮЛ.
+
+        Сильные (однозначные) сигналы: «ликвидатор…», «ликвидационная комиссия»,
+        «ликвидируемого должника». Слабые («решение/стадия/процесс … ликвидации»)
+        засчитываются, только если это не «ликвидация задолженности/последствий/
+        аварии» (иной смысл слова «ликвидация»). `\\s+` терпимо к переносам слов.
+        """
+        strong = (r"ликвидатор", r"ликвидационн\w*\s+комисси", r"ликвидируем\w*\s+должник")
+        for rx in strong:
+            if re.search(rx, text, re.IGNORECASE):
+                return True
+        weak = (r"(?:решени\w+|постановлени\w+)\s+о\s+ликвидаци",
+                r"(?:стади\w+|процесс\w*)\s+ликвидаци")
+        for rx in weak:
+            for m in re.finditer(rx, text, re.IGNORECASE):
+                tail = text[m.end():m.end() + 24]
+                if not re.match(r"\s+(?:задолженност|последстви|авари)", tail, re.IGNORECASE):
+                    return True
+        return False
+
+    def _extract_liquidator(self, text: str) -> Optional[str]:
+        """Извлекает наименование ликвидатора (ФИО физлица или ОПФ организации).
+
+        Слои с приоритетом: (1) ликвидатор-ЮЛ (управляющая организация) → наименование =
+        организация; (2) ликвидационная комиссия (председатель/руководитель/в составе);
+        (3) единственный ликвидатор-физлицо (разные формулировки, вкл. официальную по
+        ЕГРЮЛ). ФИО прогоняется через `_normalize_fio` + `is_person_name`.
+        """
+        pn = self._LIQ_PN
+        # Слой 1 — ликвидатор-ЮЛ (управляющая организация): наименование = организация.
+        m = re.search(
+            r"(?:управляющ\w+\s+организаци\w+\s*\(ликвидатора\)|ликвидатора?)\s*[—–\-]?\s*"
+            r"((?:ООО|ОАО|ЗАО|ПАО|НАО|АО)\s*[«\"][^»\"\n]{2,60}[»\"])\s+в\s+лице",
+            text, re.IGNORECASE)
+        if m:
+            return re.sub(r"\s+", " ", m.group(1)).strip()
+        # Слой 2 — ликвидационная комиссия.
+        for rx in (
+            r"(?:председател\w+|руководител\w+)\s+ликвидационн\w+\s+комисси\w+\s+(" + pn + r")",
+            r"ликвидационн\w+\s+комисси\w+\s+в\s+составе\s+председател\w+\s+(" + pn + r")",
+        ):
+            cand = self._liquidator_person(text, rx)
+            if cand:
+                return cand
+        # Слой 3 — единственный ликвидатор-физлицо.
+        for rx in (
+            r"в\s+лице\s+(?:единственного\s+)?ликвидатора\b\s*[:—–\-]*\s*(" + pn + r")",
+            r"ликвидатором\s+назначен\w*\s+(" + pn + r")",
+            r"полномочи\w+\s+ликвидатора\s+возложены\s+на\s+(" + pn + r")",
+            r"лица,?\s*ответственного\s+за\s+ликвидацию,?\s*(" + pn + r")",
+            r"органа,?\s*осуществляющего\s+ликвидацию,?\s*в\s+лице\s+(" + pn + r")",
+            r"от\s+имени\s+юридического\s+лица\s*\(ликвидатора\)[,\s]*(" + pn + r")",
+            r"ликвидатор\w*\s*:\s*(" + pn + r")",
+        ):
+            cand = self._liquidator_person(text, rx)
+            if cand:
+                return cand
+        return None
+
+    def _liquidator_person(self, text: str, rx: str) -> Optional[str]:
+        """Матч ФИО ликвидатора по паттерну rx → нормализация регистра + приведение к
+        именительному падежу (грамматика «в лице ликвидатора <кого>» даёт косвенный
+        падеж). Возвращает ФИО или None, если не похоже на имя."""
+        m = re.search(rx, text, re.IGNORECASE)
+        if not m:
+            return None
+        cand = self._fio_to_nominative(_normalize_fio(m.group(1).strip()))
+        return cand if is_person_name(cand) else None
+
+    def _fio_to_nominative(self, fio: str) -> str:
+        """Приводит ФИО к именительному падежу («Иванова Ивана Ивановича» → «Иванов
+        Иван Иванович»). Несклоняемые/уже-именительные токены не трогаются. Род —
+        по подстроке отчества (вич→masc, вна→femn), чтобы фамилия-омоним склонялась
+        верно («Иванова» masc → «Иванов», femn → «Иванова»)."""
+        morph = self._ensure_morph()
+        if not morph or not fio:
+            return fio
+        low = fio.lower()
+        gender = "masc" if "вич" in low else ("femn" if "вна" in low else None)
+        return " ".join(self._token_to_nominative(morph, t, gender) for t in fio.split())
+
+    def _token_to_nominative(self, morph, tok: str, gender: Optional[str]) -> str:
+        if "-" in tok:
+            return "-".join(self._token_to_nominative(morph, p, gender) for p in tok.split("-"))
+        parses = morph.parse(tok)
+        if not parses:
+            return tok
+        # Предпочитаем разбор как имя собственное (фамилия/имя/отчество).
+        p = next((x for x in parses if any(k in str(x.tag) for k in ("Surn", "Name", "Patr"))), parses[0])
+        gramm = {"nomn"}
+        if gender and "Surn" in str(p.tag):
+            gramm.add(gender)
+        inflected = p.inflect(gramm) or p.inflect({"nomn"})
+        if inflected and inflected.word:
+            return self._match_original_case(tok, inflected.word)
+        return tok
 
     def _truncate_glued_address(self, addr: str) -> str:
         """Обрезает склейку двух адресов в одном поле.

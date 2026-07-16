@@ -7,9 +7,19 @@ interface LiquidationSectionProps {
   onFieldChange: (field: string, value: string) => void;
 }
 
+/** Номер заявления — только цифры. */
+const sanitizeNumber = (raw: string): string => raw.replace(/\D/g, '');
+
+/** Дата ликвидации — маска дд.мм.гггг: берём цифры (макс 8) и расставляем точки. */
+const maskDate = (raw: string): string => {
+  const d = raw.replace(/\D/g, '').slice(0, 8);
+  const parts = [d.slice(0, 2), d.slice(2, 4), d.slice(4, 8)].filter(Boolean);
+  return parts.join('.');
+};
+
 /** Секция «Объявление о ликвидации» — видна при статусе должника «Ликвидируемый».
  *  Наименование ликвидатора авто-заполняется backend (liquidatorName); номер заявления
- *  и дата ликвидации вводятся пользователем. */
+ *  (только цифры) и дата ликвидации (маска дд.мм.гггг) вводятся пользователем. */
 const LiquidationSection: React.FC<LiquidationSectionProps> = ({ editedFields, onFieldChange }) => (
   <Box sx={{ ...BLOCK_BOX_SX, mt: 3 }}>
     <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
@@ -35,9 +45,10 @@ const LiquidationSection: React.FC<LiquidationSectionProps> = ({ editedFields, o
           <TextField
             fullWidth
             value={editedFields.liquidationApplicationNumber || ''}
-            onChange={(e) => onFieldChange('liquidationApplicationNumber', e.target.value)}
+            onChange={(e) => onFieldChange('liquidationApplicationNumber', sanitizeNumber(e.target.value))}
             size="small"
             margin="dense"
+            inputProps={{ inputMode: 'numeric' }}
           />
         </Box>
       </Grid>
@@ -47,9 +58,11 @@ const LiquidationSection: React.FC<LiquidationSectionProps> = ({ editedFields, o
           <TextField
             fullWidth
             value={editedFields.liquidationDate || ''}
-            onChange={(e) => onFieldChange('liquidationDate', e.target.value)}
+            onChange={(e) => onFieldChange('liquidationDate', maskDate(e.target.value))}
             size="small"
             margin="dense"
+            placeholder="дд.мм.гггг"
+            inputProps={{ inputMode: 'numeric' }}
           />
         </Box>
       </Grid>

@@ -124,6 +124,9 @@ export interface ExtractedData {
    *  (заявитель = должник, кредитора-заявителя нет). Фронт автопроставляет
    *  статус должника «Самобанкрот» и скрывает блок «Информация о кредиторе». */
   applicationKind?: 'self_bankruptcy' | null;
+  /** Подсказка статуса должника из backend: 'liquidation' — в заявлении есть
+   *  сведения о ликвидации ЮЛ. Фронт автопроставляет статус «Ликвидируемый». */
+  debtorStatusHint?: 'liquidation' | null;
   thirdParties?: ThirdParty[];
   debtors?: Debtor[];
   rawText: string;
