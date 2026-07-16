@@ -86,3 +86,32 @@ def test_truncate_address_keeps_house_number_sign(da):
     # «№ N» в составе адреса (дом № 5) — НЕ маркер обрезки.
     addr = "344000, г. Ростов-на-Дону, ул. Ленина, дом № 5, кв. 3"
     assert da._truncate_glued_address(addr) == addr
+
+
+# ── Банкротная госпошлина двумя слагаемыми ────────────────────────────────────
+@pytest.mark.parametrize("text", [
+    "заявление о банкротстве. Госпошлина: 1 490 913 руб.+ 100 000 руб.",
+    "о признании банкротом. судебные расходы по оплате государственной пошлины "
+    "в размере 100 000 рублей и 1 490 913 руб.",
+])
+def test_sum_bankruptcy_duty(da, text):
+    fields = {"loanStateDuty17": "100 000,00", "stateDuty16": "1 490 913,00"}
+    da._sum_bankruptcy_duty(fields, text)
+    assert fields["stateDuty16"] == "1 590 913,00"
+    assert fields["stateDuty"] == "1 590 913,00"
+    assert "loanStateDuty17" not in fields  # ложная ссудная убрана
+
+
+def test_sum_bankruptcy_duty_single_amount_noop(da):
+    # Одно число — не суммируем (обычная госпошлина одной суммой).
+    fields = {"stateDuty16": "6 000,00"}
+    da._sum_bankruptcy_duty(fields, "о банкротстве. Госпошлина: 6 000 руб.")
+    assert fields["stateDuty16"] == "6 000,00"
+
+
+def test_sum_bankruptcy_duty_non_bankruptcy_noop(da):
+    # Вне банкротного контекста (исковое о взыскании) — не трогаем.
+    fields = {"loanStateDuty17": "100 000,00"}
+    da._sum_bankruptcy_duty(fields, "исковое заявление. Госпошлина: 100 000 руб.+ 50 000 руб.")
+    assert fields.get("loanStateDuty17") == "100 000,00"
+    assert "stateDuty16" not in fields

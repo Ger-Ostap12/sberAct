@@ -824,7 +824,6 @@
    "legalShortName": "ОРГТЕХНИКА\" (ООО \"ОРГТЕХНИКА\")",
    "liquidatorName": "Оленченко Олег Игоревич",
    "loanDebt": "494 171 335,67",
-   "loanStateDuty17": "100 000,00",
    "messageDate": "05.06.2026",
    "messageNumber": "36504402",
    "obligationType": "Кредитный договор",
@@ -843,8 +842,8 @@
    "requirementsSum": "501 365 000,90",
    "sourceDocumentType": "initiation_legal",
    "sroName": "Некоммерческое партнерство \"Саморегулируемая организация арбитражных управляющих \"Меркурий\"",
-   "stateDuty": "1 490 913,00",
-   "stateDuty16": "1 490 913,00",
+   "stateDuty": "1 590 913,00",
+   "stateDuty16": "1 590 913,00",
    "totalDebt": "988 342 671,34"
   },
   "metadata": {

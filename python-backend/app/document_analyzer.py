@@ -327,6 +327,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if not is_self_bk:
                 self._apply_fns_queue_finances(extracted_fields, text)
 
+            # Банкротная госпошлина двумя слагаемыми под одной меткой («… 1 490 913
+            # руб.+ 100 000 руб.») — суммируем в банкротную, убираем ложную ссудную.
+            if not is_self_bk:
+                self._sum_bankruptcy_duty(extracted_fields, text)
+
             # Имя кредитора, обрезанное на переносе строки внутри названия
             # («…"МТС-» + «Банк"» ниже) — дотягиваем по тексту.
             self._fix_truncated_creditor_name(extracted_fields, text)
