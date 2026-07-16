@@ -415,13 +415,19 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # Флаг top-level (по образцу applicationKind, НЕ в fields) — фронт
             # автопроставляет статус «Ликвидируемый». Только ЮЛ и не самобанкрот.
             # liquidatorName — реальное извлечённое поле, кладём в fields (как managerName).
+            # ОТСУТСТВУЮЩИЙ должник-ЮЛ (упрощённая процедура § 2 гл. XI) — тем же
+            # способом. Приоритет над ликвидацией: если заявление просит конкурсное
+            # производство ОТСУТСТВУЮЩЕГО должника, статус именно такой, даже когда в
+            # тексте попутно упомянута ликвидация (у ликвидируемого должника свой акт).
             debtor_status_hint = None
-            if (not is_self_bk and extracted_fields.get("entityType") == "legal"
-                    and self._detect_liquidation(text)):
-                debtor_status_hint = "liquidation"
-                _liq = self._extract_liquidator(text)
-                if _liq:
-                    extracted_fields["liquidatorName"] = _liq
+            if not is_self_bk and extracted_fields.get("entityType") == "legal":
+                if self._detect_absent_debtor(text):
+                    debtor_status_hint = "absent"
+                elif self._detect_liquidation(text):
+                    debtor_status_hint = "liquidation"
+                    _liq = self._extract_liquidator(text)
+                    if _liq:
+                        extracted_fields["liquidatorName"] = _liq
 
             # Авторитетный пересчёт рекомендаций — ПОСЛЕ финализации entityType.
             # Ранние вызовы (до разбора должников/NLP) могли считать по промежуточному
@@ -2871,6 +2877,46 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 if not re.match(r"\s+(?:задолженност|последстви|авари)", tail, re.IGNORECASE):
                     return True
         return False
+
+    # Отсутствующий должник (§ 2 гл. XI Закона о банкротстве, ст. 227–230). Сильные
+    # сигналы — оборот «отсутствующ… должник…» в связке с процедурой/признаками:
+    # в заявлении такая формула встречается ТОЛЬКО в этом правовом смысле.
+    # `\s*` (а не `\s+`) — терпимость к OCR-склейкам, как в детекторе самобанкротства.
+    _ABSENT_STRONG_RES = (
+        # «ввести … процедуру конкурсного производства отсутствующего должника» —
+        # ключевая формула просительной части (правило Андрея).
+        re.compile(r"конкурсн\w*\s*производств\w*\s*отсутствующ\w*\s*должник", re.IGNORECASE),
+        # «§ 2 Банкротство отсутствующего должника», «упрощённая процедура банкротства
+        # отсутствующего должника».
+        re.compile(r"банкротств\w*\s*отсутствующ\w*\s*должник", re.IGNORECASE),
+        # «для ведения процедуры отсутствующего должника».
+        re.compile(r"процедур\w*\s*отсутствующ\w*\s*должник", re.IGNORECASE),
+        # «у должника имеются признаки отсутствующего должника», «отвечает критериям…».
+        re.compile(r"(?:признак\w*|критери\w*)\s*отсутствующ\w*\s*должник", re.IGNORECASE),
+        # «признать должника отсутствующим должником».
+        re.compile(r"призна\w*\s*[\s\S]{0,40}?отсутствующ\w+\s*должник", re.IGNORECASE),
+    )
+    # Ст. 230 — материальная норма об отсутствующем должнике. САМА ПО СЕБЕ ненадёжна:
+    # ст. 230 есть и в НК РФ (налоговые агенты), а заявления ФНС ссылаются на НК
+    # постоянно. Поэтому засчитываем, только если рядом назван закон о банкротстве.
+    _ABSENT_ART230_RE = re.compile(
+        r"(?:стать\w+|ст\.?)\s*230\s*(?:[\s\S]{0,60}?(?:банкротств|несостоятельн|127-ФЗ))",
+        re.IGNORECASE,
+    )
+
+    def _detect_absent_debtor(self, text: str) -> bool:
+        """True, если заявление подано в отношении ОТСУТСТВУЮЩЕГО должника-ЮЛ.
+
+        Признак — упрощённая процедура § 2 гл. XI Закона о банкротстве: имущество
+        должника заведомо не покрывает судебные расходы либо по счетам год нет
+        операций. Проверено на корпусе (75 файлов): формулы срабатывают только на
+        заявлениях этого вида.
+        """
+        if not text:
+            return False
+        if any(rx.search(text) for rx in self._ABSENT_STRONG_RES):
+            return True
+        return bool(self._ABSENT_ART230_RE.search(text))
 
     def _extract_liquidator(self, text: str) -> Optional[str]:
         """Извлекает наименование ликвидатора (ФИО физлица или ОПФ организации).

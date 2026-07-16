@@ -144,14 +144,16 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           setCollateralOption(recommendedActs.collateralOption as CollateralOption);
         }
 
-        // Авто-статус должника: умерший — по процедуре; ликвидируемый — по флагу
-        // backend (детект сведений о ликвидации); отсутствующий — ручной выбор.
+        // Авто-статус должника: умерший — по процедуре; ликвидируемый и
+        // отсутствующий — по флагу backend (debtorStatusHint).
         const procType = (analysisResult.fields as any)?.procedureType
           || (analysisResult.fields as any)?.procedureTypeRaw || '';
         if (String(procType).toLowerCase().includes('умер') || String(procType).toLowerCase() === 'deceased') {
           setDebtorStatus('deceased');
         } else if (analysisResult.debtorStatusHint === 'liquidation') {
           setDebtorStatus('liquidation');
+        } else if (analysisResult.debtorStatusHint === 'absent') {
+          setDebtorStatus('absent');
         }
 
         // Вид заявления из рекомендаций: самобанкротство (детектор backend) →

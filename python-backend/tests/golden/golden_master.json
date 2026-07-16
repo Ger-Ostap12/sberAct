@@ -11926,11 +11926,11 @@
   "metadata": {
    "language": "ru",
    "pageCount": 4,
-   "wordCount": 1532
+   "wordCount": 1537
   },
   "obligations": [],
-  "rawTextLen": 11725,
-  "rawTextSha": "5f9014dfc124a292ef19ffbdbef34592d31609cbff010df098bbbd2f72cedd92",
+  "rawTextLen": 11777,
+  "rawTextSha": "97bb916f9c504218f3e75afddb100821e790178587df6a984974d6aa47d4ab95",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "legal",
