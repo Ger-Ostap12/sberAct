@@ -21,6 +21,14 @@ export interface ThirdParty {
   snils?: string;
 }
 
+/** Наследник умершего должника (ст. 223.1 Закона о банкротстве). Наследников
+ *  может быть несколько — храним массивом, как третьих лиц. */
+export interface Heir {
+  id: string;
+  name: string;
+  address?: string;
+}
+
 export interface Debtor {
   id: string;
   name: string;
@@ -126,10 +134,13 @@ export interface ExtractedData {
   applicationKind?: 'self_bankruptcy' | null;
   /** Подсказка статуса должника из backend: 'liquidation' — в заявлении есть
    *  сведения о ликвидации ЮЛ; 'absent' — заявление по упрощённой процедуре
-   *  отсутствующего должника (§ 2 гл. XI Закона о банкротстве). Фронт
+   *  отсутствующего должника (§ 2 гл. XI Закона о банкротстве); 'deceased' —
+   *  заявление в отношении умершего должника-физлица (ст. 223.1). Фронт
    *  автопроставляет соответствующий статус. */
-  debtorStatusHint?: 'liquidation' | 'absent' | null;
+  debtorStatusHint?: 'liquidation' | 'absent' | 'deceased' | null;
   thirdParties?: ThirdParty[];
+  /** Наследники умершего должника — заполняется только для статуса «Умерший». */
+  heirs?: Heir[];
   debtors?: Debtor[];
   rawText: string;
   metadata: {

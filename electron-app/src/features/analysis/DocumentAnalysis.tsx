@@ -12,7 +12,7 @@ import {
   Divider
 } from '@mui/material';
 import { ArrowBack as BackIcon, CheckCircle as CheckIcon } from '@mui/icons-material';
-import { DocumentData, ExtractedData, Obligation, Collateral, CollateralType, EntityType, CollateralOption, DebtorStatus, ApplicationKind, SelectedAct, ThirdParty, Debtor } from '../../types';
+import { DocumentData, ExtractedData, Obligation, Collateral, CollateralType, EntityType, CollateralOption, DebtorStatus, ApplicationKind, SelectedAct, ThirdParty, Debtor, Heir } from '../../types';
 import { useBanks } from './hooks/useBanks';
 import { extractCollateralData } from '../../shared/lib/collateral';
 import { isFnsCreditor, FNS_CREDITOR_KEY } from '../../shared/lib/banks';
@@ -24,6 +24,7 @@ import DatesSection from './sections/DatesSection';
 import ManagerSection from './sections/ManagerSection';
 import LiquidationSection from './sections/LiquidationSection';
 import AbsentDebtorSection from './sections/AbsentDebtorSection';
+import DeceasedSection from './sections/DeceasedSection';
 import ThirdPartiesSection from './sections/ThirdPartiesSection';
 import DebtorsSection from './sections/DebtorsSection';
 import CreditorSection from './sections/CreditorSection';
@@ -145,8 +146,9 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           setCollateralOption(recommendedActs.collateralOption as CollateralOption);
         }
 
-        // Авто-статус должника: умерший — по процедуре; ликвидируемый и
-        // отсутствующий — по флагу backend (debtorStatusHint).
+        // Авто-статус должника: по флагу backend (debtorStatusHint) либо, для
+        // умершего, по процедуре — процедурный путь остаётся как запасной для
+        // документов, где детект по тексту не сработал.
         const procType = (analysisResult.fields as any)?.procedureType
           || (analysisResult.fields as any)?.procedureTypeRaw || '';
         if (String(procType).toLowerCase().includes('умер') || String(procType).toLowerCase() === 'deceased') {
@@ -155,6 +157,8 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           setDebtorStatus('liquidation');
         } else if (analysisResult.debtorStatusHint === 'absent') {
           setDebtorStatus('absent');
+        } else if (analysisResult.debtorStatusHint === 'deceased') {
+          setDebtorStatus('deceased');
         }
 
         // Вид заявления из рекомендаций: самобанкротство (детектор backend) →
@@ -351,12 +355,20 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           }];
         }
 
+        // Наследники умершего должника: backend отдаёт их без id (как третьих лиц) —
+        // проставляем свои, иначе ключи карточек и правка по индексу поедут.
+        const initialHeirs: Heir[] = (propExtractedData.heirs || []).map((h, i) => ({
+          ...h,
+          id: h.id || `heir-${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`
+        }));
+
         const fullAnalysisResult = {
           ...propExtractedData,
           obligations: propExtractedData.obligations || [],
           collaterals: initialCollaterals,
           thirdParties: initialThirdParties,
-          debtors: initialDebtors
+          debtors: initialDebtors,
+          heirs: initialHeirs
         };
         setAnalysisResult(fullAnalysisResult);
 
@@ -552,6 +564,31 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     if (!analysisResult?.thirdParties) return;
     const updated = analysisResult.thirdParties.filter((_, i) => i !== index);
     setAnalysisResult({ ...analysisResult, thirdParties: updated });
+  };
+
+  // --- Наследники умершего должника: динамический список (как третьи лица) ---
+  const addHeir = () => {
+    if (!analysisResult) return;
+    const newHeir: Heir = {
+      id: `heir-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name: '',
+      address: ''
+    };
+    const heirs = [...(analysisResult.heirs || []), newHeir];
+    setAnalysisResult({ ...analysisResult, heirs });
+  };
+
+  const updateHeir = (index: number, field: keyof Heir, value: string) => {
+    if (!analysisResult?.heirs) return;
+    const updated = [...analysisResult.heirs];
+    updated[index] = { ...updated[index], [field]: value };
+    setAnalysisResult({ ...analysisResult, heirs: updated });
+  };
+
+  const removeHeir = (index: number) => {
+    if (!analysisResult?.heirs) return;
+    const updated = analysisResult.heirs.filter((_, i) => i !== index);
+    setAnalysisResult({ ...analysisResult, heirs: updated });
   };
 
   // --- Должники (со-ответчики): динамический список ---
@@ -869,6 +906,20 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 {debtorStatus === 'absent' && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
               <AbsentDebtorSection editedFields={editedFields} onFieldChange={handleFieldChange} />
+                </Grid>
+                )}
+
+                {/* Сведения о смерти — только при статусе «Умерший» (физлицо). */}
+                {debtorStatus === 'deceased' && (
+                <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
+              <DeceasedSection
+                editedFields={editedFields}
+                onFieldChange={handleFieldChange}
+                heirs={analysisResult?.heirs || []}
+                onHeirUpdate={updateHeir}
+                onHeirAdd={addHeir}
+                onHeirRemove={removeHeir}
+              />
                 </Grid>
                 )}
 

@@ -56,6 +56,7 @@ export const buildSubmitData = (input: SubmitDataInput): ExtractedData => {
     collaterals: analysisResult.collaterals || [],
     thirdParties: analysisResult.thirdParties || [],
     debtors: analysisResult.debtors || [],
+    heirs: analysisResult.heirs || [],
   };
 
   // ФИО судьи → «Фамилия И.О.»

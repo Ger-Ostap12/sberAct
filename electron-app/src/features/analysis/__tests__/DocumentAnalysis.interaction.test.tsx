@@ -394,3 +394,75 @@ describe('DocumentAnalysis — блок «Информация по счетам
     expect(screen.getByRole('button', { name: 'Отсутствующий' })).toHaveAttribute('aria-pressed', 'true');
   });
 });
+
+// Блок «Сведения о смерти» виден только при статусе «Умерший» (физлицо).
+describe('DocumentAnalysis — блок «Сведения о смерти»', () => {
+  const renderForm = () =>
+    render(
+      <DocumentAnalysis
+        documentData={documentData}
+        extractedData={makeData()}
+        onAnalysisComplete={() => {}}
+        onBack={() => {}}
+      />,
+    );
+
+  it('по умолчанию блок скрыт', () => {
+    renderForm();
+    expect(screen.queryByText('Сведения о смерти')).not.toBeInTheDocument();
+  });
+
+  it('выбор «Умерший» (физлицо) показывает блок, снятие — скрывает', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Умерший' }));
+    expect(screen.getByText('Сведения о смерти')).toBeInTheDocument();
+    expect(screen.getByText('ФИО нотариуса:')).toBeInTheDocument();
+    expect(screen.getByText('Адрес нотариуса:')).toBeInTheDocument();
+    expect(screen.getByText('Дата смерти:')).toBeInTheDocument();
+    expect(screen.getByText('Свидетельство о смерти:')).toBeInTheDocument();
+    // Повторный клик снимает статус — блок исчезает.
+    fireEvent.click(screen.getByRole('button', { name: 'Умерший' }));
+    expect(screen.queryByText('Сведения о смерти')).not.toBeInTheDocument();
+  });
+
+  it('у ЮЛ кнопки «Умерший» нет — блок недостижим', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('radio', { name: 'Юр.лицо' }));
+    expect(screen.queryByRole('button', { name: 'Умерший' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Сведения о смерти')).not.toBeInTheDocument();
+  });
+
+  it('debtorStatusHint=deceased с бэка автопроставляет статус, показывает блок и наследников', () => {
+    const data = makeData();
+    (data as any).debtorStatusHint = 'deceased';
+    (data as any).recommendedActs = { entityType: 'individual' };
+    (data as any).heirs = [{ name: 'Ким Эмма Николаевна', address: '346744, Ростовская обл.' }];
+    data.fields = { ...data.fields, deathDate: '13.05.2015' };
+    render(
+      <DocumentAnalysis
+        documentData={documentData}
+        extractedData={data}
+        onAnalysisComplete={() => {}}
+        onBack={() => {}}
+      />,
+    );
+    expect(screen.getByText('Сведения о смерти')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Умерший' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByDisplayValue('13.05.2015')).toBeInTheDocument();
+    // Наследник из заявления подставлен, хотя backend отдал его без id.
+    expect(screen.getByText('Наследник 1')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Ким Эмма Николаевна')).toBeInTheDocument();
+  });
+
+  it('добавление наследника создаёт новую карточку', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Умерший' }));
+    expect(screen.queryByText('Наследник 1')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Добавить наследника' }));
+    expect(screen.getByText('Наследник 1')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Удалить наследника' }));
+    expect(screen.queryByText('Наследник 1')).not.toBeInTheDocument();
+  });
+});
