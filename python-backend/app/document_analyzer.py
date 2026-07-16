@@ -352,6 +352,17 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # обрезаем хвост, а полностью мусорные адреса (без букв) убираем.
             self._sanitize_address_fields(extracted_fields)
 
+            # Адреса в записях должников/третьих лиц строятся отдельным путём (не через
+            # fields) — чистим их той же обрезкой склейки (хвост «В лице ликвидатора: …
+            # Сообщение №… о намерении обратиться в суд» при однострочной PDF→docx склейке).
+            for _entry_list in (debtors_result, third_parties_result):
+                for _entry in (_entry_list or []):
+                    _ea = _entry.get("address")
+                    if isinstance(_ea, str) and _ea.strip():
+                        _clean = re.split(r"\b(?:ИНН|ОГРНИП|ОГРН|СНИЛС|КПП)\b", _ea,
+                                          flags=re.IGNORECASE)[0].strip(" ,;-")
+                        _entry["address"] = self._truncate_glued_address(_clean)
+
             # Банкротная госпошлина не должна совпадать с итогом/осн.долгом —
             # это мусор (в документе отдельной банкротной госпошлины нет). Чистим.
             self._clear_garbage_bankruptcy_duty(extracted_fields)
@@ -2409,7 +2420,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 return False
             # Стоп-слова заявления: если есть — это проза, а не адрес.
             if re.search(r"руководству|федеральн\w+\s+закон|уведомл|задолженност|приложен|"
-                         r"направлен|уплач|несостоятельн|банкротств|\bстать\w+|\bст\.?\s*\d",
+                         r"направлен|уплач|несостоятельн|банкротств|\bстать\w+|\bст\.?\s*\d|"
+                         r"в\s+лице|ликвидатор|сообщени|о\s+намерении|обратил|обратиться\s+в\s+суд",
                          s, re.IGNORECASE):
                 return False
             # 1) Почтовый индекс — однозначный признак адреса (покрывает большинство).
@@ -2819,14 +2831,27 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         Пример (Корсунов): «347631, обл. Ростовская, …, кв. 61 Кредиторы ООО МКК
         Эквазайм 432071, Ульяновская область, …» — за адресом должника продолжен
         список кредиторов. Правила: (1) слово «кредитор» внутри адреса — обрезка
-        по нему; (2) повтор адресной категории (индекс/область/город/улица/дом)
-        с ДРУГИМ значением — обрезка перед самым ранним повтором. Повтор с тем же
-        значением («г. о. город Новочеркасск, г. Новочеркасск …») — ФИАС-стиль
-        одного адреса, не склейка.
+        по нему; (1a) «мягкий» маркер начала прозы (в лице/ликвидатор/сообщение/
+        о намерении/обратиться в суд) — при однострочной PDF→docx склейке к адресу
+        приклеивается хвост «…ком. 314 В лице ликвидатора: … Сообщение №… о
+        намерении обратиться в суд»; (2) повтор адресной категории (индекс/область/
+        город/улица/дом) с ДРУГИМ значением — обрезка перед самым ранним повтором.
+        Повтор с тем же значением («г. о. город Новочеркасск, г. Новочеркасск …») —
+        ФИАС-стиль одного адреса, не склейка.
         """
+        # Неразрывные пробелы (PDF→docx) → обычные, иначе `\s` местами промахивается.
+        addr = addr.replace("\xa0", " ")
         m_cred = re.search(r"[\s,;]кредитор\w*", addr, re.IGNORECASE)
         if m_cred:
             addr = addr[: m_cred.start()]
+        # Мягкие маркеры конца адреса / начала прозы заявления. «№ N» НЕ маркер —
+        # в адресе бывает «дом № 5»; хвост «Сообщение №…» отсекает «сообщени».
+        m_soft = re.search(
+            r"\s+(?:в\s+лице\b|ликвидатор|председател\w+\s+ликвидационн|сообщени\w*\b|"
+            r"о\s+намерении\b|обратил\w*\b|обратиться\s+в\s+суд)",
+            addr, re.IGNORECASE)
+        if m_soft:
+            addr = addr[: m_soft.start()]
         cut = len(addr)
         for kind, rx in self._ADDR_COMPONENT_RES:
             first_val = None
@@ -2849,7 +2874,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         обрезаем хвост по первому такому маркеру; если осмысленного адреса (букв)
         не осталось — поле было мусором, удаляем. Затем режем склейку двух
         адресов (повтор индекса/области/города/улицы/дома, «Кредиторы …» внутри)."""
-        for k in ("applicantAddress", "creditorAddress", "managerAddress",
+        for k in ("address", "applicantAddress", "creditorAddress", "managerAddress",
                   "thirdPartyAddress", "debtorAddress"):
             v = fields.get(k)
             if not v or not isinstance(v, str):

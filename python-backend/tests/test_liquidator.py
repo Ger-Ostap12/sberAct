@@ -64,3 +64,25 @@ def test_extract_liquidator_org(da):
 
 def test_extract_liquidator_none(da):
     assert da._extract_liquidator("обычный текст без ликвидатора") is None
+
+
+# ── Чистка склеенного адреса ──────────────────────────────────────────────────
+def test_truncate_address_liquidator_tail(da):
+    # Однострочная PDF→docx склейка: за адресом должника приклеен хвост-проза.
+    glued = ("344064, г. РОСТОВ-НА-ДОНУ, ул. ВАВИЛОВА, зд. 59В/101, эт 3, ком. 314 "
+             "В лице ликвидатора: Оленченко Олег Игоревич Сообщение №36504402 от "
+             "01.06.2026 о намерении обратиться в суд с")
+    assert da._truncate_glued_address(glued) == (
+        "344064, г. РОСТОВ-НА-ДОНУ, ул. ВАВИЛОВА, зд. 59В/101, эт 3, ком. 314")
+
+
+def test_truncate_address_nbsp(da):
+    # Неразрывные пробелы схлопываются, хвост режется.
+    glued = "344064,\xa0г. Ростов-на-Дону, ул. Вавилова, д. 19 Сообщение №1"
+    assert da._truncate_glued_address(glued) == "344064, г. Ростов-на-Дону, ул. Вавилова, д. 19"
+
+
+def test_truncate_address_keeps_house_number_sign(da):
+    # «№ N» в составе адреса (дом № 5) — НЕ маркер обрезки.
+    addr = "344000, г. Ростов-на-Дону, ул. Ленина, дом № 5, кв. 3"
+    assert da._truncate_glued_address(addr) == addr
