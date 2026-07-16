@@ -11875,6 +11875,74 @@
   },
   "thirdParties": []
  },
+ "НОвая конвертация/отсутствующий заявление.docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "248030, Калужская обл., г. Калуга, ул. Труда, д. 29А",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "4028073775",
+    "name": "ООО «СМТ 40»",
+    "ogrn": "1234000001256",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "initiation_legal",
+  "entityType": "legal",
+  "fields": {
+   "applicantAddress": "248030, Калужская обл., г. Калуга, ул. Труда, д. 29А",
+   "applicantName": "ООО «СМТ 40»",
+   "applicantNameAccusative": "ООО «СМТ 40»",
+   "applicantNameDative": "ООО «СМТ 40»",
+   "applicantNameGenitive": "ООО «СМТ 40»",
+   "applicantNameInstrumental": "ООО «СМТ 40»",
+   "applicationDate": "29.05.2004",
+   "courtName": "Арбитражный суд Калужской области",
+   "creditorAddress": "248021, Калуга г, Московская ул, 282",
+   "creditorName": "ФНС России в лице УФНС России по Калужской области",
+   "debtAmount": "6 226 721,88",
+   "debtSnapshotDate88": "31.03.2025",
+   "debtorAddress": "248030, Калужская обл., г. Калуга, ул. Труда, д. 29А",
+   "debtorName": "СМТ 40",
+   "entityType": "legal",
+   "fnsQ2LoanDebt": "936 691,19",
+   "fnsQ2Total": "936 691,19",
+   "fnsQ3Forfeit": "922 372,41",
+   "fnsQ3LoanDebt": "0,00",
+   "fnsQ3Penalties": "768 513,28",
+   "fnsQ3Total": "5 290 030,69",
+   "fnsTotalComputed": "1",
+   "inn": "4028073775",
+   "legalShortName": "СМТ 40",
+   "ogrn": "1234000001256",
+   "requirementsSum": "10 015 333,99",
+   "sourceDocumentType": "initiation_legal",
+   "sroName": "Ассоциация СРО \"Эгида\" -Ассоциация саморегулируемая организация арбитражных управляющих \"Эгида\"",
+   "totalDebt": "6 226 721,88"
+  },
+  "metadata": {
+   "language": "ru",
+   "pageCount": 4,
+   "wordCount": 1532
+  },
+  "obligations": [],
+  "rawTextLen": 11725,
+  "rawTextSha": "5f9014dfc124a292ef19ffbdbef34592d31609cbff010df098bbbd2f72cedd92",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "legal",
+   "recommendedActIds": [
+    "final_realization",
+    "acceptance_definition",
+    "final_restructuring",
+    "final_competition"
+   ]
+  },
+  "thirdParties": []
+ },
  "Самобанкрот/A53-9758-2026_20260318_Zajavlenie.docx": {
   "collaterals": [],
   "confidence": 0.95,

@@ -2284,6 +2284,27 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             fields["creditorName"] = creditor
         cred_now = fields.get("creditorName") or ""
 
+        # НОВОЕ (справочник ФНС): выверенный юр-адрес КРЕДИТОРА в блок «Данные о
+        # кредиторе» → поле creditorAddress. Заполняем ТОЛЬКО его и ТОЛЬКО когда
+        # кредитор — налоговый орган; адресов заявителя/должника не касаемся (иначе
+        # юр-адрес инспекции подмешивается в адрес должника). Справочник fns_registry
+        # находит адрес по имени органа — он инвариантен к тому, как оформлена шапка
+        # конкретного заявления (и работает, даже если адреса в шапке нет).
+        # Подсказка для дизамбигуации ТОРМ (один № инспекции обслуживает несколько
+        # городов): шапка ДО блока «Должник», чтобы город/индекс инспекции не спутать
+        # с городом должника — реестр выберет кандидата по городу/индексу из шапки.
+        # Общий для должника-физлица и должника-ЮЛ — поэтому ДО развилки по типу лица.
+        if "фнс" in (cred_now or "").lower():
+            _dpos = re.search(r"Должник", text, re.IGNORECASE)
+            _hint = text[: _dpos.start()] if _dpos else text[:1800]
+            reg_addr = None
+            try:
+                reg_addr = _fns_reg.resolve_address(cred_now, _hint)
+            except Exception as exc:  # справочник недоступен — тихо пропускаем
+                logger.warning(f"Реестр ФНС не ответил: {exc}")
+            if reg_addr:
+                fields["creditorAddress"] = reg_addr
+
         # НАДЁЖНЫЙ ДОЛЖНИК ФНС по якорю. Позиционный парсер на этих заявлениях часто
         # берёт арбитражного управляющего («Финансовым управляющим утверждён <ФИО>»)
         # или мусор из «…реестр требований кредиторов» — в результате должник = ФИО
@@ -2324,6 +2345,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 _madr = re.sub(r"\s+", " ", _ma.group(1)).strip().rstrip(" ,;")
                 if re.search(r"[А-Яа-яЁё]{3}", _madr):
                     fields["managerAddress"] = _madr
+
+        # РАЗВИЛКА ПО ТИПУ ДОЛЖНИКА. Всё, что ниже, написано под должника-ФИЗЛИЦО
+        # (якоря «<ФИО> обратился», «Должник: <ФИО> ИНН», гейты is_person_name). У ФНС
+        # против ЮЛ должник называется иначе — «…(далее – должник, ООО «X»)» — и ни
+        # один из этих якорей не срабатывает: должником становился мусор из прозы.
+        if self._apply_fns_legal_debtor(fields, text):
+            return
 
         fns_debtor = None
         _dm = re.search(r"(" + _PN + r")\s+обратил", text)
@@ -2476,26 +2504,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if debt_addr and not (fields.get("debtorAddress") or "").strip():
             fields["debtorAddress"] = debt_addr
 
-        # НОВОЕ (справочник ФНС): выверенный юр-адрес КРЕДИТОРА в блок «Данные о
-        # кредиторе» → поле creditorAddress. Заполняем ТОЛЬКО его и ТОЛЬКО когда
-        # кредитор — налоговый орган; адресов заявителя/должника не касаемся (иначе
-        # юр-адрес инспекции подмешивается в адрес должника). Справочник fns_registry
-        # находит адрес по имени органа — он инвариантен к тому, как оформлена шапка
-        # конкретного заявления (и работает, даже если адреса в шапке нет).
-        # Подсказка для дизамбигуации ТОРМ (один № инспекции обслуживает несколько
-        # городов): шапка ДО блока «Должник», чтобы город/индекс инспекции не спутать
-        # с городом должника — реестр выберет кандидата по городу/индексу из шапки.
-        if "фнс" in (cred_now or "").lower():
-            _dpos = re.search(r"Должник", text, re.IGNORECASE)
-            _hint = text[: _dpos.start()] if _dpos else text[:1800]
-            reg_addr = None
-            try:
-                reg_addr = _fns_reg.resolve_address(cred_now, _hint)
-            except Exception as exc:  # справочник недоступен — тихо пропускаем
-                logger.warning(f"Реестр ФНС не ответил: {exc}")
-            if reg_addr:
-                fields["creditorAddress"] = reg_addr
-
         # applicantAddress — это АДРЕС ДОЛЖНИКА (генератор берёт его как адрес должника;
         # юр-адрес ФНС живёт в creditorAddress). Ставим сюда адрес должника; если он не
         # извлёкся — вычищаем из applicantAddress чужое (адрес ФНС/суда/проза или совпадение
@@ -2514,6 +2522,117 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if aa and (not _is_addr(aa) or (creda and aa == creda)
                        or re.search(r"Неглинн|Станиславског|www\.nalog|Адрес\s+для", aa, re.IGNORECASE)):
                 fields.pop("applicantAddress", None)
+
+    # Организация с правовой формой и названием в кавычках («ООО «СМТ 40»», «Общество
+    # с ограниченной ответственностью «СМТ 40»»). Полные формы — ДО аббревиатур,
+    # иначе «Общество…» отдаст короткое «АО» из середины слова.
+    _FNS_ORG = (
+        r"(?:Общество\s+с\s+ограниченной\s+ответственностью|Публичное\s+акционерное\s+общество|"
+        r"Закрытое\s+акционерное\s+общество|Открытое\s+акционерное\s+общество|"
+        r"Непубличное\s+акционерное\s+общество|Акционерное\s+общество|"
+        r"ООО|ПАО|ЗАО|ОАО|НАО|АО)\s*«[^»]{1,80}»"
+    )
+
+    def _apply_fns_legal_debtor(self, fields: Dict[str, Any], text: str) -> bool:
+        """Должник-ЮЛ в заявлении уполномоченного органа (ФНС). Возвращает True, если
+        ветка отработала (тогда физлицо-логика вызывающего пропускается).
+
+        В ФНС-заявлении против ЮЛ нет ни блока «Должник:», ни метки «Адрес:» — должник
+        вводится оборотом «Общество … «X» ИНН … ОГРН … (далее – должник, ООО «X»)
+        зарегистрировано <дата> по адресу: <адрес>.». Шапка как источник НЕНАДЁЖНА:
+        она двухколоночная (бланк инспекции слева, адресат справа), и конвертер рвёт
+        адрес должника между колонками («…г. Калуга, ул.» | «Труда, д. 29А»). Поэтому
+        якоримся на предложение о регистрации — оно одноколоночное и есть всегда.
+        """
+        if not text:
+            return False
+
+        # Имя должника — только обороты, которые НАЗЫВАЮТ должника явно:
+        # (1) «(далее – должник, ООО «X»)»; (2) «призна(ть|нии) ООО «X» несостоятельным»
+        # — одна форма покрывает и заголовок («о признании X несостоятельным»), и
+        # просительную часть («признать X несостоятельным (банкротом)»).
+        # Общий слой «<ОПФ> «X» ИНН …» намеренно НЕ используем: первая организация с
+        # реквизитами в тексте — сплошь и рядом КРЕДИТОР (в самобанкротном заявлении
+        # физлица так подхватывался «ПАО «Сбербанк»»).
+        org = None
+        for rx in (
+            r"\(\s*далее\s*[–—-]\s*должник\w*\s*,\s*(" + self._FNS_ORG + r")\s*\)",
+            r"призна(?:ть|нии)\s+(" + self._FNS_ORG + r")\s+несостоятельн",
+        ):
+            m = re.search(rx, text, re.IGNORECASE)
+            if m:
+                org = re.sub(r"\s+", " ", m.group(1)).strip()
+                break
+        if not org:
+            return False
+
+        # Дальше всё якорим на СОБСТВЕННОЕ имя должника в кавычках: и реквизиты, и
+        # адрес принадлежат должнику, только если стоят вплотную к его имени. Полная
+        # и краткая формы («Общество с ограниченной ответственностью «X»» / «ООО «X»»)
+        # различаются ОПФ, но не именем — по нему и матчим.
+        qm = re.search(r"«([^»]{1,80})»", org)
+        if not qm:
+            return False
+        quoted = re.escape(qm.group(1))
+
+        # Реквизиты ДОЛЖНИКА: «… «X» ИНН 4028073775 КПП 402801001 ОГРН 1234000001256».
+        req = re.search(
+            r"«" + quoted + r"»\s*ИНН\s*(?P<inn>\d{10})(?:\s*КПП\s*\d{9})?\s*ОГРН\s*(?P<ogrn>\d{13})",
+            text, re.IGNORECASE,
+        )
+        debtor_inn = req.group("inn") if req else ""
+        debtor_ogrn = req.group("ogrn") if req else ""
+
+        # Соглашение для ЮЛ (как в _finalize_debtor_type): debtorName — краткое имя без
+        # ОПФ, applicantName — с ОПФ. Генератор берёт должника именно из applicant*
+        # (ФНС остаётся только в creditor*).
+        short = self._strip_ooo_prefix(org) or org
+        fields["debtorName"] = short
+        fields["legalShortName"] = short
+        fields["applicantName"] = org
+        # Падежи организации не склоняем: в ФНС-ветке они до сих пор считались от
+        # ошибочного заявителя («МИНФИНА РОССИИ ФЕДЕРАЛЬНОЙ»). Склонение ОПФ —
+        # отдельная тема; равенство именительному честнее мусора.
+        for case_key in ("applicantNameGenitive", "applicantNameDative",
+                         "applicantNameAccusative", "applicantNameInstrumental"):
+            fields[case_key] = org
+
+        if debtor_inn:
+            fields["inn"] = debtor_inn
+        if debtor_ogrn:
+            fields["ogrn"] = debtor_ogrn
+        # Реквизиты должника, утёкшие в кредитора: общий парсер берёт первые ИНН/ОГРН
+        # в тексте, а они принадлежат должнику. У налогового органа реквизитов в
+        # документе нет (и в fns_registry их нет) — пусто лучше чужого ИНН в акте.
+        for cred_key, debtor_val in (("creditorInn", debtor_inn), ("creditorOgrn", debtor_ogrn)):
+            cur = re.sub(r"\D", "", str(fields.get(cred_key) or ""))
+            if debtor_val and cur == debtor_val:
+                fields.pop(cred_key, None)
+
+        # Адрес — из предложения о регистрации, до конца абзаца. Хвост чистим
+        # общими правилами (§J.3): при одностраничной PDF→docx склейке к адресу
+        # прилипает проза следующего предложения.
+        addr_m = re.search(
+            r"«" + quoted + r"»[^\n]{0,150}?зарегистрирован\w*\s+"
+            r"(?:\d{1,2}[.,]\d{1,2}[.,]\d{4}\s+)?по\s+адресу\s*:\s*([^\n]{10,300})",
+            text, re.IGNORECASE,
+        )
+        if addr_m:
+            addr = re.sub(r"\s+", " ", addr_m.group(1)).strip()
+            addr = re.split(r"\b(?:ИНН|ОГРН|КПП)\b", addr, flags=re.IGNORECASE)[0]
+            addr = self._truncate_glued_address(addr).strip(" .,;")
+            if 10 <= len(addr) <= 200 and re.search(r"\d", addr):
+                fields["debtorAddress"] = addr
+                fields["applicantAddress"] = addr
+
+        # Тип лица — штатным детектором по обновлённым именам («ООО» в debtorName даёт
+        # legal). Раньше он видел мусорного должника и решал individual → в акт шли
+        # рекомендации для физлица.
+        entity = self.detect_entity_type(fields)
+        if entity:
+            fields["entityType"] = entity
+        logger.info(f"ФНС против ЮЛ: должник={org}, тип лица={fields.get('entityType')}")
+        return True
 
     # СРО по формуле членства/принадлежности. Ловим разные якоря:
     # «из числа членов <СРО>», «член(а/ом) <СРО>», «членство: <СРО>»,
