@@ -7193,6 +7193,7 @@
    "legalShortName": "Форте Пром Стил ГМБХ",
    "loanDebt": "1 000 000 000",
    "managerInn": "644923704326",
+   "managerName": "Панин Александр Владимирович",
    "messageDate": "02.03.2026",
    "messageNumber": "34277008",
    "obligationType": "кредитный договор",
@@ -11917,10 +11918,11 @@
    "fnsTotalComputed": "1",
    "inn": "4028073775",
    "legalShortName": "СМТ 40",
+   "managerName": "Белов Иван Алексеевич",
    "ogrn": "1234000001256",
    "requirementsSum": "10 015 333,99",
    "sourceDocumentType": "initiation_legal",
-   "sroName": "Ассоциация СРО \"Эгида\" -Ассоциация саморегулируемая организация арбитражных управляющих \"Эгида\"",
+   "sroName": "Ассоциация саморегулируемая организация арбитражных управляющих \"Эгида\"",
    "totalDebt": "6 226 721,88"
   },
   "metadata": {
