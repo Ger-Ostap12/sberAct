@@ -147,8 +147,46 @@ class PriorCollectionMixin:
             if hits:
                 court = re.sub(r"\s+", " ", hits[-1].group("court")).strip(" ,.;")
                 if 5 <= len(court) <= limit:
-                    return court
+                    return self._normalize_court_to_nominative(court)
         return None
+
+    # «Мировым судьей Судебный участок № 1 …» — в заявлении конструкция стоит в
+    # творительном, да ещё и рассогласована. Каноничная форма для поля — именительный
+    # с зависимым участком в родительном.
+    _MAGISTRATE_PREFIX_RE = re.compile(
+        r"^Миров\w+\s+судь\w+\s+(?=Судебн\w+\s+участ\w+)", re.IGNORECASE
+    )
+    _MAGISTRATE_SECTION_RE = re.compile(r"^Судебн\w+\s+участ\w+", re.IGNORECASE)
+    _COURT_HEAD_RE = re.compile(r"^суд(?:ом|а|е|у)?$", re.IGNORECASE)
+
+    def _normalize_court_to_nominative(self, court: str) -> str:
+        """Название суда → именительный падеж.
+
+        «Мировым судьей Судебный участок № 1 Обливского судебного района» →
+        «Мировой судья судебного участка № 1 Обливского судебного района»;
+        «Ворошиловским районным судом г.Ростова-на-Дону» →
+        «Ворошиловский районный суд г.Ростова-на-Дону».
+
+        Топоним и «№ N» не трогаем: склонять их нельзя («г. Ростова-на-Дону»
+        так и остаётся при суде). При недоступной морфологии возвращаем исходную
+        строку — пустое поле хуже, чем поле в падеже документа.
+        """
+        if not court:
+            return court
+        m = self._MAGISTRATE_PREFIX_RE.match(court)
+        if m:
+            tail = self._MAGISTRATE_SECTION_RE.sub("судебного участка", court[m.end():])
+            return "Мировой судья " + tail
+        if self._MAGISTRATE_SECTION_RE.match(court):
+            # «Судебный участок № 4 …» — уже именительный, приводим лишь написание.
+            return self._MAGISTRATE_SECTION_RE.sub("Судебный участок", court)
+        # Обычный суд: склоняем только определения и само слово «суд», хвост с
+        # локацией остаётся как есть.
+        tokens = court.split(" ")
+        head = next((i for i, t in enumerate(tokens) if self._COURT_HEAD_RE.match(t)), None)
+        if head is None:
+            return court
+        return " ".join([self._inflect_word(t, "nomn") for t in tokens[:head + 1]] + tokens[head + 1:])
 
     def _extract_prior_court_decision(self, text: str) -> Dict[str, Any]:
         """Распознаёт РАНЕЕ вынесенный акт о взыскании (до банкротства).
