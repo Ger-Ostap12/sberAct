@@ -694,6 +694,13 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   // должника) — суд утверждает управляющего из предложенной СРО, поле показывается.
   const rtkInclusion = selectedActs.some((a) => a.selected && a.id === 'final_rtk_inclusion');
   const showSroField = !rtkInclusion;
+  // Поле «ФИО» управляющего скрывается там, где конкретный управляющий ещё не
+  // утверждён и в заявлении названа только СРО: банк-инициирование и самобанкрот.
+  // Показывается при РТК (управляющий уже утверждён) и во всех ФНС-заявлениях
+  // (уполномоченный орган указывает кандидатуру). Матрица: см. блок «Управляющий».
+  const isSelf = debtorStatus === 'self';
+  const isFns = isFnsCreditor(editedFields.creditorName);
+  const showFioField = !isSelf && (rtkInclusion || isFns);
   // Текущее значение единого радио «Вид заявления»: ВКЛ в РТК → 'rtk'; иначе статус
   // должника, если задан; иначе рядовое «Инициирование».
   const applicationVariant: ApplicationVariant = rtkInclusion ? 'rtk' : (debtorStatus ?? 'other');
@@ -823,7 +830,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 <Grid item xs={12}>
                   <Grid container spacing={3}>
                     <Grid item xs={12} md={6}>
-                      <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} showSro={showSroField} />
+                      <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} showSro={showSroField} showFio={showFioField} />
                       <Box sx={{ mt: 3 }}>
                         <FinancesSection editedFields={editedFields} onFieldChange={handleFieldChange} financeBreakdown={analysisResult?.financeBreakdown} />
                       </Box>
@@ -838,7 +845,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 {/* Арбитражный управляющий (не-ФНС; у ФНС — в колонке выше) */}
                 {!isFnsCreditor(editedFields.creditorName) && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
-              <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} showSro={showSroField} />
+              <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} showSro={showSroField} showFio={showFioField} />
                 </Grid>
                 )}
 

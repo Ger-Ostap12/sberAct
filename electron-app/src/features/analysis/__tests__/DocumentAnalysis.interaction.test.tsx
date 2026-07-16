@@ -216,3 +216,60 @@ describe('DocumentAnalysis — поле СРО у управляющего', () 
     expect(screen.getByText('Саморегулируемая организация:')).toBeInTheDocument();
   });
 });
+
+// Матрица полей блока «Арбитражный управляющий»:
+//   банк+инициирование → СРО+адрес (ФИО скрыт)
+//   ФНС+инициирование  → ФИО+СРО+адрес
+//   банк/ФНС+РТК       → ФИО+адрес (СРО скрыт)
+//   самобанкрот        → СРО+адрес (ФИО скрыт)
+describe('DocumentAnalysis — матрица полей управляющего (ФИО/СРО)', () => {
+  const FNS = 'ФНС России в лице Межрайонной ИФНС России № 13 по Ростовской области';
+  const renderMatrix = (creditorName?: string) => {
+    const data = makeData();
+    data.fields = { ...data.fields, creditorName: creditorName || '', sroName: 'СРО', managerName: 'Иванов И.И.' };
+    return render(
+      <DocumentAnalysis
+        documentData={documentData}
+        extractedData={data}
+        onAnalysisComplete={() => {}}
+        onBack={() => {}}
+      />,
+    );
+  };
+  const hasFio = () => screen.queryByText('ФИО:') !== null;
+  const hasSro = () => screen.queryByText('Саморегулируемая организация:') !== null;
+
+  it('банк + инициирование: СРО есть, ФИО скрыт', () => {
+    renderMatrix('ПАО Сбербанк');
+    expect(hasSro()).toBe(true);
+    expect(hasFio()).toBe(false);
+  });
+
+  it('ФНС + инициирование: ФИО и СРО показаны', () => {
+    renderMatrix(FNS);
+    expect(hasSro()).toBe(true);
+    expect(hasFio()).toBe(true);
+  });
+
+  it('банк + РТК: ФИО есть, СРО скрыт', () => {
+    renderMatrix('ПАО Сбербанк');
+    fireEvent.click(screen.getByRole('radio', { name: 'Включение в РТК' }));
+    expect(hasFio()).toBe(true);
+    expect(hasSro()).toBe(false);
+  });
+
+  it('ФНС + РТК: ФИО есть, СРО скрыт', () => {
+    renderMatrix(FNS);
+    fireEvent.click(screen.getByRole('radio', { name: 'Включение в РТК' }));
+    expect(hasFio()).toBe(true);
+    expect(hasSro()).toBe(false);
+  });
+
+  it('самобанкрот: СРО есть, ФИО скрыт', () => {
+    renderMatrix('ПАО Сбербанк');
+    fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Самобанкрот' }));
+    expect(hasSro()).toBe(true);
+    expect(hasFio()).toBe(false);
+  });
+});
