@@ -26,7 +26,11 @@ const PdfPanel: React.FC<PdfPanelProps> = ({ file }) => {
       setError(null);
       container.innerHTML = '';
       try {
-        const pdfjs = await import('pdfjs-dist');
+        // LEGACY-билд намеренно: обычный pdfjs 6.x зовёт Map.prototype.getOrInsertComputed
+        // (свежий TC39-proposal), которого нет в Chromium 140 из Electron 38 — на
+        // первом же getDocument() падало «getOrInsertComputed is not a function».
+        // В legacy-сборку вшит core-js-полифилл. Воркер в public/ — тоже legacy.
+        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
         // Worker — статическим файлом из public/ (скопирован из pdfjs-dist),
         // без бандлер-магии: работает и в CRA-dev, и в собранном Electron.
         pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL || ''}/pdf.worker.min.mjs`;
