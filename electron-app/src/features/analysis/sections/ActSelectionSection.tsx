@@ -20,7 +20,8 @@ import {
   MenuItem,
 } from '@mui/material';
 import { ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
-import { EntityType, CollateralOption, ApplicationVariant, SelectedAct } from '../../../types';
+import { ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { EntityType, CollateralOption, ApplicationKind, DebtorStatus, SelectedAct } from '../../../types';
 
 interface ActSelectionSectionProps {
   entityType: EntityType | null;
@@ -28,10 +29,14 @@ interface ActSelectionSectionProps {
   collateralOption: CollateralOption | null;
   collateralKinds: { realEstate: boolean; auto: boolean; other: boolean };
   setCollateralKinds: React.Dispatch<React.SetStateAction<{ realEstate: boolean; auto: boolean; other: boolean }>>;
-  /** Единый выбор «Вид заявления» (ВКЛ в РТК / инициирование / статус должника).
-   *  Значение 'rtk' скрывает поле СРО, остальные — показывают. */
-  applicationVariant: ApplicationVariant;
-  setApplicationVariant: (v: ApplicationVariant) => void;
+  /** Вид заявления (ВКЛ в РТК / инициирование / самобанкрот) — независимый блок.
+   *  'rtk' скрывает поле СРО; 'self' скрывает блок кредитора. */
+  applicationKind: ApplicationKind;
+  setApplicationKind: (v: ApplicationKind) => void;
+  /** Статус лица (ликвидируемый/отсутствующий ЮЛ, умерший ФЛ) — независимый,
+   *  опциональный блок. null = не задан. Совместим с любым видом заявления. */
+  debtorStatus: DebtorStatus | null;
+  setDebtorStatus: (v: DebtorStatus | null) => void;
   selectedActs: SelectedAct[];
   toggleActSelection: (actId: string) => void;
   updateActAdditionalFields: (actId: string, field: 'reason' | 'forParties' | 'courtRequests', value: string) => void;
@@ -46,8 +51,10 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
   collateralOption,
   collateralKinds,
   setCollateralKinds,
-  applicationVariant,
-  setApplicationVariant,
+  applicationKind,
+  setApplicationKind,
+  debtorStatus,
+  setDebtorStatus,
   selectedActs,
   toggleActSelection,
   updateActAdditionalFields,
@@ -88,13 +95,12 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
               </RadioGroup>
               </Box>
 
-            {/* Вид заявления — один взаимоисключающий селектор: вид («Включение в РТК»
-                / «Инициирование») + статус должника. Набор опций зависит от типа лица:
-                ФЛ — +Умерший; ЮЛ — +Отсутствующий/Ликвидируемый; «Самобанкрот» — всем.
-                «Включение в РТК» скрывает поле СРО (управляющий уже утверждён), остальные
-                показывают (суд утверждает из предложенной СРО). Драйвер ВКЛ в РТК — акт
-                final_rtk_inclusion (синхронен с чекбоксом в «3. Финальные СА»), статусы —
-                debtorStatus (его useEffect проставляет финальный СА). */}
+            {/* Вид заявления — независимый взаимоисключающий блок: ВКЛ в РТК /
+                Инициирование / Самобанкрот. «Включение в РТК» скрывает поле СРО
+                (управляющий уже утверждён); «Самобанкрот» скрывает блок кредитора.
+                Драйвер ВКЛ в РТК — акт final_rtk_inclusion (синхронен с чекбоксом в
+                «3. Финальные СА»). Статус лица — отдельный блок ниже, они СОВМЕСТИМЫ
+                (можно выбрать, напр., «Инициирование» + «Ликвидируемый»). */}
             <Box sx={{ mb: 4 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                 <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 0 }}>
@@ -111,23 +117,43 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
               </Box>
               <RadioGroup
                 row
-                value={applicationVariant}
-                onChange={(e) => setApplicationVariant(e.target.value as ApplicationVariant)}
+                value={applicationKind}
+                onChange={(e) => setApplicationKind(e.target.value as ApplicationKind)}
               >
                 <FormControlLabel value="rtk" control={<Radio />} label="Включение в РТК" />
                 <FormControlLabel value="other" control={<Radio />} label="Инициирование" />
-                {entityType === 'individual' && (
-                  <FormControlLabel value="deceased" control={<Radio />} label="Умерший" />
-                )}
-                {entityType === 'legal' && (
-                  <FormControlLabel value="absent" control={<Radio />} label="Отсутствующий" />
-                )}
-                {entityType === 'legal' && (
-                  <FormControlLabel value="liquidation" control={<Radio />} label="Ликвидируемый" />
-                )}
                 <FormControlLabel value="self" control={<Radio />} label="Самобанкрот" />
               </RadioGroup>
             </Box>
+
+            {/* Статус лица — независимый, опциональный, взаимоисключающий блок:
+                Ликвидируемый/Отсутствующий (ЮЛ) или Умерший (ФЛ). Совместим с любым
+                видом заявления. ToggleButtonGroup exclusive: повторный клик по активной
+                кнопке снимает выбор (null). Набор гейтится по типу лица. Влияет на
+                рекомендацию финального СА (см. useEffect по debtorStatus). */}
+            {(entityType === 'legal' || entityType === 'individual') && (
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 1 }}>
+                Статус лица
+              </Typography>
+              <ToggleButtonGroup
+                exclusive
+                size="small"
+                value={debtorStatus}
+                onChange={(_e, v) => setDebtorStatus((v as DebtorStatus | null) ?? null)}
+              >
+                {entityType === 'legal' && (
+                  <ToggleButton value="liquidation">Ликвидируемый</ToggleButton>
+                )}
+                {entityType === 'legal' && (
+                  <ToggleButton value="absent">Отсутствующий</ToggleButton>
+                )}
+                {entityType === 'individual' && (
+                  <ToggleButton value="deceased">Умерший</ToggleButton>
+                )}
+              </ToggleButtonGroup>
+            </Box>
+            )}
 
             {/* Выбор залога */}
             <Box sx={{ mb: 4 }}>

@@ -130,22 +130,36 @@ describe('DocumentAnalysis — самобанкротство', () => {
     );
   };
 
-  it('статус «Самобанкрот» доступен каждой категории лица; чужие статусы не показаны', () => {
+  it('«Самобанкрот» — всем категориям (вид заявления); статусы лица гейтятся типом лица', () => {
     renderSelf();
-    // ИП: только «Самобанкрот» (ни умершего, ни отсутствующего/ликвидируемого).
+    // «Самобанкрот» — радио в блоке «Вид заявления», доступно всегда.
+    // Статусы лица (Умерший/Отсутствующий/Ликвидируемый) — ToggleButton (role button).
+    // ИП: статусов лица нет.
     fireEvent.click(screen.getByRole('radio', { name: 'ИП' }));
     expect(screen.getByRole('radio', { name: 'Самобанкрот' })).toBeInTheDocument();
-    expect(screen.queryByRole('radio', { name: 'Умерший' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('radio', { name: 'Отсутствующий' })).not.toBeInTheDocument();
-    // ФЛ: «Умерший» + «Самобанкрот».
+    expect(screen.queryByRole('button', { name: 'Умерший' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Отсутствующий' })).not.toBeInTheDocument();
+    // ФЛ: «Умерший».
     fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));
-    expect(screen.getByRole('radio', { name: 'Умерший' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Умерший' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Самобанкрот' })).toBeInTheDocument();
-    // ЮЛ: «Отсутствующий»/«Ликвидируемый» + «Самобанкрот».
+    // ЮЛ: «Отсутствующий»/«Ликвидируемый».
     fireEvent.click(screen.getByRole('radio', { name: 'Юр.лицо' }));
-    expect(screen.getByRole('radio', { name: 'Отсутствующий' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Ликвидируемый' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Отсутствующий' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ликвидируемый' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Самобанкрот' })).toBeInTheDocument();
+  });
+
+  it('вид заявления и статус лица независимы: Инициирование + Ликвидируемый одновременно', () => {
+    renderSelf();
+    fireEvent.click(screen.getByRole('radio', { name: 'Юр.лицо' }));
+    // По умолчанию вид — «Инициирование»; выбираем статус «Ликвидируемый».
+    fireEvent.click(screen.getByRole('button', { name: 'Ликвидируемый' }));
+    expect(screen.getByRole('radio', { name: 'Инициирование' })).toBeChecked();
+    expect(screen.getByRole('button', { name: 'Ликвидируемый' })).toHaveAttribute('aria-pressed', 'true');
+    // Повторный клик по активному статусу снимает выбор (ToggleButton exclusive).
+    fireEvent.click(screen.getByRole('button', { name: 'Ликвидируемый' }));
+    expect(screen.getByRole('button', { name: 'Ликвидируемый' })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('выбор «Самобанкрот» скрывает «Информация о кредиторе» и «Финансовые данные», возврат через «Инициирование»', () => {

@@ -21,6 +21,7 @@ const run = (over: Partial<SubmitDataInput>): ExtractedData =>
     entityType: null,
     collateralOption: null,
     debtorStatus: null,
+    applicationKind: 'other',
     selectedActs: [],
     ...over,
   });
@@ -33,6 +34,7 @@ describe('buildSubmitData — приоритет editedFields', () => {
       entityType: null,
       collateralOption: null,
       debtorStatus: null,
+      applicationKind: 'other',
       selectedActs: [],
     });
     expect(r.fields.courtName).toBe('Новый суд');
@@ -56,6 +58,7 @@ describe('buildSubmitData — finalEntityType', () => {
       entityType: null,
       collateralOption: null,
       debtorStatus: null,
+      applicationKind: 'other',
       selectedActs: [],
     });
     expect(r.entityType).toBe('legal');
@@ -117,10 +120,11 @@ describe('buildSubmitData — выбранные акты', () => {
     expect(data[0].id).toBe('a1');
   });
 
-  it('передаёт выбор пользователя (entityType/collateralOption/debtorStatus)', () => {
-    const r = run({ entityType: 'legal', collateralOption: 'no_collateral', debtorStatus: 'absent' });
+  it('передаёт выбор пользователя (entityType/collateralOption/debtorStatus/applicationKind)', () => {
+    const r = run({ entityType: 'legal', collateralOption: 'no_collateral', debtorStatus: 'absent', applicationKind: 'self' });
     expect(r.fields.selectedEntityType).toBe('legal');
     expect(r.fields.selectedCollateralOption).toBe('no_collateral');
     expect(r.fields.selectedDebtorStatus).toBe('absent');
+    expect(r.fields.selectedApplicationKind).toBe('self');
   });
 });
