@@ -1054,6 +1054,10 @@
      "obligationType": "Договор займа"
     }
    ],
+   "priorAmount": "20 854,44",
+   "priorCaseNumber": "2-253/2026",
+   "priorCourtName": "Мировой судья судебного участка № 1 Обливского судебного района Ростовской области",
+   "priorDecisionDate": "16.03.2026",
    "procedureType": "realization",
    "procedureTypeRaw": "реализации имущества должника",
    "requirementsSum": "20 854,44",
@@ -12044,6 +12048,65 @@
   },
   "thirdParties": []
  },
+ "НОвая конвертация/коллекторы пришли включаться.docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "347022, Ростовская обл, Белокалитвинский р-н, рп Шолоховский, ул М.Горького, д 46, кв 1",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "",
+    "name": "Медведев Максим Юрьевич",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "347022, Ростовская обл, Белокалитвинский р-н, рп Шолоховский, ул М.Горького, д 46, кв 1",
+   "applicantName": "Медведев Максим Юрьевич",
+   "applicantNameAccusative": "Медведева Максима Юрьевича",
+   "applicantNameDative": "Медведеву Максиму Юрьевичу",
+   "applicantNameGenitive": "Медведева Максима Юрьевича",
+   "applicantNameInstrumental": "Медведевым Максимом Юрьевичем",
+   "applicationDate": "30.08.1985",
+   "caseNumber": "А53-2848/2026",
+   "creditorName": "Общество с ограниченной ответственностью \"Профессиональная",
+   "debtAmount": "47 999,00",
+   "debtorName": "Медведев Максим Юрьевич",
+   "entityType": "individual",
+   "loanDebt": "47999",
+   "loanStateDuty17": "2 000,00",
+   "priorAmount": "47 999,98",
+   "priorCaseNumber": "2-3-2444/2025",
+   "priorDecisionDate": "19.12.2025",
+   "priorStateDuty": "2 000,00",
+   "requirementsSum": "47 999,00",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "47 999,00"
+  },
+  "heirs": [],
+  "metadata": {
+   "language": "ru",
+   "pageCount": 1,
+   "wordCount": 552
+  },
+  "obligations": [],
+  "rawTextLen": 4506,
+  "rawTextSha": "16e57e49671c0b790bcd83ca687319d3e9edea6ac7b66d46f6be857830cea884",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition"
+   ]
+  },
+  "thirdParties": []
+ },
  "НОвая конвертация/отсутствующий заявление.docx": {
   "collaterals": [],
   "confidence": 0.95,
@@ -12110,6 +12173,81 @@
     "acceptance_definition",
     "final_restructuring",
     "final_competition"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/пришли коллекторы включаться.docx": {
+  "collaterals": [],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "344039, Ростовская обл, г Ростов-на-Дону, ул Средняя, д 23",
+    "birthDate": "14.06.1990",
+    "birthPlace": "",
+    "inn": "616511409929",
+    "name": "Мирский Алексей Степанович",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": "136-024-294 28"
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "344039, Ростовская обл, г Ростов-на-Дону, ул Средняя, д 23",
+   "applicantName": "Мирский Алексей Степанович",
+   "applicantNameAccusative": "Мирского Алексея Степановича",
+   "applicantNameDative": "Мирскому Алексею Степановичу",
+   "applicantNameGenitive": "Мирского Алексея Степановича",
+   "applicantNameInstrumental": "Мирским Алексеем Степановичем",
+   "applicationDate": "14.06.1990",
+   "birthDate": "14.06.1990",
+   "caseNumber": "А53-8843/2026",
+   "companyInn": "616511409929",
+   "creditorInn": "6670056296",
+   "creditorName": "ООО «ПКО Воксис»",
+   "creditorOgrn": "1046603500426",
+   "debtAmount": "36 658,28",
+   "debtorName": "Мирский Алексей Степанович",
+   "entityType": "individual",
+   "forfeit": "0,00",
+   "forfeit15": "0,00",
+   "inn": "616511409929",
+   "interest": "17 768,28",
+   "interest14": "17 768,28",
+   "loanDebt": "36658",
+   "loanStateDuty17": "2 000,00",
+   "managerAddress": "404101, Волгоградская область, г. Волжский, а/я 620",
+   "managerName": "Шиленко Юлия Борисовна",
+   "penalties": "0,00",
+   "principalDebt": "16 890,00",
+   "principalDebt13": "16 890,00",
+   "priorAmount": "36 658,28",
+   "priorCaseNumber": "2-4-436/2025",
+   "priorCourtName": "Судебный участок № 4 Октябрьского судебного района г. Ростова-на-Дону",
+   "priorDecisionDate": "18.03.2025",
+   "priorStateDuty": "2 000,00",
+   "requirementsSum": "36 658,00",
+   "snils": "136-024-294 28",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "36 658,28"
+  },
+  "heirs": [],
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 649
+  },
+  "obligations": [],
+  "rawTextLen": 5004,
+  "rawTextSha": "c96ab0519b5a2ffb9379e73071b2bf64e4d71957f09c4f88fcd8b3995858d192",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition"
    ]
   },
   "thirdParties": []
