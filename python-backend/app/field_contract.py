@@ -34,6 +34,7 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
+from label_synonyms import FIELD_LABELS, all_labels, labels_alternation
 from requisites_validation import is_valid_inn, is_valid_ogrn, is_valid_ogrnip
 
 # --- типы полей -------------------------------------------------------------
@@ -144,6 +145,22 @@ _ADDR_MARKERS_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Подпись ЧУЖОГО поля внутри адреса: «… двлд 38 дата и место рождения; 21.11.1971 …».
+# Адресные признаки тут есть, поэтому позитивная грамматика выше молчит, а в акт
+# уезжает адрес со склеенным хвостом соседней строки. Метки берём из реестра
+# (`label_synonyms`), исключая собственные метки адреса; порядок по длине убывающе
+# сохраняем — иначе короткий вариант съест длинный и мы покажем юристу не ту метку.
+_FOREIGN_LABELS_IN_ADDRESS = sorted(
+    {lbl for lbl in all_labels() if lbl not in set(FIELD_LABELS["address"])},
+    key=len,
+    reverse=True,
+)
+_FOREIGN_LABEL_RE = re.compile(rf"\b(?:{labels_alternation(_FOREIGN_LABELS_IN_ADDRESS)})\b", re.IGNORECASE)
+# Претензия-склейка: значение НЕ чистим (решение Андрея) — адрес в нём настоящий,
+# отрезать хвост автоматически нельзя, не зная, где кончается адрес. Префикс нужен
+# `_is_flag_only`, чтобы отличить «пометить» от «вычистить» по причине, а не по типу.
+FOREIGN_LABEL_REASON = "в адресе присутствует подпись другого поля"
+
 # Типы, которые мы только ПОМЕЧАЕМ, но не чистим (см. шапку модуля): битый
 # реквизит полезнее пустого поля, юрист правит цифру по исходнику.
 _FLAG_ONLY_TYPES = (INN, OGRN, OGRNIP)
@@ -215,9 +232,17 @@ def check_value(field: str, value: Any) -> Optional[str]:
     if ftype == ADDRESS:
         if not _ADDR_MARKERS_RE.search(text):
             return "значение не содержит ни одного адресного признака"
+        foreign = _FOREIGN_LABEL_RE.search(text)
+        if foreign:
+            return f"{FOREIGN_LABEL_REASON} («{foreign.group(0)}») — похоже на склейку со следующей строкой"
         return None
 
     return None
+
+
+def _is_flag_only(field: str, reason: str) -> bool:
+    """Помечаем, но не чистим: реквизиты (по типу) и склейка адреса (по причине)."""
+    return FIELD_TYPES.get(field) in _FLAG_ONLY_TYPES or reason.startswith(FOREIGN_LABEL_REASON)
 
 
 def check_cross_field(fields: Dict[str, Any]) -> List[Issue]:
@@ -289,7 +314,7 @@ def apply_contract(fields: Dict[str, Any]) -> List[Issue]:
         reason = check_value(field, fields.get(field))
         if not reason:
             continue
-        flag_only = FIELD_TYPES.get(field) in _FLAG_ONLY_TYPES
+        flag_only = _is_flag_only(field, reason)
         issues.append(Issue(field, reason, fields[field], cleared=not flag_only))
         if not flag_only:
             fields.pop(field, None)
@@ -302,7 +327,7 @@ def find_issues(fields: Dict[str, Any]) -> List[Issue]:
     issues = [Issue(i.field, i.reason, i.value) for i in check_cross_field(fields)]
     for field, value in fields.items():
         reason = check_value(field, value)
-        if reason and FIELD_TYPES.get(field) not in _FLAG_ONLY_TYPES:
+        if reason and not _is_flag_only(field, reason):
             issues.append(Issue(field, reason, value))
     return issues
 
@@ -384,13 +409,12 @@ def check_entries(
         if not isinstance(entry, dict):
             continue
         address = entry.get(address_field)
-        if address and check_value("applicantAddress", address):
-            issues.append(
-                Issue(
-                    f"{name_field}[{i}].{address_field}", "значение не содержит ни одного адресного признака", address
-                )
-            )
-            entry[address_field] = ""
+        reason = check_value("applicantAddress", address) if address else None
+        if reason:
+            flag_only = _is_flag_only("applicantAddress", reason)
+            issues.append(Issue(f"{name_field}[{i}].{address_field}", reason, address, cleared=not flag_only))
+            if not flag_only:
+                entry[address_field] = ""
         for req_field in ("inn", "ogrn", "ogrnip"):
             value = entry.get(req_field)
             reason = check_value(req_field, value) if value else None

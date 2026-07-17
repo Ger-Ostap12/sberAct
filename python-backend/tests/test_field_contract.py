@@ -98,6 +98,63 @@ def test_address_with_postbox_tail_passes():
     assert FC.check_value("managerAddress", "344000, г. Ростов-на-Дону, а/я 123") is None
 
 
+# --- адрес: склейка с соседней строкой --------------------------------------
+_GLUED_ADDRESS = (
+    "347211, Ростовская обл, Морозовский р-н, Морозовск, ул Калинина, двлд 38 "
+    "дата и место рождения; 21.11.1971 ,гор.Морозовск Ростовской обл.РСФСР "
+    "паспорт 60 17 067255 выдан 09.12"
+)
+
+
+def test_address_with_foreign_label_is_flagged():
+    """Адрес + прилипший хвост «дата и место рождения … паспорт …».
+
+    Адресных признаков тут навалом, поэтому позитивная грамматика молчит, и до
+    этого правила поле уезжало в акт целиком с уровнем MEDIUM (без подсветки).
+    """
+    reason = FC.check_value("debtorAddress", _GLUED_ADDRESS)
+    assert reason and reason.startswith(FC.FOREIGN_LABEL_REASON)
+
+
+def test_glued_address_is_flagged_but_kept():
+    """Решение Андрея: только помечаем. Где кончается адрес — машина не знает."""
+    fields = {"debtorAddress": _GLUED_ADDRESS}
+    issues = FC.apply_contract(fields)
+    assert fields["debtorAddress"] == _GLUED_ADDRESS, "значение не чистим"
+    assert [i for i in issues if i.field == "debtorAddress" and not i.cleared]
+
+
+def test_glued_address_lights_up_the_field():
+    """Консьюмер: фронт рисует рамку только на LOW (грабли §N.7 — мёртвая цепочка)."""
+    fields = {"debtorAddress": _GLUED_ADDRESS}
+    issues = FC.apply_contract(fields)
+    assert FC.assess_quality(fields, issues)["debtorAddress"]["level"] == FC.LOW
+
+
+def test_glued_address_in_entry_is_flagged_but_kept():
+    """Записи идут мимо fields (ловушка §J.3) — правило обязано работать и там."""
+    debtors = [{"name": "Иванов Иван Иванович", "address": _GLUED_ADDRESS}]
+    issues = FC.check_entries(debtors, "debtors")
+    assert debtors[0]["address"] == _GLUED_ADDRESS, "адрес записи не чистим"
+    assert [i for i in issues if i.field == "debtors[0].address" and not i.cleared]
+
+
+@pytest.mark.parametrize("value", [
+    "344068, г. Ростов-на-Дону, ул. Красноармейская, д. 15, кв. 3",
+    "115114, Москва, Дербеневская наб., д. 11",
+    "Ростовская область, Морозовский район, г. Морозовск, ул. Калинина, д. 38",
+    "347930, Ростовская обл., г. Таганрог, ул. Дзержинского, д. 156, кв. 12",
+])
+def test_clean_addresses_have_no_foreign_label(value):
+    """Ложняк дороже пропуска: на 198 адресах golden-корпуса правило молчит."""
+    assert FC.check_value("debtorAddress", value) is None
+
+
+def test_own_address_labels_are_not_foreign():
+    """«Место нахождения» — метка САМОГО адреса, флага быть не должно."""
+    assert "Место нахождения" not in FC._FOREIGN_LABELS_IN_ADDRESS
+
+
 # --- имя организации --------------------------------------------------------
 def test_org_trailing_postal_index_is_cut():
     """Умерший ким клим.docx: к имени кредитора прилип индекс из адреса."""
