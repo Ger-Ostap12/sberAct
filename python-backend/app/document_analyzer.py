@@ -21,6 +21,7 @@ from org_normalizer import (
     date_in_law_context,
 )
 from morph_utils import detect_gender, inflect_surname
+from label_synonyms import all_labels, labels_alternation
 from classify_mixin import ClassifyMixin
 from parties_mixin import PartiesMixin
 from amounts_mixin import AmountsMixin
@@ -152,6 +153,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             raw_text = text
             text = self._mask_attachment_list_amounts(text)
             text = self._normalize_whitespace_for_matching(text)
+            text = self._normalize_label_wrap_for_matching(text)
 
             # Для повторного использования
             text_lower = text.lower()
@@ -780,6 +782,67 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
     _HSPACE_CHARS = "          ﻿"
     _HSPACE_RUN_RE = re.compile(r"[ \t" + _HSPACE_CHARS + r"]{2,}")
     _HSPACE_ONE_RE = re.compile(r"[" + _HSPACE_CHARS + r"]")
+
+    # Строка — ЦЕЛИКОМ метка («Должник:»), значит её значение на следующей строке.
+    # Метки берём из РЕЕСТРА (`label_synonyms.all_labels`) — он и заведён для того,
+    # чтобы поддержка нового банка была правкой данных, а не логики (CLAUDE.md).
+    #
+    # ⚠️ Границы правила подобраны ЗАМЕРОМ по корпусу; оба ослабления дают регрессию
+    # (оба проверены, дифф эталона был на 2 файлах с мусором вместо имён):
+    #   1. «строка ЗАКАНЧИВАЕТСЯ меткой» (чтобы ловить «…, адрес регистрации:» в
+    #      прозе) — в прозе двоеточие после слова-метки не значит «дальше значение»:
+    #      склеивались куски шапки, applicantName становился «рбитражный суд
+    #      Ростовско», кредитор терялся;
+    #   2. IGNORECASE — начинала матчиться строка «ФИНАНСОВЫЙ УПРАВЛЯЮЩИЙ:» и
+    #      съедала следующую строку, разваливая разбор двух заявлений ВТБ.
+    # Поэтому: только строка-метка и только в том регистре, в котором метка
+    # записана в реестре.
+    _LABEL_ONLY_LINE_RE = re.compile(
+        r"^[ \t]*(?:" + labels_alternation(all_labels()) + r")[ \t]*:[ \t]*$"
+    )
+    # Начало строки — метка (с двоеточием). Нужно как ГАРД: значение не может
+    # начинаться с чужой метки.
+    _LABEL_STARTS_LINE_RE = re.compile(
+        r"^[ \t]*(?:" + labels_alternation(all_labels()) + r")[ \t]*:"
+    )
+
+    def _normalize_label_wrap_for_matching(self, text: str) -> str:
+        """Поднять значение на строку его метки: «Должник:\\nИванов» → «Должник: Иванов».
+
+        Один и тот же блок шапки банки печатают и в строку, и с переносом; при
+        PDF→docx перенос появляется ещё и сам, когда шапка двухколоночная. Замер
+        (`measure_format_robustness.py`): вставка переноса после метки меняла
+        результат у 8 документов из 74 — ехали `applicantName` с падежами,
+        `debtorName`, адреса.
+
+        ⚠️ Направление канонизации выбрано ЗАМЕРОМ, а не рассуждением. Обратный
+        вариант («всегда перенос после метки») давал ту же устойчивость, но менял
+        эталон у 6 файлов: часть паттернов требует значение на строке метки.
+
+        ⚠️ ГАРДЫ обязательны: без них «СНИЛС:» (метка БЕЗ значения) склеивалась со
+        следующей строкой — заголовком «ЗАЯВЛЕНИЕ» — и метка получала выдуманное
+        значение. Значением не может быть титул документа и не может быть чужая
+        метка; пустая строка означает, что значения нет вовсе.
+        """
+        lines = text.split("\n")
+        result: List[str] = []
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            nxt = lines[i + 1] if i + 1 < len(lines) else None
+            if (
+                nxt is not None
+                and self._LABEL_ONLY_LINE_RE.match(line)
+                and nxt.strip()
+                and not self._is_title_line(nxt)
+                and not self._LABEL_STARTS_LINE_RE.match(nxt)
+            ):
+                result.append(line.rstrip() + " " + nxt.strip())
+                i += 2
+                continue
+            result.append(line)
+            i += 1
+        return "\n".join(result)
 
     def _normalize_whitespace_for_matching(self, text: str) -> str:
         """Привести горизонтальные пробелы к канону ДО сопоставления.
