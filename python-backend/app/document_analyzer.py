@@ -2,6 +2,7 @@ import re
 import sys
 import spacy
 from docx import Document
+import field_contract
 from requisites_validation import is_valid_inn
 from fio_detector import (
     extract_debtor_name,
@@ -33,6 +34,7 @@ import nlp_natasha as _nlp
 import fns_registry as _fns_reg
 from typing import Dict, Any, List, Tuple, Optional, Union
 import logging
+import os
 from pathlib import Path
 import json
 
@@ -180,6 +182,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 extracted_fields = self.extract_fields(text, effective_type)
                 collateral_detected = False
 
+            self._contract_checkpoint(extracted_fields, "извлечение по паттернам")
+
             # Возможный апгрейд типа -> observation_collateral
             document_type = self._maybe_upgrade_to_observation_collateral(extracted_fields, text, document_type, text_lower)
 
@@ -321,6 +325,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # и валидация суммы = «ОБЩАЯ ЗАДОЛЖЕННОСТЬ».
             self._apply_table_breakdown_finances(extracted_fields, text)
 
+            self._contract_checkpoint(extracted_fields, "финансовый каскад")
+
             # ФНС-заявления: финансы по ОЧЕРЕДЯМ реестра (недоимка/налог/пени/штраф/
             # НДФЛ/взносы/госпошлина по 1/2/3 очереди). Гейт по кредитору-ФНС;
             # перекрывает общий парсер и чистит скрытый общий блок финансов.
@@ -452,6 +458,19 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                     extracted_fields.update(self._extract_death_details(text))
                     heirs_result = extract_heirs(text)
 
+            # КОНТРАКТ ПОЛЯ — последний рубеж перед выдачей: поле обязано быть тем,
+            # чем объявлено. Ловит чужой текст, присвоенный полем («Арбитражный суд
+            # Ростовской области» в денежном loanDebt), и адресный хвост в имени
+            # организации. Ставим ДО пересчёта рекомендаций, чтобы всё ниже по
+            # течению работало с уже чистыми данными.
+            field_issues = [i.as_dict() for i in field_contract.apply_contract(extracted_fields)]
+            # Записи должников/третьих лиц/наследников строятся ОТДЕЛЬНЫМ путём, мимо
+            # fields (ловушка §J.3) — контракт обязан пройти и по ним.
+            for _entries, _label in ((debtors_result, "debtors"),
+                                     (third_parties_result, "thirdParties"),
+                                     (heirs_result, "heirs")):
+                field_issues += [i.as_dict() for i in field_contract.check_entries(_entries, _label)]
+
             # Авторитетный пересчёт рекомендаций — ПОСЛЕ финализации entityType.
             # Ранние вызовы (до разбора должников/NLP) могли считать по промежуточному
             # типу лица: у ВКЛ-в-РТК ВТБ тип на входе был 'legal' (утёкшее «ПАО» банка +
@@ -470,6 +489,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 "financeBreakdown": finance_breakdown,
                 "applicationKind": application_kind,
                 "debtorStatusHint": debtor_status_hint,
+                # Претензии контракта — top-level, НЕ в fields: иначе уехали бы в
+                # editedFields фронта и в golden (образец — financeBreakdown).
+                "fieldIssues": field_issues,
                 "rawText": text,
                 "metadata": {
                     "pageCount": page_count if page_count is not None else 1,
@@ -3091,6 +3113,28 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         # в самом адресе организаций-ОПФ не бывает, это начало имени кредитора.
         addr = re.sub(r"\s+(?:ООО|ОАО|ЗАО|ПАО|НАО|АО)\b.*$", "", addr)
         return addr.strip().rstrip(" ,;-")
+
+    # Строгий режим инвариантов: в тестах любое нарушение контракта ВНУТРИ каскада
+    # роняет прогон, в проде — только пишет в лог (ронять разбор из-за одного поля
+    # нельзя, defensive по входу). Включается переменной окружения.
+    _STRICT_CONTRACT = os.environ.get("SBERACT_STRICT_CONTRACT") == "1"
+
+    def _contract_checkpoint(self, fields: Dict[str, Any], step: str) -> None:
+        """Инвариант между шагами каскада: словарь всё ещё осмыслен?
+
+        `analyze()` — длинная цепочка правок общего словаря, и шаг N может
+        скопировать значение, которое шаг N+5 признает мусором и вычистит — копия
+        при этом переживёт чистку (так «Арбитражный суд…» и попал в `loanDebt`
+        через `amounts_mixin._reconcile_debt_amounts`). Чекпоинт показывает ШАГ,
+        на котором словарь испортился, а не разбирательство через 200 строк.
+        """
+        issues = field_contract.find_issues(fields)
+        if not issues:
+            return
+        for issue in issues:
+            logger.warning(f"Контракт нарушен после шага «{step}»: {issue}")
+        if self._STRICT_CONTRACT:
+            raise AssertionError(f"Контракт нарушен после шага «{step}»: {issues}")
 
     def _sanitize_address_fields(self, fields: Dict[str, Any]) -> None:
         """Адресные поля не должны содержать реквизиты (ИНН/ОГРН/ОГРНИП/СНИЛС/КПП):
