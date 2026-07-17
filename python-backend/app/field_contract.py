@@ -372,6 +372,12 @@ def check_entries(
 
     Они строятся ОТДЕЛЬНЫМ путём, мимо `fields` — ловушка §J.3: правка только
     fields оставляет тот же мусор в `debtors[0].address`. ЯВНО правит записи.
+
+    Реквизиты записи проверяются той же контрольной суммой, что и в `fields`:
+    `fio_detector` берёт первый кандидат, если ни один не прошёл проверку
+    (`d["inn"] = next((c for c in inn_cands if is_valid_inn(c)), inn_cands[0])`),
+    и битый ИНН доезжает до карточки должника молча. Чистить не имеем права —
+    решение Андрея о реквизитах (см. шапку модуля), только помечаем.
     """
     issues: List[Issue] = []
     for i, entry in enumerate(entries or []):
@@ -385,4 +391,9 @@ def check_entries(
                 )
             )
             entry[address_field] = ""
+        for req_field in ("inn", "ogrn", "ogrnip"):
+            value = entry.get(req_field)
+            reason = check_value(req_field, value) if value else None
+            if reason:
+                issues.append(Issue(f"{name_field}[{i}].{req_field}", reason, value, cleared=False))
     return issues

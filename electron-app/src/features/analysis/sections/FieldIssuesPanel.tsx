@@ -52,10 +52,19 @@ const FIELD_LABELS: Record<string, string> = {
 const ENTRY_LABELS: Record<string, string> = {
   'debtors.name': 'Должник',
   'debtors.address': 'Адрес должника',
+  'debtors.inn': 'ИНН должника (карточка)',
+  'debtors.ogrn': 'ОГРН должника (карточка)',
+  'debtors.ogrnip': 'ОГРНИП должника (карточка)',
   'thirdParties.name': 'Третье лицо',
   'thirdParties.address': 'Адрес третьего лица',
+  'thirdParties.inn': 'ИНН третьего лица (карточка)',
+  'thirdParties.ogrn': 'ОГРН третьего лица (карточка)',
+  'thirdParties.ogrnip': 'ОГРНИП третьего лица (карточка)',
   'heirs.name': 'Наследник',
   'heirs.address': 'Адрес наследника',
+  'heirs.inn': 'ИНН наследника (карточка)',
+  'heirs.ogrn': 'ОГРН наследника (карточка)',
+  'heirs.ogrnip': 'ОГРНИП наследника (карточка)',
 };
 
 const ENTRY_FIELD_RE = /^(\w+)\[(\d+)\]\.(\w+)$/;
@@ -72,6 +81,37 @@ const fieldLabel = (field: string): string => {
   return FIELD_LABELS[field] || field;
 };
 
+/** Одна претензия, но ко всем полям, где лежит то же значение по той же причине. */
+interface GroupedIssue {
+  fields: string[];
+  reason: string;
+  value: string;
+  cleared: boolean;
+}
+
+/**
+ * Схлопывает претензии с одинаковой причиной И одинаковым значением.
+ *
+ * Зачем. Один и тот же ИНН разбор кладёт сразу в несколько полей (`inn`,
+ * `companyInn`, `debtors[0].inn`), и панель показывала ОДНУ проблему как ТРИ —
+ * ровно там, где обязана снижать шум. Значение входит в ключ: два РАЗНЫХ битых
+ * ИНН в разных полях — это две настоящие проблемы, схлопывать их нельзя.
+ */
+const groupIssues = (issues: FieldIssue[]): GroupedIssue[] => {
+  const groups = new Map<string, GroupedIssue>();
+  issues.forEach((issue) => {
+    const value = issue.value || '';
+    const key = `${issue.cleared}|${issue.reason}|${value}`;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.fields.push(issue.field);
+      return;
+    }
+    groups.set(key, { fields: [issue.field], reason: issue.reason, value, cleared: !!issue.cleared });
+  });
+  return Array.from(groups.values());
+};
+
 interface FieldIssuesPanelProps {
   issues?: FieldIssue[];
 }
@@ -81,13 +121,14 @@ const FieldIssuesPanel: React.FC<FieldIssuesPanelProps> = ({ issues }) => {
 
   // Вычищенные — сверху: там поле пустое, его надо заполнить, это блокирует акт.
   // Помеченные — ниже: значение на месте, но его стоит сверить с документом.
-  const cleared = issues.filter((i) => i.cleared);
-  const flagged = issues.filter((i) => !i.cleared);
+  const grouped = groupIssues(issues);
+  const cleared = grouped.filter((i) => i.cleared);
+  const flagged = grouped.filter((i) => !i.cleared);
 
-  const renderIssue = (issue: FieldIssue, idx: number) => (
-    <Box key={`${issue.field}-${idx}`} sx={{ mb: 0.75 }}>
+  const renderIssue = (issue: GroupedIssue, idx: number) => (
+    <Box key={`${issue.fields[0]}-${idx}`} sx={{ mb: 0.75 }}>
       <Typography variant="body2" component="span" sx={{ fontWeight: 600 }}>
-        {fieldLabel(issue.field)}
+        {issue.fields.map(fieldLabel).join(', ')}
       </Typography>
       <Typography variant="body2" component="span" sx={{ ml: 0.5 }}>
         — {issue.reason}

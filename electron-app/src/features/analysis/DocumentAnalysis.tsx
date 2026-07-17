@@ -859,6 +859,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 onUpdate={updateDebtor}
                 onAdd={addDebtor}
                 onRemove={removeDebtor}
+                fieldQuality={analysisResult?.fieldQuality}
               />
                 </Grid>
 

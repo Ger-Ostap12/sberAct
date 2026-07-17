@@ -165,6 +165,26 @@ def test_entries_addresses_are_checked():
     assert issues and debtors[0]["address"] == ""
 
 
+def test_entries_broken_inn_is_flagged_not_cleared():
+    """A53-9758…docx: битый ИНН доезжает до карточки должника мимо fields.
+
+    `fio_detector` берёт первый кандидат, когда ни один не прошёл контрольную
+    сумму, — ровно тот же приём, что чинили в parties_mixin. Правило реквизитов
+    то же: помечаем, но оставляем — юрист правит цифру, а не набирает двенадцать.
+    """
+    debtors = [{"name": "Иванов Иван Иванович", "inn": "612102429513"}]
+    issues = FC.check_entries(debtors, "debtors")
+    assert debtors[0]["inn"] == "612102429513"
+    assert [i for i in issues if i.field == "debtors[0].inn" and not i.cleared]
+
+
+def test_entries_valid_requisites_are_silent():
+    """Анти-ложняк: в корпусе 13 ОГРН и 4 ОГРНИП записей — все обязаны молчать."""
+    debtors = [{"name": "ООО Ромашка", "inn": "612102152288", "ogrn": "1026101344664"},
+               {"name": "Иванов Иван Иванович", "ogrnip": "317619600232839"}]
+    assert not FC.check_entries(debtors, "debtors")
+
+
 def test_entries_keep_valid_address():
     debtors = [{"name": "Иванов Иван Иванович",
                 "address": "347561, Ростовская область, с. Развильное, ул. Соляника, д. 20"}]

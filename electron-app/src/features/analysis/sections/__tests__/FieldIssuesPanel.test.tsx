@@ -65,6 +65,68 @@ describe('FieldIssuesPanel', () => {
     expect(screen.getByText('Адрес должника')).toBeInTheDocument();
   });
 
+  it('реквизит записи получает метку, а не сырой ключ debtors[0].inn', () => {
+    // Ключи записей добавлялись в контракт позже адресов — метки за ними не
+    // поспели, и юрист видел в панели «debtors[0].inn».
+    render(
+      <FieldIssuesPanel
+        issues={[{ field: 'debtors[0].inn', reason: 'INN не проходит контрольную сумму', value: '612102429513', cleared: false }]}
+      />,
+    );
+    expect(screen.getByText(/ИНН должника \(карточка\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/debtors\[0\]/)).not.toBeInTheDocument();
+  });
+
+  it('одно значение в трёх полях — ОДНА строка, а не три', () => {
+    // A53-9758…docx: битый OCR ИНН разбор кладёт в inn, companyInn и в карточку
+    // должника. Это одна проблема; три строки про один номер — шум ровно там,
+    // где панель обязана его снижать.
+    render(
+      <FieldIssuesPanel
+        issues={[
+          { field: 'inn', reason: 'INN не проходит контрольную сумму', value: '612102429513', cleared: false },
+          { field: 'companyInn', reason: 'INN не проходит контрольную сумму', value: '612102429513', cleared: false },
+          { field: 'debtors[0].inn', reason: 'INN не проходит контрольную сумму', value: '612102429513', cleared: false },
+        ]}
+      />,
+    );
+    expect(screen.getAllByText(/было: 612102429513/)).toHaveLength(1);
+    expect(
+      screen.getByText('ИНН должника, ИНН организации, ИНН должника (карточка)'),
+    ).toBeInTheDocument();
+  });
+
+  it('РАЗНЫЕ значения с той же причиной не схлопываются', () => {
+    // Иначе схлопывание съело бы настоящую вторую проблему: два разных битых
+    // ИНН — это два разных номера, которые юрист правит по отдельности.
+    render(
+      <FieldIssuesPanel
+        issues={[
+          { field: 'inn', reason: 'INN не проходит контрольную сумму', value: '612102429513', cleared: false },
+          { field: 'creditorInn', reason: 'INN не проходит контрольную сумму', value: '770708389311', cleared: false },
+        ]}
+      />,
+    );
+    expect(screen.getByText(/было: 612102429513/)).toBeInTheDocument();
+    expect(screen.getByText(/было: 770708389311/)).toBeInTheDocument();
+  });
+
+  it('одинаковая причина, но разный статус — не схлопывается', () => {
+    // «Очищено» и «оставлено» требуют разных действий: смешать их нельзя даже
+    // при совпадении значения.
+    render(
+      <FieldIssuesPanel
+        issues={[
+          { field: 'inn', reason: 'INN не проходит контрольную сумму', value: '612102429513', cleared: false },
+          { field: 'companyInn', reason: 'INN не проходит контрольную сумму', value: '612102429513', cleared: true },
+        ]}
+      />,
+    );
+    expect(screen.getByText(/Очищены/)).toBeInTheDocument();
+    expect(screen.getByText(/Оставлены, но проверьте/)).toBeInTheDocument();
+    expect(screen.getAllByText(/было: 612102429513/)).toHaveLength(2);
+  });
+
   it('длинное значение обрезается, чтобы не разносить вёрстку', () => {
     const long = 'А'.repeat(200);
     render(<FieldIssuesPanel issues={[{ ...cleared, value: long }]} />);
