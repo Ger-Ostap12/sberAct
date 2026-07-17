@@ -17,7 +17,6 @@ import {
   selectFile,
   hasElectronAPI,
   getElectronAPI,
-  converterStart,
 } from '../../services/electronApi';
 
 interface DocumentUploadProps {
@@ -43,12 +42,13 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded, onP
       return;
     }
 
-    // PDF — через OCR-конвертер (convert-шаг). Прогреваем sidecar сразу:
-    // пока пользователь смотрит на экран конвертации, модель уже грузится.
+    // PDF — через OCR-конвертер (convert-шаг). Прогрев sidecar убран намеренно:
+    // ConvertScreen монтируется сразу за onPdfSelected и сам зовёт converterStart,
+    // так что выигрыш был нулевой, а параллельные вызовы плодили гонку на бэкенде
+    // и глушили ошибку старта в .catch().
     if (nameLower.endsWith('.pdf') && onPdfSelected) {
       setError(null);
       setUploadedFile(file);
-      converterStart().catch(() => undefined);
       onPdfSelected(file);
       return;
     }
@@ -109,7 +109,6 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded, onP
           const file = new File([new Uint8Array(bytes)], fileName, { type: 'application/pdf' });
           setError(null);
           setUploadedFile(file);
-          converterStart().catch(() => undefined);
           onPdfSelected(file);
           return;
         }

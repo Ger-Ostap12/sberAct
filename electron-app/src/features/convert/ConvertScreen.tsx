@@ -32,7 +32,6 @@ import {
   convertScan,
   convertStatus,
   converterStart,
-  converterStop,
   ConvertScanFlags,
   DocxSection,
   docxApplyEdits,
@@ -228,7 +227,6 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
     setError(null);
     try {
       const result = await analyzeDocument(file);
-      converterStop().catch(() => undefined);
       onComplete(result);
     } catch (e) {
       failWith(
@@ -244,7 +242,6 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
     setError(null);
     try {
       const result = await analyzeText(editedText);
-      converterStop().catch(() => undefined);
       onComplete(result);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Ошибка анализа текста');
@@ -280,9 +277,11 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
     }
   }, [docxBlob, editedText, baseName, triggerDownload]);
 
+  // Конвертер намеренно НЕ гасим: его убивает сторож простоя на бэкенде
+  // (CONVERTER_IDLE_TIMEOUT_S). Иначе каждый следующий PDF платил холодным
+  // стартом с загрузкой LLM.
   const handleBack = useCallback(() => {
     stopPolling();
-    converterStop().catch(() => undefined);
     onBack();
   }, [onBack, stopPolling]);
 

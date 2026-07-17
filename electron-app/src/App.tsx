@@ -8,7 +8,7 @@ import DocumentPreview from './features/preview/DocumentPreview';
 import ConvertScreen from './features/convert/ConvertScreen';
 import { DocumentData, TemplateType, ExtractedData, AnalysisResult } from './types';
 import { pickTemplate } from './templates';
-import { toggleDevTools, converterStop } from './services/electronApi';
+import { toggleDevTools } from './services/electronApi';
 
 const theme = createTheme({
   palette: {
@@ -102,8 +102,9 @@ function App() {
     setSelectedTemplate(null);
     setGeneratedDocument(null);
     setPdfFile(null);
-    // Sidecar-конвертер не нужен вне convert-шага — освобождаем память
-    converterStop().catch(() => undefined);
+    // Конвертер намеренно НЕ гасим: его убивает сторож простоя на бэкенде
+    // (CONVERTER_IDLE_TIMEOUT_S). Остановка отсюда означала холодный старт с
+    // загрузкой LLM на КАЖДОМ следующем заявлении.
   };
 
   const handleOpenDevTools = () => {

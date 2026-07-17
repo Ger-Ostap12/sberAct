@@ -46,7 +46,7 @@ describe('DocumentUpload — маршрутизация PDF на convert-шаг'
     (converterStart as jest.Mock).mockResolvedValue({ ok: true });
   });
 
-  it('.pdf уходит в onPdfSelected (с прогревом конвертера), анализ не вызывается', async () => {
+  it('.pdf уходит в onPdfSelected БЕЗ прогрева конвертера, анализ не вызывается', async () => {
     const onPdfSelected = jest.fn();
     const { container } = render(
       <DocumentUpload onDocumentUploaded={() => {}} onPdfSelected={onPdfSelected} />
@@ -57,7 +57,9 @@ describe('DocumentUpload — маршрутизация PDF на convert-шаг'
 
     await waitFor(() => expect(onPdfSelected).toHaveBeenCalled());
     expect((onPdfSelected as jest.Mock).mock.calls[0][0].name).toBe('скан.pdf');
-    expect(converterStart).toHaveBeenCalled();
+    // Прогрев убран: старт конвертера — забота ConvertScreen. Дублирующий вызов
+    // отсюда плодил гонку на бэкенде и глушил ошибку старта.
+    expect(converterStart).not.toHaveBeenCalled();
     expect(analyzeDocument).not.toHaveBeenCalled();
   });
 
