@@ -144,6 +144,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
             logger.info(f"Извлеченный текст (первые 500 символов): {text[:500]}")
 
+            # Суммы из ПЕРЕЧНЯ приложений — не деньги должника (правило Андрея):
+            # там перечислены документы, а «в размере 25000» у квитанции — депозит на
+            # вознаграждение управляющего. Маскируем ДО сопоставления; `raw_text`
+            # остаётся исходным (на нём держатся предпросмотр и построчная правка
+            # docx — §A), маска длину не меняет.
+            raw_text = text
+            text = self._mask_attachment_list_amounts(text)
+
             # Для повторного использования
             text_lower = text.lower()
 
@@ -492,10 +500,12 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 # Претензии контракта — top-level, НЕ в fields: иначе уехали бы в
                 # editedFields фронта и в golden (образец — financeBreakdown).
                 "fieldIssues": field_issues,
-                "rawText": text,
+                # ИСХОДНЫЙ текст, не маскированный: на нём держатся посекционный
+                # предпросмотр и построчная вставка правок в docx (§A).
+                "rawText": raw_text,
                 "metadata": {
                     "pageCount": page_count if page_count is not None else 1,
-                    "wordCount": len(text.split()),
+                    "wordCount": len(raw_text.split()),
                     "language": "ru"
                 },
                 "recommendedActs": recommended_acts,
@@ -758,6 +768,47 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
     _PRAYER_START_RE = re.compile(r"^\s*(?:\d+[.)]\s*)?" + _PRAYER_VERB, re.IGNORECASE)
     # Якорь блока приложений — строка, начинающаяся с «Приложение(я/й)».
     _ATTACH_ANCHOR_RE = re.compile(r"^\s*приложени[еяй]", re.IGNORECASE)
+    # Пункт ПЕРЕЧНЯ приложений: «1. Квитанция…», «2) Копия паспорта…». Именно
+    # перечень, а не весь блок приложений: после него часто идёт ПРИЛОЖЕННЫЙ расчёт
+    # задолженности таблицей, откуда суммы берутся законно.
+    _ATTACH_ITEM_RE = re.compile(r"^\s*\d+[.)]\s+\S")
+
+    def _mask_attachment_list_amounts(self, text: str) -> str:
+        """Убрать из сопоставления суммы, стоящие в ПЕРЕЧНЕ приложений.
+
+        Перечень приложений — список ДОКУМЕНТОВ, а не денег должника (правило
+        Андрея). «1. Квитанция о внесении денежных средств на депозитный счет АС в
+        размере 25000» — это депозит на вознаграждение управляющего, и он утекал в
+        `totalDebt`, а оттуда в акт как «основной долг в размере 25 000 руб.»
+        (`Самобанкрот/Заявление РФЛ1.docx`).
+
+        ⚠️ Режем ТОЛЬКО нумерованные пункты перечня. Блок приложений целиком трогать
+        НЕЛЬЗЯ: у 7 документов корпуса за словом «Приложение» идёт приложенный расчёт
+        задолженности («Просроченная ссудная задолженность: 8020.73»), и это
+        единственный источник их финансов — слепая обрезка обнулила бы им суммы.
+
+        Маскируем цифры пробелами, ДЛИНУ СОХРАНЯЕМ: смещения в тексте остаются
+        валидными для остальных слоёв, а имена документов в перечне никому не нужны.
+        """
+        lines = text.split("\n")
+        # ⚠️ Берём ПОСЛЕДНИЙ якорь, а не первый: слово «Приложение» встречается и в
+        # ссылках по тексту («приложение № 1 к договору»), а перечень приложений —
+        # в конце заявления. С первым якорем маска съедала нумерованные пункты
+        # ПРОСИТЕЛЬНОЙ части («4. Включить требования … в размере 501 365 000,9 руб.»
+        # в Заявл_Ликвидир_Оргтехника.docx) — то есть ровно те суммы, ради которых
+        # всё и затевалось.
+        anchors = [i for i, line in enumerate(lines) if self._ATTACH_ANCHOR_RE.match(line)]
+        if not anchors:
+            return text
+        changed = False
+        for i in range(anchors[-1], len(lines)):
+            line = lines[i]
+            if not self._ATTACH_ITEM_RE.match(line):
+                continue
+            if re.search(r"\d[\d\s  ]*[.,]?\d*\s*(?:руб|₽)|в\s+размере\s+\d", line, re.IGNORECASE):
+                lines[i] = re.sub(r"\d", " ", line)
+                changed = True
+        return "\n".join(lines) if changed else text
 
     def _docx_parts_true_order(self, file_path: str) -> List[Tuple[str, str, int]]:
         """Части DOCX в РЕАЛЬНОМ порядке чтения документа + их ПЛОСКИЙ индекс.
