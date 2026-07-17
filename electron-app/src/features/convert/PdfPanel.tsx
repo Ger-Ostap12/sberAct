@@ -31,12 +31,19 @@ const PdfPanel: React.FC<PdfPanelProps> = ({ file }) => {
         // первом же getDocument() падало «getOrInsertComputed is not a function».
         // В legacy-сборку вшит core-js-полифилл. Воркер в public/ — тоже legacy.
         const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-        // Worker — статическим файлом из public/ (скопирован из pdfjs-dist),
-        // без бандлер-магии: работает и в CRA-dev, и в собранном Electron.
-        pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL || ''}/pdf.worker.min.mjs`;
+        // Статика из public/ — БЕЗ бандлер-магии, но путь резолвим относительно
+        // страницы. PUBLIC_URL пуст (homepage в package.json не задан), поэтому
+        // root-absolute «/файл» в прод-сборке уезжал бы в корень диска: Electron
+        // грузит фронт через file://. baseURI работает и на localhost:3000, и там.
+        const asset = (name: string) => new URL(name, document.baseURI).href;
+        pdfjs.GlobalWorkerOptions.workerSrc = asset('pdf.worker.min.mjs');
 
         const data = await file.arrayBuffer();
-        const doc = await pdfjs.getDocument({ data }).promise;
+        // wasmUrl обязателен с pdfjs 6: декодеры JBIG2/JPEG2000 вынесены в
+        // WebAssembly, а сканы заявлений кодируются JBIG2 — без него страница
+        // рендерится белой. Слеш на конце обязателен: pdf.js клеит имя файла
+        // к этой строке без разделителя.
+        const doc = await pdfjs.getDocument({ data, wasmUrl: asset('wasm/') }).promise;
         if (cancelled) return;
 
         const targetWidth = Math.max(container.clientWidth - 16, 300);
