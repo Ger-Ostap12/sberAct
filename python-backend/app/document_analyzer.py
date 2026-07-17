@@ -151,6 +151,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # docx — §A), маска длину не меняет.
             raw_text = text
             text = self._mask_attachment_list_amounts(text)
+            text = self._normalize_whitespace_for_matching(text)
 
             # Для повторного использования
             text_lower = text.lower()
@@ -772,6 +773,33 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
     # перечень, а не весь блок приложений: после него часто идёт ПРИЛОЖЕННЫЙ расчёт
     # задолженности таблицей, откуда суммы берутся законно.
     _ATTACH_ITEM_RE = re.compile(r"^\s*\d+[.)]\s+\S")
+
+    # Горизонтальные пробелы, которые вставляют конвертеры и вёрстка: неразрывный,
+    # узкий неразрывный, цифровой, тонкий. Для смысла они равны обычному пробелу,
+    # но паттерны на них спотыкаются.
+    _HSPACE_CHARS = "          ﻿"
+    _HSPACE_RUN_RE = re.compile(r"[ \t" + _HSPACE_CHARS + r"]{2,}")
+    _HSPACE_ONE_RE = re.compile(r"[" + _HSPACE_CHARS + r"]")
+
+    def _normalize_whitespace_for_matching(self, text: str) -> str:
+        """Привести горизонтальные пробелы к канону ДО сопоставления.
+
+        Зачем. Разбор не должен зависеть от типографики: то же самое заявление,
+        набранное в другом банке или прогнанное другим конвертером, отличается от
+        нашего корпуса в первую очередь пробелами, а не смыслом. Замер
+        (`tests/measure_format_robustness.py`) до этой правки: двойные пробелы
+        меняли результат у **42 документов из 79**, причём у 28 из них менялся
+        `documentType` — то есть ветка извлечения и рекомендованные акты; ещё 5
+        документов ломал неразрывный пробел в суммах.
+
+        Что делаем: любые горизонтальные пробелы (вкл. неразрывные и тонкие) →
+        обычный, серии → один. ПЕРЕВОДЫ СТРОК НЕ ТРОГАЕМ: на структуре строк
+        держатся label-anchored слои («Должник:» + следующая строка) и разбор
+        таблиц. `raw_text` остаётся исходным — предпросмотр и построчная вставка
+        правок в docx (§A) работают с ним.
+        """
+        normalized = self._HSPACE_ONE_RE.sub(" ", text)
+        return self._HSPACE_RUN_RE.sub(" ", normalized)
 
     def _mask_attachment_list_amounts(self, text: str) -> str:
         """Убрать из сопоставления суммы, стоящие в ПЕРЕЧНЕ приложений.
