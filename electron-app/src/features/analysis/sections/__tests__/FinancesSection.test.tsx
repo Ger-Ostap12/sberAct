@@ -112,3 +112,67 @@ describe('FinancesSection — кредитор ФНС', () => {
     expect(screen.getByText(/вычислена как сумма подытогов/)).toBeInTheDocument();
   });
 });
+
+// Подсветка подозрительных полей (backend fieldQuality). Денежные поля — главная
+// жертва чужого текста: «Арбитражный суд Ростовской области» приезжал в «Ссудную
+// задолженность» и печатался в акте как «основной долг в размере ... руб.».
+describe('FinancesSection — подсветка подозрительных полей', () => {
+  const bank = 'ПАО Сбербанк';
+
+  it('без fieldQuality ничего не подсвечено', () => {
+    render(<FinancesSection editedFields={{ creditorName: bank, interest: '100,00' }} onFieldChange={() => {}} />);
+    expect(screen.queryByTestId('field-quality-low')).not.toBeInTheDocument();
+  });
+
+  it('поле уровня low подсвечивается', () => {
+    render(
+      <FinancesSection
+        editedFields={{ creditorName: bank, interest: '100,00' }}
+        onFieldChange={() => {}}
+        fieldQuality={{ interest: { level: 'low', reasons: ['в денежном поле текст, а не сумма'], cleared: true } }}
+      />,
+    );
+    expect(screen.getAllByTestId('field-quality-low')).toHaveLength(1);
+  });
+
+  it('medium не подсвечивается — иначе подсветка станет шумом', () => {
+    render(
+      <FinancesSection
+        editedFields={{ creditorName: bank, interest: '100,00' }}
+        onFieldChange={() => {}}
+        fieldQuality={{ interest: { level: 'medium', reasons: [] } }}
+      />,
+    );
+    expect(screen.queryByTestId('field-quality-low')).not.toBeInTheDocument();
+  });
+
+  it('подсветка НЕ ломает тултип «откуда число» на том же поле', async () => {
+    // АНТИ-РЕГРЕССИЯ: FieldQualityMark вложен внутрь BreakdownTip, а MUI Tooltip
+    // вешает на ребёнка ref и обработчики наведения. Без forwardRef тултип
+    // разбивки молча переставал открываться.
+    render(
+      <FinancesSection
+        editedFields={{ creditorName: bank, principalDebt: '1 465 013 605,99' }}
+        onFieldChange={() => {}}
+        financeBreakdown={{ principalDebt: ['465 015 355,26', '999 998 250,73'] }}
+        fieldQuality={{ principalDebt: { level: 'low', reasons: ['проверить'], cleared: false } }}
+      />,
+    );
+    fireEvent.mouseOver(screen.getByDisplayValue('1 465 013 605,99'));
+    expect(await screen.findByText(/465 015 355,26/)).toBeInTheDocument();
+    expect(screen.getAllByTestId('field-quality-low')).toHaveLength(1);
+  });
+
+  it('«Ссудная задолженность» ловит претензию к loanDebt, хотя показывает principalDebt', () => {
+    // Поле формы = principalDebt OR loanDebt; контракт вычистил именно loanDebt
+    // (туда попадал текст суда) — юрист должен увидеть пометку на том, что видит.
+    render(
+      <FinancesSection
+        editedFields={{ creditorName: bank }}
+        onFieldChange={() => {}}
+        fieldQuality={{ loanDebt: { level: 'low', reasons: ['значение принадлежит полю «courtName»'], cleared: true } }}
+      />,
+    );
+    expect(screen.getAllByTestId('field-quality-low')).toHaveLength(1);
+  });
+});

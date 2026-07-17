@@ -479,13 +479,16 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # editedFields фронта и в golden (образец — financeBreakdown).
             provenance = extracted_fields.pop(self._PROVENANCE_KEY, {}) or {}
             contract_issues = field_contract.apply_contract(extracted_fields)
-            field_issues = [i.as_dict() for i in contract_issues]
             # Записи должников/третьих лиц/наследников строятся ОТДЕЛЬНЫМ путём, мимо
-            # fields (ловушка §J.3) — контракт обязан пройти и по ним.
+            # fields (ловушка §J.3) — контракт обязан пройти и по ним. Претензии к
+            # ним идут в ОБЩИЙ список: иначе `fieldQuality` знал бы меньше, чем
+            # `fieldIssues`, и подсветка карточки должника молчала бы при живой
+            # претензии в списке сверху.
             for _entries, _label in ((debtors_result, "debtors"),
                                      (third_parties_result, "thirdParties"),
                                      (heirs_result, "heirs")):
-                field_issues += [i.as_dict() for i in field_contract.check_entries(_entries, _label)]
+                contract_issues += field_contract.check_entries(_entries, _label)
+            field_issues = [i.as_dict() for i in contract_issues]
 
             # Авторитетный пересчёт рекомендаций — ПОСЛЕ финализации entityType.
             # Ранние вызовы (до разбора должников/NLP) могли считать по промежуточному

@@ -871,6 +871,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 onFieldChange={handleFieldChange}
                 onCreditorChange={handleCreditorChange}
                 banks={banks}
+                fieldQuality={analysisResult?.fieldQuality}
               />
                 </Grid>
                 )}
@@ -884,7 +885,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                     <Grid item xs={12} md={6}>
                       <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} showSro={showSroField} showFio={showFioField} />
                       <Box sx={{ mt: 3 }}>
-                        <FinancesSection editedFields={editedFields} onFieldChange={handleFieldChange} financeBreakdown={analysisResult?.financeBreakdown} />
+                        <FinancesSection editedFields={editedFields} onFieldChange={handleFieldChange} financeBreakdown={analysisResult?.financeBreakdown} fieldQuality={analysisResult?.fieldQuality} />
                       </Box>
                     </Grid>
                     <Grid item xs={12} md={6}>

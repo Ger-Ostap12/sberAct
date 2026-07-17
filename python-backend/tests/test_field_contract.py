@@ -260,6 +260,18 @@ def test_quality_skips_empty_fields():
     assert q == {}
 
 
+def test_quality_covers_entry_issues():
+    """Претензии к записям (debtors[0].address) обязаны попадать и в качество.
+
+    Иначе список сверху говорит о проблеме, а карточка должника молчит — юрист
+    видит противоречие и перестаёт доверять подсветке.
+    """
+    debtors = [{"name": "Иванов Иван Иванович", "address": "ПАО Сбер"}]
+    issues = FC.check_entries(debtors, "debtors")
+    q = FC.assess_quality({}, issues)
+    assert q["debtors[0].address"]["level"] == FC.LOW
+
+
 def test_checkpoint_silent_on_clean_fields_even_in_strict_mode():
     import types
 
