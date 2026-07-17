@@ -40,24 +40,35 @@ export function resetLiveBase(): void {
  * сериализует тело заново на каждую попытку.
  */
 async function fetchBackend(pathname: string, options?: RequestInit): Promise<Response> {
-  const bases = liveBase ? [liveBase] : BASE_URLS;
+  // Живой хост — первым, но остальные держим в запасе: он мог отвалиться.
+  const ordered = liveBase
+    ? [liveBase, ...BASE_URLS.filter((b) => b !== liveBase)]
+    : [...BASE_URLS];
   let lastError: unknown;
 
-  for (const base of bases) {
-    let res: Response;
-    try {
-      res = await fetch(`${base}${pathname}`, options);
-    } catch (e) {
-      lastError = e;
-      if (base === liveBase) liveBase = null; // отвалился — на следующем ищем заново
-      continue;
+  for (const base of ordered) {
+    // ДВЕ попытки на хост. После простоя браузер переиспользует keep-alive
+    // соединение, которое uvicorn уже закрыл (timeout_keep_alive), и запрос падает
+    // без ответа — в консоли это выглядит как «CORS policy: No
+    // Access-Control-Allow-Origin», хотя CORS исправен и backend жив. Сам браузер
+    // повторяет только идемпотентные запросы, а /converter/start — POST, поэтому
+    // повтор нужен здесь. Вторая попытка открывает свежий сокет.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let res: Response;
+      try {
+        res = await fetch(`${base}${pathname}`, options);
+      } catch (e) {
+        lastError = e; // сетевой отказ: вторая попытка, затем следующий хост
+        continue;
+      }
+      liveBase = base;
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status}: ${text}`);
+      }
+      return res;
     }
-    liveBase = base;
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`HTTP ${res.status}: ${text}`);
-    }
-    return res;
+    if (base === liveBase) liveBase = null; // хост молчит дважды — ищем заново
   }
 
   throw lastError instanceof Error ? lastError : new Error('Backend недоступен');

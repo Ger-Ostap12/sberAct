@@ -113,30 +113,48 @@ describe('fetchBackend — выбор хоста', () => {
     expect(String(url)).toContain(FIRST);
   });
 
-  it('сетевой отказ уводит на следующий хост', async () => {
+  it('протухшее keep-alive соединение: вторая попытка на ТОТ ЖЕ хост спасает', async () => {
+    // Регрессия: после простоя браузер переиспользует закрытый сокет, POST падает
+    // без ответа. Сам он неидемпотентные запросы не повторяет — повторяем мы.
     const fetchMock = jest
       .fn()
-      .mockImplementationOnce(netFail)
+      .mockImplementationOnce(netFail) // протухший сокет
       .mockImplementationOnce(async () => okJson([{ display: 'Сбер' }]));
     (global as any).fetch = fetchMock;
 
     await expect(webApi.getBanks()).resolves.toEqual([{ display: 'Сбер' }]);
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(String(fetchMock.mock.calls[1][0])).toContain(SECOND);
+    // Оба раза — в ПЕРВЫЙ хост, а не уход на соседний
+    expect(String(fetchMock.mock.calls[0][0])).toContain(FIRST);
+    expect(String(fetchMock.mock.calls[1][0])).toContain(FIRST);
+  });
+
+  it('хост молчит дважды — уходим на следующий', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockImplementationOnce(netFail)
+      .mockImplementationOnce(netFail)
+      .mockImplementationOnce(async () => okJson([{ display: 'Сбер' }]));
+    (global as any).fetch = fetchMock;
+
+    await expect(webApi.getBanks()).resolves.toEqual([{ display: 'Сбер' }]);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(String(fetchMock.mock.calls[2][0])).toContain(SECOND);
   });
 
   it('живой хост запоминается: второй запрос идёт сразу в него', async () => {
     const fetchMock = jest
       .fn()
-      .mockImplementationOnce(netFail) // 127.0.0.1 мёртв
+      .mockImplementationOnce(netFail) // 127.0.0.1 молчит
+      .mockImplementationOnce(netFail) // и со второй попытки тоже
       .mockImplementation(async () => okJson([]));
     (global as any).fetch = fetchMock;
 
-    await webApi.getBanks(); // перебор: 127.0.0.1 → localhost
+    await webApi.getBanks(); // 127.0.0.1 ×2 → localhost
     await webApi.getBanks(); // должен пойти сразу в localhost
 
-    expect(fetchMock).toHaveBeenCalledTimes(3); // а не 4 — мёртвый хост не переспрашивается
-    expect(String(fetchMock.mock.calls[2][0])).toContain(SECOND);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(String(fetchMock.mock.calls[3][0])).toContain(SECOND);
   });
 
   it('все хосты мертвы — наружу сетевая ошибка', async () => {
@@ -144,6 +162,6 @@ describe('fetchBackend — выбор хоста', () => {
     (global as any).fetch = fetchMock;
 
     await expect(webApi.getBanks()).rejects.toThrow(/Failed to fetch/);
-    expect(fetchMock).toHaveBeenCalledTimes(3); // перебраны все базы
+    expect(fetchMock).toHaveBeenCalledTimes(6); // 3 базы × 2 попытки
   });
 });
