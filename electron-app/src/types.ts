@@ -64,6 +64,30 @@ export interface RecommendedActs {
   recommendedActIds?: string[];
 }
 
+/** Претензия контракта поля к извлечённому значению (backend: field_contract). */
+export interface FieldIssue {
+  field: string;
+  /** Человекочитаемая причина — показывается юристу как есть. */
+  reason: string;
+  /** Что стояло в поле до чистки. */
+  value: string;
+  /** true — поле вычищено (значение было чужим), false — оставлено с пометкой. */
+  cleared: boolean;
+}
+
+/** Уровень доверия к полю (backend: field_contract.assess_quality). */
+export interface FieldQuality {
+  /** 'low' — есть претензия; 'high' — подтверждено независимо (справочник,
+   *  контрольная сумма); 'medium' — извлечено паттерном, подтвердить нечем. */
+  level: 'low' | 'medium' | 'high';
+  reasons: string[];
+  /** Откуда значение, если слой это знает: 'registry' — справочник,
+   *  'document' — текст заявления. */
+  source?: 'registry' | 'document';
+  /** Для 'low': вычищено ли поле. */
+  cleared?: boolean;
+}
+
 export interface ExtractedData {
   documentType: string;
   confidence: number;
@@ -128,6 +152,14 @@ export interface ExtractedData {
   /** Разбивка полей финансов на слагаемые (ключ поля → суммы), когда итог сложился
    *  из нескольких обязательств. Для тултипа «откуда число» в FinancesSection. */
   financeBreakdown?: Record<string, string[]> | null;
+  /** Претензии контракта поля: значение не соответствовало типу поля или
+   *  принадлежало другому полю. `cleared` — вычищено (вводить заново) или только
+   *  помечено (проверить и поправить). */
+  fieldIssues?: FieldIssue[];
+  /** Уровень доверия по каждому полю. Уровни, а не числа: документный
+   *  `confidence` меряет заполненность, а не правильность. Фронт подсвечивает
+   *  поля уровня 'low' — их юрист смотрит первыми. */
+  fieldQuality?: Record<string, FieldQuality>;
   /** Вид заявления: 'self_bankruptcy' — на банкротство подаёт САМ должник
    *  (заявитель = должник, кредитора-заявителя нет). Фронт автопроставляет
    *  статус должника «Самобанкрот» и скрывает блок «Информация о кредиторе». */

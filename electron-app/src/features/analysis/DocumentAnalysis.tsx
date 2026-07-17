@@ -20,6 +20,7 @@ import { buildSubmitData } from './lib/buildSubmitData';
 import ObligationsSection from './sections/ObligationsSection';
 import CollateralSection from './sections/CollateralSection';
 import CourtSection from './sections/CourtSection';
+import FieldIssuesPanel from './sections/FieldIssuesPanel';
 import DatesSection from './sections/DatesSection';
 import ManagerSection from './sections/ManagerSection';
 import LiquidationSection from './sections/LiquidationSection';
@@ -833,6 +834,11 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                 Проверьте и при необходимости отредактируйте извлеченные данные
               </Typography>
+
+              {/* Адресный список подозрительных полей от контракта (backend
+                  field_contract): что вычищено и что стоит сверить. Стоит ПЕРВЫМ —
+                  это то, что юрист смотрит раньше остальной формы. */}
+              <FieldIssuesPanel issues={analysisResult?.fieldIssues} />
 
               <Grid container spacing={2} sx={{ width: '100%' }}>
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>

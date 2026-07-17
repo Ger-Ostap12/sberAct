@@ -215,6 +215,51 @@ def test_checkpoint_raises_only_in_strict_mode():
             types.SimpleNamespace(_STRICT_CONTRACT=True), dirty, "финансовый каскад")
 
 
+# --- уровень доверия к полю -------------------------------------------------
+def test_quality_marks_contract_victims_low():
+    fields = {"courtName": "Арбитражный суд Ростовской области"}
+    issues = [FC.Issue("loanDebt", "в денежном поле текст, а не сумма",
+                       "Арбитражный суд Ростовской области")]
+    q = FC.assess_quality(fields, issues)
+    assert q["loanDebt"]["level"] == FC.LOW
+    assert q["loanDebt"]["reasons"]
+
+
+def test_quality_marks_registry_value_high():
+    """Значение из справочника независимо от разбора текста — его не перепроверяют."""
+    q = FC.assess_quality({"creditorAddress": "115114, Москва, Дербеневская наб., 11"},
+                          [], {"creditorAddress": FC.SOURCE_REGISTRY})
+    assert q["creditorAddress"]["level"] == FC.HIGH
+    assert q["creditorAddress"]["source"] == FC.SOURCE_REGISTRY
+
+
+def test_quality_marks_checksum_requisite_high():
+    """Контрольная сумма — независимое подтверждение: 10 цифр случайно не совпадут."""
+    q = FC.assess_quality({"inn": "612102152288"}, [])
+    assert q["inn"]["level"] == FC.HIGH
+
+
+def test_quality_broken_requisite_is_low_not_high():
+    """Битый ИНН помечен, но НЕ вычищен (решение Андрея) — уровень всё равно LOW."""
+    fields = {"inn": "612102429513"}
+    issues = FC.apply_contract(fields)
+    q = FC.assess_quality(fields, issues)
+    assert fields["inn"] == "612102429513"
+    assert q["inn"]["level"] == FC.LOW
+    assert q["inn"]["cleared"] is False
+
+
+def test_quality_default_is_medium_not_invented_number():
+    """Обычное поле — MEDIUM: подтвердить нечем, и врать цифрой мы не будем."""
+    q = FC.assess_quality({"debtorName": "Иванов Иван Иванович"}, [])
+    assert q["debtorName"]["level"] == FC.MEDIUM
+
+
+def test_quality_skips_empty_fields():
+    q = FC.assess_quality({"debtorName": "", "inn": None, "courtName": []}, [])
+    assert q == {}
+
+
 def test_checkpoint_silent_on_clean_fields_even_in_strict_mode():
     import types
 

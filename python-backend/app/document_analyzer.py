@@ -474,7 +474,12 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # Ростовской области» в денежном loanDebt), и адресный хвост в имени
             # организации. Ставим ДО пересчёта рекомендаций, чтобы всё ниже по
             # течению работало с уже чистыми данными.
-            field_issues = [i.as_dict() for i in field_contract.apply_contract(extracted_fields)]
+            # Источник значения, записанный слоями, которые его знают (реестр банков).
+            # Вынимаем ДО контракта: в fields ему делать нечего — уехал бы в
+            # editedFields фронта и в golden (образец — financeBreakdown).
+            provenance = extracted_fields.pop(self._PROVENANCE_KEY, {}) or {}
+            contract_issues = field_contract.apply_contract(extracted_fields)
+            field_issues = [i.as_dict() for i in contract_issues]
             # Записи должников/третьих лиц/наследников строятся ОТДЕЛЬНЫМ путём, мимо
             # fields (ловушка §J.3) — контракт обязан пройти и по ним.
             for _entries, _label in ((debtors_result, "debtors"),
@@ -503,6 +508,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 # Претензии контракта — top-level, НЕ в fields: иначе уехали бы в
                 # editedFields фронта и в golden (образец — financeBreakdown).
                 "fieldIssues": field_issues,
+                # Уровень доверия по КАЖДОМУ полю + причина. Заменяет для юриста
+                # документный `confidence`, который меряет заполненность, а не
+                # правильность (три значения на весь корпус, и документ с судом в
+                # денежном поле получал 0.95). Тоже top-level — golden не трогает.
+                "fieldQuality": field_contract.assess_quality(
+                    extracted_fields, contract_issues, provenance
+                ),
                 # ИСХОДНЫЙ текст, не маскированный: на нём держатся посекционный
                 # предпросмотр и построчная вставка правок в docx (§A).
                 "rawText": raw_text,
@@ -2416,6 +2428,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 logger.warning(f"Реестр ФНС не ответил: {exc}")
             if reg_addr:
                 fields["creditorAddress"] = reg_addr
+                # Адрес инспекции — из справочника, а не из разбора текста: это
+                # независимое подтверждение, юристу его перепроверять не нужно.
+                fields.setdefault(self._PROVENANCE_KEY, {})["creditorAddress"] = (
+                    field_contract.SOURCE_REGISTRY
+                )
 
         # НАДЁЖНЫЙ ДОЛЖНИК ФНС по якорю. Позиционный парсер на этих заявлениях часто
         # берёт арбитражного управляющего («Финансовым управляющим утверждён <ФИО>»)

@@ -307,6 +307,64 @@ def find_issues(fields: Dict[str, Any]) -> List[Issue]:
     return issues
 
 
+# --- качество поля -----------------------------------------------------------
+# Уровни, а не числа. Числовая «уверенность» уже была (`calculate_confidence`) и
+# оказалась фикцией: три значения на весь корпус (0.85/0.95/1.00), причём документ
+# с названием суда в денежном поле получал 0.95. Пока у нас нет размеченной выборки,
+# любая цифра — выдумка; уровень + причина честны и юристу полезнее.
+LOW = "low"  # есть претензия: поле вычищено или значение подозрительное
+HIGH = "high"  # значение подтверждено независимо от паттерна
+MEDIUM = "medium"  # извлечено паттерном, подтвердить нечем — обычный случай
+
+# Источник значения. Заполняется слоями, которые его ЗНАЮТ (реестр банков,
+# финансовые слои); там, где источник не отслеживается, поле просто отсутствует —
+# врать «pattern» про всё подряд смысла нет.
+SOURCE_REGISTRY = "registry"  # из справочника (creditor_registry / fns_registry)
+SOURCE_DOCUMENT = "document"  # из текста самого заявления
+
+
+def assess_quality(
+    fields: Dict[str, Any],
+    issues: List[Issue],
+    provenance: Optional[Dict[str, str]] = None,
+) -> Dict[str, Dict[str, Any]]:
+    """Уровень доверия к каждому заполненному полю + причина. Чистая функция.
+
+    Задача — не «оценить точность» (мерить не на чем), а показать юристу, какие
+    поля смотреть ПЕРВЫМИ: вычищенные контрактом, подозрительные реквизиты,
+    значения, подтверждённые справочником.
+    """
+    provenance = provenance or {}
+    quality: Dict[str, Dict[str, Any]] = {}
+
+    for issue in issues:
+        entry = quality.setdefault(issue.field, {"level": LOW, "reasons": []})
+        entry["level"] = LOW
+        entry["reasons"].append(issue.reason)
+        entry["cleared"] = issue.cleared
+
+    for field, value in fields.items():
+        if value in (None, "", [], {}):
+            continue
+        if field in quality:  # претензия уже сделала поле подозрительным
+            continue
+        source = provenance.get(field)
+        entry: Dict[str, Any] = {"level": MEDIUM, "reasons": []}
+        if source:
+            entry["source"] = source
+        if source == SOURCE_REGISTRY:
+            entry["level"] = HIGH
+            entry["reasons"].append("значение из справочника, а не из разбора текста")
+        elif FIELD_TYPES.get(field) in (INN, OGRN, OGRNIP):
+            # Контрольная сумма — независимое подтверждение: совпасть случайно
+            # десять цифр не могут. Претензии к реквизиту уже обработаны выше.
+            entry["level"] = HIGH
+            entry["reasons"].append("реквизит проходит контрольную сумму ФНС")
+        quality[field] = entry
+
+    return quality
+
+
 def check_entries(
     entries: List[Dict[str, Any]], name_field: str = "name", address_field: str = "address"
 ) -> List[Issue]:
