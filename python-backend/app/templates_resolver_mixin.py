@@ -16,6 +16,111 @@ logger = logging.getLogger(__name__)
 
 class TemplatesResolverMixin:
 
+    @staticmethod
+    def _is_fns_creditor(data: Dict[str, Any]) -> bool:
+        """Заявитель/кредитор — уполномоченный орган (ФНС). Признак — creditorName
+        начинается с «ФНС» (совпадает с фронтовым isFnsCreditor: «ФНС России»,
+        «ФНС России в лице …»)."""
+        name = str(data.get("creditorName") or "").strip().upper()
+        return name.startswith("ФНС")
+
+    @staticmethod
+    def _is_self_bankruptcy(data: Dict[str, Any]) -> bool:
+        """Самобанкротство — заявление подаёт сам должник. Признак —
+        selectedApplicationKind ∈ {self, self_bankruptcy} (фронтовый ApplicationKind='self')."""
+        kind = str(data.get("selectedApplicationKind") or data.get("applicationKind") or "").strip().lower()
+        return kind in ("self", "self_bankruptcy")
+
+    @staticmethod
+    def _fns_has_second_queue(data: Dict[str, Any]) -> bool:
+        """Есть ли у ФНС-заявления суммы 2-й очереди (fnsQ2*). Если да — берём
+        шаблон «2-я и 3-я очередь», иначе «3-я очередь»."""
+        def _num(v) -> float:
+            try:
+                return float(str(v).replace("\xa0", "").replace(" ", "").replace(",", ".") or 0)
+            except (TypeError, ValueError):
+                return 0.0
+        suffixes = ("Total", "Arrears", "Penalties", "Forfeit", "Ndfl",
+                    "Insurance", "LoanDebt", "LoanDuty", "Commission")
+        return any(_num(data.get(f"fnsQ2{s}")) != 0 for s in suffixes)
+
+    def _find_docx_by_name(self, dir_path: Path, *substrings: str) -> Optional[Path]:
+        """Ищет в папке первый .docx, чьё имя содержит ВСЕ подстроки (регистронезависимо).
+        Устойчиво к неудобным именам файлов (пробелы/подчёркивания/регистр)."""
+        if not dir_path.exists():
+            return None
+        subs = [s.lower() for s in substrings]
+        try:
+            for candidate in sorted(dir_path.glob("*.docx")):
+                low = candidate.name.lower()
+                if all(s in low for s in subs):
+                    return candidate
+        except Exception:
+            return None
+        return None
+
+    def _resolve_self_bankruptcy_act(self, act_id: str, act_ids: List[str], data: Dict[str, Any]):
+        """Роутинг актов самобанкротства (заявление подаёт сам должник).
+
+        Папки: самобанкротство/{реализ|реструктуриз}. Матрица 2×2:
+        процедура (реализ/реструктуриз) × акт (принятие / признание банкротом).
+        Процедуру берём из выбранного финального акта (final_restructuring →
+        реструктуризация, иначе реализация) либо из procedureTypeRaw.
+        Возвращает (ключ, путь, человекочитаемое имя) или None.
+        """
+        root_dir = self._templates_root()
+        base = root_dir / "самобанкротство"
+
+        proc_raw = str(data.get("procedureTypeRaw") or data.get("procedureType") or "").lower()
+        is_restr = ("final_restructuring" in act_ids) or ("реструк" in proc_raw)
+        sub = "реструктуриз" if is_restr else "реализ"
+        proc_dir = base / sub
+
+        if act_id == "acceptance_definition":
+            path = self._find_docx_by_name(proc_dir, "принятии")
+            return ("self_acceptance", path, "Определение о принятии (самобанкрот)") if path else None
+        if act_id == "final_realization" and not is_restr:
+            path = self._find_docx_by_name(proc_dir, "признали")
+            return ("self_final", path, "Решение о признании банкротом (самобанкрот, реализация)") if path else None
+        if act_id == "final_restructuring" and is_restr:
+            path = self._find_docx_by_name(proc_dir, "признали")
+            return ("self_final", path, "Определение о признании банкротом (самобанкрот, реструктуризация)") if path else None
+        return None
+
+    def _resolve_fns_act(self, act_id: str, entity_type: str, data: Dict[str, Any]):
+        """Роутинг актов ФНС (уполномоченный орган).
+
+        Папки: ФНС/{«2-я и 3-я очередь»|«3-я очередь»}. Вариант очереди выбираем
+        авто: есть суммы 2-й очереди → «2-я и 3-я», иначе «3-я». Внутри «3-я очередь»
+        включенка различается по типу лица: ЮЛ → файл «ЮЛ» (маркеры [2]/[13]),
+        ФЛ → «налоговая» (маркеры [2.1]/[34.3]).
+        Обрабатываем: final_rtk_inclusion (ВКЛ в РТК, включенка-резолютивка) и
+        final_restructuring (реструктуризация — признание банкротом).
+        Возвращает (ключ, путь, имя) или None.
+        """
+        root_dir = self._templates_root()
+        fns = root_dir / "ФНС"
+        has_q2 = self._fns_has_second_queue(data)
+        dir_2_3 = fns / "2-я и 3-я очередь"
+        dir_3 = fns / "3-я очередь"
+
+        if act_id == "final_rtk_inclusion":
+            if has_q2:
+                path = self._find_docx_by_name(dir_2_3, "вкл", "резолютивка")
+            elif entity_type == "legal":
+                path = self._find_docx_by_name(dir_3, "юл")
+            else:
+                path = self._find_docx_by_name(dir_3, "включенка", "резолютивка", "налоговая")
+            return ("fns_inclusion", path, "ФНС: включение в РТК (резолютивка)") if path else None
+
+        if act_id == "final_restructuring":
+            if has_q2:
+                path = self._find_docx_by_name(dir_2_3, "реструк")
+            else:
+                path = self._find_docx_by_name(dir_3, "реструк", "признание")
+            return ("fns_restructuring", path, "ФНС: реструктуризация (признание банкротом)") if path else None
+        return None
+
     def _get_templates_for_procedure(self, procedure_type: str) -> Dict[str, Dict[str, Any]]:
         """Возвращает набор шаблонов для указанного типа процедуры (ВКЛ в РТК без залога)."""
         templates_dir = Path(__file__).parent.parent / "templates"
@@ -757,7 +862,28 @@ class TemplatesResolverMixin:
         templates = {}
         order = 1
 
+        # ФНС (уполномоченный орган) и самобанкротство — отдельные наборы шаблонов.
+        # Роутим их раньше стандартной логики; если спец-резолвер вернул шаблон —
+        # используем его, иначе падаем в общую ветку ниже.
+        is_fns = self._is_fns_creditor(data)
+        is_self = self._is_self_bankruptcy(data)
+
         for act_id in act_ids:
+            if is_self:
+                resolved = self._resolve_self_bankruptcy_act(act_id, act_ids, data)
+                if resolved:
+                    key, path, name = resolved
+                    templates[key] = entry(name, path, order)
+                    order += 1
+                    continue
+            if is_fns:
+                resolved = self._resolve_fns_act(act_id, entity_type, data)
+                if resolved:
+                    key, path, name = resolved
+                    templates[key] = entry(name, path, order)
+                    order += 1
+                    continue
+
             # Финальные СА (строго по выбранному залогу и типу лица)
             if act_id == 'final_realization':
                 if has_collateral:
