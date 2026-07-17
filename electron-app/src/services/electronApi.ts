@@ -19,6 +19,9 @@ export interface GenerateDocumentResult {
   document_ids?: string[];
   count?: number;
   error?: string;
+  /** Выбранные акты, которые сгенерировать не удалось: нет файла шаблона либо
+   *  ветки маппинга. Генерация при этом успешна для остальных актов. */
+  warnings?: string[];
 }
 
 export interface DownloadAllDocumentsRequest {

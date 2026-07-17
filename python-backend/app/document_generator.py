@@ -102,10 +102,17 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         """Корень проекта (родитель python-backend)."""
         return Path(__file__).resolve().parents[2]
 
-    def _resolve_template_path(self, path: Path) -> Path:
+    def _resolve_template_path(self, path: Path, allow_any_docx_fallback: bool = True) -> Path:
         """
         Если шаблон не найден — ищем по fallback: корень проекта, альтернативные имена,
         любой .docx в той же папке, папки шаблоны актов без залогов в корне проекта.
+
+        allow_any_docx_fallback=False отключает последний шаг («любой .docx в папке»).
+        Этот шаг подставляет ПРОИЗВОЛЬНЫЙ акт, когда нужного файла нет: «О введении
+        наблюдения» → «О введении конкурсное ликвидируемый», «Продление Б/Д» →
+        «Реализация ВКЛ несколько договоров». Для актов, ЯВНО выбранных пользователем,
+        это недопустимо (решение Андрея): лучше честно сообщить, что шаблона нет, чем
+        выдать под видом выбранного акта другой. Для стандартного роутинга шаг оставлен.
         """
         if path.exists():
             return path
@@ -148,7 +155,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 if candidate.exists():
                     logger.info(f"Используем шаблон (fallback): {candidate}")
                     return candidate
-            # Любой .docx в папке
+            # Любой .docx в папке — только когда подмена произвольным актом допустима
+            if not allow_any_docx_fallback:
+                continue
             try:
                 for f in sorted(search_dir.glob("*.docx")):
                     logger.info(f"Используем шаблон из папки {search_dir.name}: {f.name}")
@@ -662,19 +671,62 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             cleaned_data['courtRequests85'] = court_requests
             logger.info(f"📝 Установлено поле courtRequests85 (маркер [85]): {court_requests[:100]}...")
 
-        # Заполняем поле [25] (Название/ФИО третьего лица) из массива thirdParties
-        third_parties = cleaned_data.get('thirdParties', [])
-        if third_parties and isinstance(third_parties, list) and len(third_parties) > 0:
-            # Берем ФИО первого третьего лица для маркера [25]
-            first_third_party_name = third_parties[0].get('name', '') if isinstance(third_parties[0], dict) else ''
-            if first_third_party_name:
-                cleaned_data['thirdPartyName25'] = first_third_party_name
-                logger.info(f"📝 Установлено поле thirdPartyName25 (маркер [25]): {first_third_party_name[:100]}...")
-        # Также проверяем старое поле thirdPartyName для обратной совместимости
-        elif cleaned_data.get('thirdPartyName'):
-            cleaned_data['thirdPartyName25'] = cleaned_data.get('thirdPartyName')
-            logger.info(f"📝 Установлено поле thirdPartyName25 (маркер [25]) из thirdPartyName: {cleaned_data.get('thirdPartyName')[:100]}...")
+        # Заинтересованные лица / наследники / третьи лица — одна категория, лица равны
+        # (решение от 16.07): маркеры [25], [25.1]-[25.5] ФИО, [52.x] дата рождения,
+        # [53.x] место рождения, [54.x] адрес регистрации.
+        interested = self._collect_interested_persons(cleaned_data)
+        if interested:
+            cleaned_data['thirdPartyName25'] = interested[0]['name']
+            logger.info(f"📝 Установлено поле thirdPartyName25 (маркер [25]): {interested[0]['name'][:100]}")
+
+            for idx, person in enumerate(interested[:self.MAX_INTERESTED_SLOTS], start=1):
+                cleaned_data[f'interestedName25_{idx}'] = person['name']
+                cleaned_data[f'interestedBirthDate52_{idx}'] = person['birthDate']
+                cleaned_data[f'interestedAddress54_{idx}'] = person['address']
+            logger.info(f"📝 Заинтересованных лиц в пуле: {len(interested)}")
         return cleaned_data
+
+    # Слотов под заинтересованных лиц в легенде маркеров: [25.1]-[25.5]
+    MAX_INTERESTED_SLOTS = 5
+
+    @staticmethod
+    def _collect_interested_persons(cleaned_data: Dict[str, Any]) -> List[Dict[str, str]]:
+        """Единый пул заинтересованных лиц: наследники, затем третьи лица.
+
+        Заинтересованное лицо = наследник = третье лицо (решение от 16.07) — в маркеры
+        подставляется любой из них, они равны. Порядок: сначала heirs, следом thirdParties.
+        Место рождения ([53.x]) в пул не входит: такого поля нет ни у наследника, ни у
+        третьего лица — маркер вычищается из текста (_cleanup_empty_person_components).
+        """
+        persons: List[Dict[str, str]] = []
+
+        def _add(raw: Any) -> None:
+            if not isinstance(raw, dict):
+                return
+            name = str(raw.get('name') or '').strip()
+            if not name:
+                return
+            persons.append({
+                'name': name,
+                'birthDate': str(raw.get('birthDate') or '').strip(),
+                'address': str(raw.get('address') or '').strip(),
+            })
+
+        for source_key in ('heirs', 'thirdParties'):
+            source = cleaned_data.get(source_key)
+            if isinstance(source, list):
+                for raw_person in source:
+                    _add(raw_person)
+
+        # Легаси-путь: плоские поля thirdParty* (когда массивов нет вообще)
+        if not persons and cleaned_data.get('thirdPartyName'):
+            _add({
+                'name': cleaned_data.get('thirdPartyName'),
+                'birthDate': cleaned_data.get('thirdPartyBirthDate'),
+                'address': cleaned_data.get('thirdPartyAddress'),
+            })
+
+        return persons
 
     def _apply_debtor_name_field_mapping(self, cleaned_data: Dict[str, Any], field_mapping: Dict[str, str], is_mortgage_document: bool) -> Dict[str, str]:
         """Настраивает маппинг [2]/[2.1]/[2.2] под должника: для не-ипотеки —
@@ -960,6 +1012,14 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             "ppDepositDate80": "80",              # [80] - Дата ПП депозит
             "ppStateDutyDate81": "81",            # [81] - Дата ПП ГП
             "thirdPartyName25": "25",             # [25] - Название/ФИО третьего лица
+            # Заинтересованные лица = наследники = третьи лица (лица равны, один пул):
+            # [25.x] ФИО, [52.x] дата рождения, [54.x] адрес регистрации.
+            # [53.x] (место рождения) не мапится — данных нет, маркер вычищается.
+            **{
+                f"interested{field}_{idx}": f"{marker}.{idx}"
+                for idx in range(1, 6)
+                for field, marker in (("Name25", "25"), ("BirthDate52", "52"), ("Address54", "54"))
+            },
             # Ранее вынесенное решение другого суда (вставляется только в те акты,
             # где эти маркеры физически есть в шаблоне → «не во все»).
             "priorCourtName": "90",               # [90] - Суд ранее вынесенного решения
@@ -1206,6 +1266,13 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     else:
                         logger.warning(f"⚠️ Не удалось модифицировать номер дела: {case_number} (нет слэша с годом)")
 
+        # Заинтересованные лица (= наследники = третьи лица): порядок важен — сначала
+        # дописываем лиц сверх слотов (нужен литеральный [25.N] последнего слота), затем
+        # вырезаем компоненты без данных (нужны литеральные [52.x]/[53.x]/[54.x]), и только
+        # потом общий маппинг подставляет значения в оставшиеся маркеры.
+        self._apply_extra_interested_persons(doc, cleaned_data)
+        self._cleanup_empty_person_components(doc, cleaned_data)
+
         self._apply_field_mapping_replacements(doc, cleaned_data, field_mapping, is_mortgage_document, is_ip, is_physical_collateral)
 
         # Обрабатываем обязательства (договоры) - номера 100-113
@@ -1340,6 +1407,121 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             for row in table.rows:
                 for cell in row.cells:
                     process_paragraphs(cell.paragraphs)
+
+    @staticmethod
+    def _format_interested_person(person: Dict[str, str]) -> str:
+        """«Иванов И.И. (01.01.1980 года рождения, адрес регистрации: …)» — по образцу
+        разметки слота в шаблоне. Пустые компоненты опускаются; если нет ни одного —
+        только ФИО. Место рождения не выводим: данных нет (см. _collect_interested_persons)."""
+        details = []
+        if person['birthDate']:
+            details.append(f"{person['birthDate']} года рождения")
+        if person['address']:
+            details.append(f"адрес регистрации: {person['address']}")
+        return f"{person['name']} ({', '.join(details)})" if details else person['name']
+
+    def _apply_extra_interested_persons(self, doc: Document, cleaned_data: Dict[str, Any]) -> None:
+        """Заинтересованных лиц больше, чем слотов [25.x] в шаблоне — дописываем
+        оставшихся построчно, без новых маркеров (тот же приём, что для обязательств
+        сверх слотов в replace_obligations_data).
+
+        Вставляем текст сразу после блока последнего слота, пока его маркеры ещё не
+        заменены на значения. Если слот размечен с деталями в скобках
+        («[25.1] ([52.1] года рождения, … [54.1])») — дописываем после закрывающей
+        скобки и в том же формате; если слот стоит голым («наследник [25.1] принял») —
+        дописываем только ФИО сразу после маркера.
+        """
+        persons = self._collect_interested_persons(cleaned_data)
+        if not persons:
+            return
+
+        # Реально размеченные слоты: [25.1]-[25.5]. Слоты идут подряд от 1.
+        slots = sorted(
+            int(m.group(1))
+            for placeholder in self._collect_placeholders(doc)
+            for m in [re.fullmatch(r"\[25\.(\d+)\]", placeholder)]
+            if m
+        )
+        if not slots:
+            return
+
+        max_slot = max(slots)
+        if len(persons) <= max_slot:
+            return
+
+        extra_suffix = ", " + ", ".join(
+            self._format_interested_person(p) for p in persons[max_slot:]
+        )
+        names_only_suffix = ", " + ", ".join(p['name'] for p in persons[max_slot:])
+
+        last_marker = f"[25.{max_slot}]"
+        # Блок последнего слота с деталями в скобках: «[25.N] (… [54.N])»
+        block_re = re.compile(
+            re.escape(last_marker) + r"\s*\([^)]*\[54\." + str(max_slot) + r"\][^)]*\)"
+        )
+
+        def process(paragraphs):
+            for paragraph in paragraphs:
+                text = paragraph.text
+                if last_marker not in text:
+                    continue
+                if block_re.search(text):
+                    paragraph.text = block_re.sub(
+                        lambda m: m.group(0) + extra_suffix, text, count=1
+                    )
+                else:
+                    paragraph.text = text.replace(
+                        last_marker, last_marker + names_only_suffix, 1
+                    )
+
+        process(doc.paragraphs)
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    process(cell.paragraphs)
+
+        logger.info(
+            f"📝 Дописано заинтересованных лиц сверх слотов ({max_slot}): {len(persons) - max_slot}"
+        )
+
+    def _cleanup_empty_person_components(self, doc: Document, cleaned_data: Dict[str, Any]) -> None:
+        """Вырезает компоненты заинтересованного лица, для которых нет данных, вместе
+        с их подписью — иначе в тексте останется «( года рождения, уроженка , адрес…)».
+
+        Место рождения ([53.x]) вычищается ВСЕГДА: поля нет ни у наследника, ни у
+        третьего лица (решение Андрея — UI не трогаем). Дата рождения ([52.x]) — только
+        когда пусто: у наследника её нет, у третьего лица есть.
+        Работает по литеральным маркерам, до общей замены полей.
+        """
+        persons = self._collect_interested_persons(cleaned_data)
+
+        for idx in range(1, self.MAX_INTERESTED_SLOTS + 1):
+            person = persons[idx - 1] if idx <= len(persons) else None
+
+            # Место рождения: данных нет никогда. «уроженка [53.1], » / «место рождения: [53.1], »
+            self._replace_regex_in_doc(
+                doc, r"(?:уроженк\w*|мест\w*\s+рождения)\s*:?\s*\[53\." + str(idx) + r"\]\s*,?\s*", ""
+            )
+            self._replace_regex_in_doc(doc, r"\[53\." + str(idx) + r"\]\s*,?\s*", "")
+
+            if not person or not person['birthDate']:
+                self._replace_regex_in_doc(
+                    doc, r"\[52\." + str(idx) + r"\]\s*года\s+рождения\s*,?\s*", ""
+                )
+                self._replace_regex_in_doc(doc, r"\[52\." + str(idx) + r"\]\s*,?\s*", "")
+
+            if not person or not person['address']:
+                self._replace_regex_in_doc(
+                    doc, r"адрес\w*\s+регистрации\s*:?\s*\[54\." + str(idx) + r"\]\s*,?\s*", ""
+                )
+
+        # Скобка, оставшаяся пустой после выноса всех компонентов: «Иванов И.И. ()»
+        self._replace_regex_in_doc(doc, r"\s*\(\s*[,;:\s]*\)", "")
+        # Подчистка пунктуации на стыке вырезанного
+        self._replace_regex_in_doc(doc, r"\(\s*,\s*", "(")
+        self._replace_regex_in_doc(doc, r",\s*\)", ")")
+        self._replace_regex_in_doc(doc, r"\s+([,.)])", r"\1")
+        self._replace_regex_in_doc(doc, r"\s{2,}", " ")
 
     def _cleanup_empty_fns_components(self, doc: Document) -> None:
         """Убирает осиротевшие «, руб. – <компонент>» без суммы, оставшиеся когда
@@ -1936,13 +2118,16 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             explicit_template_selected = bool(normalized_template)
             source_document_type_for_routing = source_document_type if not explicit_template_selected else ""
 
-            # ВАЖНО: если пользователь ЯВНО выбрал тип акта в окне "Выбор типа судебного акта"
-            # (template_type непустой: mortgage, rtk_single_obligation и т.п.),
-            # мы должны уважать этот выбор и НЕ подменять его списком selectedActsIds,
-            # который относится к автоматическим рекомендациям/РТК-комплектам.
+            # ВАЖНО: выбор актов в интерфейсе — АВТОРИТЕТНЫЙ источник, он приоритетнее
+            # template_type. template_type приходит из pickTemplate() на фронте, который
+            # подбирает шаблон АВТОМАТИЧЕСКИ и никогда не бывает пустым (фолбэк
+            # 'rtk_single_obligation'), поэтому раньше условие `and not normalized_template`
+            # всегда было ложным и выбор пользователя не использовался никогда —
+            # вместо выбранных актов генерировался стандартный комплект.
             #
-            # Поэтому используем selectedActs только когда template_type пустой.
-            can_use_selected_acts = bool(selected_acts_ids) and not normalized_template
+            # template_type остаётся в силе только когда пользователь не выбрал ни одного акта.
+            can_use_selected_acts = bool(selected_acts_ids)
+            unresolved_act_ids: List[str] = []
 
             # Если пользователь выбрал акты в интерфейсе (старый режим "выбор актов"),
             # и при этом нет явного template_type — используем их.
@@ -1992,22 +2177,29 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     except Exception as e:
                         logger.warning(f"⚠️ Не удалось распарсить selectedActsData: {e}")
 
-                templates = self._map_selected_acts_to_templates(
+                templates, unresolved_act_ids = self._map_selected_acts_to_templates(
                     selected_acts_ids,
                     selected_entity_type or data.get("entityType") or fields.get("entityType", "individual"),
                     selected_collateral_option or "no_collateral",
                     data
                 )
 
-                if templates:
-                    logger.info(f"✅ Найдено {len(templates)} шаблонов для выбранных актов")
-                    procedure_type = "custom_selected_acts"
-                else:
-                    logger.warning("⚠️ Не найдено шаблонов для выбранных актов, используем стандартную логику")
-                    templates = None
+                # Выбор пользователя приоритетен: фолбэка на стандартный комплект здесь НЕТ.
+                # Если не удалось сопоставить ни один выбранный акт — это ошибка, а не повод
+                # сгенерировать документы, которых пользователь не просил.
+                if not templates:
+                    error_message = (
+                        "Не удалось подобрать шаблоны для выбранных актов: "
+                        + ", ".join(unresolved_act_ids or [selected_acts_ids])
+                    )
+                    logger.error(f"❌ {error_message}")
+                    return {"success": False, "error": error_message}
 
-            # Если templates не был установлен выше (стандартная логика), устанавливаем его здесь
-            use_standard_logic = 'templates' not in locals() or templates is None or len(templates) == 0
+                logger.info(f"✅ Найдено {len(templates)} шаблонов для выбранных актов")
+                procedure_type = "custom_selected_acts"
+
+            # Стандартный роутинг — только когда пользователь не выбрал ни одного акта
+            use_standard_logic = not can_use_selected_acts
 
             if use_standard_logic:
                 templates, procedure_type = self._resolve_standard_templates(
@@ -2027,17 +2219,29 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
 
             generated_documents = {}
             document_ids = []
+            # Акты, которые пользователь выбрал, но сгенерировать не удалось: нет ветки
+            # маппинга либо нет файла шаблона. Уходят в ответ, чтобы пользователь узнал
+            # о них из интерфейса, а не только из логов.
+            warnings: List[str] = [
+                f"Акт «{act_id}» не поддерживается генерацией" for act_id in unresolved_act_ids
+            ]
 
             # Генерируем каждый документ
             for doc_type, template_info in templates.items():
                 logger.info(f"📄 Генерируем документ: {template_info['name']}")
 
-                template_path = self._resolve_template_path(template_info['path'])
+                # Акт выбран пользователем — резолвим строго, без подмены произвольным .docx
+                template_path = self._resolve_template_path(
+                    template_info['path'], allow_any_docx_fallback=not can_use_selected_acts
+                )
                 logger.info(f"Путь к шаблону: {template_path.absolute()}")
                 logger.info(f"Шаблон существует: {template_path.exists()}")
 
                 if not template_path.exists():
                     logger.error(f"Шаблон не найден: {template_path.absolute()}")
+                    warnings.append(
+                        f"«{template_info['name']}» — файл шаблона не найден: {template_path.absolute()}"
+                    )
                     continue
 
                 # Загружаем документ
@@ -2094,12 +2298,16 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     "error": error_message
                 }
 
-            return {
+            result = {
                 "success": True,
                 "documents": generated_documents,
                 "document_ids": document_ids,
                 "count": len(generated_documents)
             }
+            if warnings:
+                logger.warning("⚠️ Сгенерированы не все выбранные акты: " + "; ".join(warnings))
+                result["warnings"] = warnings
+            return result
 
         except Exception as e:
             logger.error(f"Ошибка при генерации документов: {str(e)}")
