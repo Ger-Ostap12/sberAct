@@ -2,6 +2,7 @@ import re
 import sys
 import spacy
 from docx import Document
+import field_contract
 from requisites_validation import is_valid_inn
 from fio_detector import (
     extract_debtor_name,
@@ -20,6 +21,7 @@ from org_normalizer import (
     date_in_law_context,
 )
 from morph_utils import detect_gender, inflect_surname
+from label_synonyms import all_labels, labels_alternation
 from classify_mixin import ClassifyMixin
 from parties_mixin import PartiesMixin
 from amounts_mixin import AmountsMixin
@@ -33,6 +35,7 @@ import nlp_natasha as _nlp
 import fns_registry as _fns_reg
 from typing import Dict, Any, List, Tuple, Optional, Union
 import logging
+import os
 from pathlib import Path
 import json
 
@@ -142,6 +145,16 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
             logger.info(f"Извлеченный текст (первые 500 символов): {text[:500]}")
 
+            # Суммы из ПЕРЕЧНЯ приложений — не деньги должника (правило Андрея):
+            # там перечислены документы, а «в размере 25000» у квитанции — депозит на
+            # вознаграждение управляющего. Маскируем ДО сопоставления; `raw_text`
+            # остаётся исходным (на нём держатся предпросмотр и построчная правка
+            # docx — §A), маска длину не меняет.
+            raw_text = text
+            text = self._mask_attachment_list_amounts(text)
+            text = self._normalize_whitespace_for_matching(text)
+            text = self._normalize_label_wrap_for_matching(text)
+
             # Для повторного использования
             text_lower = text.lower()
 
@@ -179,6 +192,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
                 extracted_fields = self.extract_fields(text, effective_type)
                 collateral_detected = False
+
+            self._contract_checkpoint(extracted_fields, "извлечение по паттернам")
 
             # Возможный апгрейд типа -> observation_collateral
             document_type = self._maybe_upgrade_to_observation_collateral(extracted_fields, text, document_type, text_lower)
@@ -321,6 +336,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # и валидация суммы = «ОБЩАЯ ЗАДОЛЖЕННОСТЬ».
             self._apply_table_breakdown_finances(extracted_fields, text)
 
+            self._contract_checkpoint(extracted_fields, "финансовый каскад")
+
             # ФНС-заявления: финансы по ОЧЕРЕДЯМ реестра (недоимка/налог/пени/штраф/
             # НДФЛ/взносы/госпошлина по 1/2/3 очереди). Гейт по кредитору-ФНС;
             # перекрывает общий парсер и чистит скрытый общий блок финансов.
@@ -452,6 +469,27 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                     extracted_fields.update(self._extract_death_details(text))
                     heirs_result = extract_heirs(text)
 
+            # КОНТРАКТ ПОЛЯ — последний рубеж перед выдачей: поле обязано быть тем,
+            # чем объявлено. Ловит чужой текст, присвоенный полем («Арбитражный суд
+            # Ростовской области» в денежном loanDebt), и адресный хвост в имени
+            # организации. Ставим ДО пересчёта рекомендаций, чтобы всё ниже по
+            # течению работало с уже чистыми данными.
+            # Источник значения, записанный слоями, которые его знают (реестр банков).
+            # Вынимаем ДО контракта: в fields ему делать нечего — уехал бы в
+            # editedFields фронта и в golden (образец — financeBreakdown).
+            provenance = extracted_fields.pop(self._PROVENANCE_KEY, {}) or {}
+            contract_issues = field_contract.apply_contract(extracted_fields)
+            # Записи должников/третьих лиц/наследников строятся ОТДЕЛЬНЫМ путём, мимо
+            # fields (ловушка §J.3) — контракт обязан пройти и по ним. Претензии к
+            # ним идут в ОБЩИЙ список: иначе `fieldQuality` знал бы меньше, чем
+            # `fieldIssues`, и подсветка карточки должника молчала бы при живой
+            # претензии в списке сверху.
+            for _entries, _label in ((debtors_result, "debtors"),
+                                     (third_parties_result, "thirdParties"),
+                                     (heirs_result, "heirs")):
+                contract_issues += field_contract.check_entries(_entries, _label)
+            field_issues = [i.as_dict() for i in contract_issues]
+
             # Авторитетный пересчёт рекомендаций — ПОСЛЕ финализации entityType.
             # Ранние вызовы (до разбора должников/NLP) могли считать по промежуточному
             # типу лица: у ВКЛ-в-РТК ВТБ тип на входе был 'legal' (утёкшее «ПАО» банка +
@@ -470,10 +508,22 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 "financeBreakdown": finance_breakdown,
                 "applicationKind": application_kind,
                 "debtorStatusHint": debtor_status_hint,
-                "rawText": text,
+                # Претензии контракта — top-level, НЕ в fields: иначе уехали бы в
+                # editedFields фронта и в golden (образец — financeBreakdown).
+                "fieldIssues": field_issues,
+                # Уровень доверия по КАЖДОМУ полю + причина. Заменяет для юриста
+                # документный `confidence`, который меряет заполненность, а не
+                # правильность (три значения на весь корпус, и документ с судом в
+                # денежном поле получал 0.95). Тоже top-level — golden не трогает.
+                "fieldQuality": field_contract.assess_quality(
+                    extracted_fields, contract_issues, provenance
+                ),
+                # ИСХОДНЫЙ текст, не маскированный: на нём держатся посекционный
+                # предпросмотр и построчная вставка правок в docx (§A).
+                "rawText": raw_text,
                 "metadata": {
                     "pageCount": page_count if page_count is not None else 1,
-                    "wordCount": len(text.split()),
+                    "wordCount": len(raw_text.split()),
                     "language": "ru"
                 },
                 "recommendedActs": recommended_acts,
@@ -736,6 +786,135 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
     _PRAYER_START_RE = re.compile(r"^\s*(?:\d+[.)]\s*)?" + _PRAYER_VERB, re.IGNORECASE)
     # Якорь блока приложений — строка, начинающаяся с «Приложение(я/й)».
     _ATTACH_ANCHOR_RE = re.compile(r"^\s*приложени[еяй]", re.IGNORECASE)
+    # Пункт ПЕРЕЧНЯ приложений: «1. Квитанция…», «2) Копия паспорта…». Именно
+    # перечень, а не весь блок приложений: после него часто идёт ПРИЛОЖЕННЫЙ расчёт
+    # задолженности таблицей, откуда суммы берутся законно.
+    _ATTACH_ITEM_RE = re.compile(r"^\s*\d+[.)]\s+\S")
+
+    # Горизонтальные пробелы, которые вставляют конвертеры и вёрстка: неразрывный,
+    # узкий неразрывный, цифровой, тонкий. Для смысла они равны обычному пробелу,
+    # но паттерны на них спотыкаются.
+    _HSPACE_CHARS = "          ﻿"
+    _HSPACE_RUN_RE = re.compile(r"[ \t" + _HSPACE_CHARS + r"]{2,}")
+    _HSPACE_ONE_RE = re.compile(r"[" + _HSPACE_CHARS + r"]")
+
+    # Строка — ЦЕЛИКОМ метка («Должник:»), значит её значение на следующей строке.
+    # Метки берём из РЕЕСТРА (`label_synonyms.all_labels`) — он и заведён для того,
+    # чтобы поддержка нового банка была правкой данных, а не логики (CLAUDE.md).
+    #
+    # ⚠️ Границы правила подобраны ЗАМЕРОМ по корпусу; оба ослабления дают регрессию
+    # (оба проверены, дифф эталона был на 2 файлах с мусором вместо имён):
+    #   1. «строка ЗАКАНЧИВАЕТСЯ меткой» (чтобы ловить «…, адрес регистрации:» в
+    #      прозе) — в прозе двоеточие после слова-метки не значит «дальше значение»:
+    #      склеивались куски шапки, applicantName становился «рбитражный суд
+    #      Ростовско», кредитор терялся;
+    #   2. IGNORECASE — начинала матчиться строка «ФИНАНСОВЫЙ УПРАВЛЯЮЩИЙ:» и
+    #      съедала следующую строку, разваливая разбор двух заявлений ВТБ.
+    # Поэтому: только строка-метка и только в том регистре, в котором метка
+    # записана в реестре.
+    _LABEL_ONLY_LINE_RE = re.compile(
+        r"^[ \t]*(?:" + labels_alternation(all_labels()) + r")[ \t]*:[ \t]*$"
+    )
+    # Начало строки — метка (с двоеточием). Нужно как ГАРД: значение не может
+    # начинаться с чужой метки.
+    _LABEL_STARTS_LINE_RE = re.compile(
+        r"^[ \t]*(?:" + labels_alternation(all_labels()) + r")[ \t]*:"
+    )
+
+    def _normalize_label_wrap_for_matching(self, text: str) -> str:
+        """Поднять значение на строку его метки: «Должник:\\nИванов» → «Должник: Иванов».
+
+        Один и тот же блок шапки банки печатают и в строку, и с переносом; при
+        PDF→docx перенос появляется ещё и сам, когда шапка двухколоночная. Замер
+        (`measure_format_robustness.py`): вставка переноса после метки меняла
+        результат у 8 документов из 74 — ехали `applicantName` с падежами,
+        `debtorName`, адреса.
+
+        ⚠️ Направление канонизации выбрано ЗАМЕРОМ, а не рассуждением. Обратный
+        вариант («всегда перенос после метки») давал ту же устойчивость, но менял
+        эталон у 6 файлов: часть паттернов требует значение на строке метки.
+
+        ⚠️ ГАРДЫ обязательны: без них «СНИЛС:» (метка БЕЗ значения) склеивалась со
+        следующей строкой — заголовком «ЗАЯВЛЕНИЕ» — и метка получала выдуманное
+        значение. Значением не может быть титул документа и не может быть чужая
+        метка; пустая строка означает, что значения нет вовсе.
+        """
+        lines = text.split("\n")
+        result: List[str] = []
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            nxt = lines[i + 1] if i + 1 < len(lines) else None
+            if (
+                nxt is not None
+                and self._LABEL_ONLY_LINE_RE.match(line)
+                and nxt.strip()
+                and not self._is_title_line(nxt)
+                and not self._LABEL_STARTS_LINE_RE.match(nxt)
+            ):
+                result.append(line.rstrip() + " " + nxt.strip())
+                i += 2
+                continue
+            result.append(line)
+            i += 1
+        return "\n".join(result)
+
+    def _normalize_whitespace_for_matching(self, text: str) -> str:
+        """Привести горизонтальные пробелы к канону ДО сопоставления.
+
+        Зачем. Разбор не должен зависеть от типографики: то же самое заявление,
+        набранное в другом банке или прогнанное другим конвертером, отличается от
+        нашего корпуса в первую очередь пробелами, а не смыслом. Замер
+        (`tests/measure_format_robustness.py`) до этой правки: двойные пробелы
+        меняли результат у **42 документов из 79**, причём у 28 из них менялся
+        `documentType` — то есть ветка извлечения и рекомендованные акты; ещё 5
+        документов ломал неразрывный пробел в суммах.
+
+        Что делаем: любые горизонтальные пробелы (вкл. неразрывные и тонкие) →
+        обычный, серии → один. ПЕРЕВОДЫ СТРОК НЕ ТРОГАЕМ: на структуре строк
+        держатся label-anchored слои («Должник:» + следующая строка) и разбор
+        таблиц. `raw_text` остаётся исходным — предпросмотр и построчная вставка
+        правок в docx (§A) работают с ним.
+        """
+        normalized = self._HSPACE_ONE_RE.sub(" ", text)
+        return self._HSPACE_RUN_RE.sub(" ", normalized)
+
+    def _mask_attachment_list_amounts(self, text: str) -> str:
+        """Убрать из сопоставления суммы, стоящие в ПЕРЕЧНЕ приложений.
+
+        Перечень приложений — список ДОКУМЕНТОВ, а не денег должника (правило
+        Андрея). «1. Квитанция о внесении денежных средств на депозитный счет АС в
+        размере 25000» — это депозит на вознаграждение управляющего, и он утекал в
+        `totalDebt`, а оттуда в акт как «основной долг в размере 25 000 руб.»
+        (`Самобанкрот/Заявление РФЛ1.docx`).
+
+        ⚠️ Режем ТОЛЬКО нумерованные пункты перечня. Блок приложений целиком трогать
+        НЕЛЬЗЯ: у 7 документов корпуса за словом «Приложение» идёт приложенный расчёт
+        задолженности («Просроченная ссудная задолженность: 8020.73»), и это
+        единственный источник их финансов — слепая обрезка обнулила бы им суммы.
+
+        Маскируем цифры пробелами, ДЛИНУ СОХРАНЯЕМ: смещения в тексте остаются
+        валидными для остальных слоёв, а имена документов в перечне никому не нужны.
+        """
+        lines = text.split("\n")
+        # ⚠️ Берём ПОСЛЕДНИЙ якорь, а не первый: слово «Приложение» встречается и в
+        # ссылках по тексту («приложение № 1 к договору»), а перечень приложений —
+        # в конце заявления. С первым якорем маска съедала нумерованные пункты
+        # ПРОСИТЕЛЬНОЙ части («4. Включить требования … в размере 501 365 000,9 руб.»
+        # в Заявл_Ликвидир_Оргтехника.docx) — то есть ровно те суммы, ради которых
+        # всё и затевалось.
+        anchors = [i for i, line in enumerate(lines) if self._ATTACH_ANCHOR_RE.match(line)]
+        if not anchors:
+            return text
+        changed = False
+        for i in range(anchors[-1], len(lines)):
+            line = lines[i]
+            if not self._ATTACH_ITEM_RE.match(line):
+                continue
+            if re.search(r"\d[\d\s  ]*[.,]?\d*\s*(?:руб|₽)|в\s+размере\s+\d", line, re.IGNORECASE):
+                lines[i] = re.sub(r"\d", " ", line)
+                changed = True
+        return "\n".join(lines) if changed else text
 
     def _docx_parts_true_order(self, file_path: str) -> List[Tuple[str, str, int]]:
         """Части DOCX в РЕАЛЬНОМ порядке чтения документа + их ПЛОСКИЙ индекс.
@@ -2252,6 +2431,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 logger.warning(f"Реестр ФНС не ответил: {exc}")
             if reg_addr:
                 fields["creditorAddress"] = reg_addr
+                # Адрес инспекции — из справочника, а не из разбора текста: это
+                # независимое подтверждение, юристу его перепроверять не нужно.
+                fields.setdefault(self._PROVENANCE_KEY, {})["creditorAddress"] = (
+                    field_contract.SOURCE_REGISTRY
+                )
 
         # НАДЁЖНЫЙ ДОЛЖНИК ФНС по якорю. Позиционный парсер на этих заявлениях часто
         # берёт арбитражного управляющего («Финансовым управляющим утверждён <ФИО>»)
@@ -3091,6 +3275,28 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         # в самом адресе организаций-ОПФ не бывает, это начало имени кредитора.
         addr = re.sub(r"\s+(?:ООО|ОАО|ЗАО|ПАО|НАО|АО)\b.*$", "", addr)
         return addr.strip().rstrip(" ,;-")
+
+    # Строгий режим инвариантов: в тестах любое нарушение контракта ВНУТРИ каскада
+    # роняет прогон, в проде — только пишет в лог (ронять разбор из-за одного поля
+    # нельзя, defensive по входу). Включается переменной окружения.
+    _STRICT_CONTRACT = os.environ.get("SBERACT_STRICT_CONTRACT") == "1"
+
+    def _contract_checkpoint(self, fields: Dict[str, Any], step: str) -> None:
+        """Инвариант между шагами каскада: словарь всё ещё осмыслен?
+
+        `analyze()` — длинная цепочка правок общего словаря, и шаг N может
+        скопировать значение, которое шаг N+5 признает мусором и вычистит — копия
+        при этом переживёт чистку (так «Арбитражный суд…» и попал в `loanDebt`
+        через `amounts_mixin._reconcile_debt_amounts`). Чекпоинт показывает ШАГ,
+        на котором словарь испортился, а не разбирательство через 200 строк.
+        """
+        issues = field_contract.find_issues(fields)
+        if not issues:
+            return
+        for issue in issues:
+            logger.warning(f"Контракт нарушен после шага «{step}»: {issue}")
+        if self._STRICT_CONTRACT:
+            raise AssertionError(f"Контракт нарушен после шага «{step}»: {issues}")
 
     def _sanitize_address_fields(self, fields: Dict[str, Any]) -> None:
         """Адресные поля не должны содержать реквизиты (ИНН/ОГРН/ОГРНИП/СНИЛС/КПП):

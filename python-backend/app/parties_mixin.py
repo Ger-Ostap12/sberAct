@@ -2,21 +2,26 @@ import logging
 import re
 from typing import Any, Dict, List, Optional
 
-from requisites_validation import is_valid_inn, is_valid_ogrnip
+import field_contract
+from creditor_registry import _match_creditor_registry
 from fio_detector import (
-    extract_debtor_name,
-    is_person_name,
     extract_debtor_details,
-    extract_third_party_details,
+    extract_debtor_name,
     extract_debtors,
     extract_third_parties,
+    extract_third_party_details,
+    is_person_name,
 )
-from creditor_registry import _match_creditor_registry
+from requisites_validation import is_valid_inn, is_valid_ogrnip
 
 logger = logging.getLogger(__name__)
 
 
 class PartiesMixin:
+    # Куда слои складывают источник значения, пока знание не потерялось. Ключ
+    # временный: `analyze()` вынимает его из fields в top-level `fieldQuality`
+    # (по образцу `financeBreakdown`), в fields и golden он не попадает.
+    _PROVENANCE_KEY = "_provenance"
 
     def _extract_party_inn_ogrn(self, extracted_fields, text, field_name):
         """ИНН/ОГРН/ОГРНИП должника строго из блока «Должник:»/«Ответчик:» (а не кредитора), с валидацией контрольной суммы. Все пути исходно завершались continue. Вынесено из основного pattern-цикла extract_fields."""
@@ -1342,12 +1347,21 @@ class PartiesMixin:
         inn = doc_inn or (matched["inn"] if matched else None)
         ogrn = doc_ogrn or (matched["ogrn"] if matched else None)
         addr = doc_addr or (matched["address"] if matched else None)
-        if inn:
-            fields["creditorInn"] = inn
-        if ogrn:
-            fields["creditorOgrn"] = ogrn
-        if addr:
-            fields["creditorAddress"] = addr
+        # Источник значения знает только этот слой — фиксируем, пока знание не
+        # потерялось. Дальше `analyze()` перекладывает это в top-level fieldQuality,
+        # чтобы юрист видел: реквизит из справочника надёжнее вытащенного из текста.
+        provenance = fields.setdefault(self._PROVENANCE_KEY, {})
+        for field_name, value, from_doc in (
+            ("creditorInn", inn, doc_inn),
+            ("creditorOgrn", ogrn, doc_ogrn),
+            ("creditorAddress", addr, doc_addr),
+        ):
+            if not value:
+                continue
+            fields[field_name] = value
+            provenance[field_name] = (
+                field_contract.SOURCE_DOCUMENT if from_doc else field_contract.SOURCE_REGISTRY
+            )
         logger.info(
             f"Реквизиты кредитора '{creditor_name[:40]}': "
             f"ИНН {'док' if doc_inn else 'реестр'}, "

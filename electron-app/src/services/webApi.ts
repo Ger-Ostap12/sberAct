@@ -20,21 +20,46 @@ import {
 
 const BASE_URLS = ['http://127.0.0.1:8000', 'http://localhost:8000', 'http://wsl.localhost:8000'];
 
-/** Пробует несколько хостов backend, возвращает первый успешный ответ. */
+/** Хост, ответивший первым: дальше ходим сразу в него, без перебора. */
+let liveBase: string | null = null;
+
+/** Сброс запомненного хоста — для тестов. */
+export function resetLiveBase(): void {
+  liveBase = null;
+}
+
+/**
+ * Запрос к backend с перебором хостов.
+ *
+ * Перебор идёт ТОЛЬКО по сетевому отказу (fetch отклонён). HTTP-ошибка — это
+ * ответ живого хоста, и она возвращается как есть: раньше 502 уводил перебор
+ * дальше, наружу летела ошибка от последней базы (wsl.localhost), а настоящая
+ * причина терялась — в консоли это выглядело как три разных сбоя вместо одного.
+ *
+ * Повтор с тем же options безопасен: FormData/Blob — не потоки, fetch
+ * сериализует тело заново на каждую попытку.
+ */
 async function fetchBackend(pathname: string, options?: RequestInit): Promise<Response> {
+  const bases = liveBase ? [liveBase] : BASE_URLS;
   let lastError: unknown;
-  for (const base of BASE_URLS) {
+
+  for (const base of bases) {
+    let res: Response;
     try {
-      const res = await fetch(`${base}${pathname}`, options);
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error(`HTTP ${res.status}: ${text}`);
-      }
-      return res;
+      res = await fetch(`${base}${pathname}`, options);
     } catch (e) {
       lastError = e;
+      if (base === liveBase) liveBase = null; // отвалился — на следующем ищем заново
+      continue;
     }
+    liveBase = base;
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status}: ${text}`);
+    }
+    return res;
   }
+
   throw lastError instanceof Error ? lastError : new Error('Backend недоступен');
 }
 

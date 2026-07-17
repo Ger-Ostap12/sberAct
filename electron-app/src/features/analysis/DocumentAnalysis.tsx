@@ -20,6 +20,7 @@ import { buildSubmitData } from './lib/buildSubmitData';
 import ObligationsSection from './sections/ObligationsSection';
 import CollateralSection from './sections/CollateralSection';
 import CourtSection from './sections/CourtSection';
+import FieldIssuesPanel from './sections/FieldIssuesPanel';
 import DatesSection from './sections/DatesSection';
 import ManagerSection from './sections/ManagerSection';
 import LiquidationSection from './sections/LiquidationSection';
@@ -834,6 +835,11 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 Проверьте и при необходимости отредактируйте извлеченные данные
               </Typography>
 
+              {/* Адресный список подозрительных полей от контракта (backend
+                  field_contract): что вычищено и что стоит сверить. Стоит ПЕРВЫМ —
+                  это то, что юрист смотрит раньше остальной формы. */}
+              <FieldIssuesPanel issues={analysisResult?.fieldIssues} />
+
               <Grid container spacing={2} sx={{ width: '100%' }}>
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
               {/* Судебная информация */}
@@ -853,6 +859,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 onUpdate={updateDebtor}
                 onAdd={addDebtor}
                 onRemove={removeDebtor}
+                fieldQuality={analysisResult?.fieldQuality}
               />
                 </Grid>
 
@@ -865,6 +872,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 onFieldChange={handleFieldChange}
                 onCreditorChange={handleCreditorChange}
                 banks={banks}
+                fieldQuality={analysisResult?.fieldQuality}
               />
                 </Grid>
                 )}
@@ -878,7 +886,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                     <Grid item xs={12} md={6}>
                       <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} showSro={showSroField} showFio={showFioField} />
                       <Box sx={{ mt: 3 }}>
-                        <FinancesSection editedFields={editedFields} onFieldChange={handleFieldChange} financeBreakdown={analysisResult?.financeBreakdown} />
+                        <FinancesSection editedFields={editedFields} onFieldChange={handleFieldChange} financeBreakdown={analysisResult?.financeBreakdown} fieldQuality={analysisResult?.fieldQuality} />
                       </Box>
                     </Grid>
                     <Grid item xs={12} md={6}>

@@ -95,3 +95,22 @@ def header_pattern(labels: List[str]) -> str:
     Совпадает, напр.: 'Заявитель (Кредитор):', 'Должник:', 'Заёмщик :'.
     """
     return rf"(?:{labels_alternation(labels)})\s*:"
+
+
+def all_labels() -> List[str]:
+    """Все метки реестра — заголовки блоков и подписи полей, длинные раньше.
+
+    Нужны там, где важна не роль метки, а сам факт «здесь метка»: например, при
+    канонизации переноса строки между меткой и значением (разные банки пишут
+    «Должник: Иванов» и «Должник:\\nИванов» — для разбора это одно и то же).
+    Сортировка по длине убывающе обязательна: иначе «Адрес» съест «Адрес
+    регистрации» и хвост метки останется в значении.
+    """
+    labels = [
+        *DEBTOR_HEADER_LABELS,
+        *CREDITOR_HEADER_LABELS,
+        *THIRD_PARTY_HEADER_LABELS,
+        *MANAGER_HEADER_LABELS,
+        *(lbl for variants in FIELD_LABELS.values() for lbl in variants),
+    ]
+    return sorted(set(labels), key=len, reverse=True)

@@ -2,6 +2,8 @@ import React from 'react';
 import { Box, Typography, Grid, TextField, FormControl, Select, MenuItem } from '@mui/material';
 import { Bank } from '../../../shared/constants/banks';
 import { matchBankKey, isFnsCreditor, FNS_CREDITOR_KEY } from '../../../shared/lib/banks';
+import FieldQualityMark from '../../../shared/components/FieldQualityMark';
+import { FieldQuality } from '../../../types';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';
 
 interface CreditorSectionProps {
@@ -10,6 +12,9 @@ interface CreditorSectionProps {
   onCreditorChange: (value: string) => void;
   /** Реестр банков с бэкенда (для выпадающего списка и распознавания). */
   banks: Bank[];
+  /** Уровень доверия по полям (backend `fieldQuality`): поле уровня 'low'
+   *  обводится и получает тултип с причиной. */
+  fieldQuality?: Record<string, FieldQuality>;
 }
 
 /**
@@ -21,6 +26,7 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
   onFieldChange,
   onCreditorChange,
   banks,
+  fieldQuality,
 }) => (
   <Box sx={{ ...BLOCK_BOX_SX, mb: 3 }}>
     <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
@@ -74,6 +80,7 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Юридический адрес кредитора:</Typography>
+          <FieldQualityMark quality={fieldQuality?.creditorAddress}>
           <TextField
             fullWidth
             value={editedFields.creditorAddress || ''}
@@ -83,12 +90,14 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
             margin="dense"
             placeholder="117312, г. Москва, ул. Вавилова, д. 19"
           />
+          </FieldQualityMark>
         </Box>
       </Grid>
 
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ОГРН кредитора:</Typography>
+          <FieldQualityMark quality={fieldQuality?.creditorOgrn}>
           <TextField
             fullWidth
             value={editedFields.creditorOgrn || ''}
@@ -97,12 +106,14 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
             margin="dense"
             placeholder="1027700132195"
           />
+          </FieldQualityMark>
         </Box>
       </Grid>
 
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ИНН кредитора:</Typography>
+          <FieldQualityMark quality={fieldQuality?.creditorInn}>
           <TextField
             fullWidth
             value={editedFields.creditorInn || ''}
@@ -111,6 +122,7 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
             margin="dense"
             placeholder="7707083893"
           />
+          </FieldQualityMark>
         </Box>
       </Grid>
     </Grid>

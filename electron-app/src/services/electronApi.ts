@@ -238,13 +238,17 @@ export const docxApplyEdits = (docx: Blob, editedText: string): Promise<Blob> =>
 /** true — UI может (и должен) управлять процессом конвертера (десктоп). */
 export const isConverterManaged = (): boolean => getApi().converterManaged;
 
-export const converterStart = (): Promise<ConverterStartResult> =>
-  getApi().converterStart();
+// Жизненный цикл конвертера — ВСЕГДА через backend, а не через мост Electron.
+// Раньше в Electron он шёл по IPC в ManagedService (main.js), и владелец процесса
+// расходился с тем, кто видит активность: конвертация идёт fetch'ем в backend мимо
+// Electron, поэтому сторож простоя (CONVERTER_IDLE_TIMEOUT_S) не мог погасить
+// процесс, запущенный не им, — конвертер держал ~3.5 ГБ до закрытия приложения.
+// Единый владелец = backend: один код старта/остановки/простоя на оба режима.
+export const converterStart = (): Promise<ConverterStartResult> => webApi.converterStart();
 
-export const converterStop = (): Promise<{ ok: boolean }> => getApi().converterStop();
+export const converterStop = (): Promise<{ ok: boolean }> => webApi.converterStop();
 
-export const converterStatus = (): Promise<ConverterProcessStatus> =>
-  getApi().converterStatus();
+export const converterStatus = (): Promise<ConverterProcessStatus> => webApi.converterStatus();
 
 /** Переключение DevTools с фолбэком на глобальную openDevTools (как было в App). */
 export const toggleDevTools = (): void => {

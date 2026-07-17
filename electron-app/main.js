@@ -405,11 +405,31 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('before-quit', () => {
-  if (pythonProcess) {
-    pythonProcess.kill();
-  }
-  converterService.stop();
+// Конвертером владеет backend (единый жизненный цикл на десктоп и браузер, см.
+// services/electronApi.ts). Поэтому просто убить pythonProcess нельзя: на Windows
+// kill() — это TerminateProcess, хук shutdown у uvicorn не отработает, и sidecar
+// осиротеет с ~3.5 ГБ. Сначала просим backend погасить его, потом гасим backend.
+let _quitCleanupDone = false;
+app.on('before-quit', (event) => {
+  if (_quitCleanupDone) return;
+  event.preventDefault();
+
+  const finish = () => {
+    if (_quitCleanupDone) return; // таймер и ответ backend'а гонятся — пускаем одного
+    _quitCleanupDone = true;
+    if (pythonProcess) pythonProcess.kill();
+    converterService.stop(); // на случай внешнего/легаси-запуска через ManagedService
+    app.quit();
+  };
+
+  // Ждём недолго: выход не должен зависеть от отзывчивости backend'а.
+  const timer = setTimeout(finish, 3000);
+  fetch('http://127.0.0.1:8000/converter/stop', { method: 'POST' })
+    .catch(() => undefined)
+    .finally(() => {
+      clearTimeout(timer);
+      finish();
+    });
 });
 
 // --- Управление процессом OCR-конвертера из рендера (convert-шаг) ---

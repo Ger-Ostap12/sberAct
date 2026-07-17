@@ -3,6 +3,7 @@ import logging
 import re
 from typing import Any, Dict, List, Optional, Union
 
+import field_contract
 from patterns import FNS_CAT_LABELS, FNS_QUEUE_ORDINAL_WORDS
 
 logger = logging.getLogger(__name__)
@@ -1343,13 +1344,18 @@ class AmountsMixin:
             logger.debug(f"Ошибка при попытке выделить госпошлину из 'ИТОГО': {e}")
 
         # Если ссудная задолженность (loanDebt) не найдена явно — используем общую сумму долга/требований.
+        # ⚠️ Копируем ТОЛЬКО то, что реально сумма: источник на этом шаге каскада может
+        # ещё содержать мусор (напр. «Арбитражный суд Ростовской области»), а чистят его
+        # ПОЗЖЕ — копия мусора пережила бы чистку источника и уехала в поле «Ссудная
+        # задолженность». Проверка типа здесь дешевле, чем разбирательство на выходе.
         if not extracted_fields.get("loanDebt"):
-            if extracted_fields.get("debtAmount"):
-                extracted_fields["loanDebt"] = extracted_fields["debtAmount"]
-                logger.info(f"loanDebt не найден явно, используем debtAmount как loanDebt: {extracted_fields['loanDebt']}")
-            elif extracted_fields.get("totalDebt"):
-                extracted_fields["loanDebt"] = extracted_fields["totalDebt"]
-                logger.info(f"loanDebt не найден явно, используем totalDebt как loanDebt: {extracted_fields['loanDebt']}")
+            for source in ("debtAmount", "totalDebt"):
+                value = extracted_fields.get(source)
+                if not value or field_contract.check_value("loanDebt", value):
+                    continue
+                extracted_fields["loanDebt"] = value
+                logger.info(f"loanDebt не найден явно, используем {source} как loanDebt: {value}")
+                break
 
     def _reconcile_state_duty(self, extracted_fields, text, document_type):
         """Согласование госпошлины и сумм: синхронизация stateDuty/[16], выделение из ИТОГО, удаление penalties, приоритет requirementsSum для rtk. Вынесено из extract_fields."""

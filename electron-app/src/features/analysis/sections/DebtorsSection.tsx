@@ -1,8 +1,9 @@
 import React from 'react';
 import { Box, Typography, Card, IconButton, Grid, TextField, Button } from '@mui/material';
 import { Add as AddIcon, Close as CloseIcon } from '@mui/icons-material';
-import { Debtor, EntityType } from '../../../types';
+import { Debtor, EntityType, FieldQuality } from '../../../types';
 import { toInputDate, fromInputDate } from '../../../shared/lib/dates';
+import FieldQualityMark from '../../../shared/components/FieldQualityMark';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';
 
 interface DebtorsSectionProps {
@@ -11,6 +12,10 @@ interface DebtorsSectionProps {
   onUpdate: (index: number, field: keyof Debtor, value: string) => void;
   onAdd: () => void;
   onRemove: (index: number) => void;
+  /** Уровень доверия по полям (backend `fieldQuality`). Ключ записи —
+   *  `debtors[N].address`: карточки строятся мимо `fields` (ловушка §J.3),
+   *  поэтому у них СВОИ ключи, а не плоские имена полей. */
+  fieldQuality?: Record<string, FieldQuality>;
 }
 
 /**
@@ -23,6 +28,7 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
   onUpdate,
   onAdd,
   onRemove,
+  fieldQuality,
 }) => (
   <Box sx={{ ...BLOCK_BOX_SX, mb: 3 }}>
     <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
@@ -61,26 +67,30 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес должника:</Typography>
-              <TextField
-                fullWidth
-                value={debtor.address || ''}
-                multiline
-                onChange={(e) => onUpdate(index, 'address', e.target.value)}
-                size="small"
-                margin="dense"
-              />
+              <FieldQualityMark quality={fieldQuality?.[`debtors[${index}].address`]}>
+                <TextField
+                  fullWidth
+                  value={debtor.address || ''}
+                  multiline
+                  onChange={(e) => onUpdate(index, 'address', e.target.value)}
+                  size="small"
+                  margin="dense"
+                />
+              </FieldQualityMark>
             </Box>
           </Grid>
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ИНН:</Typography>
-              <TextField
-                fullWidth
-                value={debtor.inn || ''}
-                onChange={(e) => onUpdate(index, 'inn', e.target.value)}
-                size="small"
-                margin="dense"
-              />
+              <FieldQualityMark quality={fieldQuality?.[`debtors[${index}].inn`]}>
+                <TextField
+                  fullWidth
+                  value={debtor.inn || ''}
+                  onChange={(e) => onUpdate(index, 'inn', e.target.value)}
+                  size="small"
+                  margin="dense"
+                />
+              </FieldQualityMark>
             </Box>
           </Grid>
           {/* Реквизит должника по типу лица: ФЛ — нет ОГРН/ОГРНИП;
@@ -91,13 +101,17 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
                 <Typography variant="body2" sx={LABEL_OVERLAP_SX}>
                   {entityType === 'ip' ? 'ОГРНИП:' : 'ОГРН:'}
                 </Typography>
-                <TextField
-                  fullWidth
-                  value={(entityType === 'ip' ? debtor.ogrnip : debtor.ogrn) || ''}
-                  onChange={(e) => onUpdate(index, entityType === 'ip' ? 'ogrnip' : 'ogrn', e.target.value)}
-                  size="small"
-                  margin="dense"
-                />
+                <FieldQualityMark
+                  quality={fieldQuality?.[`debtors[${index}].${entityType === 'ip' ? 'ogrnip' : 'ogrn'}`]}
+                >
+                  <TextField
+                    fullWidth
+                    value={(entityType === 'ip' ? debtor.ogrnip : debtor.ogrn) || ''}
+                    onChange={(e) => onUpdate(index, entityType === 'ip' ? 'ogrnip' : 'ogrn', e.target.value)}
+                    size="small"
+                    margin="dense"
+                  />
+                </FieldQualityMark>
               </Box>
             </Grid>
           )}

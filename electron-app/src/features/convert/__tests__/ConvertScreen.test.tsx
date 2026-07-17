@@ -66,7 +66,9 @@ describe('ConvertScreen', () => {
 
     await waitFor(() => expect(onComplete).toHaveBeenCalled());
     expect(mockAnalyzeDocument).toHaveBeenCalledWith(pdfFile);
-    expect(mockStop).toHaveBeenCalled();
+    // Конвертер НЕ гасим: его убивает сторож простоя на бэкенде. Остановка отсюда
+    // означала холодный старт с загрузкой LLM на каждом следующем заявлении.
+    expect(mockStop).not.toHaveBeenCalled();
   });
 
   it('скан: конвертация с дефолт-флагами родного фронта, поллинг → текстовый предпросмотр', async () => {
@@ -115,7 +117,7 @@ describe('ConvertScreen', () => {
 
     await waitFor(() => expect(onComplete).toHaveBeenCalled());
     expect(mockAnalyzeText).toHaveBeenCalledWith('Сумма 200');
-    expect(mockStop).toHaveBeenCalled();
+    expect(mockStop).not.toHaveBeenCalled(); // см. комментарий выше про сторож простоя
   }, 15000);
 
   it('ошибка конвертации → экран ошибки с «Повторить» и «Пропустить»', async () => {
@@ -142,7 +144,7 @@ describe('ConvertScreen', () => {
     expect(mockAnalyze).not.toHaveBeenCalled();
   });
 
-  it('«Назад» останавливает конвертер', async () => {
+  it('«Назад» НЕ останавливает конвертер — им распоряжается сторож простоя', async () => {
     mockAnalyze.mockResolvedValue({ suggested: 'native' });
     const onBack = jest.fn();
 
@@ -150,6 +152,9 @@ describe('ConvertScreen', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Назад' }));
     expect(onBack).toHaveBeenCalled();
-    expect(mockStop).toHaveBeenCalled();
+    // Раньше UI гасил sidecar на каждом уходе с шага, и следующий PDF платил
+    // холодным стартом с загрузкой LLM. Теперь память возвращает сторож простоя
+    // на бэкенде (CONVERTER_IDLE_TIMEOUT_S), а UI в это не лезет.
+    expect(mockStop).not.toHaveBeenCalled();
   });
 });

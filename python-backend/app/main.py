@@ -3,8 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
+import asyncio
 import os
 import sys
+import time
 import subprocess
 import tempfile
 import shutil
@@ -360,6 +362,7 @@ async def convert_proxy(conv_path: str, request: Request):
     """
     import httpx
 
+    _converter_touch()  # любой проброс = конвертером пользуются, сторож не трогает
     url = f"{CONVERTER_API_URL}/{conv_path}"
     headers = {
         k: v for k, v in request.headers.items()
@@ -425,7 +428,54 @@ CONVERTER_DIR = Path(os.environ.get("CONVERTER_DIR", str(_default_converter_dir(
 CONVERTER_PORT = os.environ.get("CONVERTER_PORT", "8008")
 CONVERTER_START_TIMEOUT_S = 180  # холодный старт с LLM — десятки секунд, с запасом
 
+# Конвертер держит ~3.5 ГБ (torch + LLM), а Python не умеет выгружать их из живого
+# процесса — память возвращает только kill (docs/converter_integration_plan.md).
+# Раньше UI убивал sidecar после каждого файла: память освобождалась, но КАЖДЫЙ
+# следующий PDF платил холодным стартом. Теперь UI не гасит его вовсе, а процесс
+# сам умирает после простоя — пачка заявлений идёт быстро, память возвращается.
+CONVERTER_IDLE_TIMEOUT_S = int(os.environ.get("CONVERTER_IDLE_TIMEOUT_S", "300"))
+CONVERTER_IDLE_CHECK_S = 30  # как часто сторож смотрит на простой
+
 _converter_process: Optional["subprocess.Popen[bytes]"] = None
+
+# Старт конвертера сериализуем: фронт зовёт /converter/start несколько раз подряд
+# (React StrictMode дублирует эффект), и без лока каждый вызов проходил проверку
+# _converter_healthy() до того, как предыдущий успел поднять сервис, — плодились
+# конкурирующие Popen на одном порту.
+_converter_start_lock: Optional["asyncio.Lock"] = None
+
+
+def _get_converter_lock() -> "asyncio.Lock":
+    """Лок создаём лениво: на импорте модуля event loop ещё нет."""
+    global _converter_start_lock
+    if _converter_start_lock is None:
+        _converter_start_lock = asyncio.Lock()
+    return _converter_start_lock
+
+
+# Момент последнего обращения к конвертеру; None — им ещё не пользовались.
+_converter_last_used: Optional[float] = None
+
+
+def _converter_touch() -> None:
+    """Отмечает активность. Монотонные часы: перевод системного времени не собьёт."""
+    global _converter_last_used
+    _converter_last_used = time.monotonic()
+
+
+async def _converter_idle_watchdog() -> None:
+    """Гасит простаивающий конвертер, возвращая ОС его память."""
+    while True:
+        await asyncio.sleep(CONVERTER_IDLE_CHECK_S)
+        try:
+            if _converter_process is None or _converter_last_used is None:
+                continue  # нашего процесса нет — гасить нечего (внешний не трогаем)
+            idle = time.monotonic() - _converter_last_used
+            if idle >= CONVERTER_IDLE_TIMEOUT_S:
+                logger.info("Конвертер простаивал %.0f с — останавливаем", idle)
+                _kill_converter()
+        except Exception:  # сторож не имеет права уронить приложение
+            logger.exception("Сбой сторожа простоя конвертера")
 
 
 async def _converter_healthy() -> bool:
@@ -465,44 +515,52 @@ async def converter_start():
     Уже работающий (в т.ч. запущенный вручную/Electron'ом) — переиспользуется.
     """
     global _converter_process
-    import asyncio
 
+    _converter_touch()  # отсчёт простоя ведём от старта, а не от первой конвертации
+    # Быстрый путь мимо лока: сервис уже отвечает — сериализовать нечего.
     if await _converter_healthy():
         return {"ok": True, "external": _converter_process is None}
 
-    command = _converter_command()
-    if command is None:
-        return {
-            "ok": False,
-            "error": (
-                f"Конвертер не найден в {CONVERTER_DIR} "
-                "(укажите папку через переменную окружения CONVERTER_DIR)"
-            ),
-        }
-
-    logger.info("Запускаем конвертер: %s", " ".join(command))
-    _converter_process = subprocess.Popen(
-        command,
-        cwd=str(CONVERTER_DIR),
-        env={
-            **os.environ,
-            "CONVERTER_PORT": CONVERTER_PORT,
-            "CONVERTER_DIR": str(CONVERTER_DIR),
-        },
-    )
-
-    deadline = asyncio.get_event_loop().time() + CONVERTER_START_TIMEOUT_S
-    while asyncio.get_event_loop().time() < deadline:
-        if _converter_process.poll() is not None:
-            code = _converter_process.returncode
-            _converter_process = None
-            return {"ok": False, "error": f"Конвертер завершился до готовности (код {code})"}
+    async with _get_converter_lock():
+        # Повторная проверка ПОД локом обязательна: пока ждали очередь, конкурент
+        # мог уже поднять конвертер. Без неё параллельные вызовы плодят Popen'ы,
+        # дерущиеся за один порт.
         if await _converter_healthy():
-            return {"ok": True, "external": False}
-        await asyncio.sleep(1.0)
+            return {"ok": True, "external": _converter_process is None}
 
-    _kill_converter()
-    return {"ok": False, "error": f"Конвертер не поднялся за {CONVERTER_START_TIMEOUT_S} с"}
+        command = _converter_command()
+        if command is None:
+            return {
+                "ok": False,
+                "error": (
+                    f"Конвертер не найден в {CONVERTER_DIR} "
+                    "(укажите папку через переменную окружения CONVERTER_DIR)"
+                ),
+            }
+
+        logger.info("Запускаем конвертер: %s", " ".join(command))
+        _converter_process = subprocess.Popen(
+            command,
+            cwd=str(CONVERTER_DIR),
+            env={
+                **os.environ,
+                "CONVERTER_PORT": CONVERTER_PORT,
+                "CONVERTER_DIR": str(CONVERTER_DIR),
+            },
+        )
+
+        deadline = asyncio.get_event_loop().time() + CONVERTER_START_TIMEOUT_S
+        while asyncio.get_event_loop().time() < deadline:
+            if _converter_process.poll() is not None:
+                code = _converter_process.returncode
+                _converter_process = None
+                return {"ok": False, "error": f"Конвертер завершился до готовности (код {code})"}
+            if await _converter_healthy():
+                return {"ok": True, "external": False}
+            await asyncio.sleep(1.0)
+
+        _kill_converter()
+        return {"ok": False, "error": f"Конвертер не поднялся за {CONVERTER_START_TIMEOUT_S} с"}
 
 
 def _kill_converter() -> None:
@@ -524,6 +582,13 @@ async def converter_stop():
 async def converter_status():
     running = _converter_process is not None and _converter_process.poll() is None
     return {"running": running, "healthy": await _converter_healthy()}
+
+
+@app.on_event("startup")
+async def _start_converter_watchdog() -> None:
+    # Сторож простоя: UI больше не гасит конвертер после каждого файла, память
+    # возвращает этот таймер. Задача-демон, живёт столько же, сколько приложение.
+    asyncio.create_task(_converter_idle_watchdog())
 
 
 @app.on_event("shutdown")

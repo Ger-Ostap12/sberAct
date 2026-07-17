@@ -12,6 +12,8 @@ import {
 import { ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
 import { toInputDate, fromInputDate } from '../../../shared/lib/dates';
 import { isFnsCreditor } from '../../../shared/lib/banks';
+import FieldQualityMark from '../../../shared/components/FieldQualityMark';
+import { FieldQuality } from '../../../types';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';
 
 /** Разбивка полей финансов на слагаемые (из нескольких обязательств): ключ поля →
@@ -23,6 +25,10 @@ interface FinancesSectionProps {
   onFieldChange: (field: string, value: string) => void;
   /** Разбивка «откуда число» для тултипа поля (только не-ФНС). */
   financeBreakdown?: FinanceBreakdown;
+  /** Уровень доверия по полям (backend `fieldQuality`): поля уровня 'low'
+   *  обводятся и получают тултип с причиной. Денежные поля — главная жертва
+   *  чужого текста, поэтому подсветка здесь нужнее всего. */
+  fieldQuality?: Record<string, FieldQuality>;
 }
 
 /** Оставляет только цифры/точку/запятую (сырое значение суммы). */
@@ -242,11 +248,23 @@ const FnsFinances: React.FC<FinancesSectionProps> = ({ editedFields, onFieldChan
  * Для кредитора-ФНС (авто-детект или ручной выбор «ФНС») раскладка перестраивается
  * в 4 подблока по очередям реестра (FnsFinances).
  */
-const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onFieldChange, financeBreakdown }) => {
+const FinancesSection: React.FC<FinancesSectionProps> = ({
+  editedFields,
+  onFieldChange,
+  financeBreakdown,
+  fieldQuality,
+}) => {
   if (isFnsCreditor(editedFields.creditorName)) {
     return <FnsFinances editedFields={editedFields} onFieldChange={onFieldChange} />;
   }
   const brk = financeBreakdown || undefined;
+  const q = (field: string) => fieldQuality?.[field];
+  // Часть полей формы показывает одно из двух backend-полей («Ссудная
+  // задолженность» = principalDebt OR loanDebt): претензия к любому из них
+  // относится к тому, что видит юрист.
+  const qAny = (...fields: string[]) =>
+    fields.map((f) => fieldQuality?.[f]).find((item) => item?.level === 'low')
+    || fieldQuality?.[fields[0]];
   return (
   <Box sx={{ ...BLOCK_BOX_SX, mb: 3 }}>
     <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
@@ -256,6 +274,7 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onField
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Общая сумма долга:</Typography>
+          <FieldQualityMark quality={q('totalDebt')}>
           <TextField
             fullWidth
             value={editedFields.totalDebt || ''}
@@ -264,6 +283,7 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onField
             margin="dense"
             placeholder="0.00"
           />
+          </FieldQualityMark>
         </Box>
       </Grid>
 
@@ -271,6 +291,7 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onField
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Проценты:</Typography>
           <BreakdownTip addends={brk?.interest} total={editedFields.interest}>
+          <FieldQualityMark quality={q('interest')}>
           <TextField
             fullWidth
             value={editedFields.interest || ''}
@@ -279,6 +300,7 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onField
             margin="dense"
             placeholder="0.00"
           />
+          </FieldQualityMark>
           </BreakdownTip>
         </Box>
       </Grid>
@@ -303,6 +325,7 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onField
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Неустойка:</Typography>
           <BreakdownTip addends={brk?.forfeit} total={editedFields.forfeit}>
+          <FieldQualityMark quality={q('forfeit')}>
           <TextField
             fullWidth
             value={editedFields.forfeit || ''}
@@ -311,6 +334,7 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onField
             margin="dense"
             placeholder="0.00"
           />
+          </FieldQualityMark>
           </BreakdownTip>
         </Box>
       </Grid>
@@ -319,6 +343,7 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onField
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Ссудная задолженность (просроченный основной долг):</Typography>
           <BreakdownTip addends={brk?.principalDebt} total={editedFields.principalDebt || editedFields.loanDebt}>
+          <FieldQualityMark quality={qAny('principalDebt', 'loanDebt')}>
           <TextField
             fullWidth
             value={editedFields.principalDebt || editedFields.loanDebt || ''}
@@ -331,6 +356,7 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({ editedFields, onField
             margin="dense"
             placeholder="0.00"
           />
+          </FieldQualityMark>
           </BreakdownTip>
         </Box>
       </Grid>
