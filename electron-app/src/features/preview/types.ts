@@ -9,6 +9,8 @@ export interface GenerationState {
   documentIds?: string[];
   count?: number;
   error?: string;
+  /** Выбранные акты, которые сгенерировать не удалось (нет шаблона/ветки маппинга). */
+  warnings?: string[];
 }
 
 export interface DownloadMessage {

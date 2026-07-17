@@ -40,6 +40,11 @@ export const useGenerateDocument = (
         sourceDocumentType:
           extractedData.fields.sourceDocumentType || extractedData.documentType,
         obligations: extractedData.obligations || [],
+        // Заинтересованные лица = наследники = третьи лица (единая категория, маркеры
+        // [25.x]/[52.x]/[54.x]). Оба массива — top-level поля ExtractedData, в fields их
+        // нет, поэтому без явного проброса до генерации они не доезжали вообще.
+        heirs: extractedData.heirs || [],
+        thirdParties: extractedData.thirdParties || [],
       };
 
       const result = await generateDocument({
@@ -55,6 +60,7 @@ export const useGenerateDocument = (
             documents: result.documents,
             documentIds: result.document_ids,
             count: result.count,
+            warnings: result.warnings,
           });
         } else {
           // Один документ (старый формат)

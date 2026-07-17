@@ -92,6 +92,63 @@ describe('useGenerateDocument', () => {
     });
   });
 
+  it('передаёт заинтересованных лиц: heirs и thirdParties — top-level поля, в fields их нет', async () => {
+    mockedGenerate.mockResolvedValue({ success: true, document_id: 'x', file_path: 'p' });
+    const data = baseData();
+    data.heirs = [{ id: 'h1', name: 'Иванова М.И.', address: 'г. Ростов-на-Дону' }];
+    data.thirdParties = [{ id: 't1', name: 'Сидоров П.П.', birthDate: '05.05.1980' }];
+    const { result } = renderHook(() => useGenerateDocument(data, template, jest.fn()));
+
+    await act(async () => {
+      await result.current.generate();
+    });
+
+    expect(mockedGenerate).toHaveBeenCalledWith({
+      template_type: 'rtk_single_obligation',
+      data: expect.objectContaining({
+        heirs: [{ id: 'h1', name: 'Иванова М.И.', address: 'г. Ростов-на-Дону' }],
+        thirdParties: [{ id: 't1', name: 'Сидоров П.П.', birthDate: '05.05.1980' }],
+      }),
+    });
+  });
+
+  it('заинтересованных лиц нет → уезжают пустые массивы, не undefined', async () => {
+    mockedGenerate.mockResolvedValue({ success: true, document_id: 'x', file_path: 'p' });
+    const { result } = renderHook(() => useGenerateDocument(baseData(), template, jest.fn()));
+
+    await act(async () => {
+      await result.current.generate();
+    });
+
+    expect(mockedGenerate).toHaveBeenCalledWith({
+      template_type: 'rtk_single_obligation',
+      data: expect.objectContaining({ heirs: [], thirdParties: [] }),
+    });
+  });
+
+  it('пакет документов: warnings по несгенерированным актам доезжают до UI', async () => {
+    mockedGenerate.mockResolvedValue({
+      success: true,
+      documents: { a: 1 },
+      document_ids: ['a'],
+      count: 1,
+      warnings: ['«Определение ВКЛ в РТК (реализация)» — файл шаблона не найден: ртк.docx'],
+    });
+    const { result } = renderHook(() =>
+      useGenerateDocument(baseData(), template, jest.fn())
+    );
+
+    await act(async () => {
+      await result.current.generate();
+    });
+
+    expect(result.current.generationResult).toMatchObject({
+      success: true,
+      count: 1,
+      warnings: ['«Определение ВКЛ в РТК (реализация)» — файл шаблона не найден: ртк.docx'],
+    });
+  });
+
   it('ошибка backend → generationResult.error', async () => {
     mockedGenerate.mockResolvedValue({ success: false, error: 'boom' });
     const { result } = renderHook(() =>

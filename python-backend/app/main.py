@@ -575,13 +575,17 @@ async def generate_document(request_data: Dict[str, Any]):
             # Проверяем, генерируется ли один документ или несколько
             if "documents" in result:
                 # Генерируется несколько документов
-                return {
+                response = {
                     "success": True,
                     "documents": result["documents"],
                     "document_ids": result["document_ids"],
                     "count": result["count"],
                     "message": f"Успешно сгенерировано {result['count']} документов"
                 }
+                # Выбранные акты, которые сгенерировать не удалось (нет шаблона/ветки маппинга)
+                if result.get("warnings"):
+                    response["warnings"] = result["warnings"]
+                return response
             else:
                 # Генерируется один документ (старый формат)
                 return {

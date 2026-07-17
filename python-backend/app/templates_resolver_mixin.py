@@ -763,7 +763,7 @@ class TemplatesResolverMixin:
             )
         }
 
-    def _map_selected_acts_to_templates(self, selected_acts_ids: str, entity_type: str, collateral_option: str, data: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    def _map_selected_acts_to_templates(self, selected_acts_ids: str, entity_type: str, collateral_option: str, data: Dict[str, Any]):
         """
         Маппит выбранные пользователем акты на реальные шаблоны документов.
 
@@ -774,10 +774,13 @@ class TemplatesResolverMixin:
             data: Данные для генерации
 
         Returns:
-            Словарь с шаблонами для генерации
+            (templates, unresolved_act_ids) — словарь шаблонов для генерации и список
+            ID актов, для которых ветки маппинга нет вообще. Раньше такие ID молча
+            проглатывались циклом; вызывающий код обязан сообщить о них пользователю,
+            а не подменять выбор стандартным комплектом.
         """
         if not selected_acts_ids:
-            return {}
+            return {}, []
 
         root_dir = self._templates_root()
         base_dir = root_dir / "шаблоны актов без залогов"
@@ -858,8 +861,16 @@ class TemplatesResolverMixin:
                 return base_dir / "физ реструк ВКЛ в РТК"
             return base_dir / "физ реализация ВКЛ в РТК"
 
-        act_ids = [act_id.strip() for act_id in selected_acts_ids.split(',')]
+        # Дедуп с сохранением порядка: повтор одного ID не должен считаться
+        # нерезолвленным на второй итерации (проверка ниже смотрит на прирост templates).
+        act_ids: List[str] = []
+        for raw_act_id in selected_acts_ids.split(','):
+            act_id = raw_act_id.strip()
+            if act_id and act_id not in act_ids:
+                act_ids.append(act_id)
+
         templates = {}
+        unresolved: List[str] = []
         order = 1
 
         # ФНС (уполномоченный орган) и самобанкротство — отдельные наборы шаблонов.
@@ -869,6 +880,8 @@ class TemplatesResolverMixin:
         is_self = self._is_self_bankruptcy(data)
 
         for act_id in act_ids:
+            templates_before = len(templates)
+
             if is_self:
                 resolved = self._resolve_self_bankruptcy_act(act_id, act_ids, data)
                 if resolved:
@@ -1192,5 +1205,9 @@ class TemplatesResolverMixin:
                 )
                 order += 1
 
-        return templates
+            if len(templates) == templates_before:
+                unresolved.append(act_id)
+                logger.warning(f"⚠️ Нет ветки маппинга для выбранного акта: {act_id}")
+
+        return templates, unresolved
 

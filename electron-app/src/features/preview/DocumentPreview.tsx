@@ -273,6 +273,20 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
                   {generationResult.count ? 'Все документы готовы к скачиванию' : 'Судебный акт готов к скачиванию'}
                 </Typography>
 
+                {/* Выбранные акты, которые сгенерировать не удалось (нет шаблона/ветки маппинга) */}
+                {generationResult.warnings && generationResult.warnings.length > 0 && (
+                  <Alert severity="warning" sx={{ mb: 3, textAlign: 'left' }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                      Сгенерированы не все выбранные акты:
+                    </Typography>
+                    {generationResult.warnings.map((warning) => (
+                      <Typography key={warning} variant="body2" component="div">
+                        • {warning}
+                      </Typography>
+                    ))}
+                  </Alert>
+                )}
+
                 {/* Показываем список сгенерированных документов */}
                 {generationResult.documents && (
                   <Box sx={{ mb: 3, textAlign: 'left' }}>
