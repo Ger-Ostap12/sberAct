@@ -1,4 +1,4 @@
-import { webApi } from '../webApi';
+import { webApi, resetLiveBase } from '../webApi';
 
 // Мокаем сеть и браузерные API скачивания.
 const okJson = (body: unknown) =>
@@ -15,6 +15,7 @@ beforeEach(() => {
   (global as any).URL.createObjectURL = jest.fn(() => 'blob:mock');
   (global as any).URL.revokeObjectURL = jest.fn();
   jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  resetLiveBase(); // выбранный хост живёт в модуле — иначе тесты цепляются друг за друга
 });
 afterEach(() => jest.restoreAllMocks());
 
@@ -90,5 +91,59 @@ describe('webApi — недоступные в браузере операции
   it('selectFile и getExtractedData возвращают null', async () => {
     await expect(webApi.selectFile()).resolves.toBeNull();
     await expect(webApi.getExtractedData()).resolves.toBeNull();
+  });
+});
+
+describe('fetchBackend — выбор хоста', () => {
+  const FIRST = 'http://127.0.0.1:8000';
+  const SECOND = 'http://localhost:8000';
+  const netFail = () => Promise.reject(new TypeError('Failed to fetch'));
+
+  it('HTTP-ошибка живого хоста НЕ уводит перебор дальше', async () => {
+    // Регрессия: 502 от 127.0.0.1 гнал запрос на localhost и wsl.localhost,
+    // и наружу летела ошибка от последнего — настоящая причина терялась.
+    const fetchMock = jest.fn(
+      async () => ({ ok: false, status: 502, text: async () => 'Конвертер не запущен' }) as unknown as Response,
+    );
+    (global as any).fetch = fetchMock;
+
+    await expect(webApi.getBanks()).rejects.toThrow(/502.*Конвертер не запущен/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url] = fetchMock.mock.calls[0] as unknown as [string];
+    expect(String(url)).toContain(FIRST);
+  });
+
+  it('сетевой отказ уводит на следующий хост', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockImplementationOnce(netFail)
+      .mockImplementationOnce(async () => okJson([{ display: 'Сбер' }]));
+    (global as any).fetch = fetchMock;
+
+    await expect(webApi.getBanks()).resolves.toEqual([{ display: 'Сбер' }]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[1][0])).toContain(SECOND);
+  });
+
+  it('живой хост запоминается: второй запрос идёт сразу в него', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockImplementationOnce(netFail) // 127.0.0.1 мёртв
+      .mockImplementation(async () => okJson([]));
+    (global as any).fetch = fetchMock;
+
+    await webApi.getBanks(); // перебор: 127.0.0.1 → localhost
+    await webApi.getBanks(); // должен пойти сразу в localhost
+
+    expect(fetchMock).toHaveBeenCalledTimes(3); // а не 4 — мёртвый хост не переспрашивается
+    expect(String(fetchMock.mock.calls[2][0])).toContain(SECOND);
+  });
+
+  it('все хосты мертвы — наружу сетевая ошибка', async () => {
+    const fetchMock = jest.fn(netFail);
+    (global as any).fetch = fetchMock;
+
+    await expect(webApi.getBanks()).rejects.toThrow(/Failed to fetch/);
+    expect(fetchMock).toHaveBeenCalledTimes(3); // перебраны все базы
   });
 });
