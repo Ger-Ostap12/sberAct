@@ -112,19 +112,23 @@ class ObligationsRenderMixin:
             if slot_index is not None:
                 available_slots.add(slot_index)
 
-        max_slots = len(available_slots)
+        # ВАЖНО: не len(available_slots) — слот 0 ([100]/[110]) часто уже заменён РАНЬШЕ,
+        # в _apply_field_mapping_replacements (по данным первого обязательства), и к этому
+        # моменту в доке его как литерального маркера уже нет. Слоты идут подряд от 0, поэтому
+        # берём (максимальный найденный индекс + 1) — так пропавший слот 0 не занижает счёт.
+        max_slots = (max(available_slots) + 1) if available_slots else 0
 
-        # Суммарная фраза для большого количества обязательств:
-        # используем её ТОЛЬКО если в шаблоне явно предусмотрен сводный маркер [992]
-        # и количество обязательств больше, чем количество доступных "слотов" в шаблоне.
+        # Сводная фраза [992] — только настоящий fallback, когда в шаблоне вообще
+        # нет обычных слотов под обязательства. Если слоты есть, но обязательств
+        # больше, чем слотов, — перечисляем оставшиеся построчно по образцу первых
+        # (без сводной фразы и без новых маркеров), см. блок ниже.
         summary_placeholder = "[992]"
         has_summary_placeholder = summary_placeholder in placeholders_in_doc
 
         use_summary_mode = (
             has_summary_placeholder
             and obligations_count > 5
-            and max_slots
-            and obligations_count > max_slots
+            and not max_slots
         )
 
         if use_summary_mode:
@@ -179,6 +183,50 @@ class ObligationsRenderMixin:
         else:
             # Если сводный режим не используется, всегда очищаем [992], если он вдруг встречается
             self._replace_placeholder_in_doc(doc, summary_placeholder, "")
+
+            # Обязательств больше, чем маркерных слотов в шаблоне (обычно 6:
+            # [100]-[105]/[110]-[115]) — дописываем оставшиеся тем же способом
+            # ("<тип> от <дата> № <номер>"), без новых маркеров: вставляем текст
+            # сразу после плейсхолдера номера последнего слота, пока он ещё не
+            # заменён на значение (замена самого маркера произойдёт ниже как обычно).
+            if not is_mortgage and max_slots and obligations_count > max_slots:
+                extra_entries = []
+                for extra_obligation in obligations[max_slots:]:
+                    if not isinstance(extra_obligation, dict):
+                        continue
+                    extra_number = (extra_obligation.get('contractNumber') or '').strip()
+                    if extra_number.lower() in ('путем', 'подписания', 'далее', '') or len(extra_number) < 2:
+                        continue
+                    extra_date = (extra_obligation.get('contractDate') or '').strip()
+                    extra_type = str(extra_obligation.get('obligationType') or extra_obligation.get('type') or '').lower()
+                    if "поручитель" in extra_type:
+                        extra_label = "договор поручительства"
+                    elif "залог" in extra_type:
+                        extra_label = "договор залога"
+                    else:
+                        extra_label = "кредитный договор"
+                    entry = (
+                        f"{extra_label} от {extra_date} № {extra_number}"
+                        if extra_date else f"{extra_label} № {extra_number}"
+                    )
+                    extra_entries.append(entry)
+
+                if extra_entries:
+                    last_number_placeholder = f"[{110 + max_slots - 1}]"
+                    extra_suffix = ", " + ", ".join(extra_entries)
+
+                    def _append_after_marker(paragraphs):
+                        for paragraph in paragraphs:
+                            if last_number_placeholder in paragraph.text:
+                                paragraph.text = paragraph.text.replace(
+                                    last_number_placeholder, last_number_placeholder + extra_suffix
+                                )
+
+                    _append_after_marker(doc.paragraphs)
+                    for table in doc.tables:
+                        for row in table.rows:
+                            for cell in row.cells:
+                                _append_after_marker(cell.paragraphs)
 
         for i, obligation in enumerate(obligations):
             if not isinstance(obligation, dict):
@@ -247,10 +295,13 @@ class ObligationsRenderMixin:
         if not skip_obligations:
             self._cleanup_unused_obligation_placeholders(doc, obligations)
 
-        # Очищаем неиспользованные фрагменты и маркеры для обязательств, если их меньше 5
-        if not is_mortgage and obligations_count < 5:
-            # Сначала удаляем текстовые куски для несуществующих обязательств (3, 4, 5 и т.п.)
-            for idx in range(obligations_count, 5):
+        # Очищаем неиспользованные фрагменты и маркеры для обязательств, если их меньше,
+        # чем слотов в шаблоне (обычно 6: [100]-[105]/[110]-[115]; если в шаблоне слотов
+        # не нашлось вовсе — подстраховываемся старым порогом 5).
+        slot_count = max_slots if max_slots else 5
+        if not is_mortgage and obligations_count < slot_count:
+            # Сначала удаляем текстовые куски для несуществующих обязательств
+            for idx in range(obligations_count, slot_count):
                 date_num = 100 + idx
                 number_num = 110 + idx
                 # Удаляем фразу "кредитный договор от [10X] № [11X]" вместе с возможной запятой и пробелами
@@ -258,7 +309,7 @@ class ObligationsRenderMixin:
                 self._replace_regex_in_doc(doc, credit_pattern, "")
 
             # Затем на всякий случай обнуляем сами маркеры
-            for idx in range(obligations_count, 5):
+            for idx in range(obligations_count, slot_count):
                 date_placeholder = f"[{100 + idx}]"
                 number_placeholder = f"[{110 + idx}]"
                 self._replace_placeholder_in_doc(doc, date_placeholder, "")

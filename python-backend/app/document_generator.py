@@ -183,6 +183,53 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             }
         }
 
+    @staticmethod
+    def _extract_org_short_name(candidates: List[Optional[str]]) -> Optional[str]:
+        """Достаёт чистое короткое наименование организации из списка кандидатов.
+
+        Приоритет — содержимое ёлочек «...» (канонический формат debtorName:
+        «ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «ОРГТЕХНИКА»» → ОРГТЕХНИКА).
+        Ёлочки берём раньше остального, потому что legalShortName иногда приходит
+        кривым ('ОРГТЕХНИКА" (ООО "ОРГТЕХНИКА")') и извлечение из прямых кавычек
+        давало мусор «(ООО». Если ёлочек нет ни у одного кандидата — срезаем
+        орг-правовую «шапку» (ООО/общество с ограниченной ответственностью) и
+        обрамляющие кавычки у первого непустого кандидата. Возвращает None, если
+        ничего осмысленного не нашлось.
+        """
+        def _clean(s: str) -> str:
+            return s.strip(" -\t\n\r«»\"'()")
+
+        # Проход 1: ёлочки «...» — самый надёжный источник.
+        for cand in candidates:
+            if not cand:
+                continue
+            m = re.search(r'«\s*([^«»]+?)\s*»', str(cand))
+            if m:
+                name = _clean(m.group(1))
+                if name and '(' not in name and ')' not in name:
+                    return name
+
+        # Проход 2: срезаем ОПФ-шапку у первого непустого кандидата.
+        for cand in candidates:
+            if not cand:
+                continue
+            s = re.sub(
+                r'^(?:ИП\s+)?(?:общество|общества)\s+с\s+ограниченн\w+\s+ответственн\w+\s+',
+                '',
+                str(cand),
+                flags=re.IGNORECASE,
+            )
+            # Если внутри прямые кавычки "..." — берём первый чистый (без скобок) токен.
+            m2 = re.search(r'"\s*([^"()]+?)\s*"', s)
+            if m2:
+                name = _clean(m2.group(1))
+                if name:
+                    return name
+            name = _clean(s)
+            if name and '(' not in name and ')' not in name:
+                return name
+        return None
+
     def clean_extracted_value(self, value: str) -> str:
         """Очищает извлеченное значение от звездочек и других маскирующих символов"""
         if not value:
@@ -239,33 +286,46 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # Для ЮЛ используем короткое наименование в [2]/[2.1]/[2.2], чтобы не тянуть
         # артефакты вроде "ИП Общества..." и некорректные ФИО-падежи.
         if (cleaned_data.get("entityType") or "").strip().lower() == "legal":
-            legal_name = (
-                str(cleaned_data.get("legalShortName") or "").strip()
-                or str(cleaned_data.get("debtorName") or "").strip()
-                or str(cleaned_data.get("applicantName") or "").strip()
-            )
+            # Приоритет кандидатов: debtorName (канонический «…»-формат) впереди
+            # legalShortName, т.к. legalShortName иногда приходит кривым
+            # ('ОРГТЕХНИКА" (ООО "ОРГТЕХНИКА")') и ломает извлечение → «(ооо».
+            legal_name = self._extract_org_short_name([
+                cleaned_data.get("debtorName"),
+                cleaned_data.get("legalShortName"),
+                cleaned_data.get("applicantName"),
+            ])
             if legal_name:
-                # Если есть кавычки, берём внутреннее имя (ООО «Азбука» -> Азбука).
-                quote_match = re.search(r'[«"]\s*([^»"]+?)\s*[»"]', legal_name)
-                if quote_match:
-                    legal_name = quote_match.group(1).strip()
+                cleaned_data["applicantName"] = legal_name
+                cleaned_data["applicantNameGenitive"] = legal_name
+                cleaned_data["applicantNameDative"] = legal_name
+                cleaned_data["applicantNameInstrumental"] = legal_name
+                cleaned_data["applicantNameAccusative"] = legal_name
+                cleaned_data["legalShortName"] = legal_name
+                logger.info(f"🏢 Для ЮЛ нормализовано имя должника: {legal_name}")
 
-                # Срезаем орг-правовую "шапку".
-                legal_name = re.sub(
-                    r'^(?:ИП\s+)?(?:общество|общества)\s+с\s+ограниченн\w+\s+ответственн\w+\s+',
-                    '',
-                    legal_name,
-                    flags=re.IGNORECASE
-                ).strip(" -\t\n\r«»\"'")
-
-                if legal_name:
-                    cleaned_data["applicantName"] = legal_name
-                    cleaned_data["applicantNameGenitive"] = legal_name
-                    cleaned_data["applicantNameDative"] = legal_name
-                    cleaned_data["applicantNameInstrumental"] = legal_name
-                    cleaned_data["applicantNameAccusative"] = legal_name
-                    cleaned_data["legalShortName"] = legal_name
-                    logger.info(f"🏢 Для ЮЛ нормализовано имя должника: {legal_name}")
+        # Кредитор-ЮЛ (например, ООО): достаём короткое название — маркер [989] должен
+        # получать только "Оргтехника", а не "ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ
+        # «Оргтехника»". Кавычки в маркер НЕ добавляем (как и для должника [2]) — они
+        # берутся из самого шаблона. ПАО/АО и т.п. остаются как есть.
+        creditor_name = str(cleaned_data.get("creditorName") or "").strip()
+        if creditor_name:
+            if creditor_name.upper().startswith("ФНС"):
+                # ФНС: в шаблонах маркер [989] стоит ПОСЛЕ "ФНС России в лице", поэтому
+                # кладём в [989] только часть после "в лице" (иначе "ФНС России в лице
+                # ФНС России в лице …" — дублирование). Регистр НЕ нормализуем — там
+                # аббревиатуры ИФНС/УФНС, которые title-case ломает (ИФНС→Ифнс).
+                cleaned_data["_fnsCreditor"] = True
+                m = re.match(r'^\s*ФНС\s+России\s+в\s+лице\s+(.+)$', creditor_name,
+                             re.IGNORECASE | re.DOTALL)
+                if m:
+                    inspection = re.sub(r'\s+', ' ', m.group(1)).strip(' ,.')
+                    cleaned_data["creditorName"] = inspection
+                    logger.info(f"🏛 ФНС: в [989] подставим инспекцию: {inspection}")
+            else:
+                normalized_creditor_name = self._extract_org_short_name([creditor_name]) or creditor_name
+                if normalized_creditor_name and normalized_creditor_name != creditor_name:
+                    cleaned_data["creditorName"] = normalized_creditor_name
+                    logger.info(f"🏢 Для кредитора-ЮЛ нормализовано название: {normalized_creditor_name}")
 
         # Адрес должника/заявителя не должен совпадать с адресом кредитора (частая ошибка извлечения)
         applicant_addr = (cleaned_data.get("applicantAddress") or "").strip()
@@ -468,7 +528,11 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # Форматирование сумм: приводим все суммы к виду '1 234 567,89'
         amount_fields = ["loanDebt", "principalDebt", "principalDebt13", "interest", "interest14",
                         "forfeit", "forfeit15", "penalties", "stateDuty", "stateDuty16", "loanStateDuty17",
-                        "totalDebt", "debtAmount", "bankCommission", "priorAmount", "priorStateDuty"]
+                        "totalDebt", "debtAmount", "bankCommission", "priorAmount", "priorStateDuty",
+                        # ФНС-суммы по очередям реестра (недоимка/штрафы/пени/осн.долг/подытоги)
+                        "fnsQ1Arrears", "fnsQ2Arrears", "fnsQ3Arrears",
+                        "fnsQ3Penalties", "fnsQ3Forfeit", "fnsQ3LoanDebt",
+                        "fnsQ1Total", "fnsQ2Total", "fnsQ3Total"]
         for field in amount_fields:
             if field in cleaned_data and cleaned_data[field]:
                 raw = str(cleaned_data[field]).strip()
@@ -797,6 +861,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             "applicantAddress": "6",     # [6] - Адрес регистрации
             "courtDecisionDate": "7",    # [7] - Дата решения суда
             "managerName": "8",          # [8] - ФИО финансового управляющего
+            "managerInn": "41",           # [41] - ИНН финансового управляющего
+            "managerAddress": "42",       # [42] - Почтовый адрес финансового управляющего
             "messageNumber": "9",        # [9] - Номер сообщения ЕФРСБ
             "mortgagePeriodAmount10": "10",  # [10] - Сумма за период (ипотека)
             "efirsbPublicationDate": "11",  # [11] - Дата публикации на сайте ЕФРСБ
@@ -805,6 +871,13 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             "mortgagePrincipalAmount11": "11",  # [11] - Просроченный основной долг (ипотека)
             "cpCaseDate": "554",         # [554] - Дата из номера CP-Case
             "debtSnapshotDate88": "88",  # [88] - Дата состояния задолженности (для инициирования ЮЛ)
+            "lastTaxReportDate": "82",         # [82] - Дата последней налоговой отчётности (отсутствующий)
+            "lastAccountingReportDate": "83",  # [83] - Дата последней бухгалтерской отчётности (отсутствующий)
+            "lastAccountOperationDate": "84",  # [84] - Дата последней операции по счетам (отсутствующий)
+            "notaryName": "43",          # [43] - ФИО нотариуса (умерший)
+            "notaryAddress": "43.1",     # [43.1] - Адрес нотариуса (умерший)
+            "deathDate": "45",           # [45] - Дата смерти должника
+            "deathCertificate": "46",    # [46] - Номер/реквизиты свидетельства о смерти
             "totalDebt": "12",           # [12] - Общая сумма долга
             "mortgageInterestAmount12": "12",  # [12] - Просроченные проценты (ипотека)
             "sroName": "987",            # [987] - Название СРО (саморегулируемая организация)
@@ -825,12 +898,23 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             "forfeit15": "15",           # [15] - Неустойка из блока "ПРОСИТ СУД"
             "forfeit": "15",             # [15] - Неустойка (общее поле)
             "penalties": "15",           # [15] - Штрафные санкции (синоним неустойки)
+            # ФНС (уполномоченный орган): суммы по очередям реестра требований кредиторов.
+            # Недоимка по очередям → [34.1]/[34.2]/[34.3]; штрафы 3-й очереди → [26];
+            # пени 3-й очереди → [27]; основной долг (ЮЛ/субсидиарка) → [13].
+            # Эти поля есть только в ФНС-заявлениях, поэтому обычным актам не мешают.
+            "fnsQ1Arrears": "34.1",      # [34.1] - Недоимка 1-й очереди
+            "fnsQ2Arrears": "34.2",      # [34.2] - Недоимка 2-й очереди
+            "fnsQ3Arrears": "34.3",      # [34.3] - Недоимка 3-й очереди
+            "fnsQ3Penalties": "26",      # [26]  - Штрафы (3-я очередь)
+            "fnsQ3Forfeit": "27",        # [27]  - Пени (3-я очередь)
+            "fnsQ3LoanDebt": "13",       # [13]  - Основной долг (ФНС ЮЛ/субсидиарка)
             "stateDuty16": "16",         # [16] - Банкротная госпошлина
             "stateDuty": "16",           # [16] - Банкротная госпошлина (общее поле)
             "loanStateDuty17": "17",     # [17] - Ссудная госпошлина
             "objectionsDeadline18": "18",  # [18] - Установка срока на предоставление возражений
             "considerationDeadline19": "19",  # [19] - На рассмотрение заявления в срок
             "withoutMovementDeadline20": "20",  # [20] - Срок для оставления без движения
+            "authorName": "29",          # [29] - ФИО секретаря/помощника судьи
             "separateDisputeNumber22": "22",  # [22] - Номер обособленного спора
             "applicationReceiptDate23": "23",  # [23] - Дата поступления заявления в суд (согласно штампу)
             "courtSubmissionDate24": "24",     # [24] - Дата направления в суд
@@ -847,6 +931,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             "mortgageCollateralDescription1221": "1221",  # [1221] - Описание предмета залога
             # Специальная дата для юр. инициирования конкурсного (ликвидируемый) — маркер [5555]
             "liquidationRecordDate5555": "5555",
+            "liquidatorName": "5556",                    # [5556] - ФИО ликвидатора
+            "liquidationApplicationNumber": "5557",      # [5557] - Номер сообщения о ликвидации
+            "liquidationDate": "5558",                    # [5558] - Дата сообщения о ликвидации
             "mortgageStartPriceDecision1222": "1222",     # [1222] - Цена продажи из резолютивной части
             "mortgageAppraisalReport1223": "1223",        # [1223] - Отчет об оценке
             "mortgageCollateralValue1224": "1224",        # [1224] - Рыночная стоимость залога
@@ -1016,6 +1103,19 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # is_ip нужен ниже по методу; пролог его не возвращает — пересчёт из cleaned_data
         is_ip = "ip_enforcement" in (cleaned_data.get("sourceDocumentType") or "").lower()
 
+        # Приоритет публикации ЕФРСБ/«Коммерсантъ» — до замены маркеров, пока текст ещё содержит [9]/[11]/[67]/[68]
+        self._apply_efrsb_kommersant_priority(doc, cleaned_data)
+
+        # Неустойка: если в заявлении её не было — убираем маркер [15] вместе с контекстом
+        # ("руб. - неустойка" и т.п.), пока текст ещё содержит [13]/[14]/[15] в исходном виде
+        self._apply_penalty_removal(doc, cleaned_data)
+
+        # ФНС: [12] в резолютивке ВКЛ = подытог 3-й очереди — заполняем до общего маппинга.
+        # Флаг _fnsCreditor выставлен в _prepare_replacement_data (creditorName к этому
+        # моменту уже усечён до инспекции и не начинается с «ФНС»).
+        if cleaned_data.get("_fnsCreditor"):
+            self._apply_fns_third_queue_total(doc, cleaned_data)
+
         field_mapping = self._base_field_mapping()
 
         is_mortgage_document = (cleaned_data.get("sourceDocumentType") or "").lower() == "mortgage_claim"
@@ -1038,6 +1138,10 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 original_value = cleaned_data[field_name]
                 # Пропускаем нормализацию, если значение уже содержит только префикс "ИП" без имени
                 if original_value.strip().upper() == "ИП":
+                    continue
+                # ФНС-кредитор — не имя, а орг. название с аббревиатурами (ИФНС/УФНС),
+                # title-case их ломает (ИФНС→Ифнс). Оставляем регистр как есть.
+                if field_name == "creditorName" and cleaned_data.get("_fnsCreditor"):
                     continue
                 normalized_value = self._normalize_name_case(original_value)
                 if normalized_value != original_value:
@@ -1110,6 +1214,11 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # Обрабатываем поля без нумерации (по контексту)
         self.replace_contextual_fields(doc, cleaned_data)
 
+        # «конкурсное производство сроком до __.__.____» — в шаблонах конкурсного
+        # (ликвидируемый/отсутствующий) стоит литеральный прочерк без маркера; срок
+        # берём из даты заседания [99] (только дата, без времени).
+        self._apply_konkurs_srok(doc, cleaned_data)
+
         # Обрабатываем специальные маркеры [DATE], [415] и [66]
         if cleaned_data.get("date"):
             date_value = cleaned_data.get("date")
@@ -1128,10 +1237,207 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # Удаляем все пустые маркеры, для которых нет значений
         self._remove_empty_placeholders(doc, cleaned_data, field_mapping)
 
+        # ФНС: если компонент очереди (штрафы/пени/недоимка) пуст — после удаления
+        # маркера остаётся осиротевшее ", руб. – штрафы". Подчищаем такие хвосты.
+        if cleaned_data.get("_fnsCreditor"):
+            self._cleanup_empty_fns_components(doc)
+
+        # ИП: акты реализации/реструктуризации переиспользуются от физлиц и содержат
+        # литеральное слово "должник" — заменяем его на "индивидуальный предприниматель"
+        # в нужном падеже (не применяется к ip_collection — там свои акты со словом "ответчик").
+        if is_ip:
+            self._apply_ip_debtor_wording(doc)
+
+        # Секретарь/помощник судьи: разные шаблоны по умолчанию говорят "помощником судьи [29]"
+        # или "секретарем/секретарём судьи [29]" — приводим к роли, выбранной пользователем.
+        # Ипотека использует свою отдельную схему ("при секретаре ФИО секретаря") — не трогаем.
+        if not is_mortgage_document:
+            self._apply_secretary_wording(doc, str(cleaned_data.get("authorRole") or "").strip().lower())
+
         # Финальный пост-процессинг всего документа:
         # подчищаем форматы дат, номера дел и оставшиеся маркеры,
         # чтобы в итоговом акте всё выглядело идеально.
         self._postprocess_document_formatting(doc, cleaned_data)
+
+    def _apply_efrsb_kommersant_priority(self, doc: Document, cleaned_data: Dict[str, Any]) -> None:
+        """В части актов рядом упомянуты обе публикации — ЕФРСБ (обёрнута в
+        квадратные скобки как опциональный блок) и «Коммерсантъ» (без скобок).
+        Приоритет — «Коммерсантъ»: если для него есть данные, блок ЕФРСБ убирается
+        целиком вместе со скобками; если данных «Коммерсантъ» нет, а ЕФРСБ есть —
+        оставляем ЕФРСБ, но снимаем скобки-разметку и убираем упоминание «Коммерсантъ».
+        Должно вызываться до замены маркеров [9]/[11]/[67]/[68] на значения.
+        """
+        has_kommersant = bool(str(cleaned_data.get("kommersantNumber") or "").strip()) and \
+            bool(str(cleaned_data.get("kommersantDate") or "").strip())
+
+        efrsb_block_pattern = r"\[\s*на сайте ЕФРСБ\s*№\s*\[9\]\s*от\s*\[11\]\s*\]\s*"
+        kommersant_block_pattern = r"в газете\s*«Коммерсантъ»\s*№\s*\[67\]\s*от\s*\[68\]\s*"
+
+        if has_kommersant:
+            self._replace_regex_in_doc(doc, efrsb_block_pattern, "")
+        else:
+            def _strip_brackets(match) -> str:
+                inner = match.group(0).strip()
+                return inner[1:-1].strip() + " "
+            self._replace_regex_in_doc(doc, efrsb_block_pattern, _strip_brackets)
+            self._replace_regex_in_doc(doc, kommersant_block_pattern, "")
+
+    def _apply_penalty_removal(self, doc: Document, cleaned_data: Dict[str, Any]) -> None:
+        """Если в заявлении не было данных о неустойке — маркер [15] убирается вместе
+        с контекстом ("[15] руб. - неустойка" / "неустойка - [15] руб." и т.п.) из
+        перечислений долга, где рядом есть [13]/[14] (основной долг/проценты).
+
+        Отдельные самостоятельные предложения про неустойку (например, "требование о
+        взыскании неустойки ... подлежит удовлетворению" или "... учесть отдельно в
+        реестре ...", где рядом с [15] нет [13]/[14]) НЕ трогаем — пользователь решил
+        оставлять их как есть (2026-07-17, п.5). Должно вызываться до замены маркеров
+        [13]/[14]/[15] на значения.
+        """
+        has_penalty = bool(str(
+            cleaned_data.get("forfeit15") or cleaned_data.get("forfeit") or cleaned_data.get("penalties") or ""
+        ).strip())
+        if has_penalty:
+            return
+
+        marker_pattern = re.compile(r"\[15\]")
+        context_markers = ("[13]", "[14]")
+
+        clause_pattern = re.compile(
+            r"(?:,\s*)?"
+            r"(?:"
+            r"\[15\]\s*руб\.?\s*[-–—]?\s*неустойк\w*(?:\s*,\s*как\s+обеспеченн\w+[^.]*)?"
+            r"|"
+            r"неустойк\w*\s*(?:в\s+размере|в\s+сумме)?\s*[-–—]?\s*\[15\]\s*(?:руб\.?)?"
+            r")\.?",
+            re.IGNORECASE,
+        )
+
+        def process_paragraphs(paragraphs):
+            for paragraph in paragraphs:
+                text = paragraph.text
+                if not marker_pattern.search(text):
+                    continue
+                if not any(marker in text for marker in context_markers):
+                    # Отдельное предложение про неустойку без [13]/[14] рядом — не трогаем.
+                    continue
+                new_text = clause_pattern.sub("", text)
+                if new_text == text:
+                    continue
+                # ВАЖНО: не чистим ",." / ".," глобально по всему абзацу — это легитимная
+                # пунктуация в другом месте того же абзаца (например, "[13] руб., ...").
+                # Схлопываем только заведомо мусорные двойные запятые и пробелы, а точку в
+                # конце восстанавливаем, если удалённый маркер был последним перед ней.
+                new_text = re.sub(r",\s*,", ",", new_text)
+                new_text = re.sub(r"\s{2,}", " ", new_text).strip()
+                new_text = re.sub(r",\s*\.\s*$", ".", new_text)
+                new_text = re.sub(r",+\s*$", "", new_text).rstrip()
+                if new_text and new_text[-1] not in ".;:":
+                    new_text += "."
+                paragraph.text = new_text
+
+        process_paragraphs(doc.paragraphs)
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    process_paragraphs(cell.paragraphs)
+
+    def _cleanup_empty_fns_components(self, doc: Document) -> None:
+        """Убирает осиротевшие «, руб. – <компонент>» без суммы, оставшиеся когда
+        компонент очереди ФНС (штрафы/пени/недоимка/осн.долг) пуст и его маркер
+        ([26]/[27]/[34.x]/[13]) был удалён. Числа при этом не задеваются: паттерн
+        требует запятую вплотную к «руб.» (у заполненных значений перед «руб.» — цифры)."""
+        # «…, руб. – штрафы» / «…, руб. – пени» / «…, руб. – недоимка» / «…, руб. – основной долг»
+        self._replace_regex_in_doc(
+            doc,
+            r",\s*руб\.\s*[–—-]\s*(?:недоимк\w*|пени|штраф\w*|основн\w+\s+долг\w*)",
+            "",
+        )
+        # Подчистка пунктуации на стыке.
+        self._replace_regex_in_doc(doc, r",\s*\.", ".")
+        self._replace_regex_in_doc(doc, r"\s{2,}", " ")
+
+    def _apply_fns_third_queue_total(self, doc: Document, cleaned_data: Dict[str, Any]) -> None:
+        """У ФНС маркер [12] неоднозначен между шаблонами: в резолютивке ВКЛ он
+        означает ПОДЫТОГ 3-й очереди («включить в третью очередь … в размере [12],
+        из которых: [34.3] недоимка, [27] пени»), а в реструктуризации — ОБЩУЮ
+        сумму долга. Здесь заполняем [12] подытогом 3-й очереди (fnsQ3Total) только
+        в абзацах про третью очередь с оборотом «из которых». Остальные [12]
+        (общая сумма) заполнит обычный маппинг totalDebt→[12] позже. fnsQ3Total уже
+        отформатирован как сумма в _prepare_replacement_data."""
+        q3 = str(cleaned_data.get("fnsQ3Total") or "").strip()
+        if not q3:
+            return
+
+        def process(paragraphs):
+            for p in paragraphs:
+                t = p.text
+                if "[12]" in t and "треть" in t.lower() and "из котор" in t.lower():
+                    p.text = t.replace("[12]", q3)
+
+        process(doc.paragraphs)
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    process(cell.paragraphs)
+
+    def _apply_konkurs_srok(self, doc: Document, cleaned_data: Dict[str, Any]) -> None:
+        """Заполняет срок конкурсного производства («сроком до __.__.____»).
+
+        В шаблонах «О введении конкурсное (ликвидируемый/отсутствующий)» на месте
+        срока стоит литеральный прочерк без маркера. Дату берём из [99]
+        (courtHearingDateTime99) — только дату, без времени (для срока время не нужно).
+        Если даты нет — прочерк оставляем как есть (не портим шаблон).
+        """
+        raw = str(cleaned_data.get("courtHearingDateTime99") or "").strip()
+        if not raw:
+            return
+        date_part = raw.split("T")[0] if "T" in raw else raw
+        date_only = self._normalize_date_format(date_part)
+        if not date_only or not re.match(r"^\d{2}\.\d{2}\.\d{4}$", date_only):
+            return
+
+        def _fill(match):
+            return match.group(1) + date_only
+
+        # «…конкурсное производство сроком до __.__.____» → «…сроком до 31.07.2026»
+        self._replace_regex_in_doc(
+            doc,
+            r"(конкурсн\w*\s+производств\w*\s+сроком\s+до\s+)_[_.]*_",
+            _fill,
+        )
+
+    def _apply_ip_debtor_wording(self, doc: Document) -> None:
+        """Заменяет "должник/должника/должнику" на "индивидуальный предприниматель"
+        в соответствующем падеже (им./род./дат.), сохраняя регистр первой буквы."""
+        replacements = [
+            (r"\bдолжнику\b", "индивидуальному предпринимателю"),
+            (r"\bдолжника\b", "индивидуального предпринимателя"),
+            (r"\bдолжник\b", "индивидуальный предприниматель"),
+        ]
+        for pattern, phrase in replacements:
+            def _sub(match, phrase=phrase):
+                word = match.group(0)
+                return phrase[:1].upper() + phrase[1:] if word[:1].isupper() else phrase
+            self._replace_regex_in_doc(doc, pattern, _sub)
+
+    def _apply_secretary_wording(self, doc: Document, author_role: str) -> None:
+        """Шаблоны по умолчанию по-разному называют роль ведущего протокол — где-то
+        "помощником судьи [29]", где-то "секретарем"/"секретарём судьи [29]" (е/ё —
+        встречаются оба написания). Приводим словоформу к роли, выбранной пользователем
+        в интерфейсе; если роль не выбрана — оставляем текст шаблона как есть."""
+        if author_role not in ("секретарь", "помощник"):
+            return
+
+        def _make_sub(phrase: str):
+            def _sub(match) -> str:
+                word = match.group(0)
+                return phrase[:1].upper() + phrase[1:] if word[:1].isupper() else phrase
+            return _sub
+
+        if author_role == "секретарь":
+            self._replace_regex_in_doc(doc, r"\bпомощником\b", _make_sub("секретарём"))
+        else:
+            self._replace_regex_in_doc(doc, r"\bсекретар[её]м\b", _make_sub("помощником"))
 
     def _remove_empty_placeholders(self, doc: Document, cleaned_data: Dict[str, Any], field_mapping: Dict[str, str]):
         """
