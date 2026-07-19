@@ -21,8 +21,6 @@ export interface ThirdParty {
   snils?: string;
 }
 
-/** Наследник умершего должника (ст. 223.1 Закона о банкротстве). Наследников
- *  может быть несколько — храним массивом, как третьих лиц. */
 export interface Heir {
   id: string;
   name: string;
@@ -121,10 +119,6 @@ export interface ExtractedData {
     interest14?: string;
     forfeit15?: string;
     stateDuty16?: string;
-    // ФНС-финансы по очередям реестра: ключи вида `fnsQ{1|2|3}{Suffix}`, где Suffix ∈
-    // Total/Arrears/Penalties/Forfeit/Ndfl/Insurance/LoanDebt/LoanDuty/Commission.
-    // Валидны по индекс-сигнатуре ниже; заполняются backend только для кредитора-ФНС
-    // и рендерятся 4-мя подблоками в FinancesSection (см. память fns-queue-finances).
     creditAmount?: string;
     creditTermMonths?: string;
     creditInterestRate?: string;
@@ -149,27 +143,43 @@ export interface ExtractedData {
   };
   obligations?: Obligation[];
   collaterals?: Collateral[];
-  /** Разбивка полей финансов на слагаемые (ключ поля → суммы), когда итог сложился
-   *  из нескольких обязательств. Для тултипа «откуда число» в FinancesSection. */
+ 
   financeBreakdown?: Record<string, string[]> | null;
-  /** Претензии контракта поля: значение не соответствовало типу поля или
-   *  принадлежало другому полю. `cleared` — вычищено (вводить заново) или только
-   *  помечено (проверить и поправить). */
+
   fieldIssues?: FieldIssue[];
-  /** Уровень доверия по каждому полю. Уровни, а не числа: документный
-   *  `confidence` меряет заполненность, а не правильность. Фронт подсвечивает
-   *  поля уровня 'low' — их юрист смотрит первыми. */
+
   fieldQuality?: Record<string, FieldQuality>;
-  /** Вид заявления: 'self_bankruptcy' — на банкротство подаёт САМ должник
-   *  (заявитель = должник, кредитора-заявителя нет). Фронт автопроставляет
-   *  статус должника «Самобанкрот» и скрывает блок «Информация о кредиторе». */
+
   applicationKind?: 'self_bankruptcy' | null;
-  /** Подсказка статуса должника из backend: 'liquidation' — в заявлении есть
-   *  сведения о ликвидации ЮЛ; 'absent' — заявление по упрощённой процедуре
-   *  отсутствующего должника (§ 2 гл. XI Закона о банкротстве); 'deceased' —
-   *  заявление в отношении умершего должника-физлица (ст. 223.1). Фронт
-   *  автопроставляет соответствующий статус. */
+
   debtorStatusHint?: 'liquidation' | 'absent' | 'deceased' | null;
+
+  documentTypeWarning?: {
+    documentType: string;
+    regexFamily: 'rtk' | 'initiation';
+    semanticFamily: 'rtk' | 'initiation';
+    message: string;
+  } | null;
+  /** Предупреждение: тип лица, который подразумевает regex-тип документа, не
+   *  совпал с типом лица, определённым по реквизитам (ИНН/ОГРНИП формат, орг.-
+   *  форма в имени должника). Та же идея, что и documentTypeWarning, но без
+   *  эмбеддингов — оба сигнала уже вычислены пайплайном. */
+  entityTypeWarning?: {
+    documentType: string;
+    expectedEntityType: 'individual' | 'legal' | 'ip';
+    actualEntityType: string;
+    message: string;
+  } | null;
+  /** Предупреждение: тип документа подразумевает наличие/отсутствие залога
+   *  (по суффиксу *_collateral / mortgage_claim), но извлечённый список
+   *  collaterals[] говорит обратное. Та же идея, что entityTypeWarning —
+   *  сверка уже вычисленных сигналов, без новой модели. */
+  collateralWarning?: {
+    documentType: string;
+    expectedCollateral: boolean;
+    actualCollateral: boolean;
+    message: string;
+  } | null;
   thirdParties?: ThirdParty[];
   /** Наследники умершего должника — заполняется только для статуса «Умерший». */
   heirs?: Heir[];
@@ -297,15 +307,10 @@ export interface RTKDecision {
 // Типы для выбора судебных актов
 export type EntityType = 'individual' | 'legal' | 'ip' | 'kfh';
 export type CollateralOption = 'collateral' | 'collateral_auto' | 'no_collateral';
-// Статус должника (банкротство): отсутствующий / ликвидируемый ЮЛ, умерший ФЛ.
-// Взаимоисключающий, но ОПЦИОНАЛЬНЫЙ (может быть не задан) и НЕЗАВИСИМЫЙ от вида
-// заявления — выбирается отдельным блоком «Статус лица». Влияет на рекомендацию
-// финального СА. «Самобанкрот» сюда НЕ входит — он в ApplicationKind.
+
 export type DebtorStatus = 'absent' | 'liquidation' | 'deceased';
 
-// Вид заявления — независимый от статуса лица взаимоисключающий блок:
-// ВКЛ в РТК / рядовое инициирование / самобанкрот. «rtk» скрывает поле СРО;
-// «self» (заявление подал сам должник) скрывает блок кредитора.
+
 export type ApplicationKind = 'rtk' | 'other' | 'self';
 
 export interface SelectedAct {
@@ -313,11 +318,7 @@ export interface SelectedAct {
   name: string;
   category: 'final' | 'acceptance' | 'intermediate';
   selected: boolean;
-  /**
-   * Дополнительный выбор варианта для актов "Определение ВКЛ в РТК"
-   * (реализация / реструктуризация / конкурсное / наблюдение / зареестр).
-   * Используется только на UI, но целиком передаётся в backend в selectedActsData.
-   */
+
   rtkVariant?: 'realization' | 'restructuring' | 'competition' | 'observation' | 'registry';
   additionalFields?: {
     reason?: string;

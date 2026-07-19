@@ -21,6 +21,9 @@ import ObligationsSection from './sections/ObligationsSection';
 import CollateralSection from './sections/CollateralSection';
 import CourtSection from './sections/CourtSection';
 import FieldIssuesPanel from './sections/FieldIssuesPanel';
+import DocumentTypeWarning from './sections/DocumentTypeWarning';
+import EntityTypeWarning from './sections/EntityTypeWarning';
+import CollateralWarning from './sections/CollateralWarning';
 import DatesSection from './sections/DatesSection';
 import ManagerSection from './sections/ManagerSection';
 import LiquidationSection from './sections/LiquidationSection';
@@ -39,6 +42,40 @@ interface DocumentAnalysisProps {
   onAnalysisComplete: (data: ExtractedData) => void;
   onBack: () => void;
 }
+
+// Человекочитаемые названия для всех documentType, которые возвращает backend
+// (classify_mixin.classify_document). Раньше чип «Тип документа» был захардкожен
+// на «Заявление о включении в РТК» независимо от реального типа — баг замечен
+// при разборе entityTypeWarning/collateralWarning.
+const DOCUMENT_TYPE_LABEL: Record<string, string> = {
+  rtk_application: 'Заявление о включении в реестр требований кредиторов',
+  initiation_legal: 'Заявление о признании должника (ЮЛ) банкротом',
+  initiation_physical: 'Заявление о признании должника (ФЛ) банкротом',
+  ip_collection: 'Исковое заявление о взыскании с ИП',
+  ip_collection_collateral: 'Исковое заявление о взыскании с ИП (с залогом)',
+  ip_collection_collateral_auto: 'Исковое заявление о взыскании с ИП (залог — авто)',
+  ip_enforcement_statement: 'Заявление о признании ИП банкротом',
+  ip_enforcement_statement_collateral: 'Заявление о признании ИП банкротом (с залогом)',
+  ip_enforcement_realization: 'Заявление о банкротстве ИП (реализация имущества)',
+  ip_enforcement_realization_collateral: 'Заявление о банкротстве ИП (реализация, с залогом)',
+  ip_enforcement_restructuring: 'Заявление о банкротстве ИП (реструктуризация долгов)',
+  ip_enforcement_restructuring_collateral: 'Заявление о банкротстве ИП (реструктуризация, с залогом)',
+  legal_collection: 'Исковое заявление о взыскании с ЮЛ',
+  legal_collection_collateral: 'Исковое заявление о взыскании с ЮЛ (с залогом)',
+  legal_collection_collateral_auto: 'Исковое заявление о взыскании с ЮЛ (залог — авто)',
+  mortgage_claim: 'Исковое заявление об обращении взыскания на заложенное имущество',
+  observation_collateral: 'Заявление о введении наблюдения (с залогом)',
+  competition_collateral: 'Заявление о введении конкурсного производства (с залогом)',
+  physical_realization_collateral: 'Заявление о банкротстве ФЛ (реализация, с залогом)',
+  physical_restructuring_collateral: 'Заявление о банкротстве ФЛ (реструктуризация, с залогом)',
+  unknown: 'Тип не определён',
+};
+
+const documentTypeLabel = (documentType: string | undefined, isSelfBankruptcy: boolean): string => {
+  if (!documentType) return 'Не определён';
+  const base = DOCUMENT_TYPE_LABEL[documentType] || documentType;
+  return isSelfBankruptcy ? `${base} (самобанкротство)` : base;
+};
 
 const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   documentData,
@@ -793,7 +830,10 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                   Тип документа:
                 </Typography>
                 <Chip
-                  label="Заявление о включении в РТК"
+                  label={documentTypeLabel(
+                    analysisResult?.documentType,
+                    analysisResult?.applicationKind === 'self_bankruptcy'
+                  )}
                   color="primary"
                   size="small"
                 />
@@ -801,6 +841,26 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
 
             </CardContent>
           </Card>
+        </Grid>
+
+        {/* Предупреждение о расхождении двух способов определения типа документа
+            (backend: regex vs эмбеддинги) — сразу ПЕРЕД выбором «Вид заявления»,
+            это ровно то, что юрист должен перепроверить, если оно показалось. */}
+        <Grid item xs={12}>
+          <DocumentTypeWarning warning={analysisResult?.documentTypeWarning} />
+        </Grid>
+
+        {/* Та же идея для типа лица должника (backend: regex vs реквизиты) —
+            перед «Выбор лица», это то, что она предлагает перепроверить. */}
+        <Grid item xs={12}>
+          <EntityTypeWarning warning={analysisResult?.entityTypeWarning} />
+        </Grid>
+
+        {/* Та же идея для залога (backend: regex-тип документа vs извлечённые
+            collaterals[]) — перед блоком «Залог», это то, что она предлагает
+            перепроверить. */}
+        <Grid item xs={12}>
+          <CollateralWarning warning={analysisResult?.collateralWarning} />
         </Grid>
 
         {/* Блок выбора судебных актов */}

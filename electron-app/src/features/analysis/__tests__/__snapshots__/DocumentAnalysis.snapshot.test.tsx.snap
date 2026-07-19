@@ -96,13 +96,22 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                 <span
                   class="MuiChip-label MuiChip-labelSmall css-wjsjww-MuiChip-label"
                 >
-                  Заявление о включении в РТК
+                  Заявление о включении в реестр требований кредиторов
                 </span>
               </div>
             </div>
           </div>
         </div>
       </div>
+      <div
+        class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 css-1idn90j-MuiGrid-root"
+      />
+      <div
+        class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 css-1idn90j-MuiGrid-root"
+      />
+      <div
+        class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 css-1idn90j-MuiGrid-root"
+      />
       <div
         class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 css-1idn90j-MuiGrid-root"
       >
