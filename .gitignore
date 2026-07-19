@@ -144,3 +144,19 @@ python-backend/generated/
 config.json
 secrets.json
 .env.production
+
+# Эмбеддинг-модели shadow-слоя семантической классификации (план `new_asnaliz`).
+# В проде используется только MiniLM (см. `semantic_classifier._MODEL_NAME`) —
+# её РАЗБИТЫЕ куски (`model.safetensors.parts/`, см. `tools/split_model.py`)
+# идут в git, чтобы дистрибутив собирался офлайн без похода в HuggingFace Hub;
+# сырой model.safetensors (470 МБ, превышает лимит GitHub 100 МБ/файл) и вторая
+# модель mpnet-base-v2 (1.1 ГБ, использовалась только для одноразового сравнения
+# точности — не прод) в git не идут. Блок — В КОНЦЕ файла: git берёт последнее
+# совпавшее правило, а более ранние глобальные паттерны (`config.json` и т.п.)
+# иначе перебивают эту негацию для одноимённых файлов модели.
+python-backend/models/*
+!python-backend/models/paraphrase-multilingual-MiniLM-L12-v2/
+python-backend/models/paraphrase-multilingual-MiniLM-L12-v2/model.safetensors
+!python-backend/models/paraphrase-multilingual-MiniLM-L12-v2/*.json
+!python-backend/models/paraphrase-multilingual-MiniLM-L12-v2/1_Pooling/
+!python-backend/models/paraphrase-multilingual-MiniLM-L12-v2/1_Pooling/*.json
