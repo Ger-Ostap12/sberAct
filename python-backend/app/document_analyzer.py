@@ -22,7 +22,13 @@ from org_normalizer import (
 )
 from morph_utils import detect_gender, inflect_surname
 from label_synonyms import all_labels, labels_alternation
-from classify_mixin import ClassifyMixin
+from semantic_classifier import classify_procedure_family
+from classify_mixin import (
+    ClassifyMixin,
+    _procedure_family_from_document_type,
+    _entity_type_from_document_type,
+    _collateral_expected_from_document_type,
+)
 from parties_mixin import PartiesMixin
 from amounts_mixin import AmountsMixin
 from ip_mixin import IpExtractionMixin
@@ -419,38 +425,36 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 if _brk:
                     extracted_fields["financeBreakdown"] = _brk
 
-            # Разбивка полей финансов на слагаемые (для тултипа «откуда число») —
-            # top-level, НЕ в fields (иначе попала бы в editedFields как [object Object]
-            # и в golden). None, если разбивки нет.
+
             finance_breakdown = extracted_fields.pop("financeBreakdown", None)
 
-            # Самобанкротство (заявитель = сам должник): флаг top-level, НЕ в
-            # fields — по образцу financeBreakdown (не попадает в golden и в
-            # editedFields фронта). Фронт по нему автопроставляет статус
-            # должника «Самобанкрот» и скрывает блоки кредитора/финансов.
+
             application_kind = "self_bankruptcy" if is_self_bk else None
 
-            # ЛИКВИДАЦИЯ должника-ЮЛ: детект по тексту + извлечение ликвидатора.
-            # Флаг top-level (по образцу applicationKind, НЕ в fields) — фронт
-            # автопроставляет статус «Ликвидируемый». Только ЮЛ и не самобанкрот.
-            # liquidatorName — реальное извлечённое поле, кладём в fields (как managerName).
-            # КАНДИДАТ В УПРАВЛЯЮЩИЕ из инициирующего заявления («…утвердить <ФИО>
-            # (ИНН …)»). Заполняем, только если управляющий не распознан: существующие
-            # парсеры кладут в поле либо чистое ФИО, либо форму «ФИО (ИНН …)» —
-            # проверяем часть до скобки, чтобы такую форму не затереть.
+            document_type_warning = None
+            if not is_self_bk:
+                expected_family = _procedure_family_from_document_type(document_type)
+                if expected_family is not None:
+                    semantic_family, _clause_details = classify_procedure_family(raw_text)
+                    if semantic_family is not None and semantic_family != expected_family:
+                        document_type_warning = {
+                            "documentType": document_type,
+                            "regexFamily": expected_family,
+                            "semanticFamily": semantic_family,
+                            "message": (
+                                "Автоматическое определение типа документа не подтверждено "
+                                "вторым способом проверки — рекомендуем перепроверить тип "
+                                "заявления вручную."
+                            ),
+                        }
+
             _mgr_cur = (extracted_fields.get("managerName") or "").split("(")[0].strip()
             if not is_person_name(_mgr_cur):
                 _mgr_cand = self._extract_manager_candidate(text)
                 if _mgr_cand:
                     extracted_fields["managerName"] = _mgr_cand
 
-            # ОТСУТСТВУЮЩИЙ должник-ЮЛ (упрощённая процедура § 2 гл. XI) — тем же
-            # способом. Приоритет над ликвидацией: если заявление просит конкурсное
-            # производство ОТСУТСТВУЮЩЕГО должника, статус именно такой, даже когда в
-            # тексте попутно упомянута ликвидация (у ликвидируемого должника свой акт).
-            # УМЕРШИЙ должник-физлицо (ст. 223.1) — тем же способом. Ветки ЮЛ
-            # (отсутствующий/ликвидируемый) и ФЛ (умерший) взаимоисключающи по типу
-            # лица, поэтому приоритет между ними не нужен.
+
             debtor_status_hint = None
             heirs_result = []
             if not is_self_bk and extracted_fields.get("entityType") == "legal":
@@ -468,34 +472,48 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                     # «нотариус»/«умер» вне контекста смерти должника — чужие факты.
                     extracted_fields.update(self._extract_death_details(text))
                     heirs_result = extract_heirs(text)
-
-            # КОНТРАКТ ПОЛЯ — последний рубеж перед выдачей: поле обязано быть тем,
-            # чем объявлено. Ловит чужой текст, присвоенный полем («Арбитражный суд
-            # Ростовской области» в денежном loanDebt), и адресный хвост в имени
-            # организации. Ставим ДО пересчёта рекомендаций, чтобы всё ниже по
-            # течению работало с уже чистыми данными.
-            # Источник значения, записанный слоями, которые его знают (реестр банков).
-            # Вынимаем ДО контракта: в fields ему делать нечего — уехал бы в
-            # editedFields фронта и в golden (образец — financeBreakdown).
             provenance = extracted_fields.pop(self._PROVENANCE_KEY, {}) or {}
             contract_issues = field_contract.apply_contract(extracted_fields)
-            # Записи должников/третьих лиц/наследников строятся ОТДЕЛЬНЫМ путём, мимо
-            # fields (ловушка §J.3) — контракт обязан пройти и по ним. Претензии к
-            # ним идут в ОБЩИЙ список: иначе `fieldQuality` знал бы меньше, чем
-            # `fieldIssues`, и подсветка карточки должника молчала бы при живой
-            # претензии в списке сверху.
+
             for _entries, _label in ((debtors_result, "debtors"),
                                      (third_parties_result, "thirdParties"),
                                      (heirs_result, "heirs")):
                 contract_issues += field_contract.check_entries(_entries, _label)
             field_issues = [i.as_dict() for i in contract_issues]
 
-            # Авторитетный пересчёт рекомендаций — ПОСЛЕ финализации entityType.
-            # Ранние вызовы (до разбора должников/NLP) могли считать по промежуточному
-            # типу лица: у ВКЛ-в-РТК ВТБ тип на входе был 'legal' (утёкшее «ПАО» банка +
-            # мусорный debtorName), а корректный 'individual' проставлялся позже —
-            # recommendedActs.entityType расходился с top-level. Пересчёт по итоговым
-            # полям синхронизирует их (и набор актов) с финальным типом лица.
+            entity_type_warning = None
+            _expected_entity = _entity_type_from_document_type(document_type)
+            _actual_entity = extracted_fields.get("entityType")
+            if (_expected_entity is not None and _actual_entity
+                    and _actual_entity != "kfh" and _actual_entity != _expected_entity):
+                entity_type_warning = {
+                    "documentType": document_type,
+                    "expectedEntityType": _expected_entity,
+                    "actualEntityType": _actual_entity,
+                    "message": (
+                        "Тип документа предполагает тип лица должника, отличный от "
+                        "определённого по реквизитам — рекомендуем перепроверить "
+                        "вручную."
+                    ),
+                }
+
+            collateral_warning = None
+            _expected_collateral = _collateral_expected_from_document_type(document_type)
+            _actual_collateral = bool(collaterals_final)
+            if _expected_collateral is not None and _expected_collateral != _actual_collateral:
+                collateral_warning = {
+                    "documentType": document_type,
+                    "expectedCollateral": _expected_collateral,
+                    "actualCollateral": _actual_collateral,
+                    "message": (
+                        "Тип документа предполагает "
+                        + ("наличие" if _expected_collateral else "отсутствие")
+                        + " залога, но по извлечённым данным "
+                        + ("залог не найден" if _expected_collateral else "залог обнаружен")
+                        + " — рекомендуем перепроверить вручную."
+                    ),
+                }
+
             recommended_acts = self._get_recommended_acts(document_type, extracted_fields, text)
 
             # Формируем результат
@@ -508,13 +526,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 "financeBreakdown": finance_breakdown,
                 "applicationKind": application_kind,
                 "debtorStatusHint": debtor_status_hint,
-                # Претензии контракта — top-level, НЕ в fields: иначе уехали бы в
-                # editedFields фронта и в golden (образец — financeBreakdown).
+
+                "documentTypeWarning": document_type_warning,
+                "entityTypeWarning": entity_type_warning,
+                "collateralWarning": collateral_warning,
                 "fieldIssues": field_issues,
-                # Уровень доверия по КАЖДОМУ полю + причина. Заменяет для юриста
-                # документный `confidence`, который меряет заполненность, а не
-                # правильность (три значения на весь корпус, и документ с судом в
-                # денежном поле получал 0.95). Тоже top-level — golden не трогает.
                 "fieldQuality": field_contract.assess_quality(
                     extracted_fields, contract_issues, provenance
                 ),
@@ -5046,12 +5062,23 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         # предметом нет слова «залог».
         _inventory_re = re.compile(
             r"(?:имеется|зарегистрирован\w*)\s+следующ\w+\s+(?:движим\w+\s+|недвижим\w+\s+)?имуществ\w*"
-            r"|опис\w+\s+имуществ",
+            r"|опис\w+\s+имуществ"
+            # ФНС-формулировка результата межведомственного запроса: «за должником
+            # НЕ зарегистрировано недвижимое и движимое имущество: -Автомобиль…»
+            # — список идёт ПОСЛЕ отрицания (имущество, которого у должника НЕТ/
+            # уже отчуждено), это не залог и не опись реального имущества.
+            r"|не\s+зарегистрирован\w*\s+(?:движим\w+|недвижим\w+)(?:\s+и\s+(?:движим\w+|недвижим\w+))?\s+имуществ\w*",
             re.IGNORECASE,
         )
 
         def _is_inventory_item(pos: int) -> bool:
-            ctx = norm[max(0, pos - 200):pos]
+            # 1500, не 200 — описи ФНС/самобанкротов перечисляют по несколько
+            # предметов подряд одним маркером («не зарегистрировано ... имущество:
+            # -Автомобиль ...долгое описание с адресом/стоимостью... -Автомобиль
+            # ...»), и уже 2-3-й пункт списка легко уходит за 200 символов от
+            # маркера при описаниях по 250-300 символов (найдено на реальном
+            # документе, план: разбор `entityTypeWarning`/`collateralWarning`).
+            ctx = norm[max(0, pos - 1500):pos]
             last = None
             for im in _inventory_re.finditer(ctx):
                 last = im

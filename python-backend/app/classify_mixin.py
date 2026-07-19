@@ -107,6 +107,113 @@ _INIT_PROCEDURE_RE = re.compile(
 _INIT_LEGAL_FORM_RE = re.compile(r"\b(?:ООО|ОАО|ОДО|ПАО|ЗАО|АО|НАО)\b|обществ\w*\s+с\s+ограниченн", re.IGNORECASE)
 _INIT_IP_FORM_RE = re.compile(r"\bИП\b|индивидуальн\w+\s+предпринимател", re.IGNORECASE)
 
+# Типы document_type, которые НЕ относятся к бэнкротной процедуре
+# (исковые о взыскании/обращении взыскания на залог) — семейство «rtk/
+# initiation» к ним неприменимо, вторая проверка (`semantic_classifier.
+# classify_procedure_family`) для них не запускается (план `new_asnaliz`
+# §Фаза 2).
+_NOT_PROCEDURE_TYPES = frozenset({
+    "mortgage_claim", "ip_collection", "ip_collection_collateral",
+    "ip_collection_collateral_auto", "legal_collection",
+    "legal_collection_collateral", "legal_collection_collateral_auto",
+    "unknown",
+})
+
+
+def _procedure_family_from_document_type(document_type):
+    """Семейство процедуры банкротства, которое ПОДРАЗУМЕВАЕТ regex-тип
+    документа — «rtk» (только включение в реестр) или «initiation» (признание
+    банкротом + введение процедуры). None — document_type вне этой оси
+    (исковое о взыскании/ипотеке/unknown), сравнивать не с чем.
+
+    Используется ТОЛЬКО как ожидание для сверки со вторым (семантическим)
+    способом определения типа — само значение document_type не трогает.
+    """
+    if document_type == "rtk_application":
+        return "rtk"
+    if document_type in _NOT_PROCEDURE_TYPES:
+        return None
+    return "initiation"
+
+
+# document_type -> тип лица, который он ПОДРАЗУМЕВАЕТ (см. классификатор выше:
+# ip_* гейтится явным «ИП» в имени должника; legal_collection*/initiation_legal —
+# явными признаками ЮЛ; physical_*_collateral/observation_collateral/
+# competition_collateral гейтятся ИМЕННО «not has_ip_name», т.е. это всегда
+# физлицо-с-залогом, «observation»/«competition» здесь имя ПРОЦЕДУРЫ, не лица).
+_ENTITY_TYPE_BY_DOCUMENT_TYPE = {
+    "ip_collection": "ip",
+    "ip_collection_collateral": "ip",
+    "ip_collection_collateral_auto": "ip",
+    "ip_enforcement_statement": "ip",
+    "ip_enforcement_statement_collateral": "ip",
+    "ip_enforcement_realization": "ip",
+    "ip_enforcement_realization_collateral": "ip",
+    "ip_enforcement_restructuring": "ip",
+    "ip_enforcement_restructuring_collateral": "ip",
+    "legal_collection": "legal",
+    "legal_collection_collateral": "legal",
+    "legal_collection_collateral_auto": "legal",
+    "initiation_legal": "legal",
+    "initiation_physical": "individual",
+    "physical_realization_collateral": "individual",
+    "physical_restructuring_collateral": "individual",
+    "observation_collateral": "individual",
+    "competition_collateral": "individual",
+    # rtk_application/mortgage_claim/unknown — применимы к любому типу лица,
+    # document_type сам по себе тип лица не подразумевает.
+}
+
+
+def _entity_type_from_document_type(document_type):
+    """Тип лица, который ПОДРАЗУМЕВАЕТ regex-тип документа — 'individual'/
+    'legal'/'ip'. None — document_type не привязан к типу лица (rtk/mortgage/
+    unknown), сравнивать не с чем.
+    """
+    return _ENTITY_TYPE_BY_DOCUMENT_TYPE.get(document_type)
+
+
+# document_type -> ожидание залога (True/False), которое ПОДРАЗУМЕВАЕТ
+# regex-классификатор. Ставим True/False ТОЛЬКО там, где в самой ветке
+# classify_document есть явная развилка has_*_collateral (см. одноимённые
+# collateral/не-collateral типы, возвращаемые из ОДНОЙ и той же проверки —
+# ip_collection[_collateral], legal_collection[_collateral],
+# ip_enforcement_realization/restructuring[_collateral], блок physical/
+# competition/observation_collateral). mortgage_claim — по смыслу типа
+# документа (обращение взыскания на заложенное имущество), не по коду.
+# rtk_application/initiation_legal/initiation_physical/unknown — НЕ в словаре:
+# эти типы возвращаются путями, где присутствие залога либо не проверяется,
+# либо не определяет тип однозначно (см. `_classify_by_scoring`,
+# `_initiation_type_by_entity`) — сравнивать не с чем, документ может быть
+# как с залогом, так и без.
+_COLLATERAL_EXPECTED_BY_DOCUMENT_TYPE = {
+    "ip_collection": False,
+    "ip_collection_collateral": True,
+    "ip_collection_collateral_auto": True,
+    "ip_enforcement_statement": False,
+    "ip_enforcement_statement_collateral": True,
+    "ip_enforcement_realization": False,
+    "ip_enforcement_realization_collateral": True,
+    "ip_enforcement_restructuring": False,
+    "ip_enforcement_restructuring_collateral": True,
+    "legal_collection": False,
+    "legal_collection_collateral": True,
+    "legal_collection_collateral_auto": True,
+    "physical_realization_collateral": True,
+    "physical_restructuring_collateral": True,
+    "observation_collateral": True,
+    "competition_collateral": True,
+    "mortgage_claim": True,
+}
+
+
+def _collateral_expected_from_document_type(document_type):
+    """Ожидание залога (bool) по regex-типу документа. None — document_type
+    не гарантирует ни присутствие, ни отсутствие залога (rtk/initiation_*/
+    unknown), сравнивать не с чем.
+    """
+    return _COLLATERAL_EXPECTED_BY_DOCUMENT_TYPE.get(document_type)
+
 
 class ClassifyMixin:
 
@@ -242,7 +349,7 @@ class ClassifyMixin:
         # Дополнительная проверка: "ИП ФИО" в контексте должника/ответчика/заемщика
         if not has_ip_name:
             ip_in_context = re.search(
-                r"(?:должник|ответчик|заемщик)[^.]{0,200}?ИП\s+[А-ЯЁ][А-ЯЁа-яё\s]{5,50}",
+                r"(?:должник|ответчик|заемщик)[^.]{0,200}?\bИП\s+[А-ЯЁ][А-ЯЁа-яё\s]{5,50}",
                 text,
                 re.IGNORECASE | re.MULTILINE,
             )
@@ -277,7 +384,7 @@ class ClassifyMixin:
         # Дополнительная проверка: "ИП ФИО" в тексте, но только если это явно связано с должником
         if not has_ip_name:
             # Ищем "ИП ФИО" в контексте должника/ответчика
-            ip_in_context = re.search(r"(?:должник|ответчик|заемщик)[^.]{0,200}?ИП\s+[А-ЯЁ][А-ЯЁа-яё\s]{5,50}", text, re.IGNORECASE | re.MULTILINE)
+            ip_in_context = re.search(r"(?:должник|ответчик|заемщик)[^.]{0,200}?\bИП\s+[А-ЯЁ][А-ЯЁа-яё\s]{5,50}", text, re.IGNORECASE | re.MULTILINE)
             if ip_in_context:
                 has_ip_name = True
                 logger.info(f"Найдено 'ИП' в контексте должника/ответчика")
@@ -542,6 +649,28 @@ class ClassifyMixin:
         initiation_score = sum(1 for keyword in initiation_keywords if re.search(keyword, text_lower))
         if initiation_score >= 2:
             return "initiation_physical"
+
+        # Инициирующее заявление ЮЛ нередко описывает залог как ОБЕСПЕЧЕНИЕ
+        # долга (кредит с ипотекой недвижимости) — тогда «ипотек»/«кадастровый
+        # номер»/«земельный участок» набирают mortgage_score≥2 ниже, хотя это
+        # не отдельный ипотечный иск, а инициирование банкротства. Тот же
+        # guard, что уже стоит перед rtk_application (см. rtk_score>=2 ветку
+        # выше) — проверяем ПРОСЬБУ признать банкротом/ввести процедуру раньше
+        # залоговых ключевых слов, а не только когда rtk-слова набрали балл.
+        #
+        # Перехватываем ТОЛЬКО если форма лица определилась УВЕРЕННО (ЮЛ/ИП —
+        # `_initiation_type_by_entity` нашёл явный маркер в окне просьбы). Если
+        # окно просьбы называет должника без формы (напр. «в отношении
+        # ликвидируемого должника» — форма ЮЛ упомянута не рядом, а в шапке),
+        # функция молча возвращает дефолт "initiation_physical" — в этом
+        # случае НЕ перехватываем, отдаём документ старому каскаду ниже
+        # (`initiation_legal_keywords`/`has_legal_entity` ищет по всему
+        # тексту, шире и в этом случае надёжнее узкого окна).
+        if self._is_initiation_petition(text) and not self._detect_self_bankruptcy(text):
+            itype = self._initiation_type_by_entity(text, has_ip_name, text_lower)
+            if itype != "initiation_physical":
+                logger.info(f"Определен тип документа: {itype} (инициирующая просьба, залоговые слова не мешают)")
+                return itype
 
         mortgage_keywords = [
             r"ипотек",
