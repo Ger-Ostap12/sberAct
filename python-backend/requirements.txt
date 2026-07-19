@@ -22,3 +22,22 @@ httpx>=0.27
 
 # --- dev-инструменты (линт/формат, в проде не нужны) ---
 ruff>=0.15
+
+# --- shadow-слой семантической классификации (план `new_asnaliz`, ОПЦИОНАЛЬНО) ---
+# semantic_classifier.py импортирует эти пакеты ЛЕНИВО (внутри функции, как
+# nlp_natasha.py) — их отсутствие не ломает основной анализ, флаг
+# SBERACT_SEMANTIC_SHADOW по умолчанию выключен. Ставить только для измерения
+# (см. tests/measure_semantic_classification.py): модель
+# paraphrase-multilingual-MiniLM-L12-v2 нужно скачать заранее в
+# python-backend/models/ — рантайм работает офлайн (local_files_only=True).
+#
+# ВЕРСИИ ЗАКРЕПЛЕНЫ НАМЕРЕННО: обычный `pip install sentence-transformers`
+# тянет свежие scikit-learn/scipy, которым нужен numpy>=2.0 — а spacy==3.7.2/
+# thinc в проекте требуют numpy<2.0 (без пина падает импорт spacy с
+# «numpy.dtype size changed, may indicate binary incompatibility», проверено
+# на этой машине). Эти версии scikit-learn/scipy/sentence-transformers
+# совместимы с numpy 1.26.4 — держим их, пока spacy не перейдёт на numpy 2.
+sentence-transformers==2.7.0
+scikit-learn<1.5
+scipy<1.13
+torch>=2.0
