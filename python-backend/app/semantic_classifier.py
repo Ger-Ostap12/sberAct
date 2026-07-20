@@ -22,14 +22,6 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Модель скачивается один раз заранее (см. handoff, план `new_asnaliz` §Фаза 3)
-# и лежит локально — рантайм не обращается в HuggingFace Hub. Имя каталога —
-# переменной окружения (сравнение моделей на измерительных скриптах, план
-# §Фаза 2). ПРОВЕРЕНО: крупная mpnet-base (~1ГБ) дала на этой задаче ХУЖЕ
-# (71% против 78%) при том же пороге — она систематически завышает score
-# на всех парах (в т.ч. ложных), не различает лучше; порог 0.6 откалиброван
-# под MiniLM. Дефолт — MiniLM, пока нет честного (не подогнанного под этот
-# же 46-файловый корпус) способа перекалибровать порог под другую модель.
 _MODEL_NAME = os.environ.get("SBERACT_SEMANTIC_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
 _MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "models", _MODEL_NAME)
 
@@ -44,15 +36,7 @@ _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+|\n+")
 
 DEFAULT_THRESHOLD = 0.55
 
-# Начало просительной части — полный набор глаголов-просьб, как в
-# `document_analyzer._PRAYER_VERB` (posekционный предпросмотр уже решал эту
-# задачу для того же текста — берём тот же список, а не изобретаем свой):
-# прошу/просим/просит/просят, ходатайствую/ходатайствуем/ходатайствует.
-# Двоеточие НЕ обязательно — «ПРОСИТ СУД\n1. признать…» (без «:») тоже
-# встречается (найдено на реальном документе, план `new_asnaliz` §Фаза 2).
-# Presence-тест пунктов (`detect_procedure_clauses`) ищет ТОЛЬКО в этом окне —
-# иначе цитаты закона в теле документа («…процедуру реструктуризации
-# применяют, если…») перевешивают настоящий пункт просьбы.
+
 _PRAYER_VERB = r"(?:прошу|просим|просит|просят|ходатайству(?:ю|ем|ет))(?![а-яёА-ЯЁ])"
 _PRAYER_START_RE = re.compile(_PRAYER_VERB + r"(?:\s+суд\w*)?\s*:?", re.IGNORECASE)
 # Конец просительной части — типовые следующие разделы заявления.
@@ -163,6 +147,32 @@ def _mask_requisites(text: str) -> str:
     return _REQUISITE_PARENS_RE.sub(" ", text or "")
 
 
+_NAME_TOKEN_RE = re.compile(r"[А-ЯЁа-яё]{3,}")
+
+
+def _mask_debtor_name(sentence: str, debtor_name: str) -> str:
+    """Вырезает упоминания должника по имени из клаузы перед эмбеддингом.
+
+    Реальное ФИО в клаузе («Признать Ким Клим несостоятельным (банкротом)»)
+    сильно дилютит эмбеддинг относительно эталона («Признать гражданина
+    несостоятельным (банкротом)») — найдено на реальном документе (score
+    0.51 против эталона у обычного ФИО из 2 слов, 0.47 у ФИО из 3 слов —
+    ниже PROCEDURE_CLAUSE_THRESHOLD=0.58, клауза считалась НЕ найденной).
+    Тот же приём, что `_mask_requisites` для ИНН/ОГРН: убираем шум, который
+    несёт не смысл клаузы, а конкретику документа.
+
+    Срез токена (не всё слово) — потому что в клаузе имя часто в падеже,
+    отличном от именительного (`debtorName` нормализован в номинатив), «съедаем»
+    последние 2 символа как допустимое окончание словоформы.
+    """
+    if not debtor_name:
+        return sentence
+    for token in _NAME_TOKEN_RE.findall(debtor_name):
+        stem = token[:max(3, len(token) - 2)]
+        sentence = re.sub(re.escape(stem) + r"\w*", " ", sentence, flags=re.IGNORECASE)
+    return sentence
+
+
 def _ensure_reference_embeddings(model, candidates: dict[str, list[str]]):
     """Эмбеддинги эталонных фраз — считаются один раз на процесс и кешируются.
 
@@ -266,6 +276,7 @@ def detect_procedure_clauses(
     text: str,
     clause_phrases: dict[str, list[str]],
     threshold: float,
+    debtor_name: str = "",
 ) -> dict[str, tuple[bool, float, str]]:
     """Presence-тест: для КАЖДОГО типа пункта (`declare_bankrupt`/
     `introduce_procedure`/`include_in_registry` — см.
@@ -296,9 +307,8 @@ def detect_procedure_clauses(
     sentences = _split_prayer_clauses(window)
     if not sentences:
         return {}
-    # Маскируем реквизитные скобки ТОЛЬКО для эмбеддинга — предложение для
-    # отображения (`sentences[sent_idx]` в результате) остаётся оригинальным.
-    masked_sentences = [_mask_requisites(s) for s in sentences]
+
+    masked_sentences = [_mask_debtor_name(_mask_requisites(s), debtor_name) for s in sentences]
 
     per_label = _per_label_max_similarity(model, masked_sentences, clause_phrases)
     if per_label is None:
@@ -330,7 +340,7 @@ def detect_procedure_clauses(
     return result
 
 
-def classify_procedure_family(text: str) -> tuple[Optional[str], dict]:
+def classify_procedure_family(text: str, debtor_name: str = "") -> tuple[Optional[str], dict]:
     """Семейство процедуры банкротства — «rtk» (только включение в реестр) или
     «initiation» (признание банкротом + введение процедуры) — по НАЛИЧИЮ
     пунктов, не по ближайшему смыслу (см. `detect_procedure_clauses`).
@@ -340,13 +350,19 @@ def classify_procedure_family(text: str) -> tuple[Optional[str], dict]:
     include_in_registry тоже есть — инициирующее заявление обычно просит и
     включить требование заявителя); только include_in_registry → rtk.
 
+    `debtor_name` (уже извлечённое `extracted_fields["debtorName"]`) —
+    маскируется в клаузах перед эмбеддингом (`_mask_debtor_name`), иначе
+    реальное ФИО в «Признать [ФИО] несостоятельным (банкротом)» топит score
+    ниже порога и клауза считается не найденной (реальный кейс, план
+    `new_asnaliz`).
+
     Возвращает (family, детали_по_пунктам) — family это None, если просительная
     часть не найдена/модель недоступна/ни один пункт не набрал порог (документ,
     похоже, вообще не о процедуре банкротства — напр. mortgage_claim).
     """
     from semantic_reference_phrases import PROCEDURE_CLAUSES, PROCEDURE_CLAUSE_THRESHOLD
 
-    clauses = detect_procedure_clauses(text, PROCEDURE_CLAUSES, PROCEDURE_CLAUSE_THRESHOLD)
+    clauses = detect_procedure_clauses(text, PROCEDURE_CLAUSES, PROCEDURE_CLAUSE_THRESHOLD, debtor_name)
     if not clauses:
         return None, clauses
 

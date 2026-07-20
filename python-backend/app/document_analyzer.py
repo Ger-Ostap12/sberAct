@@ -151,11 +151,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
             logger.info(f"Извлеченный текст (первые 500 символов): {text[:500]}")
 
-            # Суммы из ПЕРЕЧНЯ приложений — не деньги должника (правило Андрея):
-            # там перечислены документы, а «в размере 25000» у квитанции — депозит на
-            # вознаграждение управляющего. Маскируем ДО сопоставления; `raw_text`
-            # остаётся исходным (на нём держатся предпросмотр и построчная правка
-            # docx — §A), маска длину не меняет.
+
             raw_text = text
             text = self._mask_attachment_list_amounts(text)
             text = self._normalize_whitespace_for_matching(text)
@@ -232,9 +228,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 collateral_description = None
                 if "mortgageCollateralDescription1221" in extracted_fields:
                     del extracted_fields["mortgageCollateralDescription1221"]
-            # Собираем ВСЕ предметы залога по всему документу (по всем обязательствам):
-            # недвижимость и авто, каждый своей карточкой. Дубли (один и тот же объект,
-            # упомянутый в нескольких местах) схлопываем, оставляя самый заполненный.
+            # Все предметы залога по документу (недвижимость/авто, каждый карточкой);
+            # дубли одного объекта схлопываем, оставляя самый заполненный.
             collateral_descs = self._extract_all_collateral_items(text)
             if not collateral_descs and collateral_description:
                 collateral_descs = self._split_collateral_items(collateral_description)
@@ -246,10 +241,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if collaterals_list:
                 logger.info(f"✅ Создано {len(collaterals_list)} предметов залога: {[c['collateralType'] for c in collaterals_list]}")
 
-            # Корректировка ФИО должника: если извлечённое имя не похоже на ФИО
-            # физлица (например, regex подхватил «Обязательства По Своевременному»
-            # или «ПАО Сбербанк Место»), берём детерминированный позиционный разбор
-            # блока «Ответчик(и):/Должник:» и пересчитываем падежи.
+
             self._fix_debtor_name(text, extracted_fields)
 
             # Реквизиты должника-физлица из его записи
@@ -264,14 +256,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # Косметика артефактов сторон: роль-суффикс «(заёмщик)», хвост метки в courtName, мусорный managerName
             self._cleanup_party_artifacts(extracted_fields, text)
 
-            # Формат ВТБ «реестр Nл»: метки КРЕДИТОР:/ДОЛЖНИК:/ФИН.УПРАВЛЯЮЩИЙ: идут
-            # стопкой, значения — ниже по порядку. Обычный разбор путает стороны —
-            # отдельный обработчик переустанавливает их (если сигнатура найдена).
+
             self._apply_stacked_party_layout(extracted_fields, text)
 
-            # Реквизиты кредитора: повтор ПОСЛЕ установки creditorName (фолбэк по
-            # метке «Заявитель …» выставляет имя в _cleanup_party_artifacts, а первый
-            # вызов на стр.170 мог отработать вхолостую при пустом creditorName).
+
             if (not extracted_fields.get("creditorInn")
                     and not extracted_fields.get("creditorOgrn")):
                 self._fill_creditor_requisites(extracted_fields, text)
@@ -280,21 +268,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             elif not extracted_fields.get("creditorAddress"):
                 self._fill_creditor_requisites(extracted_fields, text)
 
-            # Заявление уполномоченного органа (ФНС): кредитор/заявитель — налоговый
-            # орган (в шапке-бланке, без метки «Кредитор:»), а не должник-физлицо.
-            # ДО разбора должников — чтобы карточка должника взяла ФИО/адрес из
-            # debtor*, а не из applicantName (там ФНС). И ДО NLP-сети (у ФНС свой шаблон).
+
             self._apply_fns_authority(extracted_fields, text)
 
-            # Гибрид-сеть (Natasha, второстепенно): если кредитор не распознан ни
-            # меткой, ни реестром, ни ФНС-детектором — берём кандидата-организацию из
-            # NER по шапке. Ловит незнакомые раскладки, где label-парсер пасует.
+
             self._fill_creditor_nlp(extracted_fields, text)
 
-            # САМОБАНКРОТСТВО: должник в шапке ПЕРВЫМ, затем список кредиторов —
-            # общий парсер путает стороны (ОГРН/адрес кредитора у должника).
-            # Точечный layout-парсер перекрывает поля должника строго из его
-            # блока и чистит creditor* (кредитора-заявителя нет). ПОСЛЕ NLP-слоёв,
+
             # чтобы никакой общий обработчик не перезатёр результат.
             is_self_bk = self._detect_self_bankruptcy(text)
             sb_third_parties = None
@@ -312,43 +292,28 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             else:
                 debtors_result, third_parties_result = self._resolve_debtors_and_third_parties(extracted_fields, text, details)
 
-            # Залоги. Недвижимость/авто — всегда реальны. «Иное» (оборудование,
-            # линии, товары и т.п.) — это ВСЁ, что не недвижимость и не ТС; оставляем,
-            # если у предмета есть конкретная стоимость и наименование (это и проверяет
-            # _collateral_has_substance). Болванки переизвлечения («Поттер Г.Д.»,
-            # «по доверенности №…») стоимости не имеют и отсеиваются там же.
+
             _raw_cols = collaterals_list if collaterals_list else extracted_fields.get('collaterals', [])
             collaterals_final = [c for c in _raw_cols if self._collateral_has_substance(c)]
             if not collaterals_final:
                 extracted_fields.pop("mortgageCollateralDescription1221", None)
                 extracted_fields.pop("collaterals", None)
 
-            # Финальная нормализация блока «Финансовые данные» — последней, ПОСЛЕ
-            # всех слияний (ip_specific_fields и пр.), чтобы её результат был
-            # окончательным для неустойки/штрафов/госпошлин/дат ПП/итога.
+
             self._normalize_financial_block(extracted_fields, text)
 
-            # Финансы из просительной части (суммы по обязательствам) — перекрывают
-            # обычную нормализацию, если в «просим суд: …включить…» найдены суммы.
+
             self._apply_prayer_finances(extracted_fields, text)
 
-            # Точечный разбор финансов формата ВТБ «реестр Nл» (сигнатура меток
-            # стопкой) — общий парсер этот лейаут не берёт; перекрывает результат
-            # ТОЛЬКО при найденной сигнатуре, не задевая остальной корпус.
+
             self._apply_stacked_finances(extracted_fields, text)
 
-            # Табличная разбивка задолженности («Структура задолженности | Значение |
-            # RUR» по нескольким договорам) — суммируется; гейт по сигнатуре таблицы
-            # и валидация суммы = «ОБЩАЯ ЗАДОЛЖЕННОСТЬ».
+
             self._apply_table_breakdown_finances(extracted_fields, text)
 
             self._contract_checkpoint(extracted_fields, "финансовый каскад")
 
-            # ФНС-заявления: финансы по ОЧЕРЕДЯМ реестра (недоимка/налог/пени/штраф/
-            # НДФЛ/взносы/госпошлина по 1/2/3 очереди). Гейт по кредитору-ФНС;
-            # перекрывает общий парсер и чистит скрытый общий блок финансов.
-            # У САМОБАНКРОТА финансов/кредитора нет вовсе — ФНС-очереди не применяем
-            # (иначе OCR-текст с «уполномоченным органом» ложно давал блок fnsQ*).
+
             if not is_self_bk:
                 self._apply_fns_queue_finances(extracted_fields, text)
 
@@ -357,13 +322,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if not is_self_bk:
                 self._sum_bankruptcy_duty(extracted_fields, text)
 
-            # Имя кредитора, обрезанное на переносе строки внутри названия
-            # («…"МТС-» + «Банк"» ниже) — дотягиваем по тексту.
+
             self._fix_truncated_creditor_name(extracted_fields, text)
 
-            # Артефакты грязной вёрстки в кредиторе: хвост-реквизиты в имени
-            # («ПАО Сбербанк Место нахождения: …») и врезка «Исх. № … от ДД.ММ.ГГГГ»
-            # в адресе (pdf2docx вклеил исходящий номер письма).
+
             self._clean_creditor_artifacts(extracted_fields, text)
 
             # Адрес управляющего — фолбэк для многострочного «Адрес регистрации:»,
@@ -382,9 +344,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # обрезаем хвост, а полностью мусорные адреса (без букв) убираем.
             self._sanitize_address_fields(extracted_fields)
 
-            # Адреса в записях должников/третьих лиц строятся отдельным путём (не через
-            # fields) — чистим их той же обрезкой склейки (хвост «В лице ликвидатора: …
-            # Сообщение №… о намерении обратиться в суд» при однострочной PDF→docx склейке).
+
             for _entry_list in (debtors_result, third_parties_result):
                 for _entry in (_entry_list or []):
                     _ea = _entry.get("address")
@@ -409,11 +369,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 if pc and extracted_fields.get("caseNumber") == pc:
                     extracted_fields.pop("caseNumber", None)
 
-            # Тултип «откуда число» должен быть на ВСЕХ не-ФНС полях с суммой
-            # (требование Андрея): если слой, заполнивший поле, разбивку не оставил
-            # (одно число из документа / общий паттерн-слой), дополняем единичным
-            # слагаемым = текущему значению поля. У ФНС свои поля-очереди, общий
-            # блок скрыт — не дополняем.
+
             if not any(k.startswith("fnsQ") for k in extracted_fields):
                 _brk = extracted_fields.get("financeBreakdown") or {}
                 for _fk in ("principalDebt", "interest", "forfeit", "penalties", "loanStateDuty17"):
@@ -435,7 +391,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if not is_self_bk:
                 expected_family = _procedure_family_from_document_type(document_type)
                 if expected_family is not None:
-                    semantic_family, _clause_details = classify_procedure_family(raw_text)
+                    semantic_family, _clause_details = classify_procedure_family(
+                        raw_text, extracted_fields.get("debtorName", "")
+                    )
                     if semantic_family is not None and semantic_family != expected_family:
                         document_type_warning = {
                             "documentType": document_type,
@@ -774,12 +732,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
         return results
 
-    # Якорь заголовка-титула документа. Два случая:
-    #   (T1) строка НАЧИНАЕТСЯ с «заявление/исковое заявление/ходатайство»
-    #        («Заявление о признании…») — регистронезависимо;
-    #   (T2) CAPS-токен «ЗАЯВЛЕНИЕ»/«ХОДАТАЙСТВО» ГДЕ УГОДНО в строке
-    #        (регистрозависимо) — ловит «Дело № А53-…\tЗАЯВЛЕНИЕ», не задевая
-    #        строчное «…обращается с заявлением…».
+
     _TITLE_START_RE = re.compile(
         r"^\s*(?:исковое\s+)?(?:заявлени[ея]|ходатайство)\b",
         re.IGNORECASE,
@@ -788,46 +741,21 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
     def _is_title_line(self, line: str) -> bool:
         return bool(self._TITLE_START_RE.match(line) or self._TITLE_CAPS_RE.search(line))
-    # Глагол-просьба: прошу/просим/просит/просят, ходатайствую/ходатайствуем/
-    # ходатайствует. Границы слова кириллицей вручную: `\b` в re не отделяет
-    # «просит» от «просительной».
     _PRAYER_VERB = r"(?:прошу|просим|просит|просят|ходатайству(?:ю|ем|ет))(?![а-яёА-ЯЁ])"
-    # Якорь просительной части — НЕ любое «прошу», а операционный маркер:
-    #   (A) глагол-просьба + [суд] + ДВОЕТОЧИЕ где угодно в абзаце («…, ПРОШУ:»,
-    #       «прошу суд:») — двоеточие вводит перечень требований;
-    #   (B) ИЛИ строка НАЧИНАЕТСЯ с глагола-просьбы («Прошу суд признать…» прозой).
-    # Так «…управляющего прошу назначить…» в середине мотивировки НЕ триггерит
-    # (нет двоеточия сразу за глаголом и абзац начинается не с него).
+
     _PRAYER_COLON_RE = re.compile(_PRAYER_VERB + r"(?:\s+суд)?\s*:", re.IGNORECASE)
     _PRAYER_START_RE = re.compile(r"^\s*(?:\d+[.)]\s*)?" + _PRAYER_VERB, re.IGNORECASE)
     # Якорь блока приложений — строка, начинающаяся с «Приложение(я/й)».
     _ATTACH_ANCHOR_RE = re.compile(r"^\s*приложени[еяй]", re.IGNORECASE)
-    # Пункт ПЕРЕЧНЯ приложений: «1. Квитанция…», «2) Копия паспорта…». Именно
-    # перечень, а не весь блок приложений: после него часто идёт ПРИЛОЖЕННЫЙ расчёт
-    # задолженности таблицей, откуда суммы берутся законно.
+
     _ATTACH_ITEM_RE = re.compile(r"^\s*\d+[.)]\s+\S")
 
-    # Горизонтальные пробелы, которые вставляют конвертеры и вёрстка: неразрывный,
-    # узкий неразрывный, цифровой, тонкий. Для смысла они равны обычному пробелу,
-    # но паттерны на них спотыкаются.
+
     _HSPACE_CHARS = "          ﻿"
     _HSPACE_RUN_RE = re.compile(r"[ \t" + _HSPACE_CHARS + r"]{2,}")
     _HSPACE_ONE_RE = re.compile(r"[" + _HSPACE_CHARS + r"]")
 
-    # Строка — ЦЕЛИКОМ метка («Должник:»), значит её значение на следующей строке.
-    # Метки берём из РЕЕСТРА (`label_synonyms.all_labels`) — он и заведён для того,
-    # чтобы поддержка нового банка была правкой данных, а не логики (CLAUDE.md).
-    #
-    # ⚠️ Границы правила подобраны ЗАМЕРОМ по корпусу; оба ослабления дают регрессию
-    # (оба проверены, дифф эталона был на 2 файлах с мусором вместо имён):
-    #   1. «строка ЗАКАНЧИВАЕТСЯ меткой» (чтобы ловить «…, адрес регистрации:» в
-    #      прозе) — в прозе двоеточие после слова-метки не значит «дальше значение»:
-    #      склеивались куски шапки, applicantName становился «рбитражный суд
-    #      Ростовско», кредитор терялся;
-    #   2. IGNORECASE — начинала матчиться строка «ФИНАНСОВЫЙ УПРАВЛЯЮЩИЙ:» и
-    #      съедала следующую строку, разваливая разбор двух заявлений ВТБ.
-    # Поэтому: только строка-метка и только в том регистре, в котором метка
-    # записана в реестре.
+
     _LABEL_ONLY_LINE_RE = re.compile(
         r"^[ \t]*(?:" + labels_alternation(all_labels()) + r")[ \t]*:[ \t]*$"
     )
@@ -913,12 +841,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         валидными для остальных слоёв, а имена документов в перечне никому не нужны.
         """
         lines = text.split("\n")
-        # ⚠️ Берём ПОСЛЕДНИЙ якорь, а не первый: слово «Приложение» встречается и в
-        # ссылках по тексту («приложение № 1 к договору»), а перечень приложений —
-        # в конце заявления. С первым якорем маска съедала нумерованные пункты
-        # ПРОСИТЕЛЬНОЙ части («4. Включить требования … в размере 501 365 000,9 руб.»
-        # в Заявл_Ликвидир_Оргтехника.docx) — то есть ровно те суммы, ради которых
-        # всё и затевалось.
+
         anchors = [i for i, line in enumerate(lines) if self._ATTACH_ANCHOR_RE.match(line)]
         if not anchors:
             return text
@@ -1154,9 +1077,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 if creditor and len(creditor) < 200 and not any(word in creditor.lower() for word in ['имеет право', 'потребовать', 'судебном порядке']):
                     return creditor
 
-        # Фолбэк для иных раскладок: кредитор по синониму метки (Заявитель/Кредитор/
-        # Взыскатель) и БЕЗ обязательного ОПФ — для гос.органов («ФНС России») и
-        # банков без префикса. Берём имя до реквизитов/перевода строки.
+
         from label_synonyms import CREDITOR_HEADER_LABELS, labels_alternation
         alt = labels_alternation(CREDITOR_HEADER_LABELS)
         m = re.search(
@@ -1176,9 +1097,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 )
                 if cont:
                     creditor = (creditor + " " + self.clean_extracted_value(cont.group(1))).strip(" ,;")
-            # Срезаем хвостовую скобку с ДУБЛЕМ названия («… «ТБАНК» (АО «ТБАНК»…)»
-            # -> «… «ТБАНК»»). НО скобку из ЧИСТОЙ правовой формы («ББР Банк
-            # (акционерное общество)») сохраняем — это часть наименования, а не дубль.
+
             _paren = re.search(r"\(([^)]*)\)", creditor)
             _pure_opf = _paren and re.fullmatch(
                 r"\s*(?:публичн\w+\s+|непубличн\w+\s+)?"
@@ -1255,9 +1174,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 )
                 if cut:
                     block = block[: cut.start()]
-                # Блок валиден, если содержит реквизит-метку ИЛИ строку-адрес с
-                # почтовым индексом (форма ЦДУ: имя, затем «117420, г Москва…» без
-                # метки «адрес»).
+
                 if re.search(r"ИНН|ОГРН|адрес|место\s+нахождения|\n\s*\d{6}[,\s]",
                              block, re.IGNORECASE):
                     return block
@@ -1266,10 +1183,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
     def _clean_creditor_address(self, addr: str) -> str:
         """Очищает юр-адрес кредитора от постороннего: скобочных пометок и хвостов."""
-        addr = re.sub(r"\s*\([^)]*\)", "", addr)  # «(не для направления …)» и пр.
-        # Обрезаем всё после адреса: почтовый/фактический адрес, телефон, реквизиты.
-        # Пробел между словами может отсутствовать (слипшийся текст из docx):
-        # «д. 19Почтовыйадресдля» — поэтому \s* (не \s+).
+        addr = re.sub(r"\s*\([^)]*\)", "", addr)
         addr = re.split(
             r"\s*(?:Почтов\w*\s*адрес|Фактическ\w*\s*адрес|Адрес\s*для|[Тт]елефон|[Тт]ел\.|"
             r"e-?mail|эл\.?\s*почт|ОГРН|ИНН|КПП|БИК|Дата\s+гос|р/с|к/с|корр)",
@@ -1285,9 +1199,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             return None
         # Приоритет — явные метки юр-адреса; «почтовый/фактический адрес» исключаем.
         for addr_pattern in [
-            # Индекс + улица, с ПРОДОЛЖЕНИЕМ на следующей строке (pdf2docx переносит
-            # «Место нахождения: 121099, г. Москва,\n1-ый Николощеповский пер., д. 6…»);
-            # хвост обрежет _clean_creditor_address по ИНН/ОГРН/почтовому.
+
             r"(?:место\s+нахождения|юридическ\w+\s+адрес)[:\s]*([0-9]{6}[,\s]+[^\n]+(?:\n[^\n]+)?)",
             r"(?:место\s+нахождения|юридическ\w+\s+адрес)[:\s]*([^\n]+)",
             # Плоская метка «Адрес:» в начале строки (индекс + продолжение на след. строке).
@@ -1299,18 +1211,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 # Должно быть похоже на адрес (индекс/город/улица), без почтовых меток.
                 if addr and 10 <= len(addr) <= 200 and re.search(r"\d{6}|город|\bг\.|ул\.|улиц|пр-?кт|проспект", addr, re.IGNORECASE):
                     return addr
-        # Фолбэк: адрес без метки — первая строка блока кредитора, начинающаяся
-        # с почтового индекса (6 цифр). Блок уже обрезан по началу секции должника,
-        # поэтому это адрес именно кредитора. Почтовый/фактический адрес исключаем.
+
         lines = [ln.strip() for ln in block.split("\n")]
         for i, line in enumerate(lines):
             if re.match(r"^\d{6}[,\s]", line) and not re.match(
                 r"^\d{6}[,\s].*(?:почтов|фактическ|а/я|абонентск)", line, re.IGNORECASE
             ):
                 parts = [line]
-                # Дособираем продолжение адреса: иногда между строками адреса
-                # вклинивается «Исх. №…/Дата…» — такие строки пропускаем, а строки
-                # с адресными токенами (наб/ул/д./стр/…) приклеиваем.
+
                 for nxt in lines[i + 1:i + 5]:
                     if not nxt:
                         break
@@ -1722,10 +1630,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if cut:
             region = region[:cut.start()]
 
-        # ФИО физлиц на отдельных строках — это начала блоков ДОЛЖНИК и УПРАВЛЯЮЩИЙ
-        # (кредитор-юрлицо идёт первым, до первого ФИО).
-        # ФИО физлица в начале строки; после него допускается «(ИНН …)» или
-        # конец строки («Тимченко Павел Иванович (ИНН …)» и «Анисимов Роман Сергеевич»).
+
         fio_re = re.compile(
             r"(?m)^[ \t]*([А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+)[ \t]*(?=\(|\n|$)"
         )
@@ -1836,8 +1741,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         fields["creditorName"] = fixed
 
     # Метки-реквизиты, приклеенные к имени кредитора из stacked-шапки банка
-    # («Заявитель (кредитор): ПАО Сбербанк Место нахождения: ул. Вавилова…»):
-    # с любой из них начинается блок реквизитов, а не название — режем имя по ней.
+    # («…ПАО Сбербанк Место нахождения: …»): с любой из них начинается блок
+    # реквизитов, а не название — режем имя по ней.
     _CREDITOR_NAME_TAIL_RE = re.compile(
         r"\s*(?:Мест\w*\s+нахожд\w*|Юридическ\w+\s+адрес|Почтов\w+(?:\s+адрес)?|"
         r"Адрес\s+для\s+корреспонденции|Адрес[:\s]|ОГРН|ИНН|Телефон|e-?mail|"
@@ -1929,9 +1834,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         comp = pr + it + fo + pen + ld
         if n == 0 or abs(comp - total) > 1.5:
             return
-        # Разбивка перекрывает prayer-версию: значения полей заменяются — тултип
-        # должен показывать именно эти слагаемые (устаревший breakdown вводил бы
-        # в заблуждение).
+
         breakdown = {
             fkey: [self._fin_fmt(v) for v in brk_vals[grp]]
             for grp, fkey in (("principal", "principalDebt"), ("interest", "interest"),
@@ -2052,17 +1955,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 return f"ФНС России в лице УФНС России по {self._norm_fns_region(m.group(1))}"
         return "ФНС России"
 
-    # ------------------------------------------------------------------
+
     # САМОБАНКРОТСТВО: структурный разбор шапки «должник первым, кредиторы списком»
-    # ------------------------------------------------------------------
-    # Метка должника в шапке: «Должник:», «Должник (заявитель)», «от Должника:», «ФИО:».
+
     _SB_DEBTOR_LABEL_RE = re.compile(
         r"(?:от\s+)?должник\w*\s*(?:\(\s*заявител\w*\s*\))?\s*:?|(?<![а-яё])фио\s*:",
         re.IGNORECASE,
     )
-    # Начало блока кредиторов: «Кредиторы:», «Кредитор 1:», «Кредитор 1.», «11 КРЕДИТОРОВ:».
-    # Числовой префикс — только через пробел/таб на ТОЙ ЖЕ строке: через \n это не
-    # префикс, а хвост адреса должника («…д. 23\nКредиторы:» резало «23» из блока).
+
     _SB_CREDITORS_RE = re.compile(r"(?:\d{1,2}[ \t]+)?кредитор\w*\s*\d{0,2}\s*[:.]", re.IGNORECASE)
     # Конец шапки — заголовок «Заявление …» (отдельной строкой, с продолжением-типом,
     # либо ЗАГЛАВНОЕ «ЗАЯВЛЕНИЕ» посреди строки перед «о признании…»).
@@ -2101,7 +2001,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if not text:
             return None
 
-        # --- Границы шапки и блока должника -------------------------------
+        # Границы шапки и блока должника
         title_pos = len(text)
         for rx in self._SB_TITLE_RES:
             m = rx.search(text)
@@ -2130,7 +2030,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if len(blk) < 30:
             return None
 
-        # --- ФИО должника ---------------------------------------------------
+        # ФИО должника
         fio = None
         for cand in self._SB_FIO_RE.finditer(blk[:300]):
             fio_c = re.sub(r"\s+", " ", cand.group(0)).strip()
@@ -2141,10 +2041,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 fio = fio_c
                 break
         if not fio and m_label:
-            # OCR иногда переставляет «От Должника: <ФИО>» → «<ФИО> от Должника:»:
-            # ФИО оказывается ПЕРЕД меткой. Фолбэк — ищем персональное ФИО в участке
-            # непосредственно перед меткой (исключая суд/регион), иначе в applicantName
-            # протекал бы «Арбитражный суд …» из генерик-парсера.
+
             pre = header[max(0, m_label.start() - 150) : m_label.start()]
             for cand in self._SB_FIO_RE.finditer(pre):
                 fio_c = re.sub(r"\s+", " ", cand.group(0)).strip()
@@ -2170,9 +2067,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             except Exception:
                 fields[case_key] = fio
 
-        # --- Дата рождения (слои) -------------------------------------------
-        # Паспортные даты («выдан 09.12.2016») не путать с рождением: общий
-        # безметочный слой ищем только ДО слова «паспорт/выдан».
+
         pre_passport = re.split(r"паспорт|выдан", blk, flags=re.IGNORECASE)[0]
         birth = (
             re.search(r"дата\s*(?:и\s*место\s*)?рождения[:;\s]*(\d{2}\.\d{2}\.\d{4})", blk, re.IGNORECASE)
@@ -2192,7 +2087,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         else:
             fields.pop("birthDate", None)
 
-        # --- Место рождения ---------------------------------------------------
+        # Место рождения
         bp = re.search(
             r"место\s+рождения[:;\s]*(?:\d{2}\.\d{2}\.\d{4}\s*)?(.{3,140}?)(?=\s*(?:[;]|" + self._SB_FIELD_STOP + r"))",
             blk, re.IGNORECASE | re.DOTALL,
@@ -2205,7 +2100,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         elif fields.get("birthPlace"):
             fields.pop("birthPlace", None)
 
-        # --- СНИЛС / ИНН (строго из блока должника) ---------------------------
+        # СНИЛС / ИНН
         snils = re.search(r"снилс[:\s]*([\d][\d\-\s]{9,15}\d)", blk, re.IGNORECASE)
         if snils:
             fields["snils"] = re.sub(r"\s+", " ", snils.group(1)).strip()
@@ -2219,7 +2114,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             fields.pop("inn", None)
             fields.pop("companyInn", None)
 
-        # --- Адрес регистрации -------------------------------------------------
+        # Адрес регистрации
         addr = re.search(
             r"(?:адрес\s+(?:мест[аом]*\s+)?регистрации|место\s+жительства\s+по\s+регистрации|"
             r"мест[ао]\s+регистрации|адрес)\s*[:\s]\s*(.{5,240}?)(?=\s*" + self._SB_FIELD_STOP + r")",
@@ -2239,10 +2134,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         else:
             fields.pop("applicantAddress", None)
 
-        # --- Тип лица и очистка чужих реквизитов -------------------------------
-        # Самобанкрот-гражданин — физлицо; ОГРН у должника-ФЛ быть не может
-        # (мусор с кредитора из списка). Кредитора-заявителя в этих заявлениях
-        # нет — creditor*-поля чистим (фронт скрывает блок кредитора).
+
         fields["entityType"] = "individual"
         for k in ("ogrn", "ogrnip", "companyOgrn",
                   "creditorName", "creditorAddress", "creditorInn", "creditorOgrn",
@@ -2282,10 +2174,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 end = min(end, m_t.start())
         block = text[m.end(): end]
 
-        # Табличная шапка (Галета): весь блок — одна длинная строка, построчная
-        # сегментация невозможна. Вставляем переносы перед началом каждой новой
-        # записи (оргслово / ФИО сразу после конца адреса) и перед индексами —
-        # дальше работает общий построчный алгоритм.
+
         if block.count("\n") < 2:
             block = re.sub(r"\s(?=\d{6}\b)", "\n", block)
             block = re.sub(
@@ -2294,10 +2183,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 "\n", block,
             )
 
-        # Построчная сегментация: строка с индексом открывает адрес; строка с
-        # цифрами продолжает его (уличные хвосты «Ленинградская, 10»), строка
-        # без цифр — имя следующего лица. Оргслова открывают новое имя всегда
-        # (основы «межрайонн…», «управлен…» — без \b: слово продолжается).
+
         _ORG_START = re.compile(
             r"^(?:межрайонн\w*|управлен\w*|отдел\w*|инспекц\w*|отделени\w*|фонд\w*|союз\w*)"
             r"|^(?:уфнс|ифнс|фнс|ооо|ао|пао|зао|нао)\b",
@@ -2388,28 +2274,19 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         """
         if not text:
             return
-        # Признак заявления ФНС — налоговый БЛАНК в самом начале (первые ~400 симв.):
-        # «…ФЕДЕРАЛЬНАЯ НАЛОГОВАЯ СЛУЖБА…» или заголовок «Заявление уполномоченного
-        # органа …».
+
         header_fns = bool(
             re.search(r"НАЛОГОВ\w+\s+СЛУЖБ", text[:400], re.IGNORECASE)
             or re.search(r"ЗАЯВЛЕНИ\w+\s+УПОЛНОМОЧЕНН\w+\s+ОРГАН", text[:700], re.IGNORECASE)
         )
-        # ВТОРИЧНЫЙ сигнал (шапка обобщённая «о включении в РТК ФИО», бланк ФНС ушёл в
-        # тело/подвал из-за раскладки OCR): связка НАЛОГОВОГО органа «[ИУ]ФНС» + чисто
-        # НАЛОГОВОЙ лексики «обязательных платежей». Оба маркёра встречаются ТОЛЬКО в
-        # заявлениях уполномоченного органа (у банка/ООО-кредитора их не бывает), а
-        # veto ниже (_OPF) всё равно отсекает случай реального кредитора-компании —
-        # поэтому ложных срабатываний это не даёт.
+
         body_fns = bool(
             re.search(r"\b[ИУ]ФНС\b", text, re.IGNORECASE)
             and re.search(r"обязательн\w+\s+платеж", text, re.IGNORECASE)
         )
         if not (header_fns or body_fns):
             return
-        # Не трогаем заявления с уже распознанным кредитором-компанией (банк/ООО/АО…):
-        # налоговый бланк мог оказаться штампом суда, а кредитор — реальная организация.
-        # ОПФ по границе слова (не подстрокой: «банк» ⊂ «банкротстве» давало ложняк).
+
         _OPF = r"\b(?:ООО|АО|ПАО|ЗАО|ОАО|ПКО|НАО|Банк)\b"
         cur_cred = fields.get("creditorName") or ""
         if "фнс" not in cur_cred.lower() and re.search(_OPF, cur_cred, re.IGNORECASE):
@@ -2419,24 +2296,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         # один шаблон инспекции/управления не сработал — безопасный общий «ФНС России».
         creditor = self._build_fns_creditor(text)
 
-        # Кредитор: ставим налоговый орган, если он ещё не распознан как ФНС; либо
-        # АПГРЕЙДИМ короткое «ФНС России» до полной формы «…в лице Межрайонной ИФНС
-        # № N по <регион>», когда инспекция найдена (единообразие всех ФНС-заявлений).
+
         built_full = "в лице" in creditor.lower()
         if "фнс" not in cur_cred.lower() or (built_full and "в лице" not in cur_cred.lower()):
             fields["creditorName"] = creditor
         cred_now = fields.get("creditorName") or ""
 
-        # НОВОЕ (справочник ФНС): выверенный юр-адрес КРЕДИТОРА в блок «Данные о
-        # кредиторе» → поле creditorAddress. Заполняем ТОЛЬКО его и ТОЛЬКО когда
-        # кредитор — налоговый орган; адресов заявителя/должника не касаемся (иначе
-        # юр-адрес инспекции подмешивается в адрес должника). Справочник fns_registry
-        # находит адрес по имени органа — он инвариантен к тому, как оформлена шапка
-        # конкретного заявления (и работает, даже если адреса в шапке нет).
-        # Подсказка для дизамбигуации ТОРМ (один № инспекции обслуживает несколько
-        # городов): шапка ДО блока «Должник», чтобы город/индекс инспекции не спутать
-        # с городом должника — реестр выберет кандидата по городу/индексу из шапки.
-        # Общий для должника-физлица и должника-ЮЛ — поэтому ДО развилки по типу лица.
+
         if "фнс" in (cred_now or "").lower():
             _dpos = re.search(r"Должник", text, re.IGNORECASE)
             _hint = text[: _dpos.start()] if _dpos else text[:1800]
@@ -2453,20 +2319,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                     field_contract.SOURCE_REGISTRY
                 )
 
-        # НАДЁЖНЫЙ ДОЛЖНИК ФНС по якорю. Позиционный парсер на этих заявлениях часто
-        # берёт арбитражного управляющего («Финансовым управляющим утверждён <ФИО>»)
-        # или мусор из «…реестр требований кредиторов» — в результате должник = ФИО
-        # управляющего либо «А И Кредиторов». Якоря дают НОМИНАТИВ напрямую (склонять
-        # не нужно): «<ФИО> обратил(ся/ась) в арбитражный суд» (заявления о включении
-        # в РТК) и «Должник: <ФИО> ИНН/ОГРН». Правило Андрея: ФИО должника ≠ ФИО
-        # управляющего (дедуп).
+
         _PN = r"[А-ЯЁ][А-ЯЁа-яё]+(?:-[А-ЯЁ][А-ЯЁа-яё]+)?(?:\s+[А-ЯЁ][А-ЯЁа-яё]+){2}"
 
-        # НАДЁЖНЫЙ УПРАВЛЯЮЩИЙ ФНС по якорю. Позиционный managerName-парсер спотыкается
-        # об OCR-артефакт формы «Финансовый управляющий: На № <ФИО>» и о строчную
-        # «утверждён» перед ФИО → ФИО управляющего теряется (Мишунин). Якорь
-        # «…управляющим утвержд(ён/ена) <ФИО>» либо «управляющий: [На №] <ФИО>» даёт
-        # номинатив надёжно. Заполняем ТОЛЬКО если текущее значение не похоже на ФИО.
+
         if not is_person_name((fields.get("managerName") or "").strip()):
             _mm = re.search(r"управляющ\w*\s+утвержд[её]н\w*\s+(" + _PN + r")", text, re.IGNORECASE)
             if not _mm:
@@ -2476,12 +2332,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 if is_person_name(cand_m) and "фнс" not in cand_m.lower():
                     fields["managerName"] = cand_m
 
-        # АДРЕС УПРАВЛЯЮЩЕГО в ФНС-заявлении: «…управляющий: <ФИО> Адрес[ для
-        # корреспонденции]: <индекс>, …[, а/я N]». Общий managerAddress-парсер режет
-        # хвост «, а/я N» (запятая — терминатор), поэтому берём ПОЛНЫЙ почтовый адрес
-        # сами: от метки «Адрес»/«Адрес для корреспонденции» (обе подходят — правило
-        # Андрея) до метки следующей стороны. Требуем индекс сразу после метки — так
-        # email-адрес корреспонденции («…: mail@…») не попадает.
+
         if is_person_name(fields.get("managerName") or ""):
             _ma = re.search(
                 r"управляющ\w*[:\s][\s\S]{0,80}?Адрес(?:\s+для\s+корреспонденции)?\s*:\s*"
@@ -2494,10 +2345,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 if re.search(r"[А-Яа-яЁё]{3}", _madr):
                     fields["managerAddress"] = _madr
 
-        # РАЗВИЛКА ПО ТИПУ ДОЛЖНИКА. Всё, что ниже, написано под должника-ФИЗЛИЦО
-        # (якоря «<ФИО> обратился», «Должник: <ФИО> ИНН», гейты is_person_name). У ФНС
-        # против ЮЛ должник называется иначе — «…(далее – должник, ООО «X»)» — и ни
-        # один из этих якорей не срабатывает: должником становился мусор из прозы.
+
         if self._apply_fns_legal_debtor(fields, text):
             return
 
@@ -2523,12 +2371,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # чтобы в акт не ушло ФИО управляющего как должника.
             fields.pop("debtorName", None)
 
-        # ДОЛЖНИК остаётся в applicant* — генератор акта берёт эти поля как ДОЛЖНИКА
-        # (applicantNameDative = «…требований кредиторов ДОЛЖНИКА»). ФНС держим ТОЛЬКО
-        # в creditor*. Если общий парсер/ранняя версия затёрли applicantName на ФНС
-        # (или пусто), а debtorName — физлицо, восстанавливаем должника в applicantName
-        # и ПЕРЕСЧИТЫВАЕМ падежи под него: иначе в акт уйдёт «должник = ФНС», а часть
-        # падежей окажется смешанной («ФНС Россию» в винительном при физлице в родительном).
+
         appl = fields.get("applicantName") or ""
         debt_name = (fields.get("debtorName") or "").strip()
         if (debt_name and debt_name != appl and "фнс" not in debt_name.lower()
@@ -2545,28 +2388,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                     fields[case_key] = conv(base) or debt_name
                 except Exception:
                     fields[case_key] = debt_name
-        # Адреса ФНС-заявления. У заявителя-ФНС нет метки «Адрес:», поэтому общий
-        # парсер кладёт в applicantAddress адрес ДОЛЖНИКА (или суда) — разводим их:
-        #   • debtorAddress ← «Должник … Адрес: …», иначе — из applicantAddress (общий
-        #     парсер часто кладёт туда именно адрес должника);
-        #   • applicantAddress ← юр-адрес инспекции из шапки (перед Телефон/www.nalog).
+
         _STREET = r"ул|пр\.|просп|проспект|пер|переул|д\.|дом|улиц|ст-ца|стан|мкр|кв\."
 
         def _clean_addr(s: str) -> str:
             s = re.sub(r"\s+", " ", s).strip(" ,;")
             return re.split(r"\b(?:ИНН|ОГРН|ОГРНИП|СНИЛС|КПП)\b", s, flags=re.IGNORECASE)[0].strip(" ,;")
 
-        # Адрес должника нередко перенесён на 2–3 строки («улица,\nгород, индекс»).
-        # Одиночный `[^\n]+` терял продолжение (город/индекс), поэтому добавляем до
-        # трёх строк-продолжений, останавливаясь на заголовке раздела/реквизитах
-        # (ЗАЯВЛЕНИЕ/Определением/Решением/ИНН/ОГРН/пустая строка). _clean_addr
-        # схлопнет переносы в один адрес.
-        # Строка-продолжение адреса берётся, ТОЛЬКО если она сама выглядит как часть
-        # адреса — содержит адресный маркер (индекс/город/область/район/улица/дом…) и
-        # не содержит метку «X:». Позитивный признак важнее чёрного списка: у раскладок
-        # «индекс-в-начале» за адресом часто идёт мусор/шапка таблицы («Наименование
-        # налога …», OCR-артефакты) без двоеточия — их нельзя приклеивать. Настоящий
-        # хвост адреса (город/индекс/район) двоеточий не содержит.
+
         _ADDR_MARK = (
             r"(?:\d{6}|\bг\.|\bгор\b|\bгород|\bобл\b|\bобласт|\bр-?н\b|\bрайон|\bул\.|"
             r"\bулиц|\bд\.|\bдом\b|\bкв\.|\bкорп|\bпос\b|\bпос[её]лок|\bст-ца|\bстаниц|"
@@ -2578,23 +2407,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             r"Должник\w*[:\s][\s\S]{0,90}?\bАдрес[:\s]*([0-9А-ЯЁ][^\n]+" + _ADDR_CONT + r")",
             text, re.IGNORECASE,
         )
-        # Без метки «Адрес» адрес должника в бланке ФНС идёт голой строкой/фрагментом
-        # с индексом в блоке под меткой «Должник:». Индекс может стоять в начале строки
-        # (Чернов: «…ИНН …\n346414, Ростовская обл…Харьковская ул,47») или в одну строку
-        # после «ФИО ИНН ОГРНИП» (Зайцев: «…ОГРНИП 318… 346630, РОСТОВСКАЯ ОБЛ…ЛЕВЧЕНКО
-        # ПЛ,46»). Якоримся на метку «Должник:» с ДВОЕТОЧИЕМ (а не на слово «должника»
-        # в тексте) и берём первый индекс-адрес в пределах 200 символов после неё.
+
         dm_bare = None
         if not dm:
             dm_bare = re.search(
                 r"Должник\w*\s*:\s*[\s\S]{0,200}?(\d{6}\s*,\s*[А-ЯЁ][^\n]+" + _ADDR_CONT + r")",
                 text, re.IGNORECASE,
             )
-        # ВАЛИДАТОР: принятое значение должно ВЫГЛЯДЕТЬ как адрес, а не как набор слов /
-        # фрагмент закона. Так regex, случайно поймавший прозу («…руководствуясь ст. 71,
-        # приложены к заявлению…»), отбраковывается и уступает место сети/пустому
-        # значению. Признак адреса: индекс ИЛИ уличный маркер + наличие цифры; при этом
-        # нет юридической прозы (стоп-слова заявления). Пусто лучше мусора.
+
         def _is_addr(s: str) -> bool:
             s = (s or "").strip()
             if not (8 <= len(s) <= 160) or not re.search(r"\d", s):
@@ -2609,9 +2429,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if re.search(r"\b\d{6}\b", s):
                 return True
             # 2) Тип адресного объекта из ШИРОКОГО спектра (улицы/площади/наб/шоссе/туп/
-            #    аллея/линия/проезд/тракт/квартал/мкр + типы НП). Все токены ≥2 симв. и
-            #    адресо-специфичны, поэтому в прозе почти не встречаются; форма «тип
-            #    Название, Номер» ловится (номер не обязан примыкать к типу).
+
             if re.search(r"\b(?:ул|улиц\w*|пер|переул\w*|пр-кт|пр-т|просп\w*|проспект|б-р|"
                          r"бульвар|наб|набережн\w*|пл|площад\w*|шоссе|туп|тупик|алле\w*|"
                          r"лини\w*|проезд|тракт|кв-л|квартал|мкр|микрорайон|городок|"
@@ -2631,10 +2449,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             cand = _clean_addr(dm_bare.group(1))
         if cand and _is_addr(cand):
             debt_addr = cand
-        # ПОДСТРАХОВКА (гибрид): regex промахнулся ИЛИ вернул не-адрес → достаём адрес
-        # морфологически через Natasha AddrExtractor из окна блока «Должник:». Работает
-        # независимо от раскладки (индекс в начале строки / после ОГРНИП / без метки),
-        # т.е. страхует от невиданных макетов — чего конечным числом регулярок не выразить.
+
         if not debt_addr:
             _dblk = re.search(r"Должник\w*\s*:", text, re.IGNORECASE)
             if _dblk:
@@ -2652,10 +2467,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if debt_addr and not (fields.get("debtorAddress") or "").strip():
             fields["debtorAddress"] = debt_addr
 
-        # applicantAddress — это АДРЕС ДОЛЖНИКА (генератор берёт его как адрес должника;
-        # юр-адрес ФНС живёт в creditorAddress). Ставим сюда адрес должника; если он не
-        # извлёкся — вычищаем из applicantAddress чужое (адрес ФНС/суда/проза или совпадение
-        # с юр-адресом ФНС), чтобы в акт не попал адрес инспекции как адрес должника.
+
         if debt_addr:
             # Не затираем более полный уже найденный адрес (общий _collect_block_address
             # часто собирает многострочный адрес точнее): берём более длинный валидный.
@@ -2671,9 +2483,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                        or re.search(r"Неглинн|Станиславског|www\.nalog|Адрес\s+для", aa, re.IGNORECASE)):
                 fields.pop("applicantAddress", None)
 
-    # Организация с правовой формой и названием в кавычках («ООО «СМТ 40»», «Общество
-    # с ограниченной ответственностью «СМТ 40»»). Полные формы — ДО аббревиатур,
-    # иначе «Общество…» отдаст короткое «АО» из середины слова.
+
     _FNS_ORG = (
         r"(?:Общество\s+с\s+ограниченной\s+ответственностью|Публичное\s+акционерное\s+общество|"
         r"Закрытое\s+акционерное\s+общество|Открытое\s+акционерное\s+общество|"
@@ -2695,13 +2505,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if not text:
             return False
 
-        # Имя должника — только обороты, которые НАЗЫВАЮТ должника явно:
-        # (1) «(далее – должник, ООО «X»)»; (2) «призна(ть|нии) ООО «X» несостоятельным»
-        # — одна форма покрывает и заголовок («о признании X несостоятельным»), и
-        # просительную часть («признать X несостоятельным (банкротом)»).
-        # Общий слой «<ОПФ> «X» ИНН …» намеренно НЕ используем: первая организация с
-        # реквизитами в тексте — сплошь и рядом КРЕДИТОР (в самобанкротном заявлении
-        # физлица так подхватывался «ПАО «Сбербанк»»).
+
         org = None
         for rx in (
             r"\(\s*далее\s*[–—-]\s*должник\w*\s*,\s*(" + self._FNS_ORG + r")\s*\)",
@@ -2714,16 +2518,12 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if not org:
             return False
 
-        # Дальше всё якорим на СОБСТВЕННОЕ имя должника в кавычках: и реквизиты, и
-        # адрес принадлежат должнику, только если стоят вплотную к его имени. Полная
-        # и краткая формы («Общество с ограниченной ответственностью «X»» / «ООО «X»»)
-        # различаются ОПФ, но не именем — по нему и матчим.
+
         qm = re.search(r"«([^»]{1,80})»", org)
         if not qm:
             return False
         quoted = re.escape(qm.group(1))
 
-        # Реквизиты ДОЛЖНИКА: «… «X» ИНН 4028073775 КПП 402801001 ОГРН 1234000001256».
         req = re.search(
             r"«" + quoted + r"»\s*ИНН\s*(?P<inn>\d{10})(?:\s*КПП\s*\d{9})?\s*ОГРН\s*(?P<ogrn>\d{13})",
             text, re.IGNORECASE,
@@ -2731,16 +2531,12 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         debtor_inn = req.group("inn") if req else ""
         debtor_ogrn = req.group("ogrn") if req else ""
 
-        # Соглашение для ЮЛ (как в _finalize_debtor_type): debtorName — краткое имя без
-        # ОПФ, applicantName — с ОПФ. Генератор берёт должника именно из applicant*
-        # (ФНС остаётся только в creditor*).
+
         short = self._strip_ooo_prefix(org) or org
         fields["debtorName"] = short
         fields["legalShortName"] = short
         fields["applicantName"] = org
-        # Падежи организации не склоняем: в ФНС-ветке они до сих пор считались от
-        # ошибочного заявителя («МИНФИНА РОССИИ ФЕДЕРАЛЬНОЙ»). Склонение ОПФ —
-        # отдельная тема; равенство именительному честнее мусора.
+
         for case_key in ("applicantNameGenitive", "applicantNameDative",
                          "applicantNameAccusative", "applicantNameInstrumental"):
             fields[case_key] = org
@@ -2749,17 +2545,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             fields["inn"] = debtor_inn
         if debtor_ogrn:
             fields["ogrn"] = debtor_ogrn
-        # Реквизиты должника, утёкшие в кредитора: общий парсер берёт первые ИНН/ОГРН
-        # в тексте, а они принадлежат должнику. У налогового органа реквизитов в
-        # документе нет (и в fns_registry их нет) — пусто лучше чужого ИНН в акте.
+
         for cred_key, debtor_val in (("creditorInn", debtor_inn), ("creditorOgrn", debtor_ogrn)):
             cur = re.sub(r"\D", "", str(fields.get(cred_key) or ""))
             if debtor_val and cur == debtor_val:
                 fields.pop(cred_key, None)
 
-        # Адрес — из предложения о регистрации, до конца абзаца. Хвост чистим
-        # общими правилами (§J.3): при одностраничной PDF→docx склейке к адресу
-        # прилипает проза следующего предложения.
+
         addr_m = re.search(
             r"«" + quoted + r"»[^\n]{0,150}?зарегистрирован\w*\s+"
             r"(?:\d{1,2}[.,]\d{1,2}[.,]\d{4}\s+)?по\s+адресу\s*:\s*([^\n]{10,300})",
@@ -2773,39 +2565,22 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 fields["debtorAddress"] = addr
                 fields["applicantAddress"] = addr
 
-        # Тип лица — штатным детектором по обновлённым именам («ООО» в debtorName даёт
-        # legal). Раньше он видел мусорного должника и решал individual → в акт шли
-        # рекомендации для физлица.
+
         entity = self.detect_entity_type(fields)
         if entity:
             fields["entityType"] = entity
         logger.info(f"ФНС против ЮЛ: должник={org}, тип лица={fields.get('entityType')}")
         return True
 
-    # СРО по формуле членства/принадлежности. Ловим разные якоря:
-    # «из числа членов <СРО>», «член(а/ом) <СРО>», «членство: <СРО>»,
-    # «саморегулируемой организации – <СРО>». Захватываем фрагмент с ОБЯЗАТЕЛЬНЫМ
-    # закрытым кавычками именем («…«Содействие»»/«…"Меркурий"»), терпим переносы
-    # строк внутри имени (иначе многострочное имя рвётся) и останавливаемся перед
-    # скобкой/ИНН/ОГРН реквизитов. finditer + фильтр: берём ПЕРВЫЙ фрагмент, который
-    # опознаётся реестром или хотя бы закрыт кавычками — так пропускаем boilerplate
-    # («членом которой он является»), не имеющий имени.
-    # Правовая форма в начале имени СРО — отсекает boilerplate («…членов КОТОРОЙ
-    # будет утвержден…Общества «Перспектива»», «…управляющих ПРИ подаче…»), где за
-    # якорем идёт не название СРО, а служебный оборот/имя должника.
+
     _SRO_LEGAL_HEAD = r"(?:Союз\w*|Ассоциаци\w*|Некоммерческ\w*|НПС?|ААУ|СРО|Саморегулируем\w*|Крымск\w*|Российск\w*)"
-    # Захватываем ШИРОКИЙ фрагмент от правовой формы до реквизитного хвоста
-    # (скобка/ИНН/ОГРН/КПП/«дата рег»/адрес/конец) и отдаём целиком в resolve_sro —
-    # он сам найдёт отличительный токен. Так надёжнее, чем делимитировать кавычки:
-    # у straight-кавычек («Союз "СРО "Гильдия"») нечётность рвёт имя на первой ".
+
     _SRO_ANCHOR_RE = re.compile(
         r"(?:из\s+числа\s+членов|членств[оа]|член(?:а|ом|ов)?|"
         r"саморегулируемо[йя]\s+организаци[ияй])"
         r"\s*[:\-–—.]?\s*"  # «.» терпит склейку «членов.НП» (pdf2docx съел пробел)
         r"(" + _SRO_LEGAL_HEAD + r"\b[^()]{2,200}?)"
-        # Граница — реквизитный хвост: скобка/цифра (индекс/ИНН/ОГРН/«6.»), конец
-        # предложения или пустая строка. Возможный перезахват безвреден: resolve_sro
-        # сам выберет отличительный токен из фрагмента.
+
         r"(?=\s*[()\d]|[;.]\s+[А-ЯЁ]|\n\s*\n|$)",
         re.IGNORECASE,
     )
@@ -2888,13 +2663,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 text, re.IGNORECASE,
             )
         if not m and (fields.get("managerName") or "").strip():
-            # Простая метка «Адрес:» после якоря «…управляющий: <ФИО>» —
-            # ФИО может переноситься на 2 строки (word-wrap docx), поэтому между
-            # якорем и меткой допускаем окно из нескольких строк. Метка должна
-            # стоять в НАЧАЛЕ строки — иначе цепляем «Почтовый/Электронный адрес»
-            # контактов банка (форма Сбербанка «Финансовых управляющих: … Почтовый
-            # адрес: …»). Гейт по managerName: без названного управляющего адрес
-            # ему не принадлежит.
+
             m = re.search(
                 r"(?:финансов\w+|временн\w+|конкурсн\w+|арбитражн\w+)\s+управляющ\w+"
                 r"[:\s]*[\s\S]{0,120}?(?:^|\n)\s*адрес[^:\n]*:\s*([0-9]{6}[\s\S]{0,160}?)"
@@ -2909,10 +2678,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if re.search(r"[А-Яа-яЁё]{3}", addr):
             fields["managerAddress"] = addr
 
-    # Метка → (якорь роли, стоп-метки других сторон) для NLP-достройки адреса.
-    # Окно берём ПОСЛЕ якоря и ОБРЫВАЕМ на метке следующей стороны — иначе окно
-    # перепрыгивает через контакты роли (напр. «Адрес для корреспонденции: email»)
-    # в блок другой стороны и хватает чужой адрес (адрес должника вместо управляющего).
+
     _ADDR_ROLE_ANCHORS = (
         ("managerAddress",
          r"(?:финансов\w+|временн\w+|конкурсн\w+|арбитражн\w+)\s+управляющ\w+",
@@ -2940,10 +2706,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             return re.sub(r"\s+", " ", s or "").strip().lower()
 
         for field, anchor, stop in self._ADDR_ROLE_ANCHORS:
-            # Адрес управляющего заполняем ТОЛЬКО при названном управляющем: в
-            # заявлениях о признании банкротом управляющий ещё не назначен, а
-            # «финансового управляющего … адрес: …» указывает на адрес СРО
-            # (из числа членов которой его утвердят) — это НЕ адрес управляющего.
+
             if field == "managerAddress" and not (fields.get("managerName") or "").strip():
                 continue
             am = re.search(anchor, text, re.IGNORECASE)
@@ -2960,9 +2723,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if not cand:
                 continue
             cand = re.sub(r"\s+", " ", cand).strip()  # схлопываем переносы внутри адреса
-            # Гейт полноты: AddrExtractor склонен обрезать хвост (а/я/индекс), а
-            # расплывчатый «регион, город» без дома/индекса нарушает принцип «текст
-            # как в документе». Заполняем только достаточно конкретным адресом.
+
             if not re.search(r"\b\d{6}\b", cand) and not re.search(r"\bд\.?\s*\d", cand, re.IGNORECASE):
                 continue
             cur = (fields.get(field) or "").strip()
@@ -2971,10 +2732,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             elif len(_norm(cand)) > len(_norm(cur)) and _norm(cand).startswith(_norm(cur)):
                 fields[field] = cand
 
-    # Категории адресных компонентов для детекта СКЛЕЙКИ двух адресов: один адрес
-    # не содержит две РАЗНЫЕ области / города / улицы / дома / почтовых индекса.
-    # «Дом» считаем только с цифрой после («д. 6»): «д. Иваново» — деревня, не дом.
-    # «г.» после «тер.» — ФИАС-элемент «вн.тер.г.», не второй город.
+
     _ADDR_COMPONENT_RES = (
         ("index", re.compile(r"\b(\d{6})\b")),
         ("region", re.compile(r"\bобл(?:асть|асти|\.)?(?=[\s,])", re.IGNORECASE)),
@@ -3020,10 +2778,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                     return True
         return False
 
-    # Отсутствующий должник (§ 2 гл. XI Закона о банкротстве, ст. 227–230). Сильные
-    # сигналы — оборот «отсутствующ… должник…» в связке с процедурой/признаками:
-    # в заявлении такая формула встречается ТОЛЬКО в этом правовом смысле.
-    # `\s*` (а не `\s+`) — терпимость к OCR-склейкам, как в детекторе самобанкротства.
+
     _ABSENT_STRONG_RES = (
         # «ввести … процедуру конкурсного производства отсутствующего должника» —
         # ключевая формула просительной части (правило Андрея).
@@ -3038,9 +2793,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         # «признать должника отсутствующим должником».
         re.compile(r"призна\w*\s*[\s\S]{0,40}?отсутствующ\w+\s*должник", re.IGNORECASE),
     )
-    # Ст. 230 — материальная норма об отсутствующем должнике. САМА ПО СЕБЕ ненадёжна:
-    # ст. 230 есть и в НК РФ (налоговые агенты), а заявления ФНС ссылаются на НК
-    # постоянно. Поэтому засчитываем, только если рядом назван закон о банкротстве.
+
     _ABSENT_ART230_RE = re.compile(
         r"(?:стать\w+|ст\.?)\s*230\s*(?:[\s\S]{0,60}?(?:банкротств|несостоятельн|127-ФЗ))",
         re.IGNORECASE,
@@ -3060,10 +2813,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             return True
         return bool(self._ABSENT_ART230_RE.search(text))
 
-    # УМЕРШИЙ должник-физлицо (ст. 223.1 Закона о банкротстве — банкротство гражданина
-    # в случае его смерти). Сильные сигналы — обороты, которыми банк излагает ФАКТ смерти
-    # должника либо просит признать банкротом именно умершего.
-    # `\s*` (а не `\s+`) — терпимость к OCR-склейкам, как в детекторе отсутствующего.
+
     _DECEASED_STRONG_RES = (
         # «24.02.2019 Заемщик умер, что подтверждается свидетельством о смерти» —
         # типовая формула изложения факта смерти (оба референсных заявления).
@@ -3073,10 +2823,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         # «заявление о признании умершего гражданина банкротом».
         re.compile(r"заявлени\w*\s*о\s*признании\s*умерш\w+", re.IGNORECASE),
     )
-    # Ст. 223.1 — материальная норма о банкротстве гражданина в случае его смерти.
-    # Требуем рядом упоминание закона о банкротстве: голый номер статьи встречается и
-    # в других кодексах, а «умерший/наследство» сами по себе — сплошь цитаты нормы
-    # («…осуществляют принявшие наследство наследники гражданина»), а не факт смерти.
+
     _DECEASED_ART2231_RE = re.compile(
         r"(?:стать\w+|ст\.?)\s*223\s*\.?\s*1\s*(?:[\s\S]{0,60}?(?:банкротств|несостоятельн|127-ФЗ))",
         re.IGNORECASE,
@@ -3094,10 +2841,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             return True
         return bool(self._DECEASED_ART2231_RE.search(text))
 
-    # Дата смерти. Основная форма — дата ПЕРЕД сказуемым: «24.02.2019 Заемщик умер,
-    # что подтверждается свидетельством о смерти», «13.05.2015 Ким Клим умер».
-    # Между датой и «умер» стоит подлежащее (ФИО/«Заемщик»/«Должник»), поэтому
-    # допускаем до 40 символов без переноса строки.
+
     _DEATH_DATE_BEFORE_RE = re.compile(
         r"(\d{1,2}[.,]\d{1,2}[.,]\d{4})\s*[^\n]{0,40}?\bумер(?:ла)?\b", re.IGNORECASE
     )
@@ -3105,10 +2849,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
     _DEATH_DATE_AFTER_RE = re.compile(
         r"\bумер(?:ла)?\b\s*(?:\w+\s+){0,3}?(\d{1,2}[.,]\d{1,2}[.,]\d{4})", re.IGNORECASE
     )
-    # Свидетельство о смерти: римская серия + две русские буквы + шесть цифр
-    # («II-МЮ № 123456»). Разделители (дефис, №, пробелы) — необязательны и
-    # варьируются, у OCR тем более. Якорь на «свидетельств… о смерти» слева
-    # обязателен: сам по себе такой набор — это и свидетельство о рождении, и о браке.
+
     _DEATH_CERT_RE = re.compile(
         r"свидетельств\w*\s*о\s*смерти[\s\S]{0,80}?"
         r"\b([IVXLC]{1,7})\s*[-–—]?\s*([А-ЯЁ]{2})\s*(?:№|N)?\s*[-–—]?\s*(\d{6})\b",
@@ -3186,9 +2927,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         cand = self._fio_to_nominative(_normalize_fio(m.group(1).strip()))
         return cand if is_person_name(cand) else None
 
-    # Кандидат в управляющие: ФИО из 3 titlecase-токенов вплотную перед скобкой
-    # «(ИНН <12 цифр>». 12-значный ИНН бывает ТОЛЬКО у физлица — у СРО в такой же
-    # скобке стоит 10-значный, поэтому организация сюда не попадает.
+
     _MGR_CAND_RE = re.compile(
         r"([А-ЯЁ][А-ЯЁа-яё]+(?:-[А-ЯЁ][А-ЯЁа-яё]+)?(?:\s+[А-ЯЁ][А-ЯЁа-яё]+){2})"
         r"\s*\(\s*ИНН\s*\d{12}\b",
@@ -3292,9 +3031,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         addr = re.sub(r"\s+(?:ООО|ОАО|ЗАО|ПАО|НАО|АО)\b.*$", "", addr)
         return addr.strip().rstrip(" ,;-")
 
-    # Строгий режим инвариантов: в тестах любое нарушение контракта ВНУТРИ каскада
-    # роняет прогон, в проде — только пишет в лог (ронять разбор из-за одного поля
-    # нельзя, defensive по входу). Включается переменной окружения.
+
     _STRICT_CONTRACT = os.environ.get("SBERACT_STRICT_CONTRACT") == "1"
 
     def _contract_checkpoint(self, fields: Dict[str, Any], step: str) -> None:
@@ -3447,17 +3184,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 # Поле с множественными значениями (договоры)
                 self._extract_multiple_field(extracted_fields, text, field_name, field_patterns)
             else:
-                # Для обычных полей ищем первое вхождение
-                # Специальная обработка для ИНН, ОГРН и companyInn - используем ту же логику, что и в реструктуризации!
-                # Ищем ТОЛЬКО в блоке "Должник:" или "Ответчик:" (приоритет "Должник:")
+
                 if field_name in ["inn", "ogrn", "ogrnip", "companyInn"]:
                     # ИНН/ОГРН/ОГРНИП должника из блока «Должник:»/«Ответчик:»
                     self._extract_party_inn_ogrn(extracted_fields, text, field_name)
                     continue
 
-                # Приоритетная обработка адреса должника/ответчика.
-                # Для ЮЛ адрес часто идет как "Юридический адрес:" внутри блока "Ответчик:",
-                # и общий fallback может ошибочно забрать технические номера (CP-Case и т.п.).
+
                 if field_name == "applicantAddress":
                     # Адрес должника из блока «Должник:»/«Ответчик:»
                     if self._extract_party_address(extracted_fields, text, field_name):
@@ -3465,7 +3198,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
                 # ВАЖНО: Для ИНН, ОГРН, ОГРНИП и companyInn мы уже обработали выше, пропускаем общие паттерны
                 if field_name in ["inn", "ogrn", "ogrnip", "companyInn"]:
-                    logger.info(f"⚠️ Пропускаем общие паттерны для {field_name}, так как уже обработали в специальной логике")
+                    logger.info(f"Пропускаем общие паттерны для {field_name}, так как уже обработали в специальной логике")
                     continue
 
                 for i, pattern in enumerate(field_patterns):
@@ -3663,11 +3396,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
         # Fallback: пытаемся извлечь предмет залога [1221] для всех типов документов, если он не был найден
         if "mortgageCollateralDescription1221" not in extracted_fields or not extracted_fields.get("mortgageCollateralDescription1221"):
-            logger.info("🔍 Предмет залога [1221] не найден в основных паттернах, пробуем fallback метод...")
+            logger.info("Предмет залога [1221] не найден в основных паттернах, пробуем fallback метод...")
             collateral_block = self._extract_mortgage_collateral_block(text)
             if collateral_block:
                 extracted_fields["mortgageCollateralDescription1221"] = collateral_block
-                logger.info(f"✅ Извлечено mortgageCollateralDescription1221 через fallback метод: {collateral_block[:150]}...")
+                logger.info(f"Извлечено mortgageCollateralDescription1221 через fallback метод: {collateral_block[:150]}...")
 
         # Разделяем описание предметов залога на отдельные предметы и создаем массив collaterals
         collateral_description = extracted_fields.get("mortgageCollateralDescription1221")
@@ -3683,7 +3416,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                                     for idx, item_desc in enumerate(collateral_items)]
                 # Сохраняем массив в extracted_fields для передачи во frontend
                 extracted_fields["collaterals"] = collaterals_list
-                logger.info(f"✅ Создано {len(collaterals_list)} предметов залога")
+                logger.info(f"Создано {len(collaterals_list)} предметов залога")
 
         # Теперь создаем отдельные обязательства
         obligations = self.extract_obligations(text, extracted_fields)
@@ -3792,11 +3525,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 if 'totalDebt' not in extracted_fields or not extracted_fields['totalDebt'] or str(extracted_fields['totalDebt']).strip() in ["0", "0,00", "0.00", ""]:
                     extracted_fields['totalDebt'] = extracted_fields['requirementsSum']
                     logger.info(f"Используем сумму требований как общую сумму долга: {extracted_fields['requirementsSum']}")
-
-        # Дополнительный разбор сложной формулировки:
-        # "на сумму 32952 руб., из которой: сумма основного долга 15000 руб.,
-        #  сумма долга по процентам 3264 руб., сумма задолженности по просроченным процентам 14688 руб.,
-        #  расходы по оплате госпошлины – 2000 руб, ИТОГО – 34952 руб"
         try:
             breakdown_pattern = re.compile(
                 r"на\s+сумму\s+([0-9\s,]+)\s*руб[\s\S]{0,200}?из\s+которой[:\s]*"
@@ -3831,10 +3559,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         except Exception as e:
             logger.debug(f"Ошибка при разборе сложной формулировки сумм: {e}")
 
-        # Дополнительный разбор сложной формулировки:
-        # "на сумму 32952 руб., из которой: сумма основного долга 15000 руб.,
-        #  сумма долга по процентам 3264 руб., сумма задолженности по просроченным процентам 14688 руб.,
-        #  расходы по оплате госпошлины – 2000 руб, ИТОГО – 34952 руб"
+
         try:
             breakdown_pattern = re.compile(
                 r"на\s+сумму\s+([0-9\s,]+)\s*руб[^.]*?из\s+которой[:\s]*"
@@ -4007,10 +3732,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         # Согласование госпошлины/requirementsSum
         self._reconcile_state_duty(extracted_fields, text, document_type)
 
-        # Если ссудная госпошлина явно не указана, но есть общая госпошлина,
-        # используем её как ссудную (чтобы в шаблонах [17] не оставался пустым).
-        # Для rtk_application это правило НЕ применяется: отсутствие [17] в заявлении
-        # должно приводить к удалению соответствующего маркера и текста в акте.
+
         if document_type != "rtk_application" and not extracted_fields.get("loanStateDuty17"):
             if extracted_fields.get("stateDuty16"):
                 extracted_fields["loanStateDuty17"] = extracted_fields["stateDuty16"]
@@ -4057,9 +3779,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 extracted_fields.pop("debtorName", None)
         else:
             extracted_fields.pop("debtorName", None)
-        # ВАЖНО: всю дополнительную очистку имени должника выше мы применяем ко всем типам документов.
-        # Для юр. инициирования ниже есть отдельная логика, которая аккуратно переустанавливает имя
-        # должника из шапки документа и не влияет на остальные типы.
+
 
         applicant_clean = None
         if applicant_name_raw:
@@ -4138,14 +3858,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         # Финализация типа должника и финуправляющего
         self._finalize_debtor_type(extracted_fields, text, debtor_clean)
 
-        # Финальная нормализация блока «Финансовые данные»: неустойка/штраф,
-        # даты платёжных поручений (депозит/госпошлина), банкротная/ссудная
-        # госпошлина, общая сумма долга. Запускается последней — перекрывает
-        # ошибки ранних путей извлечения высоконадёжными формулировками.
+
         self._normalize_financial_block(extracted_fields, text)
 
-        # Защита D: убрать даты договоров/решений, которые в тексте встречаются
-        # только в ссылках на закон/постановление Пленума (дата ФЗ != дата договора).
+
         self._drop_law_context_dates(extracted_fields, text)
 
         logger.info(f"Итоговые извлеченные поля: {extracted_fields}")
@@ -4177,18 +3893,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 re.IGNORECASE,
             )
         if not kommersant_date_match:
-            # Формулировка из скобок:
-            # "(опубликована на сайте официального издания газеты «Коммерсантъ» ... от 27.12.2025)"
-            # Между "Коммерсантъ" и "от" может быть большой фрагмент текста, поэтому даём большой допуск.
+
             kommersant_date_match = re.search(
                 r"официальн[а-яё\s]+издан[а-яё\s]+газет[аы]\s+«?Коммерсант[\"ъ»']?»?[^0-9]{0,400}?от\s*(\d{1,2}[.,]\d{1,2}[.,]\d{4})",
                 text,
                 re.IGNORECASE,
             )
         if not kommersant_date_match:
-            # Самый общий вариант: рядом с упоминанием "Коммерсант" есть дата.
-            # Сначала пробуем классический паттерн,
-            # затем — полный проход по всем датам с поиском ближайшей к слову "Коммерсант".
+
             kommersant_date_match = re.search(
                 r"Коммерсант[ъ\"»']?\s*[^0-9]{0,200}?(\d{1,2}[.,]\d{1,2}[.,]\d{4})",
                 text,
@@ -4429,7 +4141,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if kfh_match:
                 is_kfh_detected = True
                 kfh_head_name = kfh_match.group(1).strip()
-                logger.info(f"✅ КФХ обнаружено по паттерну '{pattern}': глава КФХ - {kfh_head_name}")
+                logger.info(f"КФХ обнаружено по паттерну '{pattern}': глава КФХ - {kfh_head_name}")
                 break
         return is_kfh_detected, kfh_head_name
 
@@ -4486,13 +4198,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 dative_auto = self._convert_name_to_dative(name_for_dative)
                 if dative_auto:
                     extracted_fields["applicantNameDative"] = dative_auto
-                    logger.info(f"✅ Перегенерирован дательный падеж для [2.2]: {dative_auto} (из имени: {correct_name_for_dative})")
+                    logger.info(f"Перегенерирован дательный падеж для [2.2]: {dative_auto} (из имени: {correct_name_for_dative})")
                 else:
-                    logger.warning(f"⚠️ Не удалось сгенерировать дательный падеж для: {name_for_dative}")
+                    logger.warning(f"Не удалось сгенерировать дательный падеж для: {name_for_dative}")
             else:
-                logger.warning(f"⚠️ После удаления префиксов имя стало пустым: {correct_name_for_dative}")
+                logger.warning(f"После удаления префиксов имя стало пустым: {correct_name_for_dative}")
         else:
-            logger.warning(f"⚠️ Не найдено правильное имя должника для генерации дательного падежа [2.2]")
+            logger.warning(f"Не найдено правильное имя должника для генерации дательного падежа [2.2]")
             logger.warning(f"  applicantName (ip_specific): {ip_specific_fields.get('applicantName')}")
             logger.warning(f"  debtorName (ip_specific): {ip_specific_fields.get('debtorName')}")
             logger.warning(f"  applicantName (extracted): {extracted_fields.get('applicantName')}")
@@ -4548,11 +4260,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
                 # Если предмет залога [1221] не найден, пытаемся извлечь через fallback метод
                 if "mortgageCollateralDescription1221" not in extracted_fields or not extracted_fields.get("mortgageCollateralDescription1221"):
-                    logger.info("🔍 Предмет залога [1221] не найден для observation_collateral, пробуем fallback метод...")
+                    logger.info("Предмет залога [1221] не найден для observation_collateral, пробуем fallback метод...")
                     collateral_block = self._extract_mortgage_collateral_block(text)
                     if collateral_block:
                         extracted_fields["mortgageCollateralDescription1221"] = collateral_block
-                        logger.info(f"✅ Извлечено mortgageCollateralDescription1221 через fallback метод: {collateral_block[:150]}...")
+                        logger.info(f"Извлечено mortgageCollateralDescription1221 через fallback метод: {collateral_block[:150]}...")
 
                 extracted_fields["observationHasCollateral"] = "true"
         return document_type
@@ -4571,10 +4283,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if manager_name_cc and manager_inn_cc and "инн" not in manager_name_cc.lower():
                 extracted_fields["managerName"] = f"{manager_name_cc.strip()} (ИНН {manager_inn_cc})"
 
-        # Тип лица: текстовый фолбэк для определений суда без блока «Должник:»
-        # (например, «…банкротом индивидуального предпринимателя Главы КФХ …»),
-        # где имя должника — плейсхолдер. Делаем ДО рекомендаций, чтобы они
-        # использовали уже скорректированный тип лица.
+
         if extracted_fields.get("entityType") not in ("kfh", "ip", "legal"):
             text_entity = self._entity_from_text(text)
             if text_entity:
@@ -4582,10 +4291,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 if text_entity == "kfh":
                     extracted_fields["isKfh"] = True
 
-        # Номер дела: оставляем только если это реальный номер судебного дела
-        # («/ГОД» в конце). Отсекаем доверенности (№ЮЗБ/415-Д), договоры и пр.,
-        # которые могли попасть жадными паттернами. В ипотечных исках на момент
-        # подачи дела ещё нет — поле должно остаться пустым.
+
         _cn = extracted_fields.get("caseNumber")
         if _cn and not self._is_valid_case_number(_cn):
             # Хвост мог прилипнуть без пробела («…/2026Исх. Док.») — жадный класс
@@ -4623,7 +4329,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 # ВАЖНО: Не перезаписываем ИНН и ОГРН, если они уже были извлечены из блока "Ответчик:" в основном цикле
                 if key in ["inn", "ogrnip", "ogrn"]:
                     if key in extracted_fields and extracted_fields[key]:
-                        logger.info(f"⚠️ Пропускаем перезапись {key} из ip_specific_fields (уже извлечен из блока Ответчик: {extracted_fields[key]})")
+                        logger.info(f"Пропускаем перезапись {key} из ip_specific_fields (уже извлечен из блока Ответчик: {extracted_fields[key]})")
                         continue
                 # Не перезаписываем уже найденные денежные поля основного извлечения,
                 # чтобы не заносить шум из fallback-паттернов ip_specific_fields.
@@ -4635,13 +4341,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                             incoming_amount = self._safe_amount_field(value)
                             if existing_amount <= 0 < incoming_amount:
                                 logger.info(
-                                    f"🔁 Обновляем {key}: текущее значение {extracted_fields[key]} заменяется на ненулевое {value}"
+                                    f"Обновляем {key}: текущее значение {extracted_fields[key]} заменяется на ненулевое {value}"
                                 )
                             else:
-                                logger.info(f"⚠️ Пропускаем перезапись {key} из ip_specific_fields (уже есть корректное значение: {extracted_fields[key]})")
+                                logger.info(f"Пропускаем перезапись {key} из ip_specific_fields (уже есть корректное значение: {extracted_fields[key]})")
                                 continue
                         else:
-                            logger.info(f"⚠️ Пропускаем перезапись {key} из ip_specific_fields (уже есть корректное значение: {extracted_fields[key]})")
+                            logger.info(f"Пропускаем перезапись {key} из ip_specific_fields (уже есть корректное значение: {extracted_fields[key]})")
                             continue
                 extracted_fields[key] = value
                 logger.info(f"Установлено поле ИП {key}: {value}")
@@ -4651,7 +4357,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             car_1221 = self._extract_car_collateral_1221(text)
             if car_1221:
                 extracted_fields["mortgageCollateralDescription1221"] = car_1221
-                logger.info(f"✅ Установлено mortgageCollateralDescription1221 (залог авто): {car_1221[:80]}...")
+                logger.info(f"Установлено mortgageCollateralDescription1221 (залог авто): {car_1221[:80]}...")
 
         # Перегенерация дательного падежа [2.2] (ИП)
         self._regenerate_ip_dative(extracted_fields, text, ip_specific_fields)
@@ -4704,12 +4410,12 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                                     )
                                 else:
                                     logger.info(
-                                        f"⚠️ Пропускаем перезапись {key} из ip_specific_fields "
+                                        f"Пропускаем перезапись {key} из ip_specific_fields "
                                         f"(уже извлечен в основном цикле: {extracted_fields[key]})"
                                     )
                                     continue
                             else:
-                                logger.info(f"⚠️ Пропускаем перезапись {key} из ip_specific_fields (уже извлечен в основном цикле: {extracted_fields[key]})")
+                                logger.info(f"Пропускаем перезапись {key} из ip_specific_fields (уже извлечен в основном цикле: {extracted_fields[key]})")
                                 continue
                     # Госпошлину для ЮЛ с залогом сохраняем отдельно (может приходить из ip_specific_fields
                     # как корректное ненулевое значение, даже если в основном цикле было 0,00).
@@ -4730,7 +4436,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 car_1221 = self._extract_car_collateral_1221(text)
                 if car_1221:
                     extracted_fields["mortgageCollateralDescription1221"] = car_1221
-                    logger.info(f"✅ Установлено mortgageCollateralDescription1221 (залог авто): {car_1221[:80]}...")
+                    logger.info(f"Установлено mortgageCollateralDescription1221 (залог авто): {car_1221[:80]}...")
 
             # Специальное извлечение процентов для ЮЛ с залогом: "просроченные проценты" или "проценты" после тире или без него
             interest_patterns = [
@@ -4751,7 +4457,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                     if interest_value:
                         extracted_fields["interest14"] = interest_value
                         extracted_fields["interest"] = interest_value
-                        logger.info(f"✅ Перезаписано interest14 для ЮЛ с залогом из паттерна '{pattern[:50]}...': {interest_value}")
+                        logger.info(f"Перезаписано interest14 для ЮЛ с залогом из паттерна '{pattern[:50]}...': {interest_value}")
                         break
 
         # Извлекаем обязательства для ЮЛ
@@ -4780,7 +4486,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 # ВАЖНО: Не перезаписываем ИНН и ОГРН, если они уже были извлечены из блока "Ответчик:" в основном цикле
                 if key in ["inn", "ogrnip", "ogrn"]:
                     if key in extracted_fields and extracted_fields[key]:
-                        logger.info(f"⚠️ Пропускаем перезапись {key} из ip_specific_fields (уже извлечен из блока Ответчик: {extracted_fields[key]})")
+                        logger.info(f"Пропускаем перезапись {key} из ip_specific_fields (уже извлечен из блока Ответчик: {extracted_fields[key]})")
                         continue
                 # Специальная обработка для courtName в процедуре "умерший"
                 if key == 'courtName' and is_deceased:
@@ -4829,7 +4535,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             collateral_block = self._extract_mortgage_collateral_block(text)
             if collateral_block:
                 extracted_fields["mortgageCollateralDescription1221"] = collateral_block
-                logger.info(f"✅ Извлечено mortgageCollateralDescription1221 через fallback метод: {collateral_block[:150]}...")
+                logger.info(f"Извлечено mortgageCollateralDescription1221 через fallback метод: {collateral_block[:150]}...")
 
         if document_type == "observation_collateral":
             extracted_fields["observationHasCollateral"] = "true"
@@ -4870,15 +4576,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 fields[fname] = ", ".join(kept)
             else:
                 fields.pop(fname, None)
-
-
-
-
-
-
-
-
-
 
     # Типы ТС (многословные — раньше однословных, чтобы «грузовой тягач» не срезался
     # до «грузовой»). «автомобиль» тут НЕ тип, а метка предмета — не берём.
@@ -5055,29 +4752,16 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         norm = text.replace("\xa0", " ").replace(" ", " ")
         items: List[str] = []
 
-        # ОПИСЬ/перечисление имущества должника — НЕ залог (самобанкротные
-        # заявления: «у Должника имеется следующее имущество: … автомобиль …»,
-        # «На мое имя зарегистрировано следующее движимое имущество: - Марка: …»).
-        # Предмет отсеиваем, если слева виден маркер описи и между маркером и
-        # предметом нет слова «залог».
         _inventory_re = re.compile(
             r"(?:имеется|зарегистрирован\w*)\s+следующ\w+\s+(?:движим\w+\s+|недвижим\w+\s+)?имуществ\w*"
             r"|опис\w+\s+имуществ"
-            # ФНС-формулировка результата межведомственного запроса: «за должником
-            # НЕ зарегистрировано недвижимое и движимое имущество: -Автомобиль…»
-            # — список идёт ПОСЛЕ отрицания (имущество, которого у должника НЕТ/
-            # уже отчуждено), это не залог и не опись реального имущества.
+
             r"|не\s+зарегистрирован\w*\s+(?:движим\w+|недвижим\w+)(?:\s+и\s+(?:движим\w+|недвижим\w+))?\s+имуществ\w*",
             re.IGNORECASE,
         )
 
         def _is_inventory_item(pos: int) -> bool:
-            # 1500, не 200 — описи ФНС/самобанкротов перечисляют по несколько
-            # предметов подряд одним маркером («не зарегистрировано ... имущество:
-            # -Автомобиль ...долгое описание с адресом/стоимостью... -Автомобиль
-            # ...»), и уже 2-3-й пункт списка легко уходит за 200 символов от
-            # маркера при описаниях по 250-300 символов (найдено на реальном
-            # документе, план: разбор `entityTypeWarning`/`collateralWarning`).
+
             ctx = norm[max(0, pos - 1500):pos]
             last = None
             for im in _inventory_re.finditer(ctx):
@@ -5102,11 +4786,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             s = m.group(1).strip().rstrip(" .,;")
             if len(s) >= 8 and not _is_inventory_item(m.start()):
                 items.append(s)
-        # Формат договоров залога/ипотеки без буллетов: «…в залог передано следующее
-        # [движимое] имущество: <предмет1 … стоимостью N руб.> <предмет2 … стоимостью
-        # N руб.> Общая стоимость … составляет N руб.». Каждый предмет — до своей
-        # «стоимостью N руб.»; строка «Общая стоимость … составляет …» — это итог, не
-        # предмет (не содержит «стоимостью <число>» вплотную), поэтому не попадает.
+
         items.extend(self._extract_pledge_block_items(norm))
         return items
 
@@ -5207,11 +4887,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         """
         if obj.get("collateralType") in ("auto", "real_estate"):
             return True
-        # «Иное» — это ВСЁ, что не недвижимость и не ТС (оборудование, линии, товары,
-        # ценные бумаги, доли и т.п.). Реальный предмет ВСЕГДА имеет конкретную
-        # залоговую стоимость (он так и извлекается из договора залога). Болванки
-        # переизвлечения («Согласно Обзора судебной практики…», «Правовое обоснование
-        # требований…», «Поттер Г.Д.») стоимости не имеют — отсекаются.
+
         if not obj.get("collateralValue"):
             return False
         name = (obj.get("objectName") or "").strip()
@@ -5458,9 +5134,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             set_field("mortgageCollateralDescription1221", collateral_patterns)
             if "mortgageCollateralDescription1221" in fields:
                 extracted_value = fields['mortgageCollateralDescription1221']
-                logger.info(f"✅ Извлечено mortgageCollateralDescription1221 ({len(extracted_value)} символов): {extracted_value[:150]}...")
+                logger.info(f"Извлечено mortgageCollateralDescription1221 ({len(extracted_value)} символов): {extracted_value[:150]}...")
             else:
-                logger.warning(f"⚠️ mortgageCollateralDescription1221 НЕ найдено!")
+                logger.warning(f"mortgageCollateralDescription1221 НЕ найдено!")
 
         return fields
 
@@ -5607,17 +5283,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         is_observation = "observation" in document_type or "наблюден" in text_lower
         is_competition = "competition" in document_type or "конкурсн" in text_lower
 
-        # ВКЛ-в-РТК и процедурные акты ВЗАИМОИСКЛЮЧАЮЩИ. Заявление о включении в реестр
-        # подаётся, когда банкротство уже идёт: суд лишь определяет включение
-        # (final_rtk_inclusion), процедуру (реализация/наблюдение/…) им НЕ вводят.
-        # Дискриминатор — documentType (вердикт классификатора), а НЕ наличие слова
-        # «включ/реализац» где угодно в тексте: у заявления-инициирования есть
-        # boilerplate «включении в реестр», у ВКЛ-в-РТК — упоминание «реализации
-        # имущества» должника. Смешение и давало ложный final_realization на РТК
-        # (из-за чего всплывало поле СРО) и ложный final_rtk_inclusion на инициированиях.
-        # Самобанкротство — инициирование должником (предлагает СРО управляющего),
-        # а не включение кредитора в реестр: даже если классификатор дал
-        # rtk_application, процедурные акты ему нужны, поле СРО должно показываться.
+
         is_rtk_inclusion = document_type == "rtk_application" and not self._detect_self_bankruptcy(text)
 
         # Базовые акты для включения в РТК.
@@ -5751,12 +5417,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         local_type = 'Договор'
         if context_match:
             context = context_match.group(0).lower()
-            # Сравниваем по основам слов, т.к. в тексте склонённые формы
-            # («кредитному договору», «договора залога», «займа»).
-            # Тип определяет САМ договор: «кредитный договор» с обеспечением
-            # остаётся кредитным (залог — отдельный блок). «Договор залога» —
-            # только по явной формулировке, а не по любому упоминанию «залог».
-            # 2 самых частых типа — кредитный договор и кредитная карта.
+
             if 'карт' in context and ('кредит' in context or 'эмисси' in context):
                 local_type = 'Кредитная карта'
             elif 'эмисси' in context:  # эмиссионный контракт = выпуск кредитной карты
@@ -5772,9 +5433,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             elif 'ссуд' in context:
                 local_type = 'Договор ссуды'
 
-        # Если по локальному контексту тип не уточнён (договор назван просто
-        # «договор» — форма Совкомбанка), берём явное поле «Вид обязательства:
-        # <Кредит/Заём/Поручительство>» из документа.
+
         if local_type == 'Договор':
             vm = re.search(
                 r'вид\s+обязательств\w*[:\s]*\n?\s*([A-Za-zА-Яа-яЁё]+)',

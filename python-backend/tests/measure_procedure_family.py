@@ -75,7 +75,8 @@ def main() -> int:
             skipped += 1
             continue
         raw_text = result.get("rawText", "")
-        fam, details = classify_procedure_family(raw_text)
+        debtor_name = (result.get("fields") or {}).get("debtorName", "")
+        fam, details = classify_procedure_family(raw_text, debtor_name)
         if fam is None:
             no_family += 1
             disagree.append((rel, result.get("documentType"), exp, fam, details))
