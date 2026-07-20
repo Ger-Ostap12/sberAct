@@ -79,9 +79,8 @@ class AmountsMixin:
 
         money_pattern = r"\d[\d\u00a0\u202f\s]*[.,]\d{2}"
 
-        # --- Основной долг [13] и проценты [14] по строкам из блока "ПРОСИТ СУД" ---
-        # Линейный разбор надежнее широких regex по всему блоку и снижает риск,
-        # когда проценты подменяются суммой основного долга.
+        # Основной долг [13] и проценты [14] из блока "ПРОСИТ СУД": построчный
+        # разбор, чтобы проценты не подменялись суммой основного долга.
         principal_candidate = None
         interest_candidate = None
         principal_candidate_val = -1.0
@@ -192,9 +191,7 @@ class AmountsMixin:
                 f"Сумма всех неустоек [15]: {formatted_forfeit} руб. (найдено {len(forfeit15_sum_values)} значений)"
             )
 
-        # --- Госпошлины/нотариальные тарифы из блока "ПРОСИТ СУД"/"ПРОШУ" ---
-        # В заявлениях может быть две разные госпошлины (ссудная и банкротная),
-        # поэтому мы их НЕ суммируем, а подставляем по отдельности в маркеры.
+
         state_duty_values: List[str] = []
         existing_state_duty_nonzero = self._safe_amount_field(
             extracted_fields.get("stateDuty16") or extracted_fields.get("stateDuty")
@@ -213,9 +210,7 @@ class AmountsMixin:
                 ):
                     continue
 
-                # Убираем законодательные ссылки («ст. 333.37», «пп. 5», «п. 1»,
-                # «ч. 2 ст. 156»): иначе номер статьи (333.37 НК РФ — норма об
-                # освобождении физлица ОТ пошлины) принимается за сумму госпошлины.
+
                 line_no_refs = re.sub(
                     r"\b(?:ст(?:атьи|атья|\.)|пп?\.|подпункт\w*|пункт\w*|части?|ч\.)\s*\d+(?:[.,]\d+)?",
                     " ", line, flags=re.IGNORECASE,
@@ -264,9 +259,7 @@ class AmountsMixin:
                 unique_state_duty_values.append(v)
         state_duty_values = unique_state_duty_values
 
-        # Если в блоке ПРОСИТ СУД нашли только нули, но ранее уже была
-        # извлечена ненулевая госпошлина (например, из шапки "Госпошлина: ..."),
-        # не перезаписываем корректное значение нулём.
+
         has_nonzero_from_claim = any(self._safe_amount_field(v) > 0 for v in state_duty_values)
         if existing_state_duty_nonzero > 0 and not has_nonzero_from_claim:
             logger.info(
@@ -278,9 +271,7 @@ class AmountsMixin:
             # Ненулевая госпошлина всегда приоритетнее 0,00.
             nonzero_duties = [v for v in state_duty_values if self._safe_amount_field(v) > 0]
             if nonzero_duties:
-                # Если ранее уже была извлечена крупная госпошлина (например 53 349),
-                # а из блока "ПРОСИТ СУД" пришло подозрительно маленькое число (например 4,03),
-                # не даём маленькому числу перезатереть корректное.
+
                 existing_nonzero_any = max(
                     self._safe_amount_field(extracted_fields.get("stateDuty16")),
                     self._safe_amount_field(extracted_fields.get("stateDuty")),
@@ -350,9 +341,7 @@ class AmountsMixin:
             term_value = int(term_digits) if term_digits else None
             # Реалистичный срок кредита в месяцах.
             if not term_value or term_value < 1 or term_value > 600:
-                # В шаблонных документах между числом и единицей встречается
-                # маркер вида [1001] ("на срок 36[1001] мес") — допускаем его,
-                # иначе реальное значение терялось бы при перезахвате.
+
                 term_match = re.search(
                     r"на\s+срок\s+([0-9]{1,3})\s*(?:\[[0-9.]+\]\s*)?(?:месяц(?:ев)?|мес\.?)",
                     text,
@@ -554,9 +543,8 @@ class AmountsMixin:
             if after_n != before_n:
                 use_after = after_n > before_n
             else:
-                # Ничья: направление по позиции тире — «категория – ЧИСЛО»
-                # (before) против «ЧИСЛО руб – категория» (after). Для формата
-                # «категория-первая» (САРМАТ/КОЛОР) тире стоит ПЕРЕД числом.
+                # Ничья: направление по позиции тире — «категория – ЧИСЛО» (before)
+                # против «ЧИСЛО руб – категория» (after); формат САРМАТ/КОЛОР — before.
                 da = db = 0
                 for i, m in ms:
                     wb = win_before(i, m)
@@ -732,11 +720,7 @@ class AmountsMixin:
         else:
             fields.pop("loanStateDuty17", None)
 
-        # Разбивка полей на слагаемые (для тултипа «откуда число»). ОДНО слагаемое —
-        # тоже источник («взято из документа как есть»): тултип должен быть на ВСЕХ
-        # не-ФНС заявлениях (требование Андрея), а не только при суммировании ≥2 сумм.
-        # Кладём во временный ключ fields — analyze() поднимет его в top-level
-        # result.financeBreakdown и уберёт из fields (в editedFields/golden не попадает).
+
         _brk_map = [("principal", "principalDebt"), ("interest", "interest"),
                     ("forfeit", "forfeit"), ("penalty", "penalties"),
                     ("loan_duty", "loanStateDuty17")]
@@ -768,10 +752,7 @@ class AmountsMixin:
             )
         )
 
-    # === ФНС: финансы по ОЧЕРЕДЯМ реестра требований =============================
-    # Регэкспы модульного уровня (компилируются один раз). Суммы у ФНС всегда с
-    # единицей (руб/рублей/py6-OCR/р.), поэтому «голые» числа (ИНН/даты/индексы) не
-    # ловим — единица обязательна. Знак «-» разрешён (артефакт «взносам – -96396,39»).
+
     _FNS_AMT_RE = re.compile(
         r"(\d[\d\s  ]*(?:[.,]\d{1,2})?)\s*(?:руб\w*|рублей|py6\w*|р\.|лей)",
         re.IGNORECASE,
@@ -780,9 +761,7 @@ class AmountsMixin:
     # «2-ой очереди», «3-ю очередь». Слово/цифра → номер (label-anchored на «очеред»).
     _FNS_QUEUE_RE = re.compile(
         r"(?:в|во)\s+(перв|втор|трет)\w*\s+очеред\w*"
-        # Цифровая форма «2-ои/3-ой/3-ю очереди». Порядковый хвост после дефиса —
-        # ЛЮБЫЕ буквы (кир./лат. «o» из OCR), не фиксированный класс: раньше «2-ои»
-        # не ловилось, т.к. «и» не входило в перечень → 2-я очередь терялась целиком.
+
         r"|(\d)\s*[-–—]?\s*[а-яёo]{0,4}\s*очеред\w*",
         re.IGNORECASE,
     )
@@ -799,18 +778,13 @@ class AmountsMixin:
         r"(\d[\d\s  ]*(?:[.,]\d{1,2})?)\s*(?:руб\w*|рублей|py6\w*|р\.|лей)",
         re.IGNORECASE,
     )
-    # ЯВНАЯ общая сумма по ключевому слову «всего»: «…в размере всего: N руб»,
-    # «составляет всего N руб., в том числе». Надёжнее голого «в размере N», которое
-    # вводит и подытоги очередей (из-за него грандтотал брался неверным). Десятичная —
-    # запятая ИЛИ точка (OCR даёт «1712229.07»), тысячи — пробел.
+
     _FNS_GRAND_VSEGO_RE = re.compile(
         r"(?:всего|в\s+общей\s+сумме)\s*[:\-–—]?\s*[-–—]?\s*"
         r"(\d[\d\s]*[.,]\d{2}|\d[\d\s]*\d)\s*(?:руб\w*|рублей|py6\w*|р\.|лей)",
         re.IGNORECASE,
     )
-    # Грандтотал-fallback: «N руб., в том числе» без «в размере/сумме» (форма, где
-    # общая сумма стоит отдельной строкой перед разбивкой по очередям). Допускаем
-    # OCR-разрыв тысяч точкой («7. 267 312,82»); десятичная — только запятой.
+
     _FNS_GRANDTOTAL_INCL_RE = re.compile(
         r"(\d[\d\s.  ]*,\d{2})\s*(?:руб\w*|рублей|py6\w*|р\.|лей)[.,\s]*в\s+том\s+числе",
         re.IGNORECASE,
@@ -822,10 +796,7 @@ class AmountsMixin:
         "forfeit", "forfeit15", "penalties", "loanStateDuty17", "bankCommission",
         "stateDuty16", "stateDuty", "financeBreakdown",
     )
-    # Дефолт-слот категории для очереди, где нашёлся только подытог Total (правило
-    # «2 равных поля»). Правило Андрея: одиночное число очереди = «Ссудная
-    # задолженность (просроченный основной долг)» для ЛЮБОЙ очереди. Слот заполняется
-    # значением Total.
+
     _FNS_QUEUE_DEFAULT_SUF = "LoanDebt"
 
     def _fns_amount(self, s: str) -> float:
@@ -918,12 +889,7 @@ class AmountsMixin:
                 end = markers[idx + 1][0] if idx + 1 < len(markers) else len(region)
                 seg = region[pos:end]
                 data = dict(queues.get(n, {}))
-                # Подытог очереди = ПЕРВАЯ денежная сумма после слова «очеред…».
-                # Форма связки не важна: «очередь N руб.» (без «в размере», как у
-                # Зайцева), «очередь в размере N», «очереди по уплате … в размере N» —
-                # все сводятся к «первой сумме за маркером». Единица (руб) обязательна,
-                # поэтому ИНН/даты/индексы/№ не попадают. Ранее требовалась явная связка
-                # в окне seg[:160] → бессвязный подытог терялся.
+
                 mo = re.search(r"очеред\w*", seg, re.IGNORECASE)
                 sub = self._FNS_AMT_RE.search(seg, mo.end()) if mo else None
                 if sub:
@@ -945,14 +911,7 @@ class AmountsMixin:
         if not queues:
             return
 
-        # ВАЛИДАЦИЯ ОЧЕРЕДИ «минимум 2 поля или пусто» (правило Андрея). Категории —
-        # всё, кроме подытога Total. Три случая:
-        #   • есть только Total → вся сумма очереди = ссудная задолженность (LoanDebt),
-        #     равная Total (правило Андрея для любой очереди) → 2 РАВНЫХ поля;
-        #   • есть категории, но нет Total → Total = Σ категорий (получаем ≥2 поля);
-        #   • есть и Total, и категории, но Total ≠ Σ → НЕ правим (доверяем Total из
-        #     документа; фронт покажет ⚠ — решение Андрея).
-        # Пустую очередь (0 полей) убираем — «полностью пустая» вместо «полуживой».
+
         for n, data in list(queues.items()):
             cats = [s for s in data if s != "Total"]
             total = data.get("Total")
@@ -967,12 +926,7 @@ class AmountsMixin:
         if not queues:
             return
 
-        # Грандтотал: СНАЧАЛА берём ЯВНУЮ общую сумму ИЗ ДОКУМЕНТА («…всего N руб»)
-        # в зачине просительной части — от начала просительного региона до первого
-        # маркера очереди (не весь документ, иначе поймаем число из шапки; но и не
-        # узкие 300 симв. — «всего» может стоять чуть раньше разбивки). Только если
-        # явного «всего» нет — вычисляем как Σ подытогов очередей и помечаем флагом
-        # (фронт покажет ⚠ «значение вычислено»).
+
         head = region[:markers[0][0]] if markers else ""
         grand_doc = self._fns_grandtotal(head) if head else None
         total_computed = False
@@ -980,9 +934,7 @@ class AmountsMixin:
             grand = grand_doc
         else:
             grand = sum(self._fin_amount(q["Total"]) for q in queues.values() if q.get("Total"))
-            # Флаг «вычислено» — только когда итог реально СЛОЖЕН из НЕСКОЛЬКИХ очередей.
-            # При ОДНОЙ очереди итог = её подытог, взятый из документа (Артемов/Геворгян/
-            # Мишунин: только 3-я очередь) — это не «сумма трёх очередей», ⚠ не ставим.
+
             if len(queues) >= 2:
                 total_computed = True
 
@@ -1006,9 +958,7 @@ class AmountsMixin:
             )
         )
 
-        # Диагностическая сверка (не правит данные — только сигнализирует в лог о
-        # расхождениях, чтобы ловить недоизвлечение/битые исходники; на фронте те же
-        # расхождения показываются пользователю ⚠). Допуск 1 руб. на округление.
+
         _cmp = [suf for suf in ("Arrears", "Penalties", "Forfeit", "Ndfl", "Insurance",
                                 "LoanDebt", "LoanDuty", "Commission")]
         for n, data in queues.items():
@@ -1086,9 +1036,7 @@ class AmountsMixin:
         # проценты ставок («0,1 % за день») и номера статей/пунктов.
         amount_kw = money + r"\s*(?:\[\d+\])?\s*руб"
 
-        # --- Неустойка (forfeit / [15]) ---
-        # Сумма привязана к слову «неустойка», метка между словом и числом
-        # (≤55 симв.) задаёт тип: за осн. долг / за проценты / общая.
+
         neu = {"principal": {}, "interest": {}, "single": {}}
         for m in re.finditer(r"неустойк\w*([^\d]{0,55}?)" + amount_kw, flat, re.IGNORECASE):
             label = m.group(1).lower()
@@ -1148,10 +1096,7 @@ class AmountsMixin:
         sd17 = amt(fields.get("loanStateDuty17"))
 
         def duty_is_garbage(v: float) -> bool:
-            # Госпошлина-мусор: совпадает с итогом/осн.долгом или это крупная доля
-            # долга. Проверки «по доле» применяем только к КРУПНЫМ суммам (>100k):
-            # реальная пошлина мала, а совпадение мелкой пошлины с (возможно неверным)
-            # итогом — не повод её удалять (иначе теряем верные 4 000 / 2 000).
+
             if v <= 0:
                 return False
             if total > 0 and v > 100000 and (abs(v - total) < 0.01 or v >= total * 0.4):
@@ -1312,9 +1257,7 @@ class AmountsMixin:
         except (ValueError, TypeError) as e:
             logger.debug(f"Проверка суммы долга: {e}")
 
-        # Для rtk_application с развернутым описанием сумм:
-        # если в тексте есть "ИТОГО ... руб." и упоминание госпошлины,
-        # пробуем выделить госпошлину как разницу между ИТОГО и (основной долг + проценты + просроченные проценты).
+
         try:
             if document_type == "rtk_application" and not extracted_fields.get("stateDuty"):
                 lower_text = text.lower()
@@ -1343,11 +1286,7 @@ class AmountsMixin:
         except Exception as e:
             logger.debug(f"Ошибка при попытке выделить госпошлину из 'ИТОГО': {e}")
 
-        # Если ссудная задолженность (loanDebt) не найдена явно — используем общую сумму долга/требований.
-        # ⚠️ Копируем ТОЛЬКО то, что реально сумма: источник на этом шаге каскада может
-        # ещё содержать мусор (напр. «Арбитражный суд Ростовской области»), а чистят его
-        # ПОЗЖЕ — копия мусора пережила бы чистку источника и уехала в поле «Ссудная
-        # задолженность». Проверка типа здесь дешевле, чем разбирательство на выходе.
+
         if not extracted_fields.get("loanDebt"):
             for source in ("debtAmount", "totalDebt"):
                 value = extracted_fields.get(source)
@@ -1371,9 +1310,7 @@ class AmountsMixin:
                 existing_state_duty = self._safe_amount_field(extracted_fields.get("stateDuty"))
                 incoming_state_duty16 = self._safe_amount_field(extracted_fields.get("stateDuty16"))
 
-                # Синхронизация stateDuty/stateDuty16:
-                # - если stateDuty16 ненулевая → она приоритетнее
-                # - если stateDuty16 нулевая → НЕ перезатираем уже найденную ненулевую stateDuty
+
                 if incoming_state_duty16 > 0:
                     extracted_fields["stateDuty"] = extracted_fields["stateDuty16"]
                     logger.info(f"Заменено поле stateDuty на {extracted_fields['stateDuty16']}")
@@ -1447,9 +1384,9 @@ class AmountsMixin:
             if key in extracted_fields and isinstance(extracted_fields[key], str):
                 extracted_fields[key] = self.normalize_amount_value(extracted_fields[key])
 
-        # Для rtk_application приоритетной является сумма требований (requirementsSum), а не общая фраза "в размере ...",
-        # которая часто относится к госпошлине.
-        # Если totalDebt совпадает с госпошлиной или заметно меньше суммы требований, подменяем totalDebt и debtAmount.
+        # Для rtk_application приоритет — requirementsSum, а не фраза "в размере …"
+        # (та часто про госпошлину): если totalDebt = госпошлине или заметно меньше
+        # requirementsSum, подменяем totalDebt/debtAmount.
         if document_type == "rtk_application":
             try:
                 req_sum_val = self._safe_amount_field(extracted_fields.get("requirementsSum"))
