@@ -587,3 +587,30 @@ def _natasha_person(window: str):
     except Exception as exc:
         logger.warning(f"Сбой Natasha NER: {exc}")
     return None
+
+
+def natasha_person_spans(window: str) -> list:
+    """Все PER-спаны окна как (нормализованное_ФИО, позиция_начала).
+
+    В отличие от `_natasha_person` (первое лицо), отдаёт все лица с позициями —
+    нужно для ролевого скоринга кандидатов по близости к якорю «Должник/Ответчик»
+    (второй независимый экстрактор в `semantic_classifier.classify_debtor_name`).
+    Пустой список при недоступной Natasha (graceful).
+    """
+    nat = _ensure_natasha()
+    if not nat:
+        return []
+    try:
+        from natasha import Doc
+        segmenter, ner_tagger = nat
+        doc = Doc(window)
+        doc.segment(segmenter)
+        doc.tag_ner(ner_tagger)
+        out = []
+        for span in doc.spans:
+            if span.type == "PER" and _looks_like_fio(span.text):
+                out.append((_normalize_fio(span.text), span.start))
+        return out
+    except Exception as exc:
+        logger.warning(f"Сбой Natasha NER (spans): {exc}")
+        return []

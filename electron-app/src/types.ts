@@ -160,6 +160,15 @@ export interface ExtractedData {
     semanticFamily: 'rtk' | 'initiation';
     message: string;
   } | null;
+  /** Предупреждение: имя должника, найденное вторым способом (NER-харвест +
+   *  ролевой якорь «Должник/Ответчик»), не совпало с извлечённым regex
+   *  `debtorName`. Та же идея, что documentTypeWarning; `debtorName` не меняется
+   *  (источник истины — regex), только сигнал перепроверить вручную. */
+  debtorNameWarning?: {
+    regexName: string;
+    semanticName: string;
+    message: string;
+  } | null;
   /** Предупреждение: тип лица, который подразумевает regex-тип документа, не
    *  совпал с типом лица, определённым по реквизитам (ИНН/ОГРНИП формат, орг.-
    *  форма в имени должника). Та же идея, что и documentTypeWarning, но без

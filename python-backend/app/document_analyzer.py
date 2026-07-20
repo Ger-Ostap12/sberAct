@@ -22,7 +22,7 @@ from org_normalizer import (
 )
 from morph_utils import detect_gender, inflect_surname
 from label_synonyms import all_labels, labels_alternation
-from semantic_classifier import classify_procedure_family
+from semantic_classifier import classify_procedure_family, classify_debtor_name, debtor_names_match
 from classify_mixin import (
     ClassifyMixin,
     _procedure_family_from_document_type,
@@ -406,6 +406,24 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                             ),
                         }
 
+            # Сверка имени должника вторым способом (NER-харвест + ролевой якорь) —
+            # shadow-баннер по образцу document_type_warning: только предупреждение,
+            # `debtorName` не трогаем (источник истины — regex). Golden-безопасно
+            # (поле не в `_TOP_FIELDS`). Не зависит от эмбеддинг-модели.
+            debtor_name_warning = None
+            _regex_debtor = extracted_fields.get("debtorName", "") or ""
+            _sem_debtor, _sem_meta = classify_debtor_name(raw_text)
+            if _sem_debtor and not debtor_names_match(_regex_debtor, _sem_debtor):
+                debtor_name_warning = {
+                    "regexName": _regex_debtor,
+                    "semanticName": _sem_debtor,
+                    "message": (
+                        "Имя должника, найденное вторым способом проверки, отличается "
+                        "от определённого автоматически — рекомендуем перепроверить "
+                        "ФИО/наименование должника вручную."
+                    ),
+                }
+
             _mgr_cur = (extracted_fields.get("managerName") or "").split("(")[0].strip()
             if not is_person_name(_mgr_cur):
                 _mgr_cand = self._extract_manager_candidate(text)
@@ -486,6 +504,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 "debtorStatusHint": debtor_status_hint,
 
                 "documentTypeWarning": document_type_warning,
+                "debtorNameWarning": debtor_name_warning,
                 "entityTypeWarning": entity_type_warning,
                 "collateralWarning": collateral_warning,
                 "fieldIssues": field_issues,

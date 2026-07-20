@@ -22,6 +22,7 @@ import CollateralSection from './sections/CollateralSection';
 import CourtSection from './sections/CourtSection';
 import FieldIssuesPanel from './sections/FieldIssuesPanel';
 import DocumentTypeWarning from './sections/DocumentTypeWarning';
+import DebtorNameWarning from './sections/DebtorNameWarning';
 import EntityTypeWarning from './sections/EntityTypeWarning';
 import CollateralWarning from './sections/CollateralWarning';
 import DatesSection from './sections/DatesSection';
@@ -848,6 +849,12 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
             это ровно то, что юрист должен перепроверить, если оно показалось. */}
         <Grid item xs={12}>
           <DocumentTypeWarning warning={analysisResult?.documentTypeWarning} />
+        </Grid>
+
+        {/* Та же идея для имени должника (backend: regex vs NER-харвест) —
+            перед полями лица, это то, что юрист должен сверить, если показалось. */}
+        <Grid item xs={12}>
+          <DebtorNameWarning warning={analysisResult?.debtorNameWarning} />
         </Grid>
 
         {/* Та же идея для типа лица должника (backend: regex vs реквизиты) —

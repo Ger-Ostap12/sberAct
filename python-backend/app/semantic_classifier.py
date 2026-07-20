@@ -340,6 +340,248 @@ def detect_procedure_clauses(
     return result
 
 
+# --- Ось «имя должника»: второй независимый экстрактор для сверки с regex ---
+#
+# Задача shadow-слоя — НЕ извлечь имя (это делает `fio_detector.extract_debtor_name`,
+# он источник истины для `debtorName`), а найти его ВТОРЫМ способом и, при
+# расхождении, показать баннер. Второй способ намеренно другой по природе:
+# NER-харвест кандидатов (Natasha) + ролевой скоринг по близости к якорю
+# «Должник/Ответчик» — устойчив там, где позиционный regex промахивается на
+# незнакомой вёрстке метки. Эмбеддинги здесь НЕ используются: §P.2 handoff
+# показал, что MiniLM слабо различает имена/оргформы; идентичность имени —
+# строковая задача (`_debtor_key`), NER — «семантическая» часть (найти span).
+
+_DEBTOR_ANCHOR_RE = re.compile(r"(?:Должник|Ответчик(?:и)?)\b", re.IGNORECASE)
+# Якоря прочих ролей: если такой ближе к кандидату, чем «Должник», кандидат
+# принадлежит другому лицу (кредитор/управляющий/представитель) — отбрасываем.
+_OTHER_ROLE_ANCHOR_RE = re.compile(
+    r"(?:Кредитор|Взыскател|Истец|Заявител|"
+    r"(?:финансов\w+|арбитражн\w+|конкурсн\w+)\s+управляющ|Представител)",
+    re.IGNORECASE,
+)
+
+# Кандидаты-организации: аббревиатура/полная форма + название в кавычках.
+_ORG_CAND_RE = re.compile(
+    r"""(?:
+        ООО|ПАО|ОАО|ЗАО|АО|НАО|ПК |
+        Общество\s+с\s+ограниченной\s+ответственностью |
+        Публичное\s+акционерное\s+общество |
+        (?:Непубличное\s+)?Акционерное\s+общество |
+        Производственный\s+кооператив
+    )\s*[«"][^»"\n]{2,80}[»"]""",
+    re.IGNORECASE | re.VERBOSE,
+)
+
+# Кандидаты-ИП: токен «ИП»/«Индивидуальный предприниматель» + фамилия(+инициалы/имя).
+_IP_CAND_RE = re.compile(
+    r"""(?:ИП|Индивидуальн\w+\s+предприниматель)\s+
+        (?P<name>[А-ЯЁ][А-ЯЁа-яё\-]+
+            (?:  \s+[А-ЯЁ][А-ЯЁа-яё\-]+(?:\s+[А-ЯЁ][А-ЯЁа-яё\-]+)?  # Имя (Отчество)
+               | \s+[А-ЯЁ]\.\s*[А-ЯЁ]\.                            # инициалы И.И. (точки обязательны)
+            )?)""",
+    re.VERBOSE,
+)
+
+_DEBTOR_WINDOW_HEAD_CAP = 2500
+
+
+def _extract_debtor_window(text: str) -> str:
+    """Окно для харвеста кандидатов в должники: шапка (стороны) + просительная часть.
+
+    Стороны перечислены в шапке (до «ПРОШУ»), а «Признать [должника] банкротом» —
+    в просьбе; оба места полезны. Шапку режем по `_DEBTOR_WINDOW_HEAD_CAP`, чтобы
+    в окно не втянулось тело документа (факты, реквизиты третьих лиц).
+    """
+    if not text:
+        return ""
+    m = _PRAYER_START_RE.search(text)
+    head_end = min(m.start(), _DEBTOR_WINDOW_HEAD_CAP) if m else _DEBTOR_WINDOW_HEAD_CAP
+    head = text[:head_end]
+    prayer = _extract_prayer_window(text)
+    return head + "\n" + prayer if prayer else head
+
+
+def _nearest_preceding(anchor_re: "re.Pattern", window: str, pos: int) -> Optional[int]:
+    """Позиция ближайшего к `pos` слева совпадения `anchor_re` (или None)."""
+    best = None
+    for m in anchor_re.finditer(window, 0, pos):
+        best = m.start()
+    return best
+
+
+def _harvest_debtor_candidates(window: str) -> list[tuple[str, int, str]]:
+    """Кандидаты (имя, позиция, вид) из окна: ЮЛ, ИП, ФЛ (Natasha)."""
+    candidates: list[tuple[str, int, str]] = []
+    for m in _ORG_CAND_RE.finditer(window):
+        candidates.append((m.group(0).strip(), m.start(), "legal"))
+    for m in _IP_CAND_RE.finditer(window):
+        candidates.append(("ИП " + m.group("name").strip(), m.start(), "ip"))
+    try:
+        from fio_detector import natasha_person_spans
+
+        for name, start in natasha_person_spans(window):
+            # ФНС-бланк «На №» перед ФИО просачивается в конец спана
+            # («Богачева Анна Михайловна На») — срезаем хвостовой канцелярит.
+            name = re.sub(r"\s+На$", "", name).strip()
+            candidates.append((name, start, "individual"))
+    except Exception as exc:  # мягкая зависимость, как везде в проекте
+        logger.warning(f"NER-харвест кандидатов недоступен: {exc}")
+    return candidates
+
+
+def classify_debtor_name(text: str) -> tuple[Optional[str], dict]:
+    """Имя должника, найденное ВТОРЫМ способом (для сверки с regex `debtorName`).
+
+    Из кандидатов окна берём того, чей ближайший слева якорь — «Должник/Ответчик»
+    (и не перекрыт более близким якорём иной роли). Из нескольких — ближайшего к
+    якорю. None (воздержаться), если ни один кандидат не привязан к якорю должника
+    или окно/NER недоступны — воздержание лучше догадки (зеркалит процедуру-ось).
+
+    Возвращает (имя|None, meta) — meta несёт вид лица и дистанцию до якоря.
+    """
+    window = _extract_debtor_window(text)
+    if not window:
+        return None, {}
+    best_name: Optional[str] = None
+    best_kind = ""
+    best_dist = 10 ** 9
+    for name, pos, kind in _harvest_debtor_candidates(window):
+        d_anchor = _nearest_preceding(_DEBTOR_ANCHOR_RE, window, pos)
+        if d_anchor is None:
+            continue
+        o_anchor = _nearest_preceding(_OTHER_ROLE_ANCHOR_RE, window, pos)
+        if o_anchor is not None and o_anchor > d_anchor:
+            continue  # к кандидату ближе якорь иной роли — это не должник
+        dist = pos - d_anchor
+        if dist < best_dist:
+            best_dist, best_name, best_kind = dist, name, kind
+    if best_name is None:
+        return None, {}
+    return best_name, {"kind": best_kind, "dist": best_dist}
+
+
+_LETTER_RE = re.compile(r"[А-ЯЁа-яёA-Za-z]")
+# Признаки организации: правовая форма или кавычки — у физлица их не бывает.
+_ORG_MARKER_RE = re.compile(
+    r"[«»\"]|"
+    r"\b(?:ООО|ОАО|ПАО|ЗАО|АО|НАО|ПК|КФХ|"
+    r"Общество|Акционерн\w+|кооператив\w*|компани\w+|фирм\w+|банк\w*|"
+    r"предприяти\w+|учреждени\w+|товариществ\w+|фонд\w*)\b",
+    re.IGNORECASE,
+)
+
+
+def _initials(tokens: list[str]) -> str:
+    """Инициалы из хвоста ФИО. Токен-инициалы «И.И.» → «ии» (обе буквы), обычное
+    слово «Иван» → «и» (первая). Так «Иванов Иван Иванович» и «Иванов И.И.» дают
+    одинаковую строку инициалов. Ё→Е, регистр снят.
+    """
+    out: list[str] = []
+    for t in tokens:
+        letters = _LETTER_RE.findall(t)
+        if not letters:
+            continue
+        if "." in t and re.fullmatch(r"(?:[А-ЯЁа-яёA-Za-z]\.?){1,3}", t):
+            out.extend(letters)  # «И.И.» — все буквы как отдельные инициалы
+        else:
+            out.append(letters[0])
+    return "".join(c.lower().replace("ё", "е") for c in out)
+
+
+# Ленивый pymorphy — общий с остальным проектом приём мягкой зависимости
+# (`inflection_mixin._ensure_morph`): нет пакета — работаем без лемматизации.
+_MORPH = None
+
+
+def _lemma_surname(surname: str) -> str:
+    """Фамилия в им. падеже (лемма). «Базова»(род.)→«базов» — иначе родительный
+    из просьбы («Признать Базова…») ложно расходится с номинативом из шапки.
+    Предпочитаем Surn-разбор (фамилии-омонимы иначе лемматизируются как имя).
+    """
+    global _MORPH
+    if _MORPH is None:
+        try:
+            from pymorphy3 import MorphAnalyzer
+
+            _MORPH = MorphAnalyzer()
+        except Exception as exc:
+            logger.warning(f"pymorphy3 недоступен, фамилия без лемматизации: {exc}")
+            _MORPH = False
+    if not _MORPH:
+        return surname
+    try:
+        parses = _MORPH.parse(surname)
+        best = next((p for p in parses if "Surn" in p.tag), parses[0] if parses else None)
+        return best.normal_form if best else surname
+    except Exception:
+        return surname
+
+
+def _person_key(name: str) -> str:
+    """Ключ физлица: фамилия(лемма) + инициалы. Полное ФИО и инициалы дают один
+    ключ («Иванов Иван Иванович» = «Иванов И.И.»); падежи фамилии сводятся к
+    номинативу лемматизацией.
+    """
+    tokens = [t for t in re.split(r"\s+", name.strip()) if t]
+    if not tokens:
+        return ""
+    surname = re.sub(r"[^а-яёa-z\-]", "", tokens[0].lower()).replace("ё", "е")
+    surname = _lemma_surname(surname).replace("ё", "е")
+    return f"{surname}.{_initials(tokens[1:])}"
+
+
+def _debtor_key(name: str) -> str:
+    """Каноничный ключ имени должника для сравнения regex↔семантика.
+
+    Префикс вида лица (фл/ип/юл) — часть ключа: банк-ЮЛ vs должник-ФЛ обязаны
+    разойтись. Вид определяем по маркерам организации (форма/кавычки), а не через
+    `is_person_name` — тот отвергает «Иванов И.И.» из-за точек в токене. ЮЛ через
+    `org_normalizer` (снимает форму/кавычки/регистр), ФЛ/ИП — через `_person_key`.
+    """
+    if not name:
+        return ""
+    if re.match(r"^\s*ИП\b", name, re.IGNORECASE):
+        return "ип|" + _person_key(re.sub(r"^\s*ИП\s+", "", name, flags=re.IGNORECASE))
+    if _ORG_MARKER_RE.search(name):
+        from org_normalizer import norm_org_key
+
+        return "юл|" + norm_org_key(name)
+    return "фл|" + _person_key(name)
+
+
+def _name_tokens(name: str) -> set[str]:
+    """Множество значимых токенов имени (ё→е, регистр снят, инициалы/пунктуация
+    отброшены) — для проверки «частичного извлечения»."""
+    out = set()
+    for t in re.split(r"\s+", (name or "").strip()):
+        t = re.sub(r"[^а-яёa-z\-]", "", t.lower()).replace("ё", "е")
+        if len(t) >= 2:  # отбрасываем одиночные инициалы/мусор
+            out.add(t)
+    return out
+
+
+def debtor_names_match(regex_name: str, semantic_name: str) -> bool:
+    """Совместимы ли имена regex и семантики (True = НЕ показывать баннер).
+
+    Совместимы, если: (а) каноничные ключи равны; либо (б) один набор токенов —
+    подмножество другого (одно лицо, просто одна сторона извлекла менее полно —
+    напр. NER потерял фамилию-омоним «Песня» и вернул «Сергей Николаевич»). Это
+    НЕ противоречие, а разная полнота; баннер поднимаем только на конфликте.
+    """
+    if not regex_name or not semantic_name:
+        return True  # нечего сверять
+    key_r, key_s = _debtor_key(regex_name), _debtor_key(semantic_name)
+    if key_r == key_s:
+        return True
+    # Подмножество токенов гасим ТОЛЬКО внутри одного вида лица: иначе catch
+    # «Форте Пром ГМБХ» (regex ошибочно ФЛ) vs «ООО Форте Пром ГМБХ» (ЮЛ) —
+    # где {форте,пром,гмбх} ⊆ {ооо,форте,пром,гмбх} — ложно погаснет.
+    if key_r.split("|", 1)[0] != key_s.split("|", 1)[0]:
+        return False
+    a, b = _name_tokens(regex_name), _name_tokens(semantic_name)
+    return bool(a) and bool(b) and (a <= b or b <= a)
+
+
 def classify_procedure_family(text: str, debtor_name: str = "") -> tuple[Optional[str], dict]:
     """Семейство процедуры банкротства — «rtk» (только включение в реестр) или
     «initiation» (признание банкротом + введение процедуры) — по НАЛИЧИЮ
