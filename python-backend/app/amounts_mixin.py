@@ -1,7 +1,6 @@
-# -*- coding: utf-8 -*-
 import logging
 import re
-from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 import field_contract
 from patterns import FNS_CAT_LABELS, FNS_QUEUE_ORDINAL_WORDS
@@ -10,6 +9,10 @@ logger = logging.getLogger(__name__)
 
 
 class AmountsMixin:
+    if TYPE_CHECKING:
+        # Реализован в document_analyzer.DocumentAnalyzer; здесь только для Pyright
+        # (mixin-класс вызывает метод, который появится в итоговом составном классе).
+        def _extract_kommersant_publication(self, extracted_fields: Dict[str, Any], text: str) -> None: ...
 
     def normalize_amount_value(self, value: str) -> str:
         """
@@ -18,39 +21,31 @@ class AmountsMixin:
         if not value:
             return value
 
-        # Убираем неразрывные пробелы и слова "руб.", "рублей", "₽", "р."
         cleaned = value.replace("\u202f", " ").replace("\xa0", " ")
         cleaned = re.sub(r'(?:руб(?:\.|лей)?|₽|р\.?)', "", cleaned, flags=re.IGNORECASE)
         cleaned = cleaned.strip()
 
-        # Оставляем только цифры, пробелы и разделители
         cleaned = re.sub(r"[^0-9,.\s]", "", cleaned)
         cleaned = re.sub(r"\s{2,}", " ", cleaned)
 
-        # Убираем ведущие разделители
         cleaned = re.sub(r"^[,.\s]+", "", cleaned)
         if not cleaned:
             return cleaned
 
-        # Подготовка к парсингу числа
         tmp = cleaned.replace(" ", "")
         has_comma = "," in tmp
         has_dot = "." in tmp
 
         if has_comma and has_dot:
-            # Если есть и запятая, и точка, считаем, что ЗАПЯТАЯ — разделитель копеек
-            # Пример: '1.234.567,89' или иные артефакты PDF
+            # Запятая правее точки — запятая это разделитель копеек ('1.234.567,89')
             if tmp.rfind(",") > tmp.rfind("."):
                 tmp = tmp.replace(".", "")
                 tmp = tmp.replace(",", ".")
             else:
-                # Редкий случай, когда точка стоит правее запятой — считаем точку десятичным
                 tmp = tmp.replace(",", "")
         else:
-            # Только запятая или только точка
             tmp = tmp.replace(",", ".")
 
-        # Оставляем только одну десятичную точку
         tmp = re.sub(r"[^0-9.]", "", tmp)
         parts = tmp.split(".")
         if len(parts) > 2:
@@ -59,10 +54,8 @@ class AmountsMixin:
         try:
             number = float(tmp)
         except Exception:
-            # Если не смогли распарсить, возвращаем очищенную строку без изменения формата
             return cleaned
 
-        # Форматируем как '1 234 567,89'
         formatted = f"{number:,.2f}".replace(",", " ").replace(".", ",")
         return formatted
 
@@ -252,7 +245,6 @@ class AmountsMixin:
                     f"Госпошлина из блока ПРОСИТ СУД: {formatted_state_duty} (строка: '{line[:80]}...')"
                 )
 
-        # Убираем дубликаты, но сохраняем порядок
         unique_state_duty_values: List[str] = []
         for v in state_duty_values:
             if v not in unique_state_duty_values:
@@ -333,8 +325,6 @@ class AmountsMixin:
 
     def _sanitize_credit_params(self, extracted_fields, text):
         """Санити-проверка кредитных параметров: срок (мес.) и ставка (%) не должны быть денежными суммами. Вынесено из extract_fields."""
-        # Санити-проверка кредитных параметров: иногда из-за шумных совпадений
-        # в эти поля может попасть денежная сумма (например, госпошлина).
         term_raw = extracted_fields.get("creditTermMonths")
         if term_raw:
             term_digits = re.sub(r"\D", "", str(term_raw))
@@ -1300,11 +1290,9 @@ class AmountsMixin:
         """Согласование госпошлины и сумм: синхронизация stateDuty/[16], выделение из ИТОГО, удаление penalties, приоритет requirementsSum для rtk. Вынесено из extract_fields."""
         if 'stateDuty16' in extracted_fields:
             state_duty_value = str(extracted_fields['stateDuty16']).strip()
-            # Проверяем, что это не неустойка (forfeit15 обычно имеет такое же значение)
+            # Совпадение с forfeit15 обычно значит, что stateDuty16 извлечён ошибочно
             if 'forfeit15' in extracted_fields and str(extracted_fields['forfeit15']).strip() == state_duty_value:
-                # Если stateDuty16 совпадает с forfeit15, это скорее всего ошибка извлечения
                 logger.warning(f"stateDuty16 совпадает с forfeit15 ({state_duty_value}), возможно неправильное извлечение")
-                # Удаляем неправильное значение
                 del extracted_fields['stateDuty16']
             else:
                 existing_state_duty = self._safe_amount_field(extracted_fields.get("stateDuty"))
@@ -1360,7 +1348,6 @@ class AmountsMixin:
             except Exception as e:
                 logger.debug(f"Ошибка при прямом поиске госпошлины: {e}")
 
-        # Удаляем поле penalties, так как в заявлении нет штрафных санкций
         if 'penalties' in extracted_fields:
             del extracted_fields['penalties']
             logger.info("Удалено поле penalties - в заявлении нет штрафных санкций")

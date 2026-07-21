@@ -1,28 +1,30 @@
-# -*- coding: utf-8 -*-
 import logging
 import re
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from morph_utils import detect_gender, inflect_surname
 
-try:
+if TYPE_CHECKING:
     from pymorphy3 import MorphAnalyzer
+
+try:
+    from pymorphy3 import MorphAnalyzer as _MorphAnalyzerCls
 except ImportError:  # pragma: no cover
-    MorphAnalyzer = None
+    _MorphAnalyzerCls = None
 
 logger = logging.getLogger(__name__)
 
 
 class InflectionMixin:
 
-    def _ensure_morph(self) -> Optional[MorphAnalyzer]:
-        if MorphAnalyzer is None:
+    def _ensure_morph(self) -> "Optional[MorphAnalyzer]":
+        if _MorphAnalyzerCls is None:
             return None
 
         if self.morph is not None:
             return self.morph
         try:
-            self.morph = MorphAnalyzer()
+            self.morph = _MorphAnalyzerCls()
         except Exception as exc:
             logger.warning(f"Не удалось загрузить pymorphy3: {exc}")
             self.morph = None

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Форматирование/постобработка готового документа (вынос без изменения поведения).
 
 Постобработка текста (дата прописью, номер дела, ISO-даты), единый шрифт Times
@@ -7,10 +6,11 @@ New Roman 11, применение стилей. Группа независим
 """
 import logging
 import re
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
-from docx import Document
+from docx.document import Document
 from docx.shared import Pt
+from docx.styles.style import CharacterStyle, ParagraphStyle
 
 logger = logging.getLogger(__name__)
 
@@ -177,7 +177,7 @@ class FormattingMixin:
 
         # Устанавливаем шрифт для всех стилей
         for style in doc.styles:
-            if hasattr(style, 'font'):
+            if isinstance(style, CharacterStyle):
                 style.font.name = 'Times New Roman'
                 style.font.size = Pt(11)
                 logger.info(f"Установлен шрифт для стиля: {style.name}")
@@ -204,7 +204,7 @@ class FormattingMixin:
         Применяет базовые стили к документу
         """
         # Настройка стилей параграфов
-        style = doc.styles['Normal']
+        style = cast(ParagraphStyle, doc.styles['Normal'])
         font = style.font
         font.name = 'Times New Roman'
         font.size = Pt(11)

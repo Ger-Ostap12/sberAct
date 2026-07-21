@@ -9,12 +9,17 @@ self._templates_root() (остаётся в DocumentGenerator). Поведени
 import logging
 import zipfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class TemplatesResolverMixin:
+    if TYPE_CHECKING:
+        # Реализован в document_generator.DocumentGenerator; здесь только для
+        # Pyright (mixin-класс вызывает метод, который появится в итоговом
+        # составном классе).
+        def _templates_root(self) -> Path: ...
 
     @staticmethod
     def _is_fns_creditor(data: Dict[str, Any]) -> bool:

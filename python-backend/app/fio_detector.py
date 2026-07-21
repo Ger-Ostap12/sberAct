@@ -12,6 +12,7 @@ NER ненадёжна, поэтому она вторична.
 """
 import re
 import logging
+from typing import Any, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -82,21 +83,10 @@ def extract_debtor_name(text: str):
     if not text:
         return None
 
-    # 1. Позиционный разбор: строка сразу после "Ответчик(и):/Должник:".
-    # Имя может стоять как на следующей строке («Должник:\nИП БАЗОВ …»), так и на
-    # той же строке через двоеточие («Должник: Пискова Татьяна Николаевна»).
-    # ПРИОРИТЕТ: блок «Должник/Ответчик» (это банкротный должник) важнее «Заёмщик»
-    # (заёмщик по кредиту может отличаться от должника, и документ бывает
-    # противоречив — «Заёмщик: Долгаков», но «Должник: Долгов»).
     for hdr in (r"(?:Ответчик(?:и)?|Должник)", r"(?:Заёмщик|Заемщик)"):
         for m in re.finditer(rf"{hdr}\s*:?[ \t]*\n*[ \t]*([^\n]+)", text, re.IGNORECASE):
             candidate = m.group(1).strip()
-            # Срезаем канцелярский префикс строки «На № …» (поле бланка перед ФИО):
-            # «На № ⇥Базов Георгий Николаевич» -> «Базов Георгий Николаевич».
             candidate = re.sub(r"^(?:На\s*№|№)\s*", "", candidate).strip()
-            # Табличная вёрстка: после ФИО в той же строке идут столбцы
-            # (ИНН/СНИЛС/ОГРН/…) через табы или 2+ пробела — берём ведущую часть
-            # (само ФИО), иначе «_looks_like_fio» отвергнет строку с хвостом-реквизитами.
             candidate = re.split(
                 r"\t|\s{2,}|\bИНН\b|\bСНИЛС\b|\bОГРН\w*|\d",
                 candidate, maxsplit=1, flags=re.IGNORECASE,
@@ -106,7 +96,7 @@ def extract_debtor_name(text: str):
                 logger.info(f"ФИО должника (позиционно): {name}")
                 return name
 
-    # 2. Natasha-фолбэк по окну после первого заголовка блока.
+    # Natasha-фолбэк по окну после первого заголовка блока.
     header_match = re.search(_HEADER_RE + r"\s*:?", text, re.IGNORECASE)
     if header_match:
         window = text[header_match.end(): header_match.end() + 300]
@@ -130,9 +120,6 @@ def _debtor_block(text: str) -> str:
     if not m:
         return ""
     rest = text[m.end():]
-
-    # Конец записи основного должника: начало следующего лица или тела документа.
-    # Берём позицию ВТОРОЙ «Дата рождения» (= следующий со-ответчик) и иные маркеры.
     stops = []
     births = [mm.start() for mm in re.finditer(r"Дата\s+рождения", rest, re.IGNORECASE)]
     if len(births) >= 2:
@@ -438,12 +425,6 @@ def extract_third_parties(text: str) -> list:
             out.append(parsed)
     return out
 
-
-# ── Наследники умершего должника (ст. 223.1) ────────────────────────────────
-# Метка шапки: «Наследник:», «Наследники:», «Наследник должника:». Ищем ТОЛЬКО в
-# шапке и только по метке: в прозе заявления слово «наследник» — сплошь цитаты нормы
-# («…осуществляют принявшие наследство наследники гражданина») и лица, ОТКАЗАВШИЕСЯ
-# от наследства («дети умершего: … отказались от доли»), — они наследниками не являются.
 _HEIR_LABEL_RE = re.compile(
     r"^[ \t]*Наследник(?:и|а)?(?:\s+должника)?\s*:[ \t]*", re.IGNORECASE | re.MULTILINE
 )
@@ -454,9 +435,7 @@ _HEIR_STOP_RE = re.compile(
     r"Арбитражный\s+суд|ЗАЯВЛЕНИЕ|ПРОШУ|ПРОСИТ|Финансов\w+\s+управляющ|Согласно)",
     re.IGNORECASE | re.MULTILINE,
 )
-# ФИО в начале записи: «Ким Эмма Николаевна». В шапке имя и адрес идут ОДНОЙ строкой
-# без разделителя («Наследник: Ким Эмма Николаевна 346744, Ростовская обл., …»),
-# поэтому имя отрезаем по границе «первая цифра / запятая», а не по концу строки.
+
 _HEIR_FIO_RE = re.compile(
     r"^\s*([А-ЯЁ][А-ЯЁа-яё]+(?:-[А-ЯЁ][А-ЯЁа-яё]+)?(?:\s+[А-ЯЁ][А-ЯЁа-яё]+){1,2})\b"
 )
@@ -553,20 +532,21 @@ def extract_third_party_details(text: str) -> dict:
     return details
 
 
-# --- Natasha (ленивая инициализация, graceful при отсутствии) ---
-_NATASHA = None  # кэш кортежа (segmenter, ner_tagger) или False при неудаче
+
+_NATASHA: Optional[Tuple[Any, Any]] = None  # кэш кортежа (segmenter, ner_tagger)
+_NATASHA_LOAD_FAILED = False  # чтобы не повторять неудачную загрузку
 
 
-def _ensure_natasha():
-    global _NATASHA
-    if _NATASHA is not None:
+def _ensure_natasha() -> Optional[Tuple[Any, Any]]:
+    global _NATASHA, _NATASHA_LOAD_FAILED
+    if _NATASHA is not None or _NATASHA_LOAD_FAILED:
         return _NATASHA
     try:
         from natasha import Segmenter, NewsEmbedding, NewsNERTagger
         _NATASHA = (Segmenter(), NewsNERTagger(NewsEmbedding()))
     except Exception as exc:  # пакет/модель недоступны — работаем без NER
         logger.warning(f"Natasha недоступна, ФИО только по regex: {exc}")
-        _NATASHA = False
+        _NATASHA_LOAD_FAILED = True
     return _NATASHA
 
 
@@ -581,7 +561,7 @@ def _natasha_person(window: str):
         doc = Doc(window)
         doc.segment(segmenter)
         doc.tag_ner(ner_tagger)
-        for span in doc.spans:
+        for span in doc.spans or []:
             if span.type == "PER" and _looks_like_fio(span.text):
                 return _normalize_fio(span.text)
     except Exception as exc:
@@ -607,7 +587,7 @@ def natasha_person_spans(window: str) -> list:
         doc.segment(segmenter)
         doc.tag_ner(ner_tagger)
         out = []
-        for span in doc.spans:
+        for span in doc.spans or []:
             if span.type == "PER" and _looks_like_fio(span.text):
                 out.append((_normalize_fio(span.text), span.start))
         return out

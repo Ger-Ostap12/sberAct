@@ -8,9 +8,9 @@ clean_extracted_value (DocumentGenerator). Поведение 1-в-1 под gen-
 """
 import logging
 import re
-from typing import Any, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Union, cast
 
-from docx import Document
+from docx.document import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
 
@@ -18,6 +18,14 @@ logger = logging.getLogger(__name__)
 
 
 class ObligationsRenderMixin:
+    if TYPE_CHECKING:
+        def _collect_placeholders(self, doc: Document) -> Set[str]: ...
+        def _replace_placeholder_in_doc(self, doc: Document, placeholder: str, value: str) -> bool: ...
+        def _replace_regex_in_doc(
+            self, doc: Document, pattern: str, replacement: Union[str, Callable[[re.Match], str]]
+        ) -> bool: ...
+        def _format_amount_value(self, value: float) -> str: ...
+        def clean_extracted_value(self, value: str) -> str: ...
 
     def _cleanup_unused_obligation_placeholders(self, doc: Document, obligations: list):
         """
@@ -64,9 +72,6 @@ class ObligationsRenderMixin:
             return
 
         logger.info(f"Найдено {len(obligations)} обязательств")
-        # В перечисление обязательств по шаблонным слотам [100]/[110] и [101]/[111]...
-        # включаем только кредитные обязательства. Договоры залога должны отображаться
-        # отдельно и не участвуют в этом перечне.
         credit_obligations = []
         for ob in obligations:
             if not isinstance(ob, dict):
@@ -112,16 +117,7 @@ class ObligationsRenderMixin:
             if slot_index is not None:
                 available_slots.add(slot_index)
 
-        # ВАЖНО: не len(available_slots) — слот 0 ([100]/[110]) часто уже заменён РАНЬШЕ,
-        # в _apply_field_mapping_replacements (по данным первого обязательства), и к этому
-        # моменту в доке его как литерального маркера уже нет. Слоты идут подряд от 0, поэтому
-        # берём (максимальный найденный индекс + 1) — так пропавший слот 0 не занижает счёт.
         max_slots = (max(available_slots) + 1) if available_slots else 0
-
-        # Сводная фраза [992] — только настоящий fallback, когда в шаблоне вообще
-        # нет обычных слотов под обязательства. Если слоты есть, но обязательств
-        # больше, чем слотов, — перечисляем оставшиеся построчно по образцу первых
-        # (без сводной фразы и без новых маркеров), см. блок ниже.
         summary_placeholder = "[992]"
         has_summary_placeholder = summary_placeholder in placeholders_in_doc
 
@@ -184,11 +180,6 @@ class ObligationsRenderMixin:
             # Если сводный режим не используется, всегда очищаем [992], если он вдруг встречается
             self._replace_placeholder_in_doc(doc, summary_placeholder, "")
 
-            # Обязательств больше, чем маркерных слотов в шаблоне (обычно 6:
-            # [100]-[105]/[110]-[115]) — дописываем оставшиеся тем же способом
-            # ("<тип> от <дата> № <номер>"), без новых маркеров: вставляем текст
-            # сразу после плейсхолдера номера последнего слота, пока он ещё не
-            # заменён на значение (замена самого маркера произойдёт ниже как обычно).
             if not is_mortgage and max_slots and obligations_count > max_slots:
                 extra_entries = []
                 for extra_obligation in obligations[max_slots:]:
@@ -295,9 +286,6 @@ class ObligationsRenderMixin:
         if not skip_obligations:
             self._cleanup_unused_obligation_placeholders(doc, obligations)
 
-        # Очищаем неиспользованные фрагменты и маркеры для обязательств, если их меньше,
-        # чем слотов в шаблоне (обычно 6: [100]-[105]/[110]-[115]; если в шаблоне слотов
-        # не нашлось вовсе — подстраховываемся старым порогом 5).
         slot_count = max_slots if max_slots else 5
         if not is_mortgage and obligations_count < slot_count:
             # Сначала удаляем текстовые куски для несуществующих обязательств
@@ -315,9 +303,6 @@ class ObligationsRenderMixin:
                 self._replace_placeholder_in_doc(doc, date_placeholder, "")
                 self._replace_placeholder_in_doc(doc, number_placeholder, "")
 
-            # Безопасная зачистка испорченных хвостов без маркеров:
-            # удаляем только короткие фрагменты "договор ... от №" без чисел,
-            # НЕ заходя в соседние суммы (например, "496 877,32").
             self._replace_regex_in_doc(
                 doc,
                 r"(?:,\s*)?кредитный\s+договор\s+от\s+№\s*(?!\d)(?:(?!основн|процент|неустой|госпошл|руб)[^,\.\n]){0,40}",
@@ -377,9 +362,6 @@ class ObligationsRenderMixin:
         if not obligations:
             return
 
-        # НЕ создаем список договоров - это нарушает шаблон акта
-        # Вместо этого просто пропускаем обновление, так как маркеры [100], [110] и т.д.
-        # уже заменяются в методе replace_obligations_data для каждого обязательства отдельно
         logger.debug("Пропускаем обновление параграфов с обязательствами - используем только замену маркеров [100], [110] и т.д.")
         return
 
@@ -405,10 +387,10 @@ class ObligationsRenderMixin:
             if "обязательства" in paragraph.text.lower() or "договор" in paragraph.text.lower():
                 # Добавляем таблицу с обязательствами
                 table = doc.add_table(rows=1, cols=3)
-                table.style = 'Table Grid'
+                table.style = cast(Any, 'Table Grid')
 
                 # Заголовки таблицы
-                hdr_cells = table.rows[0].cells
+                hdr_cells = cast(Any, table.rows[0].cells)
                 hdr_cells[0].text = 'Номер договора'
                 hdr_cells[1].text = 'Дата договора'
                 hdr_cells[2].text = 'Тип обязательства'
@@ -416,7 +398,7 @@ class ObligationsRenderMixin:
                 # Добавляем строки с обязательствами
                 for obligation in obligations:
                     if isinstance(obligation, dict):
-                        row_cells = table.add_row().cells
+                        row_cells = cast(Any, table.add_row().cells)
                         row_cells[0].text = obligation.get('contractNumber', '')
                         row_cells[1].text = obligation.get('contractDate', '')
                         row_cells[2].text = obligation.get('obligationType', '')
@@ -562,11 +544,11 @@ class ObligationsRenderMixin:
 
         # Создаем таблицу
         table = doc.add_table(rows=1, cols=4)
-        table.style = 'Table Grid'
+        table.style = cast(Any, 'Table Grid')
         table.alignment = WD_TABLE_ALIGNMENT.CENTER
 
         # Заголовки таблицы
-        header_cells = table.rows[0].cells
+        header_cells = cast(Any, table.rows[0].cells)
         header_cells[0].text = '№'
         header_cells[1].text = 'Основание'
         header_cells[2].text = 'Сумма'
@@ -578,7 +560,7 @@ class ObligationsRenderMixin:
             cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
 
         # Добавляем строки с данными (пример)
-        row = table.add_row().cells
+        row = cast(Any, table.add_row().cells)
         row[0].text = '1'
         row[1].text = data.get('obligationType', 'НЕ УКАЗАНО')
         row[2].text = f"{data.get('debtAmount', 'НЕ УКАЗАНО')} руб."

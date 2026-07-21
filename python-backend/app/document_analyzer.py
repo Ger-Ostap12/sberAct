@@ -122,7 +122,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         try:
             logger.info(f"Начинаем анализ документа: {file_path}")
 
-            # Извлекаем текст из документа
             text = self.extract_text(file_path)
             return self.analyze_from_text(text, page_count=self.get_page_count(file_path))
         except Exception as e:
@@ -157,29 +156,21 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             text = self._normalize_whitespace_for_matching(text)
             text = self._normalize_label_wrap_for_matching(text)
 
-            # Для повторного использования
             text_lower = text.lower()
 
-            # Ранняя детекция КФХ
             is_kfh_detected, kfh_head_name = self._detect_kfh_head(text)
 
-            # Определяем тип документа
             document_type = self.classify_document(text)
 
-            # Извлекаем данные на основе типа документа
             if document_type in ("ip_collection", "ip_collection_collateral", "ip_collection_collateral_auto"):
-                # Анализ ветки ИП-взыскания
                 extracted_fields = self._analyze_ip_collection(text, document_type)
             elif document_type in ("legal_collection", "legal_collection_collateral", "legal_collection_collateral_auto"):
-                # Анализ ветки взыскания с ЮЛ
                 extracted_fields = self._analyze_legal_collection(text, document_type)
             elif document_type in ["ip_enforcement_statement", "ip_enforcement_statement_collateral",
                                  "ip_enforcement_realization", "ip_enforcement_realization_collateral",
                                  "ip_enforcement_restructuring", "ip_enforcement_restructuring_collateral"]:
-                # Анализ ветки ИП-исполнения
                 extracted_fields = self._analyze_ip_enforcement(text, document_type)
             elif document_type in ["physical_realization_collateral", "physical_restructuring_collateral", "observation_collateral", "competition_collateral"]:
-                # Анализ ветки залога (реализация/наблюдение)
                 extracted_fields = self._analyze_physical_collateral(text, document_type)
             else:
                 # Универсальный fallback: если для типа документа нет собственных паттернов,
@@ -197,10 +188,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
             self._contract_checkpoint(extracted_fields, "извлечение по паттернам")
 
-            # Возможный апгрейд типа -> observation_collateral
             document_type = self._maybe_upgrade_to_observation_collateral(extracted_fields, text, document_type, text_lower)
 
-            # Устанавливаем флаг КФХ, если он был обнаружен ранним определением
             if is_kfh_detected:
                 extracted_fields["isKfh"] = True
                 if kfh_head_name:
@@ -210,19 +199,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if document_type:
                 extracted_fields["sourceDocumentType"] = document_type
 
-            # Заполняем реквизиты кредитора: из реестра или из текста
             self._fill_creditor_requisites(extracted_fields, text)
 
-            # Оцениваем уверенность в результатах
             confidence = self.calculate_confidence(document_type, extracted_fields, text)
 
-            # Постобработка ипотеки и валидация номера дела
             self._postprocess_mortgage_and_case_number(extracted_fields, text, document_type)
 
-            # Определяем рекомендуемые акты на основе типа документа, типа лица и залога
             recommended_acts = self._get_recommended_acts(document_type, extracted_fields, text)
 
-            # Разделяем описание предметов залога на отдельные предметы и создаем массив collaterals
             collateral_description = extracted_fields.get("mortgageCollateralDescription1221")
             if collateral_description and re.match(r"^Кому\s+выдана\s+", (collateral_description or "").strip(), re.IGNORECASE):
                 collateral_description = None
@@ -244,10 +228,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
             self._fix_debtor_name(text, extracted_fields)
 
-            # Реквизиты должника-физлица из его записи
             details = self._finalize_debtor_person_requisites(extracted_fields, text)
 
-            # Пост-очистка полей (адрес/третье лицо/суд)
             self._cleanup_extracted_fields(extracted_fields, text)
 
             # Своп сторон: applicantName ошибочно = кредитор (раскладки «Заявитель:» → «Должник:»)
@@ -275,7 +257,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             self._fill_creditor_nlp(extracted_fields, text)
 
 
-            # чтобы никакой общий обработчик не перезатёр результат.
             is_self_bk = self._detect_self_bankruptcy(text)
             sb_third_parties = None
             if is_self_bk:
@@ -283,7 +264,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 # Тип лица мог поменяться (legal→individual) — рекомендации заново.
                 recommended_acts = self._get_recommended_acts(document_type, extracted_fields, text)
 
-            # Списки должников и третьих лиц + дедуп
             if is_self_bk:
                 # Должник один и уже выверен layout-парсером — генерик-извлечение
                 # extract_debtors по такой шапке тащит кредиторов, минуем его.
@@ -492,7 +472,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
             recommended_acts = self._get_recommended_acts(document_type, extracted_fields, text)
 
-            # Формируем результат
             result = {
                 "documentType": document_type,
                 "confidence": confidence,
@@ -1025,13 +1004,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if not value:
             return value
 
-        # Удаляем звездочки и другие маскирующие символы
         cleaned = re.sub(r'\*+', '', value)
-
-        # Удаляем множественные пробелы
         cleaned = re.sub(r'\s+', ' ', cleaned)
-
-        # Удаляем пробелы в начале и конце
         cleaned = cleaned.strip()
 
         return cleaned
@@ -1086,13 +1060,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             match = pattern.search(text)
             if match:
                 creditor = match.group(1).strip()
-                # Останавливаемся на ключевых словах, которые не являются частью названия
                 stop_words = ['Место нахождения', 'Дата государственной регистрации', 'ОГРН', 'ИНН', 'адрес']
                 for stop_word in stop_words:
                     if stop_word in creditor:
                         creditor = creditor.split(stop_word)[0].strip()
                 creditor = self.clean_extracted_value(creditor)
-                # Проверяем, что это не слишком длинный текст (не описание)
                 if creditor and len(creditor) < 200 and not any(word in creditor.lower() for word in ['имеет право', 'потребовать', 'судебном порядке']):
                     return creditor
 
@@ -1133,7 +1105,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 'имеет право', 'потребовать', 'судебном порядке', 'должник', 'ответчик',
                 'требовани', 'утвердить', 'просит', 'в размере', 'из числа', ' руб',
             ])
-            # Должно быть похоже на кредитора: банк/общество/ФНС/инспекция/служба/ОПФ.
             looks_creditor = bool(re.search(
                 r'банк|общество|фнс|росси|инспекц|служб|\bАО\b|\bООО\b|\bПАО\b|\bОАО\b|\bЗАО\b',
                 creditor, re.IGNORECASE))
@@ -1180,7 +1151,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         ]:
             m = re.search(start_pattern, header, re.IGNORECASE)
             if m:
-                # Включаем строку-метку (имя кредитора на той же или следующей строке).
                 block_start = m.start()
                 block_end = min(block_start + 1200, len(header))
                 block = header[block_start:block_end]
@@ -1227,7 +1197,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             addr_m = re.search(addr_pattern, block, re.IGNORECASE)
             if addr_m:
                 addr = self._clean_creditor_address(self.clean_extracted_value(addr_m.group(1).strip()))
-                # Должно быть похоже на адрес (индекс/город/улица), без почтовых меток.
                 if addr and 10 <= len(addr) <= 200 and re.search(r"\d{6}|город|\bг\.|ул\.|улиц|пр-?кт|проспект", addr, re.IGNORECASE):
                     return addr
 
@@ -1294,7 +1263,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         # Для competition_collateral специально извлекаем название должника из шапки после "Должник:" на следующей строке
         source_doc_type = fields.get("sourceDocumentType", "").lower()
         if source_doc_type == "competition_collateral":
-            # Ищем блок "Должник:" и извлекаем название на следующей строке
             debtor_match = re.search(
                 r"Должник[:\s]*\n\s*((?:ООО|ОАО|ПАО|ЗАО|АО|Обществ[ао]\s+с\s+ограниченной\s+ответственностью)[^\n]{0,200}?)(?=\n|$|ИНН|ОГРН|адрес|телефон)",
                 text,
@@ -1302,11 +1270,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             )
             if debtor_match:
                 debtor_name = debtor_match.group(1).strip()
-                # Очищаем от лишних символов и обрезаем до разумной длины
                 debtor_name = re.sub(r"\s+", " ", debtor_name)
                 debtor_name = debtor_name[:200].strip()
                 if debtor_name and len(debtor_name) > 5:
-                    # Удаляем префикс ООО/ОАО и т.д. если нужно
                     cleaned_name = self._strip_ooo_prefix(debtor_name)
                     if cleaned_name and "суд" not in cleaned_name.lower():
                         fields["applicantName"] = cleaned_name
@@ -1501,15 +1467,12 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if not description:
             return []
 
-        # Нормализуем переводы строк (Windows / Unix)
         text = description.replace("\r\n", "\n").replace("\r", "\n")
 
-        # Разбиваем на строки и считаем каждую непустую строку отдельным предметом
         raw_lines = [line.strip() for line in text.split("\n")]
 
         items: List[str] = [line for line in raw_lines if line and len(line) >= 10]
 
-        # Если ничего не получилось, пробуем вернуть весь текст как один предмет
         if not items:
             cleaned = text.strip()
             if cleaned and len(cleaned) >= 10:
@@ -1526,7 +1489,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if not value:
             return value
 
-        # Убираем лишние слова, которые не относятся к названию суда (обрезка хвоста)
         stop_words = [
             "возникает",
             "у конкурсного",
@@ -1550,21 +1512,17 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         value_lower = value.lower()
         for stop_word in stop_words:
             if stop_word in value_lower:
-                # Обрезаем текст до первого вхождения стоп-слова
                 idx = value_lower.find(stop_word)
                 value = value[:idx].strip()
                 break
 
-        # Ограничиваем длину названия суда (обычно не более 100 символов)
         if len(value) > 100:
-            # Пытаемся найти естественную границу (точка, запятая, или конец предложения)
             for delimiter in ['.', ',', '\n']:
                 idx = value.find(delimiter)
                 if 20 < idx < 100:
                     value = value[:idx].strip()
                     break
             else:
-                # Если не нашли естественную границу, просто обрезаем до 100 символов
                 value = value[:100].strip()
 
         return value.strip()
@@ -2020,7 +1978,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if not text:
             return None
 
-        # Границы шапки и блока должника
         title_pos = len(text)
         for rx in self._SB_TITLE_RES:
             m = rx.search(text)
@@ -2049,7 +2006,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if len(blk) < 30:
             return None
 
-        # ФИО должника
         fio = None
         for cand in self._SB_FIO_RE.finditer(blk[:300]):
             fio_c = re.sub(r"\s+", " ", cand.group(0)).strip()
@@ -2106,7 +2062,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         else:
             fields.pop("birthDate", None)
 
-        # Место рождения
         bp = re.search(
             r"место\s+рождения[:;\s]*(?:\d{2}\.\d{2}\.\d{4}\s*)?(.{3,140}?)(?=\s*(?:[;]|" + self._SB_FIELD_STOP + r"))",
             blk, re.IGNORECASE | re.DOTALL,
@@ -2119,7 +2074,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         elif fields.get("birthPlace"):
             fields.pop("birthPlace", None)
 
-        # СНИЛС / ИНН
         snils = re.search(r"снилс[:\s]*([\d][\d\-\s]{9,15}\d)", blk, re.IGNORECASE)
         if snils:
             fields["snils"] = re.sub(r"\s+", " ", snils.group(1)).strip()
@@ -2133,7 +2087,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             fields.pop("inn", None)
             fields.pop("companyInn", None)
 
-        # Адрес регистрации
         addr = re.search(
             r"(?:адрес\s+(?:мест[аом]*\s+)?регистрации|место\s+жительства\s+по\s+регистрации|"
             r"мест[ао]\s+регистрации|адрес)\s*[:\s]\s*(.{5,240}?)(?=\s*" + self._SB_FIELD_STOP + r")",
@@ -3181,13 +3134,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         patterns = self.patterns[document_type]
         logger.info(f"Найдено {len(patterns)} паттернов для извлечения")
 
-        # Поля, которые нужно суммировать из всех обязательств
         summable_fields = ['principalDebt', 'loanDebt', 'interest', 'penalties', 'forfeit', 'totalDebt']
-
-        # Поля, которые могут иметь множественные значения (договоры)
         multiple_fields = ['contractNumber', 'contractDate', 'obligationType']
-
-        # Собираем все обязательства
         obligations = []
 
         for pattern_info in patterns:
@@ -3196,11 +3144,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             logger.info(f"Обрабатываем поле: {field_name} с {len(field_patterns)} паттернами")
 
             if field_name in summable_fields:
-                # Суммируемое поле (суммы из паттернов)
                 if self._extract_summable_field(extracted_fields, text, field_name, field_patterns):
                     continue
             elif field_name in multiple_fields:
-                # Поле с множественными значениями (договоры)
                 self._extract_multiple_field(extracted_fields, text, field_name, field_patterns)
             else:
 
@@ -3240,18 +3186,15 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                             if not match_value:
                                 continue
 
-                            # Очищаем название суда от лишнего текста
                             cleaned_value = self._clean_court_name(match_value)
                             if not cleaned_value or len(cleaned_value) < 10:
                                 continue
                             cl = cleaned_value.lower()
-                            # Должно быть явное "суд" или "арбитражн"
                             if "суд" not in cl and "арбитражн" not in cl:
                                 continue
                             # Отбрасываем ссылки на закон: "Согласно п. 2 ст. 7...", "право на обращение в арбитражный суд"
                             if any(cl.startswith(p) or p in cl for p in ("согласно", "п. ", "ст. ", "закона право", "право на обращение")):
                                 continue
-                            # Название суда должно содержать указание региона (области, края, республики и т.д.)
                             region_words = ("области", "края", "республики", "города", "автономного округа", "автономной области")
                             if not any(r in cl for r in region_words):
                                 continue
@@ -3264,27 +3207,21 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                         continue
                     match = re.search(pattern, text, re.IGNORECASE)
                     if match:
-                        # Проверяем, есть ли группы захвата в паттерне
                         if match.groups():
                             value = match.group(1).strip()
                         else:
-                            # Если групп нет, используем весь найденный текст
                             value = match.group(0).strip()
                         logger.info(f"  Найдено совпадение: '{value}'")
                         if value and len(value) > 2 and value.strip():  # Фильтруем слишком короткие значения и пустые строки
-                            # Очищаем значение от звездочек
                             cleaned_value = self.clean_extracted_value(value)
 
-                            # Специальная обработка для названия суда
                             if field_name == "courtName" and cleaned_value:
-                                # Проверяем, является ли это процедурой "умерший"
                                 procedure_type = extracted_fields.get('procedureType', '').lower()
                                 procedure_raw = extracted_fields.get('procedureTypeRaw', '').lower()
                                 is_deceased = (procedure_type == 'deceased' or
                                              any(keyword in procedure_raw for keyword in ["умер", "умерший", "смерть", "смерти"]))
 
                                 if is_deceased:
-                                    # Специальная очистка для процедуры "умерший"
                                     cleaned_value = self._clean_court_name_deceased(cleaned_value)
                                 else:
                                     cleaned_value = self._clean_court_name(cleaned_value)
@@ -3292,13 +3229,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                                 if not cleaned_value:
                                     continue
 
-                            # Специальная обработка только для адреса заявителя
                             if field_name == "applicantAddress" and cleaned_value:
-                                # Убираем [9] из адреса
                                 cleaned_value = re.sub(r'\s*\[9\]\s*\.?', '', cleaned_value)
                                 cleaned_value = re.sub(r'\s+', ' ', cleaned_value).strip()
 
-                                # Убираем лишний текст про банкротство - более агрессивная очистка
                                 cleaned_value = re.sub(r'\([^)]*родительный[^)]*\)', '', cleaned_value)
                                 cleaned_value = re.sub(r'\[2\][^0-9]*', '', cleaned_value)
                                 cleaned_value = re.sub(r'банкрот[^0-9]*', '', cleaned_value)
@@ -3316,10 +3250,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                                 cleaned_value = re.sub(r'№\s*[0-9]+[^0-9]*', '', cleaned_value)
                                 cleaned_value = re.sub(r'\d{1,2}[.,]\d{1,2}[.,]\d{4}[^0-9]*', '', cleaned_value)
 
-                                # Дополнительная очистка - убираем всё, что не является адресом
                                 # Если в адресе есть почтовый индекс (6 цифр) — считаем, что он должен идти первым
                                 if re.search(r'\b\d{6}\b', cleaned_value):
-                                    cleaned_value = re.sub(r'^[^0-9]*', '', cleaned_value)  # Убираем всё до первого числа (индекса)
+                                    cleaned_value = re.sub(r'^[^0-9]*', '', cleaned_value)
                                 else:
                                     # Адрес без индекса (как в шапке: "Адрес регистрации: Ростовская область, ...") —
                                     # удаляем только служебные слова "Адрес", "адрес регистрации", "место жительства"
@@ -3329,13 +3262,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                                         cleaned_value,
                                         flags=re.IGNORECASE
                                     )
-                                # Оставляем только цифры, запятые, пробелы, дефисы и русские буквы
                                 cleaned_value = re.sub(r'[^0-9,\s\-а-яёА-ЯЁ\.]+', '', cleaned_value)
 
                                 cleaned_value = re.sub(r'\s+', ' ', cleaned_value).strip()
 
-                                # Агрессивная очистка - убираем все лишнее
-                                # Сначала убираем все после первого упоминания банкротства
                                 cleaned_value = re.sub(r'банкрот.*$', '', cleaned_value, flags=re.IGNORECASE)
                                 cleaned_value = re.sub(r'процедур.*$', '', cleaned_value, flags=re.IGNORECASE)
                                 cleaned_value = re.sub(r'реализац.*$', '', cleaned_value, flags=re.IGNORECASE)
@@ -3354,19 +3284,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                                 cleaned_value = re.sub(r'сообщение.*$', '', cleaned_value, flags=re.IGNORECASE)
                                 cleaned_value = re.sub(r'01\.02\.1883.*$', '', cleaned_value)
 
-                                # Убираем имена и лишний текст
                                 cleaned_value = re.sub(r'\([^)]*\)', '', cleaned_value)  # Убираем скобки и их содержимое
 
-                                # Убираем все до первого числа (индекса)
                                 cleaned_value = re.sub(r'^[^0-9]*', '', cleaned_value)
 
-                                # Оставляем только адресные данные
                                 cleaned_value = re.sub(r'[^0-9,\s\-а-яёА-ЯЁ\.]', '', cleaned_value)
                                 cleaned_value = re.sub(r'\s+', ' ', cleaned_value).strip()
 
-                                # Если адрес слишком короткий, ищем полный адрес
                                 if len(cleaned_value) < 20:
-                                    # Ищем полный адрес в тексте
                                     address_patterns = [
                                         r'([0-9]{6}[,\s]+[^,\n]+(?:[,\s]+[^,\n]+)*?)(?:\n|$|[,\[]|(?:телефон|дата|огрн|инн|снилс|паспорт|серия|номер|банкрот|процедур|реализац|имуществ|опубликов|сайт|Единого|федерального|реестр|сведений|банкротств|родительный|падеж|\[2\]|\[9\]))',
                                         r'([0-9]{6}[,\s]+[А-ЯЁ][^,\n]+(?:[,\s]+[^,\n]+)*?)(?:\n|$|[,\[]|(?:телефон|дата|огрн|инн|снилс|паспорт|серия|номер))'
@@ -3375,9 +3300,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                                     for pattern in address_patterns:
                                         matches = re.findall(pattern, text, re.IGNORECASE | re.DOTALL)
                                         if matches:
-                                            # Берем первый найденный адрес
                                             full_address = matches[0].strip()
-                                            # Очищаем его
                                             full_address = re.sub(r'банкрот.*$', '', full_address, flags=re.IGNORECASE)
                                             full_address = re.sub(r'процедур.*$', '', full_address, flags=re.IGNORECASE)
                                             full_address = re.sub(r'реализац.*$', '', full_address, flags=re.IGNORECASE)
@@ -3413,7 +3336,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                     else:
                         logger.info(f"  Совпадений не найдено")
 
-        # Fallback: пытаемся извлечь предмет залога [1221] для всех типов документов, если он не был найден
         if "mortgageCollateralDescription1221" not in extracted_fields or not extracted_fields.get("mortgageCollateralDescription1221"):
             logger.info("Предмет залога [1221] не найден в основных паттернах, пробуем fallback метод...")
             collateral_block = self._extract_mortgage_collateral_block(text)
@@ -3421,7 +3343,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 extracted_fields["mortgageCollateralDescription1221"] = collateral_block
                 logger.info(f"Извлечено mortgageCollateralDescription1221 через fallback метод: {collateral_block[:150]}...")
 
-        # Разделяем описание предметов залога на отдельные предметы и создаем массив collaterals
         collateral_description = extracted_fields.get("mortgageCollateralDescription1221")
         if collateral_description and re.match(r"^Кому\s+выдана\s+", collateral_description.strip(), re.IGNORECASE):
             # "Кому выдана [ФИО]" — не описание залога, а указание получателя; убираем ложное значение
@@ -3433,11 +3354,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if collateral_items:
                 collaterals_list = [self._make_collateral_obj(idx, item_desc)
                                     for idx, item_desc in enumerate(collateral_items)]
-                # Сохраняем массив в extracted_fields для передачи во frontend
                 extracted_fields["collaterals"] = collaterals_list
                 logger.info(f"Создано {len(collaterals_list)} предметов залога")
 
-        # Теперь создаем отдельные обязательства
         obligations = self.extract_obligations(text, extracted_fields)
         if obligations:
             extracted_fields['obligations'] = obligations
@@ -3502,11 +3421,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 ) if ordered_contract_numbers else False
 
                 if all_obligation_numbers_are_substrings or not ordered_contract_numbers:
-                    # Используем исходный полный номер
                     extracted_fields['contractNumber'] = original_contract_number
                     logger.info(f"Используем исходный полный номер договора: {extracted_fields['contractNumber']}")
                 else:
-                    # Объединяем: сначала исходный, потом остальные уникальные
                     all_numbers = [original_contract_number] + [n for n in ordered_contract_numbers if n not in original_contract_number]
                     extracted_fields['contractNumber'] = ", ".join(all_numbers)
                     logger.info(f"Сводный список номеров договоров (с приоритетом исходного): {extracted_fields['contractNumber']}")
@@ -3536,10 +3453,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                         obl['contractNumber'] = real_numbers[idx]
                         logger.info(f"Подставлен реальный номер договора в обязательство {idx + 1}: {real_numbers[idx]}")
 
-        # Приоритет: используем debtAmount, если requirementsSum = 0 или отсутствует
         if 'requirementsSum' in extracted_fields and extracted_fields['requirementsSum']:
             requirements_sum_value = str(extracted_fields['requirementsSum']).strip()
-            # Проверяем, что это не "0,00" или пустое значение
             if requirements_sum_value and requirements_sum_value not in ["0", "0,00", "0.00", ""]:
                 if 'totalDebt' not in extracted_fields or not extracted_fields['totalDebt'] or str(extracted_fields['totalDebt']).strip() in ["0", "0,00", "0.00", ""]:
                     extracted_fields['totalDebt'] = extracted_fields['requirementsSum']
@@ -3641,7 +3556,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                             return self.normalize_amount_value(m.group(1))
                     return None
 
-                # principalDebt из таблиц
                 if not extracted_fields.get("principalDebt"):
                     for idx, line in enumerate(lines):
                         ll = line.lower()
@@ -3656,7 +3570,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                                 logger.info(f"principalDebt извлечён из табличного блока: {val}")
                                 break
 
-                # interest из таблиц
                 if not extracted_fields.get("interest"):
                     for idx, line in enumerate(lines):
                         ll = line.lower()
@@ -3667,7 +3580,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                                 logger.info(f"interest извлечён из табличного блока: {val}")
                                 break
 
-                # forfeit (просроченные проценты) из таблиц
                 if not extracted_fields.get("forfeit"):
                     for idx, line in enumerate(lines):
                         ll = line.lower()
@@ -3678,7 +3590,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                                 logger.info(f"forfeit извлечён из табличного блока: {val}")
                                 break
 
-                # stateDuty из таблиц (строка с госпошлиной)
                 if not extracted_fields.get("stateDuty"):
                     for idx, line in enumerate(lines):
                         ll = line.lower()
@@ -3779,7 +3690,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         applicant_name_instrumental_raw = extracted_fields.get("applicantNameInstrumental")
         debtor_clean = None
         if debtor_name_raw:
-            # Отклоняем значения, которые явно являются описанием процедуры, а не именем должника
             if re.search(r"^введена\s+процедура|процедура\s+наблюдения", debtor_name_raw, re.IGNORECASE):
                 debtor_name_raw = None
         if debtor_name_raw:
@@ -3787,11 +3697,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             debtor_clean = self.clean_extracted_value(debtor_clean)
             debtor_clean = debtor_clean.strip('«»" ')
             debtor_clean = re.sub(r"^\s*фио\s+", "", debtor_clean, flags=re.IGNORECASE)
-            # Удаляем фразы типа "должника введена процедура"
             debtor_clean = re.sub(r"\s*должника\s+введена\s+процедура.*$", "", debtor_clean, flags=re.IGNORECASE)
             debtor_clean = re.sub(r"\s*введена\s+процедура\s+наблюдения.*$", "", debtor_clean, flags=re.IGNORECASE)
             debtor_clean = debtor_clean.strip()
-            # Дополнительная проверка: отклоняем если осталось только "а" или другие короткие обрывки
             if debtor_clean and len(debtor_clean) > 3 and not re.match(r"^[а-яё]\s*\.?$", debtor_clean, re.IGNORECASE):
                 extracted_fields["debtorName"] = debtor_clean
             else:
@@ -3802,7 +3710,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
         applicant_clean = None
         if applicant_name_raw:
-            # Отклоняем значения, которые явно являются описанием процедуры, а не именем должника
             if re.search(r"^[а-яё]\s+введена\s+процедура|^введена\s+процедура|процедура\s+наблюдения|соответствует\s+признак|признак\w*\s+банкрот", applicant_name_raw, re.IGNORECASE):
                 applicant_name_raw = None
         if applicant_name_raw:
@@ -3813,7 +3720,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             applicant_clean = re.sub(r"\s*должника\s+введена\s+процедура.*$", "", applicant_clean, flags=re.IGNORECASE)
             applicant_clean = re.sub(r"\s*введена\s+процедура\s+наблюдения.*$", "", applicant_clean, flags=re.IGNORECASE)
             applicant_clean = applicant_clean.strip()
-            # Дополнительная проверка: отклоняем если осталось только "а" или другие короткие обрывки
             if applicant_clean and len(applicant_clean) > 3 and not re.match(r"^[а-яё]\s*\.?$", applicant_clean, re.IGNORECASE):
                 extracted_fields["applicantName"] = applicant_clean
             else:
@@ -3828,7 +3734,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 extracted_fields["applicantName"] = legal_short
 
         if applicant_name_genitive_raw:
-            # Отклоняем значения, которые явно являются описанием процедуры, а не именем должника
             if re.search(r"^введена\s+процедура|процедура\s+наблюдения", applicant_name_genitive_raw, re.IGNORECASE):
                 applicant_name_genitive_raw = None
         if applicant_name_genitive_raw:
@@ -3843,10 +3748,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 genitive_clean,
                 flags=re.IGNORECASE
             ).strip()
-            # Удаляем фразы типа "введена процедура наблюдения"
             genitive_clean = re.sub(r"\s*введена\s+процедура\s+наблюдения.*$", "", genitive_clean, flags=re.IGNORECASE)
             genitive_clean = genitive_clean.strip()
-            # Дополнительная проверка: отклоняем если осталось только "а" или другие короткие обрывки
             if genitive_clean and len(genitive_clean) > 3 and not re.match(r"^[а-яё]\s*\.?$", genitive_clean, re.IGNORECASE):
                 extracted_fields["applicantNameGenitive"] = genitive_clean
             else:
@@ -3854,15 +3757,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         else:
             extracted_fields.pop("applicantNameGenitive", None)
 
-        # Для КФХ используем kfhHeadName для генерации падежных форм (без префиксов)
         is_kfh = extracted_fields.get("isKfh", False)
-        # Падежные формы должника [2.1]-[2.4]
         self._generate_debtor_case_forms(extracted_fields, text, applicant_clean, is_kfh, applicant_name_instrumental_raw)
 
-        # Короткое имя ЮЛ и донастройка initiation_legal
         debtor_clean = self._tune_legal_entity_naming(extracted_fields, text, debtor_clean, applicant_clean, applicant_name_raw, debtor_block, debtor_name_raw)
 
-        # Валидация и фолбэки адреса должника
         self._resolve_debtor_address(extracted_fields, text, debtor_block)
 
         if extracted_fields.get("ogrn"):
@@ -3871,10 +3770,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if extracted_fields.get("companyInn"):
             extracted_fields["companyInn"] = re.sub(r"\D", "", extracted_fields["companyInn"])
 
-        # Санити кредитных параметров (срок/ставка)
         self._sanitize_credit_params(extracted_fields, text)
 
-        # Финализация типа должника и финуправляющего
         self._finalize_debtor_type(extracted_fields, text, debtor_clean)
 
 
@@ -4027,7 +3924,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             accs_clean = re.sub(r"\s*введена\s+процедура\s+наблюдения.*$", "", accs_clean, flags=re.IGNORECASE)
             accs_clean = accs_clean.strip()
             if accs_clean and len(accs_clean) > 3:
-                # Отклоняем значения, которые явно являются описанием процедуры
                 if not re.search(r"^введена\s+процедура|процедура\s+наблюдения", accs_clean, re.IGNORECASE):
                     extracted_fields["applicantNameAccusative"] = accs_clean
             else:
@@ -4042,7 +3938,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         # Дательный падеж для должника (маркер [2.2]) - везде это имя должника в дательном падеже, кроме ипотеки
         # НЕ генерируем дательный падеж, если name_for_inflection содержит "суд" (это название суда, а не имя должника)
         if "applicantNameDative" not in extracted_fields and name_for_inflection:
-            # Проверяем, что это не название суда
             if "суд" not in name_for_inflection.lower():
                 # Убираем префикс "ИП" перед склонением (как для других падежей)
                 name_for_dative = re.sub(
@@ -4063,7 +3958,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
     def _normalize_procedure_and_manager(self, extracted_fields, text, procedure_type):
         """Пост-обработка процедуры и управляющего: чистка названия суда для «умерший», фолбэк процедуры «наблюдение» по raw-описанию, валидация managerInn по контрольной сумме. Вынесено из extract_fields."""
-        # Специальная обработка названия суда для процедуры "умерший"
         if procedure_type == 'deceased' and extracted_fields.get('courtName'):
             court_name = extracted_fields['courtName']
             cleaned_court_name = self._clean_court_name_deceased(court_name)
@@ -4098,19 +3992,16 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
     def _extract_multiple_field(self, extracted_fields, text, field_name, field_patterns):
         """Поля с множественными значениями (contractNumber/contractDate/obligationType): сбор всех вхождений по паттернам, защита C (закон != договор), фильтры мусора, дедуп с сохранением порядка. Вынесено из pattern-цикла."""
-        # Для полей с множественными значениями собираем все вхождения
         found_values = []
         for pattern in field_patterns:
             matches = re.findall(pattern, text, re.IGNORECASE)
             for match in matches:
                 value = match.strip()
                 if value and len(value) > 2:
-                    # Очищаем значение от звездочек
                     cleaned_value = self.clean_extracted_value(value)
                     if not cleaned_value:  # Если после очистки ничего не осталось
                         continue
 
-                    # Фильтруем мусорные значения
                     if field_name == 'contractNumber':
                         # Защита C: «№ 353-ФЗ» — ссылка на закон, не номер договора.
                         if looks_like_law_ref(cleaned_value):
@@ -4127,7 +4018,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                         logger.info(f"Found {field_name}: {cleaned_value}")
 
         if found_values:
-            # Удаляем дубликаты, сохраняя порядок появления
             unique_values = []
             seen_values = set()
             for value in found_values:
@@ -4138,13 +4028,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 unique_values.append(value)
 
             if unique_values:
-                # Объединяем все найденные значения через запятую
                 extracted_fields[field_name] = ", ".join(unique_values)
                 logger.info(f"All {field_name}: {extracted_fields[field_name]}")
 
     def _detect_kfh_head(self, text):
         """Ранняя детекция КФХ по тексту («ГЛАВА КФХ ИП ФИО»). Возвращает (is_kfh_detected, kfh_head_name). Вынесено из analyze."""
-        # РАННЕЕ ОПРЕДЕЛЕНИЕ КФХ: автоматически определяем по словам "ГЛАВА КФХ ИП"
         # Ищем в любом месте документа, не только в блоке должника
         kfh_patterns = [
             r"глава\s+кфх\s+ип\s+([А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){1,2})",  # "ГЛАВА КФХ ИП ФИО"
@@ -4170,15 +4058,12 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         # Используем правильное имя из ip_specific_fields или extracted_fields
         correct_name_for_dative = None
 
-        # Функция для проверки, что это полное ФИО (3 слова) и не название суда
         def is_valid_name(name):
             if not name or "суд" in name.lower():
                 return False
-            # Проверяем, что это похоже на ФИО (минимум 2 слова, максимум 4 слова с префиксами)
             words = name.strip().split()
             if len(words) < 2 or len(words) > 4:
                 return False
-            # Проверяем, что слова начинаются с заглавной буквы (кроме префиксов)
             valid_words = [w for w in words if w.upper() not in ["ИП", "ГЛАВА", "КФХ"]]
             if len(valid_words) < 2:
                 return False
@@ -4204,7 +4089,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             correct_name_for_dative = extracted_fields.get("debtorName")
             logger.info(f"Используем debtorName из extracted_fields для [2.2]: {correct_name_for_dative}")
 
-        # Если нашли правильное имя, генерируем дательный падеж
         if correct_name_for_dative:
             # Убираем префикс "ИП" перед склонением
             name_for_dative = re.sub(
@@ -4233,8 +4117,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
     def _maybe_upgrade_to_observation_collateral(self, extracted_fields, text, document_type, text_lower):
         """Доп. проверка после извлечения: ЮЛ + залог + наблюдение -> тип observation_collateral (+ поля залога). Возвращает (возможно обновлённый) document_type. Вынесено из analyze."""
-        # Дополнительная проверка для observation_collateral после извлечения полей
-        # Если это юридическое лицо с залогом и процедура наблюдения, но тип еще не определен
         if document_type == "rtk_application":
             entity_type = extracted_fields.get("entityType", "").lower()
 
@@ -4271,13 +4153,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if entity_type == "legal" and has_collateral and is_observation and not has_ip_name:
                 document_type = "observation_collateral"
                 logger.info("Определен тип документа: observation_collateral (Наблюдение с залогом для ЮЛ после извлечения полей)")
-                # Дополняем полями залога
                 collateral_fields = self.extract_physical_collateral_fields(text)
                 for key, value in collateral_fields.items():
                     if value:
                         extracted_fields[key] = value
 
-                # Если предмет залога [1221] не найден, пытаемся извлечь через fallback метод
                 if "mortgageCollateralDescription1221" not in extracted_fields or not extracted_fields.get("mortgageCollateralDescription1221"):
                     logger.info("Предмет залога [1221] не найден для observation_collateral, пробуем fallback метод...")
                     collateral_block = self._extract_mortgage_collateral_block(text)
@@ -4290,7 +4170,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
     def _postprocess_mortgage_and_case_number(self, extracted_fields, text, document_type):
         """Постобработка ипотеки/залога (корректировка интерфейсных значений) и валидация номера дела («/ГОД» в конце, отсев доверенностей/договоров). Вынесено из analyze."""
-        # Постобработка данных для ипотеки и документов с залогом - приводим интерфейс к корректным значениям
         if document_type == "mortgage_claim" or document_type == "competition_collateral":
             self._normalize_mortgage_interface_fields(extracted_fields, text)
             # Для конкурсного производства с залогом явно считаем должника юридическим лицом
@@ -4332,10 +4211,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
     def _analyze_ip_collection(self, text, document_type):
         """Ветка анализа ИП-взыскания: extract_fields + слияние ip_specific_fields (без перезаписи ИНН/сумм), залог авто [1221], дательный падеж, обязательства. Возвращает extracted_fields. Вынесено из analyze."""
-        # Используем основной extract_fields для ИП, чтобы получить все поля
         extracted_fields = self.extract_fields(text, "rtk_application")  # Используем rtk_application как базовый тип
 
-        # Дополняем специфичными полями для ИП из extract_ip_enforcement_fields
         ip_specific_fields = self.extract_ip_enforcement_fields(text)
         logger.info(f"Извлеченные специфичные поля для ИП (взыскание): {list(ip_specific_fields.keys())}")
         logger.info(f"🔍 Значения полей [1000], [1001], [1004]:")
@@ -4378,10 +4255,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 extracted_fields["mortgageCollateralDescription1221"] = car_1221
                 logger.info(f"Установлено mortgageCollateralDescription1221 (залог авто): {car_1221[:80]}...")
 
-        # Перегенерация дательного падежа [2.2] (ИП)
         self._regenerate_ip_dative(extracted_fields, text, ip_specific_fields)
 
-        # Извлекаем обязательства для ИП
         obligations = self.extract_obligations(text, extracted_fields)
         if obligations:
             extracted_fields['obligations'] = obligations
@@ -4443,7 +4318,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                         # Синхронизируем общее поле госпошлины с [16], чтобы генератор не получил 0,00.
                         extracted_fields["stateDuty"] = value
                         logger.info(f"Установлено поле ЮЛ с залогом {key}: {value}")
-                    # Добавляем только поля, связанные с залогом или договором
                     elif key in collateral_fields:
                         extracted_fields[key] = value
                         logger.info(f"Установлено поле ЮЛ с залогом {key}: {value}")
@@ -4471,7 +4345,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 match = re.search(pattern, text, re.IGNORECASE)
                 if match:
                     interest_value = match.group(1).strip()
-                    # Очищаем от пробелов и форматируем
                     interest_value = re.sub(r'\s+', ' ', interest_value)
                     if interest_value:
                         extracted_fields["interest14"] = interest_value
@@ -4479,7 +4352,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                         logger.info(f"Перезаписано interest14 для ЮЛ с залогом из паттерна '{pattern[:50]}...': {interest_value}")
                         break
 
-        # Извлекаем обязательства для ЮЛ
         obligations = self.extract_obligations(text, extracted_fields)
         if obligations:
             extracted_fields['obligations'] = obligations
@@ -4488,15 +4360,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
     def _analyze_ip_enforcement(self, text, document_type):
         """Ветка анализа ИП-исполнения (взыскание/реализация/реструктуризация): extract_fields + ip_specific, умерший, дательный падеж, обязательства. Возвращает extracted_fields. Вынесено из analyze."""
-        # Используем основной extract_fields для ИП, чтобы получить все поля
-        # Затем дополняем специфичными полями для ИП
         extracted_fields = self.extract_fields(text, "rtk_application")  # Используем rtk_application как базовый тип
 
-        # Дополняем специфичными полями для ИП из extract_ip_enforcement_fields
         ip_specific_fields = self.extract_ip_enforcement_fields(text)
         logger.info(f"Извлеченные специфичные поля для ИП: {list(ip_specific_fields.keys())}")
 
-        # Проверяем, является ли это процедурой "умерший" (проверяем текст напрямую)
         text_lower = text.lower()
         is_deceased = any(keyword in text_lower for keyword in ["умер", "умерший", "смерть", "смерти"])
 
@@ -4507,7 +4375,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                     if key in extracted_fields and extracted_fields[key]:
                         logger.info(f"Пропускаем перезапись {key} из ip_specific_fields (уже извлечен из блока Ответчик: {extracted_fields[key]})")
                         continue
-                # Специальная обработка для courtName в процедуре "умерший"
                 if key == 'courtName' and is_deceased:
                     cleaned_value = self._clean_court_name_deceased(value)
                     if cleaned_value:
@@ -4520,7 +4387,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                     extracted_fields[key] = value
                     logger.info(f"Установлено поле ИП {key}: {value}")
 
-        # Определяем наличие залога для ИП
         if document_type in ["ip_enforcement_statement_collateral", "ip_enforcement_realization_collateral",
                              "ip_enforcement_restructuring_collateral"]:
             extracted_fields["ipHasCollateral"] = "true"
@@ -4528,7 +4394,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             collateral_detected = self.detect_ip_collateral(text)
             extracted_fields["ipHasCollateral"] = "true" if collateral_detected else "false"
 
-        # Извлекаем обязательства для ИП
         obligations = self.extract_obligations(text, extracted_fields)
         if obligations:
             extracted_fields['obligations'] = obligations
@@ -4537,7 +4402,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
     def _analyze_physical_collateral(self, text, document_type):
         """Ветка анализа ФЛ/ЮЛ с залогом (реализация/реструктуризация/наблюдение/конкурс): extract_fields + поля залога, обязательства. Возвращает extracted_fields. Вынесено из analyze."""
-        # Для ФЛ/ЮЛ с залогом в реализации/реструктуризации/наблюдении используем extract_fields и дополняем полями залога
         extracted_fields = self.extract_fields(text, "rtk_application")
 
         # Извлекаем поля залога (аналогично ИП, но без префикса ИП)
@@ -4548,7 +4412,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 extracted_fields[key] = value
                 logger.info(f"Установлено поле залога {key}: {value}")
 
-        # Если предмет залога [1221] не найден, пытаемся извлечь через fallback метод
         if "mortgageCollateralDescription1221" not in extracted_fields or not extracted_fields.get("mortgageCollateralDescription1221"):
             logger.info("🔍 Предмет залога [1221] не найден в extract_physical_collateral_fields, пробуем fallback метод...")
             collateral_block = self._extract_mortgage_collateral_block(text)
@@ -4561,7 +4424,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         else:
             extracted_fields["physicalHasCollateral"] = "true"
 
-        # Извлекаем обязательства
         obligations = self.extract_obligations(text, extracted_fields)
         if obligations:
             extracted_fields['obligations'] = obligations
@@ -5082,7 +4944,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                         logger.info(f"Extracted {key}: {value}")
                         break
 
-        # Фильтр для номера договора (аналогично ИП)
         def filter_contract_number(value):
             """Фильтрует некорректные значения для номера договора"""
             if not value:
@@ -5211,7 +5072,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             else:
                 recommended_entity_type = "individual"
 
-        # Определяем наличие залога
         has_collateral = False
         has_auto_collateral = False
 
@@ -5228,18 +5088,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             r"обязательства[^.]{0,120}?обеспечен[^.]{0,30}?залогом"
         ]
 
-        # Проверяем наличие обязательной формулировки о залоге
         has_required_collateral_phrase = any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in required_collateral_phrases)
 
-        # Если нет обязательной формулировки, документ НЕ может быть залоговым
         if not has_required_collateral_phrase:
             logger.info("Документ НЕ содержит обязательной формулировки 'обеспеченное залогом' - залог не определяется")
-            # Устанавливаем no_collateral, но продолжаем определять рекомендуемые акты
             has_collateral = False
             has_collateral_fields = False
             has_collateral_text = False
         else:
-            # Если обязательная формулировка есть, проверяем дополнительные индикаторы
             # Проверяем поля залога в извлеченных данных (не считаем залогом "Кому выдана [ФИО]" — это не описание залога)
             _collateral_desc = (extracted_fields.get("mortgageCollateralDescription1221") or "").strip()
             _valid_collateral_desc = bool(_collateral_desc and not re.match(r"^Кому\s+выдана\s+", _collateral_desc, re.IGNORECASE))
@@ -5252,7 +5108,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 extracted_fields.get("ipHasCollateral") == "true"
             )
 
-            # Проверяем различные индикаторы залога в тексте
             collateral_indicators = [
                 r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку",
                 r"что\s+подтверждается\s+договором\s+залога",
@@ -5263,10 +5118,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
             has_collateral_text = any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in collateral_indicators)
 
-            # Используем либо поля, либо текст (но только если есть обязательная формулировка)
             has_collateral = has_collateral_fields or has_collateral_text
 
-        # Проверяем наличие авто в залоге
         auto_indicators = [
             r"автомобил",
             r"транспортное\s+средство",
@@ -5275,7 +5128,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             r"гос\.?\s*номер"
         ]
 
-        # Проверяем поля авто в извлеченных данных
         has_auto_fields = bool(
             extracted_fields.get("vin") or
             extracted_fields.get("brandModel")
@@ -5284,7 +5136,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if has_collateral:
             has_auto_collateral = has_auto_fields or any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in auto_indicators)
 
-        # Определяем тип залога
         if has_auto_collateral:
             recommended_collateral_option = "collateral_auto"
         elif has_collateral:
@@ -5292,11 +5143,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         else:
             recommended_collateral_option = "no_collateral"
 
-        # Определяем рекомендуемые акты на основе типа документа
         recommended_act_ids = []
         text_lower = text.lower()
 
-        # Определяем процедуру из типа документа или текста
         is_realization = "realization" in document_type or "реализац" in text_lower
         is_restructuring = "restructuring" in document_type or "реструктур" in text_lower
         is_observation = "observation" in document_type or "наблюден" in text_lower
@@ -5305,12 +5154,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
         is_rtk_inclusion = document_type == "rtk_application" and not self._detect_self_bankruptcy(text)
 
-        # Базовые акты для включения в РТК.
         if is_rtk_inclusion:
             recommended_act_ids.append("final_rtk_inclusion")
             recommended_act_ids.append("acceptance_definition")
 
-        # Для реализации
         if is_realization and not is_rtk_inclusion:
             recommended_act_ids.append("final_realization")
             if recommended_collateral_option != "no_collateral":
@@ -5318,7 +5165,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             else:
                 recommended_act_ids.append("acceptance_definition")
 
-        # Для реструктуризации
         if is_restructuring and not is_rtk_inclusion:
             recommended_act_ids.append("final_restructuring")
             if recommended_collateral_option != "no_collateral":
@@ -5342,7 +5188,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             else:
                 recommended_act_ids.append("acceptance_definition")
 
-        # Для ИП с залогом
         if recommended_entity_type == "ip" and recommended_collateral_option != "no_collateral" and not is_rtk_inclusion:
             if "realization" in document_type:
                 recommended_act_ids.append("final_realization")
@@ -5350,7 +5195,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 recommended_act_ids.append("final_restructuring")
             recommended_act_ids.append("acceptance_no_motion_no_duty_collateral")
 
-        # Для ИП без залога
         if recommended_entity_type == "ip" and recommended_collateral_option == "no_collateral" and not is_rtk_inclusion:
             if "realization" in document_type:
                 recommended_act_ids.append("final_realization")
@@ -5371,15 +5215,12 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             recommended_act_ids.append("final_observation")
             recommended_act_ids.append("acceptance_definition")
 
-        # ИП — не предлагаем конкурсный акт
         if recommended_entity_type == "ip":
             recommended_act_ids = [act_id for act_id in recommended_act_ids if act_id != "final_competition"]
 
-        # Физлицо — не предлагаем наблюдение и конкурсное производство
         if recommended_entity_type == "individual":
             recommended_act_ids = [act_id for act_id in recommended_act_ids if act_id not in ("final_observation", "final_competition")]
 
-        # Убираем дубликаты, сохраняя порядок
         recommended_act_ids = list(dict.fromkeys(recommended_act_ids))
 
         logger.info(f"Рекомендации: entityType={recommended_entity_type}, collateralOption={recommended_collateral_option}, acts={recommended_act_ids}")
@@ -5429,7 +5270,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         """
         Определяет тип обязательства по контексту
         """
-        # Ищем контекст вокруг номера договора
         context_pattern = rf'.{{0,100}}{re.escape(contract_number)}.{{0,100}}'
         context_match = re.search(context_pattern, text, re.IGNORECASE)
 
@@ -5477,7 +5317,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if not extracted_fields:
             return 0.0
 
-        # Базовые поля для РТК заявления
         if document_type == "ip_enforcement_statement" or document_type == "ip_enforcement_statement_collateral":
             required_fields = [
                 "applicantName", "inn", "ogrnip", "creditAmount", "principalDebt13"
@@ -5487,22 +5326,17 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 "applicantName", "courtName", "caseNumber", "debtAmount"
             ]
 
-        # Подсчитываем заполненные обязательные поля
         filled_required = sum(1 for field in required_fields if field in extracted_fields)
 
-        # Базовый уровень уверенности
         base_confidence = filled_required / len(required_fields)
 
-        # Дополнительные факторы
         additional_factors = 0.0
 
-        # Качество извлечения имен
         if "applicantName" in extracted_fields:
             name = extracted_fields["applicantName"]
             if len(name.split()) >= 3:  # ФИО должно содержать минимум 3 части
                 additional_factors += 0.1
 
-        # Качество извлечения сумм и дат в зависимости от типа документа
         if document_type == "ip_enforcement_statement" or document_type == "ip_enforcement_statement_collateral":
             amount = (
                 extracted_fields.get("totalDebt")
@@ -5526,7 +5360,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 if re.match(r'^\d{1,2}[.,]\d{1,2}[.,]\d{4}$', date):
                     additional_factors += 0.1
 
-        # Общая уверенность
         total_confidence = min(base_confidence + additional_factors, 1.0)
 
         return round(total_confidence, 2)
@@ -5554,17 +5387,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             return False
 
         if field_type == "date":
-            # Проверяем формат даты
             date_pattern = r'^\d{1,2}[.,]\d{1,2}[.,]\d{4}$'
             return bool(re.match(date_pattern, value))
 
         elif field_type == "amount":
-            # Проверяем, что это число
             amount_pattern = r'^\d+$'
             return bool(re.match(amount_pattern, value.replace(' ', '')))
 
         elif field_type == "person_name":
-            # Проверяем, что это ФИО (минимум 2 слова)
             return len(value.split()) >= 2
 
         return True

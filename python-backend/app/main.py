@@ -34,8 +34,9 @@ def _get_frontend_dir() -> Optional[Path]:
             exe_dir / "_internal" / "frontend",
             exe_dir / "_internal" / "build",
         ]
-        if getattr(sys, "_MEIPASS", None):
-            me = Path(sys._MEIPASS)
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            me = Path(meipass)
             candidates.extend([me / "frontend", me / "build"])
         for p in candidates:
             if p.exists() and (p / "index.html").exists():
@@ -102,8 +103,6 @@ async def root():
     if frontend_dir:
         index_path = frontend_dir / "index.html"
         html = index_path.read_text(encoding="utf-8")
-        # Загружаем web-api.js с задержкой, чтобы дать время preload.js загрузиться
-        # web-api.js нужен для fallback функций, но не должен перехватывать Electron API методы
         inject = '''
         <script>
         (function() {
@@ -156,7 +155,8 @@ if frontend_dir:
     def _web_api_path():
         if getattr(sys, "frozen", False):
             exe_dir = Path(sys.executable).parent
-            for base in (exe_dir, exe_dir / "_internal", Path(sys._MEIPASS) if getattr(sys, "_MEIPASS", None) else None):
+            meipass = getattr(sys, "_MEIPASS", None)
+            for base in (exe_dir, exe_dir / "_internal", Path(meipass) if meipass else None):
                 if base and (base / "static" / "web-api.js").exists():
                     return base / "static" / "web-api.js"
         return Path(__file__).resolve().parent / "static" / "web-api.js"
@@ -337,17 +337,11 @@ async def docx_apply_edits(
         raise HTTPException(status_code=500, detail=f"Не удалось применить правки: {str(e)}")
 
 
-# ---------------------------------------------------------------------------
-# Прокси к OCR-конвертеру (sidecar-процесс на 127.0.0.1:8008).
+# Прокси к конвертеру (sidecar-процесс на 127.0.0.1:8008).
 # Фронт ходит только на наш origin (:8000) — порт конвертера наружу не течёт,
 # CORS не нужен. Catch-all не привязан к конкретным путям конвертера: контракт
 # (analyze/scan/native/status/download) живёт на стороне фронта.
-# См. docs/converter_integration_plan.md.
-# ---------------------------------------------------------------------------
 CONVERTER_URL = os.environ.get("CONVERTER_URL", "http://127.0.0.1:8008")
-# Роутер конвертера подключён С префиксом /convert (upstream-факт, проверено по
-# docling_dev/api.py), а /health — в корне. Поэтому прокси форвардит на
-# <root>/convert/..., а health-проба ходит в <root>/health.
 CONVERTER_API_URL = os.environ.get("CONVERTER_API_URL", f"{CONVERTER_URL}/convert")
 # Заголовки соединения не пробрасываем: они описывают hop, а не содержимое.
 _CONVERT_HOP_HEADERS = {"host", "content-length", "connection", "transfer-encoding"}
@@ -412,13 +406,6 @@ async def convert_proxy(conv_path: str, request: Request):
         headers=passthrough,
     )
 
-
-# ---------------------------------------------------------------------------
-# Менеджер процесса конвертера НА БЭКЕНДЕ: требование Андрея — «фронт + бек»
-# без третьего терминала в ЛЮБОМ режиме. В браузере процессы умеет запускать
-# только бэкенд; в Electron свой менеджер (main.js) — оба сперва пробуют
-# /health и чужой запущенный экземпляр не дублируют и не убивают.
-# ---------------------------------------------------------------------------
 def _default_converter_dir() -> Path:
     """converter/ в корне проекта (рядом с python-backend)."""
     return Path(__file__).resolve().parents[2] / "converter"
@@ -427,21 +414,10 @@ def _default_converter_dir() -> Path:
 CONVERTER_DIR = Path(os.environ.get("CONVERTER_DIR", str(_default_converter_dir())))
 CONVERTER_PORT = os.environ.get("CONVERTER_PORT", "8008")
 CONVERTER_START_TIMEOUT_S = 180  # холодный старт с LLM — десятки секунд, с запасом
-
-# Конвертер держит ~3.5 ГБ (torch + LLM), а Python не умеет выгружать их из живого
-# процесса — память возвращает только kill (docs/converter_integration_plan.md).
-# Раньше UI убивал sidecar после каждого файла: память освобождалась, но КАЖДЫЙ
-# следующий PDF платил холодным стартом. Теперь UI не гасит его вовсе, а процесс
-# сам умирает после простоя — пачка заявлений идёт быстро, память возвращается.
 CONVERTER_IDLE_TIMEOUT_S = int(os.environ.get("CONVERTER_IDLE_TIMEOUT_S", "300"))
 CONVERTER_IDLE_CHECK_S = 30  # как часто сторож смотрит на простой
 
 _converter_process: Optional["subprocess.Popen[bytes]"] = None
-
-# Старт конвертера сериализуем: фронт зовёт /converter/start несколько раз подряд
-# (React StrictMode дублирует эффект), и без лока каждый вызов проходил проверку
-# _converter_healthy() до того, как предыдущий успел поднять сервис, — плодились
-# конкурирующие Popen на одном порту.
 _converter_start_lock: Optional["asyncio.Lock"] = None
 
 

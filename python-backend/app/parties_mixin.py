@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import field_contract
 from creditor_registry import _match_creditor_registry
@@ -18,9 +18,26 @@ logger = logging.getLogger(__name__)
 
 
 class PartiesMixin:
-    # Куда слои складывают источник значения, пока знание не потерялось. Ключ
-    # временный: `analyze()` вынимает его из fields в top-level `fieldQuality`
-    # (по образцу `financeBreakdown`), в fields и golden он не попадает.
+    if TYPE_CHECKING:
+        # Реализованы в document_analyzer.DocumentAnalyzer / classify_mixin.ClassifyMixin /
+        # inflection_mixin.InflectionMixin; здесь только для Pyright (mixin-класс
+        # вызывает методы/константу, которые появятся в итоговом составном классе).
+        _NAME_PREFIX_RE: str
+        _COURT_KIND_RE: str
+        _COURT_LOWER_WORDS: "set[str]"
+
+        def clean_extracted_value(self, value: str) -> str: ...
+        def detect_entity_type(self, fields: Dict[str, Any]) -> Optional[str]: ...
+        def _strip_ooo_prefix(self, name: Optional[str]) -> Optional[str]: ...
+        def _extract_creditor_name_from_text(self, text: str) -> Optional[str]: ...
+        def extract_legal_entity_short_name(self, text: Optional[str]) -> Optional[str]: ...
+        def _extract_creditor_block(self, text: str) -> Optional[str]: ...
+        def _extract_creditor_address(self, text: str) -> Optional[str]: ...
+        def _clean_court_line(self, s: str) -> Optional[str]: ...
+        def _convert_name_to_genitive(self, full_name: str) -> Optional[str]: ...
+        def _convert_name_to_dative(self, full_name: str) -> Optional[str]: ...
+        def _convert_name_to_instrumental(self, full_name: str) -> Optional[str]: ...
+        def _convert_name_to_accusative(self, full_name: str) -> Optional[str]: ...
     _PROVENANCE_KEY = "_provenance"
 
     def _extract_party_inn_ogrn(self, extracted_fields, text, field_name):
@@ -112,9 +129,7 @@ class PartiesMixin:
                         if ogrn_match:
                             logger.info(f"Найден ОГРНИП паттерн (число перед): {ogrn_match.group(1)}")
                     if not ogrn_match:
-                        # Фолбэк: ОГРНИП должника может стоять вне блока «Должник:»
-                        # (в теле заявления при повторном упоминании). Ищем по всему
-                        # тексту валидный 15-значный ОГРНИП.
+
                         for cand in re.finditer(r"ОГРНИП[:\s]*([0-9][0-9\s]{13,20})", text, re.IGNORECASE):
                             digits = re.sub(r"\D", "", cand.group(1))[:15]
                             if len(digits) == 15 and is_valid_ogrnip(digits):
@@ -123,9 +138,6 @@ class PartiesMixin:
                                 logger.info(f"✅ Extracted ogrnip (фолбэк по тексту, 15 цифр): {digits}")
                                 break
 
-                # ОГРН (13 цифр, ЮЛ) ищем ТОЛЬКО для поля ogrn. Для ogrnip (15 цифр, ИП)
-                # НЕ откатываемся на «ОГРН» — иначе 13-значный ОГРН юрлица ошибочно
-                # попадёт в ОГРНИП (которого в документе нет).
                 if field_name == "ogrn" and not ogrn_match:
                     ogrn_match = re.search(r"ОГРН[:\s]*([0-9\s]{12,15})", debtor_block, re.IGNORECASE)
                     if ogrn_match:
@@ -160,9 +172,6 @@ class PartiesMixin:
             elif field_name == "inn" or field_name == "companyInn":
                 # Извлекаем ИНН (как в реструктуризации)
                 logger.info(f"Ищем {field_name} в блоке должника/ответчика...")
-                # Собираем ВСЕХ кандидатов ИНН в блоке и предпочитаем
-                # того, кто проходит контрольную сумму (иначе жадный поиск
-                # мог бы подхватить ИНН банка/иного лица, стоящий раньше).
                 inn_candidates = re.findall(r"ИНН[:\s]*([0-9\s]{9,12})", debtor_block, re.IGNORECASE)
                 inn_candidates += re.findall(r"([0-9\s]{9,12})\s*\[4\]", debtor_block)
                 inn_clean = []
@@ -357,10 +366,7 @@ class PartiesMixin:
                     extracted_fields["inn"] = inn_value
                     extracted_fields["companyInn"] = inn_value
                     logger.info(f"✅ Extracted inn из блока Должник (после цикла): {inn_value}")
-
-            # Определяем КФХ: после "Должник" указывается "ГЛАВА КФХ ИП ФИО"
-            # Пример: "ГЛАВА КФХ ИП Иванов Иван Иванович"
-            # Если КФХ уже было определено ранним определением, не перезаписываем
+                    
             if not extracted_fields.get("isKfh"):
                 kfh_match = re.search(
                     r"глава\s+кфх\s+ип\s+([А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){1,2})",
@@ -494,9 +500,6 @@ class PartiesMixin:
 
         start_idx, first_tail = -1, ""
         for i, line in enumerate(lines):
-            # Перебираем ВСЕ метки адреса в строке: на раскладке «Адрес: ИНН…,
-            # место нахождения: 346404…» первая метка «Адрес:» упирается в ИНН —
-            # тогда берём следующую («место нахождения»), дающую реальный адрес.
             for m in label_re.finditer(line):
                 tail = line[m.end():]
                 # Отрезаем повторные/вложенные ярлыки и прилипшие служебные слова.
@@ -544,10 +547,9 @@ class PartiesMixin:
         return addr or None
 
     def _finalize_debtor_person_requisites(self, extracted_fields, text):
-        """Авторитетные реквизиты должника-физлица из его записи (дата/место рождения, ИНН, ОГРН/ОГРНИП, СНИЛС). Возвращает details для последующего dedup. Вынесено из analyze."""
-        # Реквизиты должника-физлица из его блока: дата/место рождения, СНИЛС.
-        # birthDate берём авторитетно (существующий фолбэк иногда кладёт сюда ОГРН);
-        # birthPlace/snils — только если поле ещё не заполнено.
+        """Авторитетные реквизиты должника-физлица из его записи (дата/место 
+           рождения, ИНН, ОГРН/ОГРНИП, СНИЛС). Возвращает details для последующего 
+           dedup. Вынесено из analyze."""
         details = extract_debtor_details(text)
         # birthDate авторитетно из записи должника: если валидной даты там нет,
         # очищаем мусор существующего фолбэка (невозможные/фабрикованные даты).
@@ -786,9 +788,6 @@ class PartiesMixin:
         entity_type = (extracted_fields.get("entityType") or "").lower()
         display_name = debtor
         if entity_type == "legal":
-            # Краткое имя пришло из debtorName/legalShortName (без ОПФ). Для ЮЛ
-            # восстанавливаем полную форму с ОПФ и кавычками («ООО «Форте…»»),
-            # если она присутствует в тексте. Сначала ищем краткую ОПФ (ООО/АО/…).
             core = re.escape(re.sub(r'[«»"]', '', debtor).strip())
             mm = re.search(r"(?:ООО|ОАО|ПАО|ЗАО|АО)\s*«?" + core + r"»?", text, re.IGNORECASE)
             if not mm:
@@ -864,10 +863,6 @@ class PartiesMixin:
             if not looks_like_fio:
                 extracted_fields.pop("managerName", None)
                 logger.info(f"🧹 Удалён мусорный managerName (не ФИО): '{mn}'")
-        # 3a. Нет ФИО управляющего, а его «ИНН» совпал с ИНН/ОГРН должника → это
-        #     утёкшие реквизиты должника (пункт «определить СРО … случайным выбором»),
-        #     а не реальный управляющий. Чистим. Если ИНН иной — это может быть реальный
-        #     управляющий, чьё ФИО не извлеклось; не трогаем, чтобы не потерять данные.
         if not (extracted_fields.get("managerName") or "").strip():
             _d = lambda v: re.sub(r"\D", "", str(v or ""))
             _mi = _d(extracted_fields.get("managerInn"))
@@ -887,12 +882,6 @@ class PartiesMixin:
                 r'Адрес\s+для\s+(?:направлен\w+|корреспонден\w+))\b',
                 addr, maxsplit=1, flags=re.IGNORECASE,
             )[0].rstrip(" ,;")
-            # Применяем обрезку, ТОЛЬКО если остаток сам похож на адрес (индекс/ключевые
-            # слова). Иначе адрес изначально битый (напр. начинается с «ОГРН:…ИНН:…») —
-            # не делаем хуже, оставляем как было.
-            # Требуем именно словесный признак адреса (область/город/улица/…), а НЕ голый
-            # 6-значный индекс: иначе мусор вида «117997 Адрес для корреспонденции 443125»
-            # схлопнулся бы до одного индекса. Если признака нет — адрес битый, не трогаем.
             looks_addr = bool(re.search(
                 r'облас|город|\bг\.|улиц|\bул\.|переул|проспект|посёл|посел|район|деревн|слобод|\bш\.|шоссе',
                 cut, re.IGNORECASE,
@@ -901,18 +890,12 @@ class PartiesMixin:
                 extracted_fields["applicantAddress"] = cut
                 logger.info(f"🧹 Обрезан хвост в адресе должника: '{addr}' -> '{cut}'")
 
-        # 5. creditorName: если пусто — фолбэк по тексту (метки Истец/Заявитель/Кредитор/
-        #    Взыскатель, в т.ч. гос.органы без ОПФ — «ФНС России»). Работает для всех
-        #    типов (а не только ипотеки). Если уже заполнено — не трогаем.
         if not (extracted_fields.get("creditorName") or "").strip():
             cn = self._extract_creditor_name_from_text(text)
             if cn:
                 extracted_fields["creditorName"] = cn
                 logger.info(f"🏦 creditorName из текста (фолбэк по метке): '{cn}'")
 
-        # 6. Для ИП восстанавливаем префикс «ИП» в наименовании и падежах
-        #    (в документе «ИП БАЗОВ …», извлечение срезало «ИП»). Только если в тексте
-        #    действительно есть «ИП <ФИО>».
         if (extracted_fields.get("entityType") or "").lower() == "ip":
             base = (extracted_fields.get("applicantName") or extracted_fields.get("debtorName") or "").strip()
             already = re.match(r"^\s*ИП\b", base, re.IGNORECASE)
@@ -925,9 +908,6 @@ class PartiesMixin:
                         extracted_fields[k] = "ИП " + v.strip()
                 logger.info(f"🏷️ Восстановлен префикс «ИП» в наименовании должника: 'ИП {base}'")
 
-        # 7. Достройка наименования ЮЛ: раскладка «Должник ⇥ Общество с ограниченной
-        #    ответственностью\n«Имя»» даёт обрезанное имя без кавычек. Берём полное
-        #    «<ОПФ> «Имя»» из блока должника.
         if (extracted_fields.get("entityType") or "").lower() == "legal":
             an = (extracted_fields.get("applicantName") or "").strip()
             # Достраиваем ТОЛЬКО когда имя без кавычек вообще («Спн Трак»); если кавычки
@@ -959,10 +939,6 @@ class PartiesMixin:
         legal_short_name = self.extract_legal_entity_short_name(legal_name_source)
         if legal_short_name:
             extracted_fields["legalShortName"] = legal_short_name
-            # ВАЖНО: не затираем debtorName/applicantName для всех документов подряд.
-            # Это было источником неожиданных эффектов.
-            # Оставляем их как есть, а для специализированных типов (например, initiation_legal)
-            # делаем аккуратную переустановку ниже.
 
         # Специальная донастройка ТОЛЬКО для юр. инициирования
         source_doc_type = (extracted_fields.get("sourceDocumentType") or "").lower()
@@ -1015,14 +991,10 @@ class PartiesMixin:
         return debtor_clean
 
     def _cleanup_extracted_fields(self, extracted_fields, text):
-        """Пост-очистка извлечённых полей: срез метки из адреса должника, валидация имени/реквизитов третьего лица, фолбэк и нормализация названия суда. Вынесено из analyze."""
-        # ИНН/СНИЛС арбитражного управляющего не должны числиться за должником
-        # (раскладка «…управляющий: ФИО (ИНН …, СНИЛС …) адрес»: реквизиты управляющего
-        # стоят рядом и утекают в поля должника).
+        """Пост-очистка извлечённых полей: срез метки из адреса должника, 
+           валидация имени/реквизитов третьего лица, фолбэк и нормализация 
+           названия суда. Вынесено из analyze."""
         _digits = lambda v: re.sub(r"\D", "", str(v or ""))
-        # ИНН/СНИЛС управляющего используем для очистки ТОЛЬКО если управляющий
-        # реальный (есть ФИО). Иначе managerInn — это мусор (ИНН должника, затянутый
-        # из «определить СРО … случайным выбором»), и им нельзя чистить должника.
         _mgr_name = (extracted_fields.get("managerName") or "").strip()
         _mgr_real = bool(re.search(r"[А-ЯЁ][А-Яа-яёЁ.\-]+\s+[А-ЯЁ]", _mgr_name))
         mgr_inn = _digits(extracted_fields.get("managerInn")) if _mgr_real else ""
@@ -1095,10 +1067,9 @@ class PartiesMixin:
             extracted_fields["courtName"] = self._normalize_court_name(extracted_fields["courtName"])
 
     def _resolve_debtors_and_third_parties(self, extracted_fields, text, details):
-        """Разбор списков должников (со-ответчиков) и третьих лиц + кросс-блочный дедуп реквизитов. Возвращает (debtors_result, third_parties_result). Вынесено из analyze."""
-        # Несколько должников (со-ответчиков). При 2+ — склеиваем плоские поля и
-        # падежи через запятую (шаблоны не меняем). При 0/1 — одиночный должник
-        # из текущих плоских полей (поведение прежнее, без регрессий).
+        """Разбор списков должников (со-ответчиков) и третьих лиц + кросс-блочный дедуп 
+           реквизитов. Возвращает (debtors_result, third_parties_result). 
+           Вынесено из analyze."""
         parsed_debtors = extract_debtors(text)
         if len(parsed_debtors) >= 2:
             extracted_fields.update(self._combine_debtors(parsed_debtors))
@@ -1184,17 +1155,9 @@ class PartiesMixin:
         appl = fields.get("applicantName") or ""
         debt = fields.get("debtorName") or ""
         cred = fields.get("creditorName") or ""
-        # Заявитель — это КРЕДИТОР (а не должник-организация): ФНС либо буквально
-        # совпадает с creditorName. Только тогда должник берётся из debtorName. При
-        # банкротстве организации заявитель = сам должник (ООО «…») — его НЕ трогаем,
-        # иначе теряем ОПФ/кавычки.
         appl_is_creditor = bool(appl) and (appl == cred or bool(re.search(r"\bФНС\b", appl, re.IGNORECASE)))
         if debt and appl_is_creditor and debt != appl:
             name = debt
-            # ВАЖНО: в кредиторском заявлении applicantAddress — адрес КРЕДИТОРА
-            # (ФНС/банка), а не должника. Поэтому адрес должника берём ТОЛЬКО из
-            # debtorAddress; если он не извлёкся — оставляем пустым, иначе должнику
-            # подставится юр-адрес ФНС (напр. Чернов → адрес инспекции в Уфе).
             address = fields.get("debtorAddress") or ""
         else:
             name = appl or debt
@@ -1262,10 +1225,6 @@ class PartiesMixin:
             return
 
         if not candidate or not is_person_name(candidate):
-            # Фолбэк: applicantName битый (напр. обрывок «рбитражный суд Ростовско»),
-            # но debtorName — уже валидное ФИО. Берём его, не теряя корректное имя.
-            # ТОЛЬКО для физлиц: у ЮЛ короткое наименование без ОПФ ложно проходит
-            # is_person_name и было бы пословно просклонено в мусор.
             db = (fields.get("debtorName") or "").strip()
             entity = (fields.get("entityType") or "").lower()
             if (entity != "legal" and db and is_person_name(db)
@@ -1328,9 +1287,6 @@ class PartiesMixin:
                 if len(ogrn_clean) in (13, 15):
                     doc_ogrn = ogrn_clean
 
-        # Фолбэк: реквизиты кредитора не в шапке, а в блоке «Реквизиты для
-        # перечисления … <кредитор>: ИНН: N, ОГРН: N» в конце заявления (форма
-        # ЦДУ Инвест) — это ИНН/ОГРН именно кредитора-получателя, берём их.
         if not doc_inn or not doc_ogrn:
             pay = re.search(
                 r"Реквизит\w*\s+для\s+перечислен\w+[^\n]*:\s*\n?\s*"
@@ -1347,9 +1303,6 @@ class PartiesMixin:
         inn = doc_inn or (matched["inn"] if matched else None)
         ogrn = doc_ogrn or (matched["ogrn"] if matched else None)
         addr = doc_addr or (matched["address"] if matched else None)
-        # Источник значения знает только этот слой — фиксируем, пока знание не
-        # потерялось. Дальше `analyze()` перекладывает это в top-level fieldQuality,
-        # чтобы юрист видел: реквизит из справочника надёжнее вытащенного из текста.
         provenance = fields.setdefault(self._PROVENANCE_KEY, {})
         for field_name, value, from_doc in (
             ("creditorInn", inn, doc_inn),

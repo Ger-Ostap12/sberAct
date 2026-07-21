@@ -11,28 +11,24 @@
 
 import logging
 import re
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class PriorCollectionMixin:
+    if TYPE_CHECKING:
+        # Реализованы в inflection_mixin.InflectionMixin / amounts_mixin.AmountsMixin;
+        # здесь только для Pyright (mixin-класс вызывает методы, которые появятся
+        # в итоговом составном классе DocumentAnalyzer).
+        def _inflect_word(self, word: str, target_case: str = "gent") -> str: ...
+        def _fin_amount(self, s: Any) -> float: ...
+        def _fin_fmt(self, v: float) -> str: ...
 
-    # Канонический формат номера судебного дела. Структура:
-    #   [опц. буква][цифры региона/типа][опц. буква] - [цифры номера] / ГОД
-    # Покрывает все суды:
-    #   • Арбитражные:  А53-2222/2024  (А=арбитражный, 53=регион, 2222=№, 2024=год)
-    #   • СОЮ (гражд./угол./админ.): 2-1234/2024, 1-123/2024, 5-67/2024
-    #   • КАС / апелляция / кассация (буква ПОСЛЕ цифры): 2а-1234/2024, 33а-456/2024
-    # Обязательны дефис перед номером и «/ГОД» (19xx/20xx) в конце — это отсекает
-    # доверенности (ЮЗБ/415-Д, ЮЗБ-РД/158-Д), договоры и прочие №… без года.
     _CASE_NUMBER_RE = re.compile(
         r"^[А-ЯA-Z]?\d{1,4}[А-ЯA-Z]?[-–]\d{1,15}/(?:19|20)\d{2}$"
     )
 
-    # Мировые участки нумеруют дела через ДВА дефиса: 2-4-436/2025 (2=гражданское,
-    # 4=номер участка, 436=дело). Общий _CASE_NUMBER_RE такой формат не берёт, а
-    # расширять его нельзя — он валидирует основной caseNumber по всему корпусу.
     _MAGISTRATE_CASE_NUMBER_RE = re.compile(
         r"^\d{1,2}[-–]\d{1,3}[-–]\d{1,6}/(?:19|20)\d{2}$"
     )
@@ -77,9 +73,6 @@ class PriorCollectionMixin:
         re.IGNORECASE,
     )
 
-    # Мировой участок: «[Мировым судьей] Судебный участок № 1 Обливского судебного
-    # района Ростовской области». Хвост ленивый, границу задаёт lookahead —
-    # дата/глагол/начало фразы об акте.
     _MAGISTRATE_COURT_RE = re.compile(
         r"""(?P<court>
             (?:Миров\w+\s+судь\w+\s+)?
@@ -103,15 +96,8 @@ class PriorCollectionMixin:
         re.IGNORECASE | re.VERBOSE,
     )
 
-    # Код мирового участка вместо названия («61MS0080»). Названием суда не является —
-    # по решению Андрея поле оставляем пустым, остальные факты берём.
     _COURT_CODE_RE = re.compile(r"^\d{2}[A-ZА-Я]{2}\d{2,5}$", re.IGNORECASE)
-
     _DATE_RE = re.compile(r"(\d{1,2}[.,]\d{1,2}[.,]\d{4})")
-
-    # Хвостовой разделитель захватывать нельзя: «47999.98, а именно…» —
-    # _fin_amount на «47999.98, » возвращает 0. Отсюда строгий формат:
-    # целая часть с разделителями разрядов + не более двух знаков дробной.
     _MONEY = r"([0-9][0-9   ]*(?:[.,]\d{1,2})?)"
 
     def _is_valid_case_number(self, value: Optional[str]) -> bool:
@@ -131,10 +117,6 @@ class PriorCollectionMixin:
         v = re.sub(r"\s+", "", str(value)).strip().upper().replace("Ё", "Е")
         return bool(self._MAGISTRATE_CASE_NUMBER_RE.match(v))
 
-    # Между названием суда и актом стоит лишь связка («…области 16.03.2026 вынесен
-    # судебный приказ», «…Ростова-на-Дону был выдан исполнительный документ»). Если
-    # суд дальше — он из чужой фразы: ссылки на Пленум Верховного суда, шапки
-    # заявления, перечня приложений.
     _COURT_TO_ACT_GAP = 90
 
     def _extract_prior_court_name(self, before: str) -> Optional[str]:
@@ -149,10 +131,7 @@ class PriorCollectionMixin:
                 if 5 <= len(court) <= limit:
                     return self._normalize_court_to_nominative(court)
         return None
-
-    # «Мировым судьей Судебный участок № 1 …» — в заявлении конструкция стоит в
-    # творительном, да ещё и рассогласована. Каноничная форма для поля — именительный
-    # с зависимым участком в родительном.
+  
     _MAGISTRATE_PREFIX_RE = re.compile(
         r"^Миров\w+\s+судь\w+\s+(?=Судебн\w+\s+участ\w+)", re.IGNORECASE
     )
@@ -218,9 +197,6 @@ class PriorCollectionMixin:
         num_raw = m.group("num").strip(" .,;")
         if not self._is_valid_prior_act_number(num_raw):
             return {}
-        # Узкое окно: «о взыскании» должно стоять вплотную к акту, иначе это
-        # случайный судебный акт (в тексте их много). Широкое окно тут нельзя —
-        # рядом всегда абзацы Закона о банкротстве со словом «взыскание».
         after = flat[m.end(): m.end() + 90]
         before = flat[max(0, m.start() - 260): m.start()]
         if not (self._RECOVERY_RE.search(after) or self._RECOVERY_RE.search(before[-120:])):
@@ -262,10 +238,6 @@ class PriorCollectionMixin:
             if gv > 0:
                 result["priorStateDuty"] = self._fin_fmt(gv)
 
-        # Дата акта: ближайшая ПЕРЕД ним («…16.03.2026 вынесен судебный приказ»),
-        # иначе форма «судебный приказ № … от 16.03.2026». Дату договора займа,
-        # которая идёт дальше по тексту, брать нельзя — поэтому «любая дата в
-        # окне» здесь не годится.
         dates_before = self._DATE_RE.findall(before)
         if dates_before:
             result["priorDecisionDate"] = dates_before[-1].replace(",", ".")

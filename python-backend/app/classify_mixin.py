@@ -1,7 +1,6 @@
-# -*- coding: utf-8 -*-
 import logging
 import re
-from typing import Any, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -171,6 +170,10 @@ def _collateral_expected_from_document_type(document_type):
 
 
 class ClassifyMixin:
+    if TYPE_CHECKING:
+        # Реализован в document_analyzer.DocumentAnalyzer; здесь только для Pyright
+        # (mixin-класс вызывает метод, который появится в итоговом составном классе).
+        def _is_car_collateral_document(self, text: str) -> bool: ...
 
     def _self_bk_header_debtor_first(self, text: str) -> bool:
         """Шапка самобанкрота: первым идёт «Должник:»/«ФИО:», кредиторы — после.
@@ -325,19 +328,15 @@ class ClassifyMixin:
         ]
         has_ip_name = any(re.search(pattern, text, re.IGNORECASE | re.MULTILINE) for pattern in ip_name_patterns)
 
-        # Дополнительная проверка: "ИП ФИО" в тексте, но только если это явно связано с должником
         if not has_ip_name:
-            # Ищем "ИП ФИО" в контексте должника/ответчика
             ip_in_context = re.search(r"(?:должник|ответчик|заемщик)[^.]{0,200}?\bИП\s+[А-ЯЁ][А-ЯЁа-яё\s]{5,50}", text, re.IGNORECASE | re.MULTILINE)
             if ip_in_context:
                 has_ip_name = True
                 logger.info(f"Найдено 'ИП' в контексте должника/ответчика")
 
-        # Если НЕТ явного указания на ИП в имени должника - это НЕ ИП документ
         if not has_ip_name:
             logger.info("Не найдено явного указания 'ИП' в имени должника - это НЕ документ ИП")
 
-            # Проверяем, является ли это исковым заявлением о взыскании с юридического лица
             is_collection = any(keyword in text_lower for keyword in [
                 "исковое заявление",
                 "исковое заявление о взыскании",
@@ -347,21 +346,18 @@ class ClassifyMixin:
                 "взыскания юридического лица"
             ])
 
-            # Проверяем признаки юридического лица
             legal_entity_indicators = [
                 "ооо", "оао", "зао", "пао", "общество с ограниченной ответственностью",
                 "акционерное общество", "юридическое лицо", "юр лицо"
             ]
             has_legal_entity = any(indicator in text_lower for indicator in legal_entity_indicators)
 
-            # Определяем, это реализация или реструктуризация
             is_realization = any(keyword in text_lower for keyword in ["реализац", "реализации", "реализации имущества"])
             is_restructuring = any(keyword in text_lower for keyword in ["реструктуризац", "реструктуризации", "реструктуризации долгов"])
             is_observation = any(keyword in text_lower for keyword in ["наблюден", "наблюдения"])
 
-            # Если это исковое заявление о взыскании с ЮЛ и не реализация/реструктуризация/наблюдение - проверяем наличие залога
             if is_collection and has_legal_entity and not is_realization and not is_restructuring and not is_observation:
-                # ОБЯЗАТЕЛЬНАЯ ПРОВЕРКА: документ считается залоговым ТОЛЬКО если есть формулировка "обеспеченное залогом"
+                # Залоговым документ считается ТОЛЬКО при явной формулировке "обеспеченное залогом"
                 required_collateral_phrases = [
                     r"обеспеченное\s+залогом",
                     r"обеспечено\s+залогом",
@@ -374,20 +370,16 @@ class ClassifyMixin:
                 ]
                 has_required_collateral_phrase = any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in required_collateral_phrases)
 
-                # Проверяем наличие залога для ЮЛ (только если есть обязательная формулировка)
                 has_legal_collateral = False
                 if has_required_collateral_phrase:
-                    # Ищем блоки "Обязательство №X" и проверяем наличие фразы о залоге внутри блока
                     obligation_blocks = re.findall(r'Обязательство\s*№\s*(\d+)[:\s]*(.*?)(?=Обязательство\s*№\s*\d+[:\s]*|$)', text, re.DOTALL | re.IGNORECASE)
                     for obligation_num, block_text in obligation_blocks:
-                        # Проверяем наличие фразы о залоге в блоке обязательства
                         collateral_phrase = r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку"
                         if re.search(collateral_phrase, block_text, re.IGNORECASE | re.DOTALL):
                             has_legal_collateral = True
                             logger.info(f"Найден залог для ЮЛ в обязательстве №{obligation_num}")
                             break
 
-                    # Если не нашли в блоках, ищем в общем тексте рядом с "обязательство №"
                     if not has_legal_collateral:
                         legal_collateral_patterns = [
                             r"обязательство\s+№[^.]{0,1000}?В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку",
@@ -398,7 +390,6 @@ class ClassifyMixin:
                         has_legal_collateral = any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in legal_collateral_patterns)
 
                 if has_legal_collateral:
-                    # Проверяем залог авто: предложение начинается с "марка" и содержит модель, год, VIN, кузов, рама
                     if self._is_car_collateral_document(text):
                         logger.info("Определен тип документа: legal_collection_collateral_auto (Исковое заявление о взыскании с ЮЛ залог авто)")
                         return "legal_collection_collateral_auto"
@@ -408,13 +399,10 @@ class ClassifyMixin:
                     logger.info("Определен тип документа: legal_collection (Исковое заявление о взыскании с ЮЛ)")
                     return "legal_collection"
 
-            # Продолжаем проверку других типов документов
         else:
             logger.info(f"Найдено имя должника с 'ИП' - это документ ИП")
             ip_score = 5  # Высокий балл, так как есть явное указание на ИП
 
-        # Проверяем наличие залога для ИП
-        # ОБЯЗАТЕЛЬНАЯ ПРОВЕРКА: документ считается залоговым ТОЛЬКО если есть формулировка "обеспеченное залогом"
         required_collateral_phrases = [
             r"обеспеченное\s+залогом",
             r"обеспечено\s+залогом",
@@ -428,18 +416,15 @@ class ClassifyMixin:
         has_required_collateral_phrase = any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in required_collateral_phrases)
 
         has_ip_collateral = False
-        if has_ip_name and has_required_collateral_phrase:  # Только если есть ИП И обязательная формулировка о залоге
-            # Ищем блоки "Обязательство №X" и проверяем наличие фразы о залоге внутри блока
+        if has_ip_name and has_required_collateral_phrase:
             obligation_blocks = re.findall(r'Обязательство\s*№\s*(\d+)[:\s]*(.*?)(?=Обязательство\s*№\s*\d+[:\s]*|$)', text, re.DOTALL | re.IGNORECASE)
             for obligation_num, block_text in obligation_blocks:
-                # Проверяем наличие фразы о залоге в блоке обязательства
                 collateral_phrase = r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку"
                 if re.search(collateral_phrase, block_text, re.IGNORECASE | re.DOTALL):
                     has_ip_collateral = True
                     logger.info(f"Найден залог для ИП в обязательстве №{obligation_num}")
                     break
 
-            # Если не нашли в блоках, ищем в общем тексте рядом с "обязательство №"
             if not has_ip_collateral:
                 ip_collateral_patterns = [
                     r"обязательство\s+№[^.]{0,1000}?В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку",
@@ -449,9 +434,7 @@ class ClassifyMixin:
                 ]
                 has_ip_collateral = any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in ip_collateral_patterns)
 
-        # Определяем документ как ИП ТОЛЬКО если есть явное указание на ИП в имени должника
         if has_ip_name:
-            # Проверяем, является ли это исковым заявлением о взыскании (новый тип)
             is_collection = any(keyword in text_lower for keyword in [
                 "исковое заявление",
                 "исковое заявление о взыскании",
@@ -459,14 +442,11 @@ class ClassifyMixin:
                 "взыскания ип"
             ])
 
-            # Определяем, это реализация или реструктуризация
             is_realization = any(keyword in text_lower for keyword in ["реализац", "реализации", "реализации имущества"])
             is_restructuring = any(keyword in text_lower for keyword in ["реструктуризац", "реструктуризации", "реструктуризации долгов"])
 
-            # Если это исковое заявление о взыскании и не реализация/реструктуризация - это ip_collection
             if is_collection and not is_realization and not is_restructuring:
                 if has_ip_collateral:
-                    # Проверяем залог авто: предложение начинается с "марка" и содержит модель, год, VIN, кузов, рама
                     if self._is_car_collateral_document(text):
                         logger.info("Определен тип документа: ip_collection_collateral_auto (Исковое заявление о взыскании с ИП залог авто)")
                         return "ip_collection_collateral_auto"
@@ -499,12 +479,10 @@ class ClassifyMixin:
                     logger.info("Определен тип документа: ip_enforcement_realization (ИП без залога, по умолчанию реализация)")
                     return "ip_enforcement_realization"
 
-        # Классификация по скорингу ключевых слов
         return self._classify_by_scoring(text, has_ip_name, text_lower)
 
     def _classify_by_scoring(self, text, has_ip_name, text_lower):
         """Классификация по скорингу ключевых слов: rtk/initiation/mortgage/initiation_legal, иначе unknown. Вынесено из classify_document."""
-        # Ключевые слова для определения типа документа
         rtk_keywords = [
             "включении в реестр требований кредиторов",
             "реестр требований кредиторов",
@@ -514,12 +492,10 @@ class ClassifyMixin:
             "заявление о включении"
         ]
 
-        # Подсчитываем совпадения
         rtk_score = sum(1 for keyword in rtk_keywords if keyword in text_lower)
 
         if rtk_score >= 2:
-            # Проверяем наличие залога для ФЛ в реализации или реструктуризации
-            # ОБЯЗАТЕЛЬНАЯ ПРОВЕРКА: документ считается залоговым ТОЛЬКО если есть формулировка "обеспеченное залогом"
+            # Залоговым документ считается ТОЛЬКО при явной формулировке "обеспеченное залогом"
             required_collateral_phrases = [
                 r"обеспеченное\s+залогом",
                 r"обеспечено\s+залогом",
@@ -532,7 +508,6 @@ class ClassifyMixin:
             ]
             has_required_collateral_phrase = any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in required_collateral_phrases)
 
-            # Дополнительные индикаторы залога (только если есть обязательная формулировка)
             has_physical_collateral = False
             if has_required_collateral_phrase:
                 collateral_phrases = [
@@ -543,9 +518,7 @@ class ClassifyMixin:
                 ]
                 has_physical_collateral = any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in collateral_phrases)
 
-            # Проверяем, что это НЕ ИП (нет "ИП" в имени должника)
             if has_physical_collateral and not has_ip_name:
-                # Определяем тип процедуры
                 is_restructuring = any(keyword in text_lower for keyword in ["реструктуризац", "реструктуризации", "реструктуризации долгов"])
                 is_realization = any(keyword in text_lower for keyword in ["реализац", "реализации", "реализации имущества"])
                 is_observation = any(keyword in text_lower for keyword in ["наблюден", "наблюдения", "процедура наблюдения"])
@@ -613,7 +586,6 @@ class ClassifyMixin:
         if mortgage_markers or mortgage_score >= 2:
             return "mortgage_claim"
 
-        # Проверяем признаки инициирования банкротства юридического лица
         initiation_legal_keywords = [
             "заявление о признании должника банкротом",
             "признать должника несостоятельным",
@@ -631,7 +603,6 @@ class ClassifyMixin:
             "\\[88\\]"
         ]
 
-        # Проверяем наличие маркера [88] и ключевых слов для ЮЛ
         has_marker_88 = bool(re.search(r'\[88\]', text))
         legal_entity_indicators = [
             "ооо", "оао", "зао", "пао", "общество", "акционерное",
@@ -748,8 +719,7 @@ class ClassifyMixin:
 
         text_lower = text.lower()
 
-        # ПРИОРИТЕТ: Проверяем на процедуру "умерший" по ключевым словам
-        # Ищем слова "умер", "умерший", "смерть", "смерти" в тексте
+        # Приоритет: процедура "умерший" проверяется первой
         deceased_keywords = ["умер", "умерший", "смерть", "смерти"]
         if any(keyword in text_lower for keyword in deceased_keywords):
             logger.info("Определена процедура: умерший (по ключевым словам)")

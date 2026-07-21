@@ -18,7 +18,10 @@ import logging
 import os
 import re
 import sys
-from typing import Optional
+from typing import TYPE_CHECKING, Optional, cast
+
+if TYPE_CHECKING:
+    import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -190,8 +193,8 @@ def _ensure_reference_embeddings(model, candidates: dict[str, list[str]]):
         phrases.extend(label_phrases)
         spans.append((start, len(phrases)))
         labels.append(label)
-    embeddings = model.encode(phrases, convert_to_numpy=True, normalize_embeddings=True,
-                               show_progress_bar=False)
+    embeddings = cast("np.ndarray", model.encode(phrases, convert_to_numpy=True, normalize_embeddings=True,
+                               show_progress_bar=False))
     _REFERENCE_EMBEDDINGS = {
         "_source_id": id(candidates),
         "labels": labels,
@@ -212,8 +215,8 @@ def _per_label_max_similarity(
         ref = _ensure_reference_embeddings(model, candidates)
         # Батч-encode ВСЕХ предложений за один вызов модели — без этого бюджет
         # 0.3-0.5 с/документ (план §1.1) не выдержать на CPU.
-        sent_embeddings = model.encode(sentences, convert_to_numpy=True, normalize_embeddings=True,
-                                        show_progress_bar=False)
+        sent_embeddings = cast("np.ndarray", model.encode(sentences, convert_to_numpy=True, normalize_embeddings=True,
+                                        show_progress_bar=False))
         # Эмбеддинги нормализованы -> косинусная близость = скалярное произведение.
         sims = sent_embeddings @ ref["embeddings"].T  # (n_sentences, n_ref_phrases)
 
@@ -319,10 +322,10 @@ def detect_procedure_clauses(
     try:
         import numpy as np
 
-        neg_embeddings = model.encode(PROCEDURE_NEGATIVE_CLAUSES, convert_to_numpy=True,
-                                       normalize_embeddings=True, show_progress_bar=False)
-        sent_embeddings = model.encode(masked_sentences, convert_to_numpy=True,
-                                        normalize_embeddings=True, show_progress_bar=False)
+        neg_embeddings = cast("np.ndarray", model.encode(PROCEDURE_NEGATIVE_CLAUSES, convert_to_numpy=True,
+                                       normalize_embeddings=True, show_progress_bar=False))
+        sent_embeddings = cast("np.ndarray", model.encode(masked_sentences, convert_to_numpy=True,
+                                        normalize_embeddings=True, show_progress_bar=False))
         # Максимум сходства с «ложными друзьями» ДЛЯ КАЖДОГО предложения —
         # сравнивается с положительным score того же предложения ниже.
         neg_score_per_sentence = (sent_embeddings @ neg_embeddings.T).max(axis=1)
@@ -338,18 +341,6 @@ def detect_procedure_clauses(
         )
         result[label] = (score >= threshold and beats_negative, score, sentences[sent_idx])
     return result
-
-
-# --- Ось «имя должника»: второй независимый экстрактор для сверки с regex ---
-#
-# Задача shadow-слоя — НЕ извлечь имя (это делает `fio_detector.extract_debtor_name`,
-# он источник истины для `debtorName`), а найти его ВТОРЫМ способом и, при
-# расхождении, показать баннер. Второй способ намеренно другой по природе:
-# NER-харвест кандидатов (Natasha) + ролевой скоринг по близости к якорю
-# «Должник/Ответчик» — устойчив там, где позиционный regex промахивается на
-# незнакомой вёрстке метки. Эмбеддинги здесь НЕ используются: §P.2 handoff
-# показал, что MiniLM слабо различает имена/оргформы; идентичность имени —
-# строковая задача (`_debtor_key`), NER — «семантическая» часть (найти span).
 
 _DEBTOR_ANCHOR_RE = re.compile(r"(?:Должник|Ответчик(?:и)?)\b", re.IGNORECASE)
 # Якоря прочих ролей: если такой ближе к кандидату, чем «Должник», кандидат
@@ -580,9 +571,6 @@ def debtor_names_match(regex_name: str, semantic_name: str) -> bool:
     key_r, key_s = _debtor_key(regex_name), _debtor_key(semantic_name)
     if key_r == key_s:
         return True
-    # Подмножество токенов гасим ТОЛЬКО внутри одного вида лица: иначе catch
-    # «Форте Пром ГМБХ» (regex ошибочно ФЛ) vs «ООО Форте Пром ГМБХ» (ЮЛ) —
-    # где {форте,пром,гмбх} ⊆ {ооо,форте,пром,гмбх} — ложно погаснет.
     if key_r.split("|", 1)[0] != key_s.split("|", 1)[0]:
         return False
     a, b = _name_tokens(regex_name), _name_tokens(semantic_name)
@@ -624,14 +612,3 @@ def classify_procedure_family(text: str, debtor_name: str = "") -> tuple[Optiona
     if has_registry:
         return "rtk", clauses
     return None, clauses
-
-# Три presence-сверки в теле документа ПРОБОВАЛИ и ЗАКРЫЛИ (замеры удалены):
-#   • статус должника (ликвидируемый/отсутствующий/умерший) — 10% согласия;
-#   • сведения о взыскании (prior-collection) — 22%, дискриминативные эталоны 5%;
-#   • самобанкрот (признать «себя» vs «должника») — не прогоняли, тот же класс.
-# Корень един: сигнал в ТЕЛЕ документа делит частотную лексику (задолженность/
-# должник/банкрот/«ст.»), а пол сходства MiniLM для любых двух русских юр-
-# фрагментов ≈ 0.75 — доменный магнит топит различие, порогом не чинится (тот же
-# барьер, что тип лица §P.2). MiniLM-presence окупается ТОЛЬКО в нише процедуры-оси
-# (узкое окно просьбы + различение по целому действию-глаголу). Эти три оси —
-# задача regex-детекторов (якорь на сам токен), они уже в проде и точны.

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Применение текстовых правок пользователя к DOCX с сохранением исходной вёрстки.
 
@@ -19,6 +18,7 @@ from difflib import SequenceMatcher
 from typing import List, Optional, Tuple
 
 from docx import Document
+from docx.document import Document as DocxDocument
 from docx.table import _Cell
 from docx.text.paragraph import Paragraph
 
@@ -53,7 +53,7 @@ class _LineTarget:
         self.cell = cell  # не None — строка живёт в ячейке таблицы
 
 
-def _body_line_targets(doc: Document) -> Tuple[List[str], List[_LineTarget]]:
+def _body_line_targets(doc: DocxDocument) -> Tuple[List[str], List[_LineTarget]]:
     """
     Строки тела документа в порядке _extract_text_from_docx (абзацы, затем
     ячейки таблиц) + их объекты. Пустые абзацы/ячейки пропускаются — как в
@@ -90,7 +90,7 @@ def _body_line_targets(doc: Document) -> Tuple[List[str], List[_LineTarget]]:
     return lines, targets
 
 
-def apply_text_edits(docx_path: str, edited_text: str, original_text: str) -> Document:
+def apply_text_edits(docx_path: str, edited_text: str, original_text: str) -> DocxDocument:
     """
     Вставляет правки пользователя в DOCX, сохраняя вёрстку.
 

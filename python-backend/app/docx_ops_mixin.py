@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Низкоуровневые docx-операции для генератора (вынос без изменения поведения).
 
 Подстановка/замена плейсхолдеров и regex в параграфах, таблицах и колонтитулах,
@@ -9,9 +8,9 @@
 import logging
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set, Union
 
-from docx import Document
+from docx.document import Document
 from docx.oxml.shared import qn
 
 logger = logging.getLogger(__name__)
@@ -438,8 +437,6 @@ class DocxOpsMixin:
         "[на сайте ЕФРСБ №20899106 от 19.12.2025]", чтобы не удалять уже
         подставленный текст как "неизвестный маркер".
         """
-        # Истинный маркер: либо чисто цифровой с точками (2, 2.1, 415 и т.п.),
-        # либо специальные вроде [DATE].
         marker_pattern = re.compile(r'\[((?:\d+(?:\.\d+)*|DATE))\]')
         raw_bracket_pattern = re.compile(r'\[[^\]]+\]')
         placeholders: Set[str] = set()
@@ -606,7 +603,9 @@ class DocxOpsMixin:
 
         return replaced
 
-    def _replace_regex_in_doc(self, doc: Document, pattern: str, replacement: str) -> bool:
+    def _replace_regex_in_doc(
+        self, doc: Document, pattern: str, replacement: Union[str, Callable[[re.Match], str]]
+    ) -> bool:
         """
         Заменяет текст по регулярному выражению во всём документе, включая колонтитулы.
         """

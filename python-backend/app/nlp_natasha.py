@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Второстепенный NLP-слой на Natasha: подчистка/добивание значений, которые
 основной regex не смог извлечь целиком.
 
@@ -22,7 +21,7 @@ from __future__ import annotations
 import logging
 import re
 import warnings
-from typing import Optional
+from typing import Any, List, Optional, cast
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +81,7 @@ def complete_address(window: str) -> Optional[str]:
         return None
     _mv, addr, _dates = y
     try:
-        matches = sorted(addr(window), key=lambda m: m.start)
+        matches = sorted(cast(List[Any], list(addr(window))), key=lambda m: m.start)
     except Exception as exc:
         logger.warning(f"Сбой AddrExtractor: {exc}")
         return None
@@ -103,9 +102,6 @@ def complete_address(window: str) -> Optional[str]:
     # Осмысленный адрес — минимум с буквами (иначе это одинокий индекс/дом).
     if not re.search(r"[А-Яа-яЁё]{3}", result):
         return None
-    # Отсекаем одиночный компонент-шум (AddrExtractor помечает адресом даже
-    # одинокое существительное в род. падеже, напр. «Кирова»): требуем либо
-    # ≥2 склеенных компонента, либо явный 6-значный индекс в результате.
     if run_len < 2 and not re.search(r"\b\d{6}\b", result):
         return None
     return result
@@ -128,7 +124,7 @@ def find_orgs(window: str) -> list:
         doc = Doc(window)
         doc.segment(segmenter)
         doc.tag_ner(ner_tagger)
-        for span in doc.spans:
+        for span in doc.spans or []:
             if span.type == "ORG":
                 val = re.sub(r"\s+", " ", window[span.start:span.stop]).strip().rstrip(" ,;")
                 if len(val) >= 3:
@@ -153,7 +149,7 @@ def find_date(window: str) -> Optional[str]:
         return None
     _mv, _addr, dates = y
     try:
-        matches = sorted(dates(window), key=lambda m: m.start)
+        matches = sorted(cast(List[Any], list(dates(window))), key=lambda m: m.start)
     except Exception as exc:
         logger.warning(f"Сбой DatesExtractor: {exc}")
         return None
