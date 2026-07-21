@@ -92,7 +92,7 @@ def _detect_abbrev(prefix: str) -> str | None:
     return None
 
 
-# --- Фича C: номер договора vs ссылка на закон ---------------------------------
+# номер договора vs ссылка на закон 
 _LAW_REF_RE = re.compile(r"^\s*№?\s*\d{1,5}-(?:ФЗ|ФКЗ|КЗ)\b", re.I)
 
 
@@ -103,7 +103,7 @@ def looks_like_law_ref(value: str) -> bool:
     return bool(_LAW_REF_RE.match(value))
 
 
-# --- Фича D: дата в контексте ссылки на закон ----------------------------------
+#   дата в контексте ссылки на закон 
 _LAW_DATE_CONTEXT_RE = re.compile(r"\b(?:ФЗ|ФКЗ|КЗ|постановлен(?:ие|ия)|пленума?|пленум)\b", re.I)
 
 
