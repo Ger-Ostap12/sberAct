@@ -96,7 +96,7 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                   {/* Роль составителя: меняет абзац «кем подготовлен акт» при генерации */}
                   <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
-                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Акт подготовил:</Typography>
+                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Лицо ведущее протокол:</Typography>
                       <RadioGroup
                         row
                         value={editedFields.authorRole || ''}

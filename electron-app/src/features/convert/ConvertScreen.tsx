@@ -289,7 +289,7 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
 
   if (phase === 'preview' && docxBlob) {
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 160px)' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 130px)' }}>
         <Stack direction="row" spacing={1} sx={{ mb: 1, alignItems: 'center' }}>
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
             Проверьте распознанный текст{' '}

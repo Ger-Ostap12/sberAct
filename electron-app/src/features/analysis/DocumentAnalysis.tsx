@@ -67,6 +67,8 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   // Вид заявления (независимый блок): ВКЛ в РТК / инициирование / самобанкрот.
   // По умолчанию — рядовое инициирование.
   const [applicationKind, setApplicationKind] = useState<ApplicationKind>('other');
+  // Чекбокс «Короткий текст»: доп. генерация резолютивки основной процедуры.
+  const [shortText, setShortText] = useState<boolean>(false);
 
   // Статус лица влияет на рекомендацию финального СА:
   // отсутствующий/ликвидируемый ЮЛ → «Решение конкурсное»; умерший ФЛ → «Решение реализация».
@@ -701,6 +703,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         debtorStatus,
         applicationKind,
         selectedActs,
+        shortText,
       })
     );
   };
@@ -821,6 +824,8 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
             updateActRtkVariant={updateActRtkVariant}
             recommendationsApplied={recommendationsApplied}
             recommendedActs={analysisResult?.recommendedActs}
+            shortText={shortText}
+            setShortText={setShortText}
           />
         </Grid>
 
