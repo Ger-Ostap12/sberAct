@@ -10,6 +10,7 @@
     "build": "cd electron-app && npm run build",
     "pack:backend": "python-backend\\venv\\Scripts\\pyinstaller.exe --noconfirm SberAct.spec",
     "pack:converter": "powershell -ExecutionPolicy Bypass -File scripts/assemble-converter.ps1",
+    "dist:win": "npm run build && npm run pack:backend && npm run pack:converter && electron-builder --win",
     "dist:linux": "electron-builder --linux",
     "postinstall": "electron-builder install-app-deps"
   },
@@ -23,6 +24,7 @@
       "electron-app/build/**/*",
       "electron-app/main.js",
       "electron-app/preload.js",
+      "electron-app/assets/icon.png",
       "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
       "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
       "!**/node_modules/*.d.ts",
@@ -54,6 +56,28 @@
         ]
       }
     ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "electron-app/assets/icon.ico",
+      "artifactName": "SberAct-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SberAct",
+      "installerIcon": "electron-app/assets/icon.ico",
+      "uninstallerIcon": "electron-app/assets/icon.ico"
+    },
     "linux": {
       "target": [
         {
@@ -63,9 +87,10 @@
           ]
         }
       ],
+      "icon": "electron-app/assets/icon.png",
       "category": "Office",
       "synopsis": "Генератор судебных актов на основе заявлений",
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "artifactName": "SberAct-${version}-${arch}.${ext}"
     }
   },
   "dependencies": {

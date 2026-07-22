@@ -5,6 +5,8 @@ yarn-debug.log*
 yarn-error.log*
 
 # Production builds
+/Заявления
+/docs
 dist/
 build/
 release/
@@ -129,11 +131,6 @@ python-backend/generated/
 *.docx
 *.pdf
 !Templates/**
-
-# spaCy models (large files)
-*.sm
-*.md
-*.lg
 
 # Database
 *.db
