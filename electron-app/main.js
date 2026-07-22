@@ -137,7 +137,7 @@ function resolveConverterCommand() {
     command: venvPython,
     args: [launcher],
     cwd: converterDir,
-    env: { CONVERTER_PORT, CONVERTER_DIR: converterDir }
+    env: { CONVERTER_PORT, CONVERTER_DIR: converterDir, SBERACT_DATA_DIR: app.getPath('userData') }
   };
 }
 
@@ -217,6 +217,8 @@ async function startPythonBackend() {
       env: {
         ...process.env,
         PYTHONPATH: path.join(__dirname, '../python-backend'),
+        // Записываемые данные (generated/, temp/) — вне папки установки, переживают обновление
+        SBERACT_DATA_DIR: app.getPath('userData'),
         PATH: process.env.PATH + (process.platform === 'win32' ? ';' : ':') + path.join(process.env.HOME || process.env.USERPROFILE, '.local/bin')
       }
     });

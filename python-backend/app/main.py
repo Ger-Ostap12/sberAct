@@ -21,6 +21,7 @@ from document_analyzer import DocumentAnalyzer
 from document_generator import DocumentGenerator
 from template_manager import TemplateManager
 from creditor_registry import list_banks
+import paths as app_paths
 
 logger = logging.getLogger(__name__)
 
@@ -890,9 +891,6 @@ async def get_download_paths():
 
         logger.info(f"📁 API: Получен запрос на список путей для скачивания")
 
-        # Получаем корень проекта
-        project_root = Path(__file__).parent.parent.parent.absolute()
-
         # Предлагаем несколько вариантов путей
         paths = [
             {
@@ -901,9 +899,9 @@ async def get_download_paths():
                 "description": "Сохранить на рабочий стол"
             },
             {
-                "name": "Папка проекта",
-                "path": str(project_root / "generated"),
-                "description": "Сохранить в папку проекта"
+                "name": "Папка приложения",
+                "path": str(app_paths.generated_dir()),
+                "description": "Сохранить в рабочую папку приложения"
             },
             {
                 "name": "Документы",
@@ -941,8 +939,9 @@ if __name__ == "__main__":
         if getattr(sys, "frozen", False):
             os.chdir(Path(sys.executable).parent)
 
-        os.makedirs("temp", exist_ok=True)
-        os.makedirs("generated", exist_ok=True)
+        # Записываемые каталоги — в data dir (в проде вне папки установки)
+        app_paths.temp_dir()
+        app_paths.generated_dir()
 
         if getattr(sys, "frozen", False):
             import threading

@@ -19,6 +19,7 @@ from generator_inflection_mixin import GeneratorInflectionMixin
 from docx_ops_mixin import DocxOpsMixin
 from obligations_render_mixin import ObligationsRenderMixin
 from formatting_mixin import FormattingMixin
+import paths
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -29,11 +30,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         """
         Инициализация генератора документов
         """
-        if getattr(sys, "frozen", False):
-            self.generated_dir = Path(sys.executable).parent / "generated"
-        else:
-            self.generated_dir = Path(__file__).resolve().parents[2] / "generated"
-        self.generated_dir.mkdir(exist_ok=True)
+        self.generated_dir = paths.generated_dir()
 
         # Словарь для отслеживания сгенерированных документов
         self.documents = {}
