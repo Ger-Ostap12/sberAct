@@ -115,29 +115,50 @@ class ManagedService {
 const CONVERTER_PORT = process.env.CONVERTER_PORT || '8008';
 
 function resolveConverterCommand() {
+  const isWindows = process.platform === 'win32';
   // CONVERTER_DIR — на случай, если конвертер пришлось поставить в ASCII-путь
   // (tesseract/llama-cpp бывают нетерпимы к кириллице в путях).
-  const projectRoot = isDev ? app.getAppPath() : path.join(__dirname, '../app.asar.unpacked');
-  const converterDir = process.env.CONVERTER_DIR || path.join(projectRoot, 'converter');
-  const isWindows = process.platform === 'win32';
+  // В проде конвертер лежит в resources/converter (extraResources).
+  const converterDir = process.env.CONVERTER_DIR
+    || (isDev ? path.join(app.getAppPath(), 'converter')
+              : path.join(process.resourcesPath, 'converter'));
   const pyRel = path.join(isWindows ? 'Scripts' : 'bin', isWindows ? 'python.exe' : 'python');
-  // install_offline.bat конвертера создаёт `.venv`; `venv` — фолбэк на ручную установку
-  const venvPython = [path.join(converterDir, '.venv', pyRel), path.join(converterDir, 'venv', pyRel)]
-    .find((p) => fs.existsSync(p));
   const entry = path.join(converterDir, 'main.py');
-  // Запускаем через лаунчер sberAct (порт у upstream захардкожен на 8000,
-  // run_converter.py поднимает то же приложение на CONVERTER_PORT без правок
-  // кода конвертера).
-  const launcher = path.join(projectRoot, 'python-backend', 'app', 'run_converter.py');
-  if (!venvPython || !fs.existsSync(entry)) {
+  // Лаунчер поднимает конвертер на CONVERTER_PORT без правок его кода (порт у
+  // upstream захардкожен на 8000). В dev — из исходников бэкенда; в проде
+  // исходников нет, копия лаунчера лежит рядом с конвертером (кладётся при сборке).
+  const launcher = isDev
+    ? path.join(app.getAppPath(), 'python-backend', 'app', 'run_converter.py')
+    : path.join(converterDir, 'run_converter.py');
+
+  let command;
+  const extraEnv = {};
+  if (isDev) {
+    // install_offline.bat конвертера создаёт `.venv`; `venv` — фолбэк на ручную установку
+    command = [path.join(converterDir, '.venv', pyRel), path.join(converterDir, 'venv', pyRel)]
+      .find((p) => fs.existsSync(p));
+  } else {
+    // Прод: бандленный pyruntime (полноценный Python 3.12), зависимости
+    // конвертера подключаем из .venv/site-packages через PYTHONPATH —
+    // .venv сам по себе не самодостаточен (см. scripts/assemble-converter.ps1).
+    const runtimePy = path.join(converterDir, 'pyruntime', isWindows ? 'python.exe' : path.join('bin', 'python'));
+    command = fs.existsSync(runtimePy) ? runtimePy : undefined;
+    const sitePkgs = [
+      path.join(converterDir, '.venv', 'Lib', 'site-packages'),
+      path.join(converterDir, '.venv', 'lib', 'python3.12', 'site-packages')
+    ].find((p) => fs.existsSync(p));
+    if (sitePkgs) extraEnv.PYTHONPATH = sitePkgs;
+  }
+
+  if (!command || !fs.existsSync(entry)) {
     console.warn(`[converter] not installed at ${converterDir}`);
     return null;
   }
   return {
-    command: venvPython,
+    command,
     args: [launcher],
     cwd: converterDir,
-    env: { CONVERTER_PORT, CONVERTER_DIR: converterDir, SBERACT_DATA_DIR: app.getPath('userData') }
+    env: { CONVERTER_PORT, CONVERTER_DIR: converterDir, SBERACT_DATA_DIR: app.getPath('userData'), ...extraEnv }
   };
 }
 
@@ -149,29 +170,27 @@ const converterService = new ManagedService({
   startTimeoutMs: 180000
 });
 
-function resolvePythonEntry() {
+// Команда запуска бэкенда. В проде — собранный PyInstaller-бинарник (Python на
+// машине пользователя не нужен). В dev — интерпретатор venv + main.py из исходников.
+function resolveBackendCommand() {
+  const isWindows = process.platform === 'win32';
   if (isDev) {
-    // В dev вычисляем от каталога приложения, а не от cwd
-    const appRoot = app.getAppPath();
-    return path.join(appRoot, 'python-backend', 'app', 'main.py');
-  } else {
-    return path.join(__dirname, '../app.asar.unpacked/python-backend/app/main.py');
-  }}
-
-function resolvePythonExecutable() {
-  if (isDev) {
-    // Для Windows используем Scripts/python.exe, для Unix - bin/python
-    const isWindows = process.platform === 'win32';
     const pythonDir = isWindows ? 'Scripts' : 'bin';
     const pythonExe = isWindows ? 'python.exe' : 'python';
     const venvPath = path.join(__dirname, '../python-backend/venv', pythonDir, pythonExe);
-
-    if (fs.existsSync(venvPath)) {
-      return venvPath;
-    }
-    return isWindows ? 'python' : 'python3';
+    const command = fs.existsSync(venvPath) ? venvPath : (isWindows ? 'python' : 'python3');
+    const appRoot = app.getAppPath();
+    return {
+      command,
+      args: [path.join(appRoot, 'python-backend', 'app', 'main.py')],
+      cwd: path.join(appRoot, 'python-backend', 'app'),
+      env: { PYTHONPATH: path.join(__dirname, '../python-backend') }
+    };
   }
-  return process.platform === 'win32' ? 'python' : 'python3';
+  // extraResources кладёт onedir-сборку бэкенда в resources/backend/
+  const binName = isWindows ? 'SberAct.exe' : 'SberAct';
+  const backendBin = path.join(process.resourcesPath, 'backend', binName);
+  return { command: backendBin, args: [], cwd: path.dirname(backendBin), env: {} };
 }
 
 function resolveIcon() {
@@ -207,16 +226,15 @@ async function startPythonBackend() {
     } catch (_) {
       // Недоступен — запускаем локально
     }
-    const pythonPath = resolvePythonEntry();
-    const pythonExecutable = resolvePythonExecutable();
+    const backend = resolveBackendCommand();
 
-    console.log(`Starting Python backend with: ${pythonExecutable} ${pythonPath}`);
+    console.log(`Starting Python backend with: ${backend.command} ${backend.args.join(' ')}`);
 
-    pythonProcess = spawn(pythonExecutable, [pythonPath], {
-      cwd: isDev ? path.join(app.getAppPath(), 'python-backend', 'app') : undefined,
+    pythonProcess = spawn(backend.command, backend.args, {
+      cwd: backend.cwd,
       env: {
         ...process.env,
-        PYTHONPATH: path.join(__dirname, '../python-backend'),
+        ...backend.env,
         // Записываемые данные (generated/, temp/) — вне папки установки, переживают обновление
         SBERACT_DATA_DIR: app.getPath('userData'),
         PATH: process.env.PATH + (process.platform === 'win32' ? ';' : ':') + path.join(process.env.HOME || process.env.USERPROFILE, '.local/bin')

@@ -1,37 +1,39 @@
 # -*- mode: python ; coding: utf-8 -*-
-# Сборка: из корня проекта выполнить: pyinstaller SberAct.spec
-# Результат (one-file): dist/SberAct (Linux) или dist/SberAct.exe (Windows)
+# Сборка API-бэкенда (onedir): из корня проекта — pyinstaller SberAct.spec
+# Результат: dist/SberAct/ — папка с SberAct(.exe) и зависимостями внутри.
+#
+# Пакуется ТОЛЬКО backend-API. Фронт грузит Electron напрямую (не бэкенд),
+# конвертер поставляется отдельной папкой. Electron спавнит этот бинарник как
+# API-сервер на 127.0.0.1:8000.
 
-import sys
 from pathlib import Path
+from PyInstaller.utils.hooks import collect_all
 
-# Корень проекта (где лежит этот .spec)
 project_root = Path(SPECPATH)
 app_dir = project_root / 'python-backend' / 'app'
 
-# Модель spacy ru_core_news_sm
 datas = []
-try:
-    import ru_core_news_sm
-    pkg_dir = Path(ru_core_news_sm.__path__[0])
-    for sub in pkg_dir.iterdir():
-        if sub.is_dir() and sub.name.startswith("ru_core_news_sm-"):
-            datas.append((str(sub), "ru_core_news_sm"))
-            break
-    if not datas:
-        datas.append((str(pkg_dir), "ru_core_news_sm"))
-except Exception:
-    pass
-# Фронтенд (React build) и web-api.js
-build_path = project_root / "electron-app" / "build"
-if (build_path / "index.html").exists():
-    datas.append((str(build_path), "frontend"))
-static_path = app_dir / "static"
-if static_path.exists():
-    datas.append((str(static_path), "static"))
-# Шаблоны
+binaries = []
+hiddenimports = []
+
+# Пакеты с данными/динамическими импортами (модели, словари) — тянем целиком.
+# Отсутствующие в venv молча пропускаем (try/except), лишние в списке безвредны.
+for pkg in (
+    'spacy', 'ru_core_news_sm', 'thinc', 'srsly', 'catalogue', 'wasabi', 'blis',
+    'natasha', 'navec', 'slovnet', 'razdel', 'ipymarkup',
+    'pymorphy2', 'pymorphy2_dicts_ru', 'pymorphy3', 'pymorphy3_dicts_ru',
+    'docx', 'pypdf',
+):
+    try:
+        d, b, h = collect_all(pkg)
+        datas += d
+        binaries += b
+        hiddenimports += h
+    except Exception:
+        pass
+
+# Шаблоны (read-only) — рядом с бинарником, чтобы можно было менять без пересборки.
 for src, dest in (
-    (project_root / "emplates", "Templates"),
     (project_root / "Shablony", "Shablony"),
     (project_root / "Templates", "Templates"),
     (project_root / "шаблоны актов без залогов", "шаблоны актов без залогов"),
@@ -39,52 +41,39 @@ for src, dest in (
     if src.exists():
         datas.append((str(src), dest))
 
+# Локальные модули бэкенда: импортируются по имени (from document_analyzer import ...),
+# статический анализ PyInstaller их не находит — перечисляем явно.
+hiddenimports += [
+    'amounts_mixin', 'classify_mixin', 'creditor_registry', 'document_analyzer',
+    'document_generator', 'docx_edit', 'docx_ops_mixin', 'field_contract', 'fio_detector',
+    'fns_data', 'fns_registry', 'formatting_mixin', 'generator_inflection_mixin',
+    'inflection_mixin', 'ip_mixin', 'label_synonyms', 'morph_utils', 'nlp_natasha',
+    'obligations_mixin', 'obligations_render_mixin', 'org_normalizer', 'parties_mixin',
+    'paths', 'patterns', 'prior_collection_mixin', 'requisites_validation',
+    'sro_data', 'sro_registry', 'template_manager', 'templates_resolver_mixin',
+]
+hiddenimports += [
+    'uvicorn.logging', 'uvicorn.loops', 'uvicorn.loops.auto',
+    'uvicorn.protocols', 'uvicorn.protocols.http', 'uvicorn.protocols.http.auto',
+    'uvicorn.protocols.websockets', 'uvicorn.protocols.websockets.auto',
+    'uvicorn.lifespan', 'uvicorn.lifespan.on',
+    'fastapi', 'starlette', 'pydantic',
+]
+
 a = Analysis(
     [str(app_dir / 'main.py')],
     pathex=[str(app_dir)],
-    binaries=[],
+    binaries=binaries,
     datas=datas,
-    hiddenimports=[
-        'uvicorn.logging',
-        'uvicorn.loops',
-        'uvicorn.loops.auto',
-        'uvicorn.protocols',
-        'uvicorn.protocols.http',
-        'uvicorn.protocols.http.auto',
-        'uvicorn.protocols.websockets',
-        'uvicorn.protocols.websockets.auto',
-        'uvicorn.lifespan',
-        'uvicorn.lifespan.on',
-        'fastapi',
-        'starlette',
-        'pydantic',
-        'document_analyzer',
-        'document_generator',
-        'template_manager',
-        'docx',
-        'pypdf',
-        'spacy',
-        'ru_core_news_sm',
-        'webview',
-        'webview.platforms',
-        'webview.platforms.edgechromium',
-        'webview.platforms.winforms',
-        'webview.platforms.cef',
-    ],
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        'torch',
-        'transformers',
-        'tensorflow',
-        'tensorboard',
-        'sklearn',
-        'scikit-learn',
-        'nltk',
-        'pandas',
-        'triton',
-        'cupy',
+        'torch', 'transformers', 'tensorflow', 'tensorboard', 'sklearn',
+        'scikit-learn', 'nltk', 'pandas', 'triton', 'cupy',
+        # webview больше не нужен: окно даёт Electron, бэкенд — чистый API
+        'webview',
     ],
     noarchive=False,
     optimize=0,
@@ -92,23 +81,32 @@ a = Analysis(
 
 pyz = PYZ(a.pure)
 
+# onedir: exe без встроенных бинарников, всё складывает COLLECT рядом.
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
+    exclude_binaries=True,
     name='SberAct',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
+    # UPX выключен: сжатие нативных либ spacy/thinc/pymorphy ломает загрузку DLL.
+    upx=False,
     console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    name='SberAct',
 )

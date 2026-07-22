@@ -75,7 +75,7 @@ class PartiesMixin:
                 logger.debug(f"Первые 200 символов блока: {debtor_block[:200]}")
                 # Для отладки ogrnip выводим весь блок, если он не слишком длинный
                 if field_name == "ogrnip" and len(debtor_block) < 1000:
-                    logger.debug(f"🔍 Полный блок Ответчик для ogrnip: {debtor_block}")
+                    logger.debug(f" Полный блок Ответчик для ogrnip: {debtor_block}")
 
         # Извлекаем ИНН или ОГРН из найденного блока должника/ответчика
         if debtor_block:
@@ -120,7 +120,7 @@ class PartiesMixin:
                             if len(digits) == 15 and is_valid_ogrnip(digits):
                                 extracted_fields["ogrnip"] = digits
                                 found_value = True
-                                logger.info(f"✅ Extracted ogrnip (фолбэк по тексту, 15 цифр): {digits}")
+                                logger.info(f" Extracted ogrnip (фолбэк по тексту, 15 цифр): {digits}")
                                 break
 
                 # ОГРН (13 цифр, ЮЛ) ищем ТОЛЬКО для поля ogrn. Для ogrnip (15 цифр, ИП)
@@ -143,19 +143,19 @@ class PartiesMixin:
                         if ogrn_value and len(ogrn_value) == 15:
                             extracted_fields["ogrnip"] = ogrn_value
                             found_value = True
-                            logger.info(f"✅ Extracted ogrnip (15 цифр): {ogrn_value}")
+                            logger.info(f" Extracted ogrnip (15 цифр): {ogrn_value}")
                         else:
-                            logger.info(f"⚠️ Кандидат в ОГРНИП не 15 цифр ('{ogrn_value}') — пропускаем (не ОГРНИП)")
+                            logger.info(f" Кандидат в ОГРНИП не 15 цифр ('{ogrn_value}') — пропускаем (не ОГРНИП)")
                     else:
                         # ОГРН юрлица — 13 цифр (допускаем 12-15 ради совместимости с прежним поведением).
                         if ogrn_value and 12 <= len(ogrn_value) <= 15:
                             extracted_fields["ogrn"] = ogrn_value
                             found_value = True
-                            logger.info(f"✅ Extracted ogrn: {ogrn_value}")
+                            logger.info(f" Extracted ogrn: {ogrn_value}")
                         else:
-                            logger.warning(f"⚠️ ОГРН не прошёл проверку длины: '{ogrn_value}' (длина: {len(ogrn_value) if ogrn_value else 0})")
+                            logger.warning(f" ОГРН не прошёл проверку длины: '{ogrn_value}' (длина: {len(ogrn_value) if ogrn_value else 0})")
                 else:
-                    logger.warning(f"⚠️ ОГРН/ОГРНИП не найден в блоке должника/ответчика")
+                    logger.warning(f" ОГРН/ОГРНИП не найден в блоке должника/ответчика")
 
             elif field_name == "inn" or field_name == "companyInn":
                 # Извлекаем ИНН (как в реструктуризации)
@@ -179,21 +179,21 @@ class PartiesMixin:
                 if inn_value:
                     extracted_fields["inn"] = inn_value
                     extracted_fields["companyInn"] = inn_value
-                    logger.info(f"✅ Extracted {field_name} из блока должника/ответчика: {inn_value}")
+                    logger.info(f" Extracted {field_name} из блока должника/ответчика: {inn_value}")
                     found_value = True
                 else:
-                    logger.warning(f"⚠️ ИНН не найден в блоке должника/ответчика")
+                    logger.warning(f" ИНН не найден в блоке должника/ответчика")
 
             # Если нашли значение в блоке должника/ответчика, пропускаем дальнейший поиск
             if found_value:
-                logger.info(f"✅ {field_name} найден в блоке должника/ответчика: {extracted_fields.get(field_name)}")
+                logger.info(f" {field_name} найден в блоке должника/ответчика: {extracted_fields.get(field_name)}")
                 return
             else:
-                logger.info(f"⚠️ {field_name} НЕ найден в блоке должника/ответчика - пропускаем дальнейший поиск, чтобы не брать данные кредитора")
+                logger.info(f" {field_name} НЕ найден в блоке должника/ответчика - пропускаем дальнейший поиск, чтобы не брать данные кредитора")
                 # Пропускаем дальнейший поиск, чтобы не брать ИНН/ОГРН кредитора
                 return
         else:
-            logger.info(f"⚠️ Блоки 'Должник:' и 'Ответчик:' не найдены для {field_name}")
+            logger.info(f" Блоки 'Должник:' и 'Ответчик:' не найдены для {field_name}")
             # Если блоков нет, пропускаем поиск, чтобы не брать данные кредитора
             return
 
@@ -226,7 +226,7 @@ class PartiesMixin:
             robust_addr = self._collect_block_address(debtor_block)
             if robust_addr:
                 extracted_fields[field_name] = robust_addr
-                logger.info(f"✅ Extracted applicantAddress (robust): {robust_addr}")
+                logger.info(f" Extracted applicantAddress (robust): {robust_addr}")
                 return True
             addr_match = re.search(
                 # Берем только текущую строку после маркера адреса,
@@ -254,7 +254,7 @@ class PartiesMixin:
 
                 if cleaned_lines:
                     extracted_fields[field_name] = ", ".join(cleaned_lines).strip()
-                    logger.info(f"✅ Extracted applicantAddress из блока должника/ответчика: {extracted_fields[field_name]}")
+                    logger.info(f" Extracted applicantAddress из блока должника/ответчика: {extracted_fields[field_name]}")
                     return True
         return False
 
@@ -329,7 +329,7 @@ class PartiesMixin:
                     multi_addr = self._extract_multiline_address_from_block(debtor_block)
                     if multi_addr:
                         extracted_fields["applicantAddress"] = multi_addr
-                        logger.info(f"✅ Extracted applicantAddress (multiline fallback): {multi_addr}")
+                        logger.info(f" Extracted applicantAddress (multiline fallback): {multi_addr}")
 
             # Извлекаем ОГРН (только если еще не извлечен в основном цикле)
             if "ogrn" not in extracted_fields or not extracted_fields.get("ogrn"):
@@ -343,7 +343,7 @@ class PartiesMixin:
                     # Проверяем длину ОГРН: 12-15 цифр (для ЮЛ может быть 12 или 13 цифр, для ИП - 15)
                     if ogrn_value and len(ogrn_value) >= 12 and len(ogrn_value) <= 15:
                         extracted_fields["ogrn"] = ogrn_value
-                        logger.info(f"✅ Extracted ogrn из блока Должник (после цикла): {ogrn_value}")
+                        logger.info(f" Extracted ogrn из блока Должник (после цикла): {ogrn_value}")
 
             # Извлекаем ИНН (только если еще не извлечен в основном цикле).
             # Среди кандидатов предпочитаем валидного по контрольной сумме.
@@ -356,7 +356,7 @@ class PartiesMixin:
                     inn_value = next((c for c in inn_clean if is_valid_inn(c)), inn_clean[0])
                     extracted_fields["inn"] = inn_value
                     extracted_fields["companyInn"] = inn_value
-                    logger.info(f"✅ Extracted inn из блока Должник (после цикла): {inn_value}")
+                    logger.info(f" Extracted inn из блока Должник (после цикла): {inn_value}")
 
             # Определяем КФХ: после "Должник" указывается "ГЛАВА КФХ ИП ФИО"
             # Пример: "ГЛАВА КФХ ИП Иванов Иван Иванович"
@@ -609,7 +609,7 @@ class PartiesMixin:
                         extracted_fields["inn"] = inn_clean
                         extracted_fields["companyInn"] = inn_clean
                     else:
-                        logger.warning(f"⚠️ ИНН не прошел проверку длины при перезаписи: '{inn_clean}' (длина: {len(inn_clean)})")
+                        logger.warning(f" ИНН не прошел проверку длины при перезаписи: '{inn_clean}' (длина: {len(inn_clean)})")
 
                 extracted_fields.pop("snils", None)
 
@@ -660,14 +660,14 @@ class PartiesMixin:
         creditor_addr = (extracted_fields.get("creditorAddress") or "").strip()
         if applicant_addr and creditor_addr and applicant_addr == creditor_addr:
             extracted_fields.pop("applicantAddress", None)
-            logger.warning("⚠️ Адрес заявителя совпадал с адресом кредитора — поле очищено")
+            logger.warning(" Адрес заявителя совпадал с адресом кредитора — поле очищено")
 
         # Адрес должника не должен быть названием/адресом суда (индекс + "Арбитражный суд ... области")
         if extracted_fields.get("applicantAddress"):
             addr = (extracted_fields.get("applicantAddress") or "").strip()
             if "Арбитражный суд" in addr or (re.search(r"\bсуд\b", addr) and "области" in addr):
                 extracted_fields.pop("applicantAddress", None)
-                logger.warning("⚠️ Адрес заявителя совпадал с названием/адресом суда — поле очищено")
+                logger.warning(" Адрес заявителя совпадал с названием/адресом суда — поле очищено")
 
         # Специальный fallback по заявлениям РТК:
         # если адрес пустой или был очищен как адрес суда/кредитора — пробуем ещё раз взять его из блока "Должник: Адрес ..."
@@ -695,7 +695,7 @@ class PartiesMixin:
 
                 if cleaned_addr and "Арбитражный суд" not in cleaned_addr:
                     extracted_fields["applicantAddress"] = cleaned_addr
-                    logger.info(f"✅ Адрес должника (fallback из блока 'Должник: Адрес'): {cleaned_addr}")
+                    logger.info(f" Адрес должника (fallback из блока 'Должник: Адрес'): {cleaned_addr}")
 
         # Фолбэк: «зарегистрирован(а) по адресу: 346404,…» в теле документа
         # (ФНС-банкротство — адрес должника не в блоке «Должник:», а в тексте).
@@ -709,7 +709,7 @@ class PartiesMixin:
                 addr = re.sub(r"\s+", " ", addr).strip(" ,;.")
                 if addr and re.search(r"[А-ЯЁа-яё]", addr):
                     extracted_fields["applicantAddress"] = addr
-                    logger.info(f"✅ Адрес должника (fallback 'зарегистрирован по адресу'): {addr}")
+                    logger.info(f" Адрес должника (fallback 'зарегистрирован по адресу'): {addr}")
 
         # Для КФХ: если адрес не найден, извлекаем его из текста документа
         if extracted_fields.get("isKfh") and not extracted_fields.get("applicantAddress"):
@@ -752,7 +752,7 @@ class PartiesMixin:
                     # Проверяем, что адрес содержит буквы
                     if addr and re.search(r'[А-ЯЁа-яё]', addr):
                         extracted_fields["applicantAddress"] = addr.strip()
-                        logger.info(f"✅ Адрес КФХ извлечен: {addr.strip()}")
+                        logger.info(f" Адрес КФХ извлечен: {addr.strip()}")
                         break
 
     def _reconcile_applicant_is_debtor(self, extracted_fields, text):
@@ -815,7 +815,7 @@ class PartiesMixin:
                 val = conv(debtor)
                 if val:
                     extracted_fields[key] = val
-        logger.info(f"♻️ Своп сторон исправлен: applicantName был кредитором, восстановлен должник: {debtor!r}")
+        logger.info(f" Своп сторон исправлен: applicantName был кредитором, восстановлен должник: {debtor!r}")
 
     def _cleanup_party_artifacts(self, extracted_fields, text):
         """Косметическая пост-очистка артефактов извлечения сторон (гвардированно):
@@ -835,7 +835,7 @@ class PartiesMixin:
                 nv = role_suffix.sub("", v).strip()
                 if nv and nv != v:
                     extracted_fields[k] = nv
-                    logger.info(f"🧹 Срезан роль-суффикс в {k}: '{v}' -> '{nv}'")
+                    logger.info(f" Срезан роль-суффикс в {k}: '{v}' -> '{nv}'")
 
         # 2. courtName: обрезаем всё начиная с прилипшей метки соседнего блока.
         cn = extracted_fields.get("courtName")
@@ -855,7 +855,7 @@ class PartiesMixin:
                 cut = mreg.group(1).strip(" ,")
             if cut and cut != cn:
                 extracted_fields["courtName"] = cut
-                logger.info(f"🧹 Обрезан хвост метки в courtName: '{cn}' -> '{cut}'")
+                logger.info(f" Обрезан хвост метки в courtName: '{cn}' -> '{cut}'")
 
         # 3. managerName: должно быть ФИО (два слова с заглавных). Иначе — мусор, удаляем.
         mn = extracted_fields.get("managerName")
@@ -863,8 +863,8 @@ class PartiesMixin:
             looks_like_fio = bool(re.search(r'[А-ЯЁ][А-Яа-яёЁ.\-]+\s+[А-ЯЁ]', mn))
             if not looks_like_fio:
                 extracted_fields.pop("managerName", None)
-                logger.info(f"🧹 Удалён мусорный managerName (не ФИО): '{mn}'")
-        # 3a. Нет ФИО управляющего, а его «ИНН» совпал с ИНН/ОГРН должника → это
+                logger.info(f" Удалён мусорный managerName (не ФИО): '{mn}'")
+        # 3a. Нет ФИО управляющего, а его «ИНН» совпал с ИНН/ОГРН должника это
         #     утёкшие реквизиты должника (пункт «определить СРО … случайным выбором»),
         #     а не реальный управляющий. Чистим. Если ИНН иной — это может быть реальный
         #     управляющий, чьё ФИО не извлеклось; не трогаем, чтобы не потерять данные.
@@ -899,7 +899,7 @@ class PartiesMixin:
             ))
             if cut and cut != addr and looks_addr:
                 extracted_fields["applicantAddress"] = cut
-                logger.info(f"🧹 Обрезан хвост в адресе должника: '{addr}' -> '{cut}'")
+                logger.info(f" Обрезан хвост в адресе должника: '{addr}' -> '{cut}'")
 
         # 5. creditorName: если пусто — фолбэк по тексту (метки Истец/Заявитель/Кредитор/
         #    Взыскатель, в т.ч. гос.органы без ОПФ — «ФНС России»). Работает для всех
@@ -908,7 +908,7 @@ class PartiesMixin:
             cn = self._extract_creditor_name_from_text(text)
             if cn:
                 extracted_fields["creditorName"] = cn
-                logger.info(f"🏦 creditorName из текста (фолбэк по метке): '{cn}'")
+                logger.info(f" creditorName из текста (фолбэк по метке): '{cn}'")
 
         # 6. Для ИП восстанавливаем префикс «ИП» в наименовании и падежах
         #    (в документе «ИП БАЗОВ …», извлечение срезало «ИП»). Только если в тексте
@@ -923,9 +923,9 @@ class PartiesMixin:
                     v = extracted_fields.get(k)
                     if isinstance(v, str) and v.strip() and not re.match(r"^\s*ИП\b", v, re.IGNORECASE):
                         extracted_fields[k] = "ИП " + v.strip()
-                logger.info(f"🏷️ Восстановлен префикс «ИП» в наименовании должника: 'ИП {base}'")
+                logger.info(f" Восстановлен префикс «ИП» в наименовании должника: 'ИП {base}'")
 
-        # 7. Достройка наименования ЮЛ: раскладка «Должник ⇥ Общество с ограниченной
+        # 7. Достройка наименования ЮЛ: раскладка «Должник Общество с ограниченной
         #    ответственностью\n«Имя»» даёт обрезанное имя без кавычек. Берём полное
         #    «<ОПФ> «Имя»» из блока должника.
         if (extracted_fields.get("entityType") or "").lower() == "legal":
@@ -947,7 +947,7 @@ class PartiesMixin:
                         full = full.replace('"', "«", 1).replace('"', "»")
                     extracted_fields["applicantName"] = full
                     extracted_fields["debtorName"] = full
-                    logger.info(f"🏷️ Достроено наименование ЮЛ должника: '{full}'")
+                    logger.info(f" Достроено наименование ЮЛ должника: '{full}'")
 
     def _tune_legal_entity_naming(self, extracted_fields, text, debtor_clean, applicant_clean, applicant_name_raw, debtor_block, debtor_name_raw):
         """Короткое наименование ЮЛ (legalShortName) и донастройка для initiation_legal: переустановка applicantName с ОПФ из блока «Должник:», адрес из шапки. Возвращает обновлённый debtor_clean. Вынесено из extract_fields."""
@@ -1053,7 +1053,7 @@ class PartiesMixin:
             elif _v.count("«") > _v.count("»"):
                 extracted_fields[_nk] = _v + "»"
 
-        # Срезаем ведущую метку из адреса должника («Адрес регистрации: 867624…» →
+        # Срезаем ведущую метку из адреса должника («Адрес регистрации: 867624…»
         # «867624…»), если она попала в значение при извлечении.
         addr_val = extracted_fields.get("applicantAddress")
         if addr_val:
@@ -1090,7 +1090,7 @@ class PartiesMixin:
             court = self._extract_court_name(text)
             if court:
                 extracted_fields["courtName"] = court
-        # Нормализуем регистр названия суда («…Суд… Области» → «…суд… области»).
+        # Нормализуем регистр названия суда («…Суд… Области» «…суд… области»).
         if extracted_fields.get("courtName"):
             extracted_fields["courtName"] = self._normalize_court_name(extracted_fields["courtName"])
 
@@ -1194,7 +1194,7 @@ class PartiesMixin:
             # ВАЖНО: в кредиторском заявлении applicantAddress — адрес КРЕДИТОРА
             # (ФНС/банка), а не должника. Поэтому адрес должника берём ТОЛЬКО из
             # debtorAddress; если он не извлёкся — оставляем пустым, иначе должнику
-            # подставится юр-адрес ФНС (напр. Чернов → адрес инспекции в Уфе).
+            # подставится юр-адрес ФНС (напр. Чернов адрес инспекции в Уфе).
             address = fields.get("debtorAddress") or ""
         else:
             name = appl or debt
@@ -1397,7 +1397,7 @@ class PartiesMixin:
     def _normalize_court_name(self, name: str) -> str:
         """Приводит регистр названия суда: общие слова — строчными, имена собственные — как есть.
 
-        Пример: «Арбитражный Суд Ростовской Области» → «Арбитражный суд Ростовской области».
+        Пример: «Арбитражный Суд Ростовской Области» «Арбитражный суд Ростовской области».
         """
         if not name:
             return name

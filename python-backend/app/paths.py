@@ -17,7 +17,7 @@ def data_root() -> Path:
         return Path(env)
     if getattr(sys, "frozen", False):
         return Path(sys.executable).parent
-    # app/paths.py → parents[2] = корень проекта
+    # app/paths.py parents[2] = корень проекта
     return Path(__file__).resolve().parents[2]
 
 

@@ -4,9 +4,9 @@
 
 Роль модуля — ВСПОМОГАТЕЛЬНАЯ. Ядро разбора остаётся на детерминированных
 label-anchored регулярках; Natasha подключается только как fallback:
-- адрес обрезан/не найден → `complete_address` достраивает по окну роли;
-- организация не дотянута → `find_org` (NER ORG) внутри окна роли;
-- дата обязательства не распознана → `find_date` (DatesExtractor) последним слоем.
+- адрес обрезан/не найден `complete_address` достраивает по окну роли;
+- организация не дотянута `find_org` (NER ORG) внутри окна роли;
+- дата обязательства не распознана `find_date` (DatesExtractor) последним слоем.
 
 Всё работает по ОКНУ, которое уже ограничила метка роли (чей это адрес/имя),
 и возвращает VERBATIM-срез исходного текста (никакой нормализации Natasha —
@@ -32,7 +32,7 @@ _NER = None     # (Segmenter, NewsNERTagger)
 
 
 def _ensure_yargy():
-    """MorphVocab + yargy-экстракторы (Addr/Dates). Тянут pymorphy2 → pkg_resources."""
+    """MorphVocab + yargy-экстракторы (Addr/Dates). Тянут pymorphy2 pkg_resources."""
     global _YARGY
     if _YARGY is not None:
         return _YARGY

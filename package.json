@@ -8,6 +8,8 @@
     "dev:react": "cross-env BROWSER=none npm --prefix electron-app start",
     "dev:electron": "wait-on http://localhost:3000 && electron .",
     "build": "cd electron-app && npm run build",
+    "pack:backend": "python-backend\\venv\\Scripts\\pyinstaller.exe --noconfirm SberAct.spec",
+    "pack:converter": "powershell -ExecutionPolicy Bypass -File scripts/assemble-converter.ps1",
     "dist:linux": "electron-builder --linux",
     "postinstall": "electron-builder install-app-deps"
   },
@@ -15,13 +17,12 @@
     "appId": "com.sberact.documentgenerator",
     "productName": "SberAct Document Generator",
     "directories": {
-      "output": "dist"
+      "output": "release"
     },
     "files": [
       "electron-app/build/**/*",
       "electron-app/main.js",
       "electron-app/preload.js",
-      "python-backend/**/*",
       "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
       "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
       "!**/node_modules/*.d.ts",
@@ -34,13 +35,23 @@
       "!**/{appveyor.yml,.travis.yml,circle.yml}",
       "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
     ],
-    "asarUnpack": [
-      "python-backend/**/*"
-    ],
     "extraResources": [
       {
-        "from": "python-backend",
-        "to": "python-backend"
+        "from": "dist/SberAct",
+        "to": "backend"
+      },
+      {
+        "from": "converter",
+        "to": "converter",
+        "filter": [
+          "**/*",
+          "!**/__pycache__",
+          "!**/*.pyc",
+          "!**/*.log",
+          "!pdf_to_convert/**",
+          "!tests/**",
+          "!models/*.part*"
+        ]
       }
     ],
     "linux": {

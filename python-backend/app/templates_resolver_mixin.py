@@ -64,7 +64,7 @@ class TemplatesResolverMixin:
 
         Папки: самобанкротство/{реализ|реструктуриз}. Матрица 2×2:
         процедура (реализ/реструктуриз) × акт (принятие / признание банкротом).
-        Процедуру берём из выбранного финального акта (final_restructuring →
+        Процедуру берём из выбранного финального акта (final_restructuring
         реструктуризация, иначе реализация) либо из procedureTypeRaw.
         Возвращает (ключ, путь, человекочитаемое имя) или None.
         """
@@ -91,9 +91,9 @@ class TemplatesResolverMixin:
         """Роутинг актов ФНС (уполномоченный орган).
 
         Папки: ФНС/{«2-я и 3-я очередь»|«3-я очередь»}. Вариант очереди выбираем
-        авто: есть суммы 2-й очереди → «2-я и 3-я», иначе «3-я». Внутри «3-я очередь»
-        включенка различается по типу лица: ЮЛ → файл «ЮЛ» (маркеры [2]/[13]),
-        ФЛ → «налоговая» (маркеры [2.1]/[34.3]).
+        авто: есть суммы 2-й очереди «2-я и 3-я», иначе «3-я». Внутри «3-я очередь»
+        включенка различается по типу лица: ЮЛ файл «ЮЛ» (маркеры [2]/[13]),
+        ФЛ «налоговая» (маркеры [2.1]/[34.3]).
         Обрабатываем: final_rtk_inclusion (ВКЛ в РТК, включенка-резолютивка) и
         final_restructuring (реструктуризация — признание банкротом).
         Возвращает (ключ, путь, имя) или None.
@@ -198,7 +198,7 @@ class TemplatesResolverMixin:
             }
 
             for info in observation_templates.values():
-                logger.info(f"📁 Шаблон наблюдения: {info['name']} -> {info['path'].absolute()} (существует: {info['path'].exists()})")
+                logger.info(f" Шаблон наблюдения: {info['name']} -> {info['path'].absolute()} (существует: {info['path'].exists()})")
 
             return observation_templates
 
@@ -217,10 +217,10 @@ class TemplatesResolverMixin:
                     2
                 ),
             }
-            logger.info("⚖️ Используются шаблоны для наблюдения с залогом.")
+            logger.info(" Используются шаблоны для наблюдения с залогом.")
 
             for info in observation_collateral_templates.values():
-                logger.info(f"📁 Шаблон наблюдения с залогом: {info['name']} -> {info['path'].absolute()} (существует: {info['path'].exists()})")
+                logger.info(f" Шаблон наблюдения с залогом: {info['name']} -> {info['path'].absolute()} (существует: {info['path'].exists()})")
 
             return observation_collateral_templates
 
@@ -239,10 +239,10 @@ class TemplatesResolverMixin:
                     2
                 ),
             }
-            logger.info("⚖️ Используются шаблоны для конкурсного производства с залогом.")
+            logger.info(" Используются шаблоны для конкурсного производства с залогом.")
 
             for info in competition_collateral_templates.values():
-                logger.info(f"📁 Шаблон конкурсное с залогом: {info['name']} -> {info['path'].absolute()} (существует: {info['path'].exists()})")
+                logger.info(f" Шаблон конкурсное с залогом: {info['name']} -> {info['path'].absolute()} (существует: {info['path'].exists()})")
 
             return competition_collateral_templates
 
@@ -261,10 +261,10 @@ class TemplatesResolverMixin:
                     2
                 ),
             }
-            logger.info("⚖️ Используются шаблоны для процедуры 'умерший'.")
+            logger.info(" Используются шаблоны для процедуры 'умерший'.")
 
             for info in deceased_templates.values():
-                logger.info(f"📁 Шаблон умерший: {info['name']} -> {info['path'].absolute()} (существует: {info['path'].exists()})")
+                logger.info(f" Шаблон умерший: {info['name']} -> {info['path'].absolute()} (существует: {info['path'].exists()})")
 
             return deceased_templates
 
@@ -327,7 +327,7 @@ class TemplatesResolverMixin:
                         3
                     )
                 }
-                logger.info("⚖️ Используются шаблоны для ИП реструктуризация с залогом.")
+                logger.info(" Используются шаблоны для ИП реструктуризация с залогом.")
             else:  # realization по умолчанию
                 collateral_dir = root_dir / "Залог" / "Реализация"
                 templates = {
@@ -347,7 +347,7 @@ class TemplatesResolverMixin:
                         3
                     )
                 }
-                logger.info("⚖️ Используются шаблоны для ИП реализация с залогом.")
+                logger.info(" Используются шаблоны для ИП реализация с залогом.")
         else:
             # Без залога: ИП использует те же акты РТК-включения, что и физлица
             # (тексты содержат слово "должник" — заменяется на "индивидуальный
@@ -392,10 +392,10 @@ class TemplatesResolverMixin:
                     )
                 }
             procedure_label = "реструктуризация" if procedure_type == "restructuring" else "реализация"
-            logger.info(f"ℹ️ Используются акты РТК-включения физлиц для ИП {procedure_label} (без залога).")
+            logger.info(f"ℹ Используются акты РТК-включения физлиц для ИП {procedure_label} (без залога).")
 
         for info in templates.values():
-            logger.info(f"📁 Шаблон: {info['name']} -> {info['path'].absolute()} (существует: {info['path'].exists()})")
+            logger.info(f" Шаблон: {info['name']} -> {info['path'].absolute()} (существует: {info['path'].exists()})")
 
         return templates
 
@@ -408,7 +408,7 @@ class TemplatesResolverMixin:
         collection_dir = root_dir / "Взыскания ИП + Залог"
 
         def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
-            logger.info(f"📁 Шаблон взыскания ИП: {name} -> {path.absolute()} (существует: {path.exists()})")
+            logger.info(f" Шаблон взыскания ИП: {name} -> {path.absolute()} (существует: {path.exists()})")
             return {"name": name, "path": path, "order": order}
 
         templates = {
@@ -424,7 +424,7 @@ class TemplatesResolverMixin:
             )
         }
 
-        logger.info("⚖️ Используются шаблоны для искового заявления о взыскании с ИП.")
+        logger.info(" Используются шаблоны для искового заявления о взыскании с ИП.")
         return templates
 
     def _get_ip_collection_collateral_templates(self) -> Dict[str, Dict[str, Any]]:
@@ -436,7 +436,7 @@ class TemplatesResolverMixin:
         collection_dir = root_dir / "Взыскания ИП + Залог" / "Взыскаие ИП залог"
 
         def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
-            logger.info(f"📁 Шаблон взыскания ИП с залогом: {name} -> {path.absolute()} (существует: {path.exists()})")
+            logger.info(f" Шаблон взыскания ИП с залогом: {name} -> {path.absolute()} (существует: {path.exists()})")
             return {"name": name, "path": path, "order": order}
 
         templates = {
@@ -452,7 +452,7 @@ class TemplatesResolverMixin:
             )
         }
 
-        logger.info("⚖️ Используются шаблоны для искового заявления о взыскании с ИП с залогом.")
+        logger.info(" Используются шаблоны для искового заявления о взыскании с ИП с залогом.")
         return templates
 
     def _get_ip_collection_collateral_auto_templates(self) -> Dict[str, Dict[str, Any]]:
@@ -464,7 +464,7 @@ class TemplatesResolverMixin:
         collection_dir = root_dir / "Взыскание ИП залог авто"
 
         def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
-            logger.info(f"📁 Шаблон взыскания ИП залог авто: {name} -> {path.absolute()} (существует: {path.exists()})")
+            logger.info(f" Шаблон взыскания ИП залог авто: {name} -> {path.absolute()} (существует: {path.exists()})")
             return {"name": name, "path": path, "order": order}
 
         templates = {
@@ -480,7 +480,7 @@ class TemplatesResolverMixin:
             )
         }
 
-        logger.info("⚖️ Используются шаблоны для искового заявления о взыскании с ИП залог авто.")
+        logger.info(" Используются шаблоны для искового заявления о взыскании с ИП залог авто.")
         return templates
 
     def _get_legal_collection_templates(self) -> Dict[str, Dict[str, Any]]:
@@ -492,7 +492,7 @@ class TemplatesResolverMixin:
         collection_dir = root_dir / "Взыскание ЮЛ"
 
         def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
-            logger.info(f"📁 Шаблон взыскания ЮЛ: {name} -> {path.absolute()} (существует: {path.exists()})")
+            logger.info(f" Шаблон взыскания ЮЛ: {name} -> {path.absolute()} (существует: {path.exists()})")
             return {"name": name, "path": path, "order": order}
 
         templates = {
@@ -508,7 +508,7 @@ class TemplatesResolverMixin:
             )
         }
 
-        logger.info("⚖️ Используются шаблоны для искового заявления о взыскании с ЮЛ.")
+        logger.info(" Используются шаблоны для искового заявления о взыскании с ЮЛ.")
         return templates
 
     def _get_legal_collection_collateral_templates(self) -> Dict[str, Dict[str, Any]]:
@@ -520,7 +520,7 @@ class TemplatesResolverMixin:
         collection_dir = root_dir / "ЮЛ взыскание залог"
 
         def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
-            logger.info(f"📁 Шаблон взыскания ЮЛ с залогом: {name} -> {path.absolute()} (существует: {path.exists()})")
+            logger.info(f" Шаблон взыскания ЮЛ с залогом: {name} -> {path.absolute()} (существует: {path.exists()})")
             return {"name": name, "path": path, "order": order}
 
         templates = {
@@ -536,7 +536,7 @@ class TemplatesResolverMixin:
             )
         }
 
-        logger.info("⚖️ Используются шаблоны для искового заявления о взыскании с ЮЛ с залогом.")
+        logger.info(" Используются шаблоны для искового заявления о взыскании с ЮЛ с залогом.")
         return templates
 
     def _get_legal_collection_collateral_auto_templates(self) -> Dict[str, Dict[str, Any]]:
@@ -549,7 +549,7 @@ class TemplatesResolverMixin:
         collection_dir = root_dir / "взыскание ЮЛ залог авто"
 
         def entry(name: str, path: Path, order: int) -> Dict[str, Any]:
-            logger.info(f"📁 Шаблон взыскания ЮЛ залог авто: {name} -> {path.absolute()} (существует: {path.exists()})")
+            logger.info(f" Шаблон взыскания ЮЛ залог авто: {name} -> {path.absolute()} (существует: {path.exists()})")
             return {"name": name, "path": path, "order": order}
 
         templates = {
@@ -565,7 +565,7 @@ class TemplatesResolverMixin:
             )
         }
 
-        logger.info("⚖️ Используются шаблоны для искового заявления о взыскании с ЮЛ залог авто.")
+        logger.info(" Используются шаблоны для искового заявления о взыскании с ЮЛ залог авто.")
         return templates
 
     def _get_physical_collateral_templates(self) -> Dict[str, Dict[str, Any]]:
@@ -597,10 +597,10 @@ class TemplatesResolverMixin:
                 3
             )
         }
-        logger.info("⚖️ Используются шаблоны для ФЛ с залогом в реализации.")
+        logger.info(" Используются шаблоны для ФЛ с залогом в реализации.")
 
         for info in templates.values():
-            logger.info(f"📁 Шаблон: {info['name']} -> {info['path'].absolute()} (существует: {info['path'].exists()})")
+            logger.info(f" Шаблон: {info['name']} -> {info['path'].absolute()} (существует: {info['path'].exists()})")
 
         return templates
 
@@ -632,10 +632,10 @@ class TemplatesResolverMixin:
                 3
             )
         }
-        logger.info("⚖️ Используются шаблоны для ФЛ с залогом в реструктуризации.")
+        logger.info(" Используются шаблоны для ФЛ с залогом в реструктуризации.")
 
         for info in templates.values():
-            logger.info(f"📁 Шаблон: {info['name']} -> {info['path'].absolute()} (существует: {info['path'].exists()})")
+            logger.info(f" Шаблон: {info['name']} -> {info['path'].absolute()} (существует: {info['path'].exists()})")
 
         return templates
 
@@ -649,7 +649,7 @@ class TemplatesResolverMixin:
 
         def entry(name: str, filename: str, order: int) -> Dict[str, Any]:
             path = base_dir / filename
-            logger.info(f"📁 Шаблон инициирования (физ лицо): {name} -> {path} (существует: {path.exists()})")
+            logger.info(f" Шаблон инициирования (физ лицо): {name} -> {path} (существует: {path.exists()})")
             return {"name": name, "path": path, "order": order}
 
         return {
@@ -680,7 +680,7 @@ class TemplatesResolverMixin:
 
         def entry(name: str, filename: str, order: int) -> Dict[str, Any]:
             path = base_dir / filename
-            logger.info(f"📁 Шаблон инициирования (юр лицо): {name} -> {path} (существует: {path.exists()})")
+            logger.info(f" Шаблон инициирования (юр лицо): {name} -> {path} (существует: {path.exists()})")
             return {"name": name, "path": path, "order": order}
 
         # Базовый шаблон: принятие заявления — есть всегда
@@ -725,7 +725,7 @@ class TemplatesResolverMixin:
 
         def entry(name: str, filename: str, order: int) -> Dict[str, Any]:
             path = kfh_dir / filename
-            logger.info(f"📁 Шаблон КФХ: {name} -> {path} (существует: {path.exists()})")
+            logger.info(f" Шаблон КФХ: {name} -> {path} (существует: {path.exists()})")
             return {"name": name, "path": path, "order": order}
 
         if has_collateral:
@@ -766,7 +766,7 @@ class TemplatesResolverMixin:
 
         def entry(name: str, filename: str, order: int) -> Dict[str, Any]:
             path = base_dir / filename
-            logger.info(f"📁 Шаблон ипотека: {name} -> {path} (существует: {path.exists()})")
+            logger.info(f" Шаблон ипотека: {name} -> {path} (существует: {path.exists()})")
             return {"name": name, "path": path, "order": order}
 
         return {
@@ -917,7 +917,7 @@ class TemplatesResolverMixin:
         def _short_text_path(procedure: str, collateral: bool) -> Path:
             """Путь к «короткому тексту» (резолютивке) по процедуре + залогу — ОДИН общий
             на генерацию. Для конкурсного и наблюдения-с-залогом резолютивки пока нет —
-            возвращаем ожидаемый путь (файла нет → генератор выдаст «нет шаблона»)."""
+            возвращаем ожидаемый путь (файла нет генератор выдаст «нет шаблона»)."""
             if collateral:
                 if procedure == 'realization':
                     return collateral_dir / "Реализация" / "Резолютивка ВКЛ реализация Залог (+ наблюдение).docx"
@@ -1181,7 +1181,7 @@ class TemplatesResolverMixin:
 
             if len(templates) == templates_before:
                 unresolved.append(act_id)
-                logger.warning(f"⚠️ Нет ветки маппинга для выбранного акта: {act_id}")
+                logger.warning(f" Нет ветки маппинга для выбранного акта: {act_id}")
 
         # «Короткий текст» (резолютивка) — доп. документ ОДИН на генерацию, если включён
         # чекбокс. Процедуру берём из выбранного финального акта / варианта ВКЛ. Для ФНС

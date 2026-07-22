@@ -198,7 +198,7 @@ async def analyze_document(document: UploadFile = File(...)):
     Анализирует загруженный документ и извлекает данные.
     Поддерживаются форматы: .docx (Word), .pdf. Генерация актов по-прежнему только в .docx.
     """
-    print("🔍 API: Получен запрос на анализ документа")
+    print(" API: Получен запрос на анализ документа")
     try:
         filename_lower = (document.filename or "").lower()
         if not (filename_lower.endswith(".docx") or filename_lower.endswith(".pdf")):
@@ -249,7 +249,7 @@ async def analyze_text(request: AnalyzeTextRequest):
     именно текст — файла-источника на этом пути нет.
     Формат ответа и ошибок идентичен /analyze-document.
     """
-    print("🔍 API: Получен запрос на анализ текста")
+    print(" API: Получен запрос на анализ текста")
     try:
         analysis_result = document_analyzer.analyze_from_text(
             request.text, page_count=request.page_count
@@ -624,8 +624,8 @@ async def generate_document(request_data: Dict[str, Any]):
     """
     Генерирует документ на основе выбранного шаблона и данных
     """
-    print("🚀 API: Получен запрос на генерацию документа")
-    print(f"📊 API: Данные запроса: {request_data}")
+    print(" API: Получен запрос на генерацию документа")
+    print(f" API: Данные запроса: {request_data}")
     try:
         # Извлекаем данные из запроса
         template_type = request_data.get("template_type")
@@ -704,7 +704,7 @@ async def download_zip_get(ids: str = ""):
     """
     import logging
     logger = logging.getLogger(__name__)
-    logger.warning("⚠️ Используется GET /download-zip - это fallback! Electron IPC должен использоваться вместо этого.")
+    logger.warning(" Используется GET /download-zip - это fallback! Electron IPC должен использоваться вместо этого.")
 
     if not ids:
         raise HTTPException(status_code=400, detail="Не указаны ID документов (ids)")
@@ -834,14 +834,14 @@ async def download_all_documents(request: dict):
         import tempfile
         from pathlib import Path
 
-        logger.info(f"🔽 API: Получен запрос на скачивание документов")
-        logger.info(f"📋 API: Данные запроса: {request}")
+        logger.info(f" API: Получен запрос на скачивание документов")
+        logger.info(f" API: Данные запроса: {request}")
 
         document_ids = request.get('document_ids', '')
         download_path = request.get('download_path', '')
 
-        logger.info(f"📄 API: ID документов: {document_ids}")
-        logger.info(f"📁 API: Путь для скачивания: {download_path}")
+        logger.info(f" API: ID документов: {document_ids}")
+        logger.info(f" API: Путь для скачивания: {download_path}")
 
         # Парсим ID документов
         ids = document_ids.split(',') if document_ids else []
@@ -869,10 +869,10 @@ async def download_all_documents(request: dict):
                     zipf.write(file_path, f"{doc_name}.docx")
 
         # Всегда возвращаем файл для скачивания через Electron диалог
-        logger.info(f"✅ API: Возвращаем файл для скачивания: {zip_path}")
+        logger.info(f" API: Возвращаем файл для скачивания: {zip_path}")
         # ВНИМАНИЕ: Этот endpoint используется только как fallback
         # В Electron приложении файл должен сохраняться через диалог, а не напрямую
-        logger.warning(f"⚠️ Файл будет скачан в папку загрузок браузера: generated_documents.zip")
+        logger.warning(f" Файл будет скачан в папку загрузок браузера: generated_documents.zip")
         return FileResponse(
             path=str(zip_path),
             filename="generated_documents.zip",
@@ -889,7 +889,7 @@ async def get_download_paths():
     try:
         from pathlib import Path
 
-        logger.info(f"📁 API: Получен запрос на список путей для скачивания")
+        logger.info(f" API: Получен запрос на список путей для скачивания")
 
         # Предлагаем несколько вариантов путей
         paths = [
@@ -944,40 +944,9 @@ if __name__ == "__main__":
         app_paths.generated_dir()
 
         if getattr(sys, "frozen", False):
-            import threading
-            import time
-
-            def run_server():
-                uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
-
-            server_thread = threading.Thread(target=run_server, daemon=True)
-            server_thread.start()
-            time.sleep(2)
-
-            # Автоматически открываем браузер, чтобы приложение всегда было доступно,
-            # даже если встроенный WebView (Edge Chromium / WebView2 или MSHTML) не работает.
-            try:
-                import webbrowser
-                webbrowser.open("http://127.0.0.1:8000")
-            except Exception as e:
-                logger.warning("Не удалось автоматически открыть браузер: %s", e)
-
-            try:
-                import webview
-                webview.create_window(
-                    "SberAct",
-                    "http://127.0.0.1:8000",
-                    width=1280,
-                    height=800,
-                    resizable=True,
-                    min_size=(800, 600),
-                )
-                webview.start(gui="edgechromium")
-            except (KeyboardInterrupt, SystemExit):
-                pass
-            except Exception as e:
-                logger.warning("Окно приложения недоступно (%s), открываю браузер", e)
-                server_thread.join()
+            # Десктоп: бэкенд — чистый API-сервер на loopback, окно даёт Electron.
+            # (Старый standalone-режим с webview/браузером убран вместе с onefile-сборкой.)
+            uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
         else:
             uvicorn.run(
                 "main:app",
