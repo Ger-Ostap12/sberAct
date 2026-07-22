@@ -121,6 +121,20 @@ class TemplatesResolverMixin:
             return ("fns_restructuring", path, "ФНС: реструктуризация (признание банкротом)") if path else None
         return None
 
+    def _resolve_deceased_act(self, act_id: str, data: Dict[str, Any]):
+        """Роутинг актов «умерший» (ФЛ, selectedDebtorStatus == deceased) при выборе актов.
+        Возвращает (ключ, путь, имя) или None."""
+        root_dir = self._templates_root()
+        deceased_dir = root_dir / "умерший"
+
+        if act_id == "acceptance_definition":
+            path = deceased_dir / "Принятие заявления о призании должника банкротом умерший.docx"
+            return ("acceptance", path, "Определение о принятии (умерший)")
+        if act_id == "final_realization":
+            path = deceased_dir / "Решение Умерший старый.docx"
+            return ("final_realization", path, "Решение реализация (умерший)")
+        return None
+
     def _get_templates_for_procedure(self, procedure_type: str) -> Dict[str, Dict[str, Any]]:
         """Возвращает набор шаблонов для указанного типа процедуры (ВКЛ в РТК без залога)."""
         templates_dir = Path(__file__).parent.parent / "templates"
@@ -243,7 +257,7 @@ class TemplatesResolverMixin:
                 ),
                 "main": entry(
                     "Решение Умерший",
-                    deceased_dir / "Решение Умерший.docx",
+                    deceased_dir / "Решение Умерший старый.docx",
                     2
                 ),
             }
@@ -650,8 +664,8 @@ class TemplatesResolverMixin:
                 2
             ),
             "realization": entry(
-                "Определение о введении реализации имущества (заемщик)",
-                "Определение о введении реализации ЗАЕМЩИК.docx",
+                "Решение о введении реализации имущества (заемщик)",
+                "решение реализ заемщик.docx",
                 3
             )
         }
@@ -690,13 +704,13 @@ class TemplatesResolverMixin:
         elif contest_type == "absent":
             templates["competition"] = entry(
                 "О введении конкурсное (отсутствующий)",
-                "О введении конкурсное отсутствующий .docx",
+                "!О введении конкурсное отсутствующий.docx",
                 2
             )
         elif contest_type == "liquidation":
             templates["competition"] = entry(
                 "О введении конкурсное (ликвидируемый)",
-                "О введении конкурсное ликвидируемый.docx",
+                "!О введении конкурсное ликвидируемый.docx",
                 2
             )
 
@@ -842,24 +856,83 @@ class TemplatesResolverMixin:
                 pass
             return default
 
-        # Базовые папки без залога по типу лица: ФЛ, ЮЛ, ИП, КФХ
-        def _no_collateral_dir(subpath: str, for_entity: str) -> Path:
-            """Папка для актов без залога в зависимости от типа лица."""
-            if "конкурсное" in subpath or "Конкурсное" in subpath:
-                return base_dir / "юр конкурсное ВКЛ в РТК"
-            if "наблюдение" in subpath or "Наблюдение" in subpath:
+        def _rtk_inclusion_path(variant: str, for_entity: str, collateral: bool):
+            """Путь к акту включения в РТК (final_rtk_inclusion) по варианту процедуры.
+            Общая точка для явного variant-блока и no-variant fallback — раньше эти пять
+            путей были прописаны в двух местах и рисковали разъехаться при правках."""
+            if variant == 'realization':
+                if collateral:
+                    return collateral_dir / "Реализация" / "Реализация ВКЛ Залог.docx", "Определение ВКЛ в РТК (реализация с залогом)"
+                return base_dir / "физ реализация ВКЛ в РТК" / "Реализация ВКЛ несколько договоров.docx", "Определение ВКЛ в РТК (реализация)"
+            if variant == 'restructuring':
+                if collateral:
+                    return collateral_dir / "Реструктуризация" / "Реструктуризация ВКЛ Залог.docx", "Определение ВКЛ в РТК (реструктуризация с залогом)"
+                return base_dir / "физ реструк ВКЛ в РТК" / "Реструктуризация ВКЛ.docx", "Определение ВКЛ в РТК (реструктуризация)"
+            if variant == 'competition':
+                if collateral:
+                    return collateral_dir / "Конкурсное" / "Конкурсное ВКЛ в РТК Залог.docx", "Определение ВКЛ в РТК (конкурсное с залогом)"
+                return base_dir / "юр инициир набл + конкурс" / "Конкурсное_ВКЛ_в_РТК (без залога).docx", "Определение ВКЛ в РТК (конкурсное)"
+            if variant == 'observation':
                 if for_entity == "kfh":
-                    return root_dir / "КФХ"
-                return base_dir / "юр ВКЛ в РТК наблюдение"
-            # КФХ по умолчанию использует только наблюдение; для реализации/реструктуризации — физ
+                    if collateral:
+                        return root_dir / "КФХ" / "Наблюдение КФХ Залог.docx", "Определение ВКЛ в РТК (наблюдение КФХ, залог)"
+                    return root_dir / "КФХ" / "Наблюдение КФХ.docx", "Определение ВКЛ в РТК (наблюдение КФХ)"
+                if collateral:
+                    return collateral_dir / "Наблюдение" / "Наблюдение ВКЛ в РТК  Залог.docx", "Определение ВКЛ в РТК (наблюдение с залогом)"
+                return base_dir / "юр ВКЛ в РТК наблюдение" / "Наблюдение ВКЛ в РТК.docx", "Определение ВКЛ в РТК (наблюдение)"
+            return None, None
+
+        def _acceptance_definition_path(for_entity: str, collateral: bool, app_kind: str):
+            """Путь к «Определению о принятии» по контексту (тип лица, залог,
+            инициирование/ВКЛ, статус ЮЛ). Самобанкрот/ФНС/умерший уже отсечены
+            pre-routing-резолверами выше по циклу — сюда они не попадают."""
             if for_entity == "kfh":
-                return base_dir / "физ реализация ВКЛ в РТК"
+                return root_dir / "КФХ" / "Принятие иницирование КФХ.docx", "Определение о принятии"
+
+            debtor_status = str(data.get("selectedDebtorStatus") or data.get("debtorStatus") or "").strip().lower()
             if for_entity == "legal":
-                return base_dir / "юр ВКЛ в РТК наблюдение"
-            # individual, ip — ФЛ / ИП
-            if "реструк" in subpath or "Реструктуризация" in subpath:
-                return base_dir / "физ реструк ВКЛ в РТК"
-            return base_dir / "физ реализация ВКЛ в РТК"
+                if not collateral and debtor_status in ("liquidation", "absent"):
+                    return base_dir / "юр инициир набл + конкурс" / "О принятии заявления.docx", "Определение о принятии"
+                is_observation = ("final_observation" in act_ids) or (data.get("final_rtk_inclusion_variant") == "observation")
+                if collateral:
+                    if is_observation:
+                        return collateral_dir / "Наблюдение" / "Принятие РТК наблюдение.docx", "Определение о принятии"
+                    return collateral_dir / "Конкурсное" / "Принятие РТК конкурсное (Копия).docx", "Определение о принятии"
+                return base_dir / "юр ВКЛ в РТК наблюдение" / "!Принятие РТК наблюдение.docx", "Определение о принятии"
+
+            # individual / ip
+            is_restructuring = ("final_restructuring" in act_ids) or (data.get("final_rtk_inclusion_variant") == "restructuring")
+            if collateral:
+                if app_kind == "other":
+                    return root_dir / "Залог" / "принятие иниц залог недвига.docx", "Определение о принятии"
+                if is_restructuring:
+                    return collateral_dir / "Реструктуризация" / "Реструктуризация принятие РТК Залог.docx", "Определение о принятии"
+                return collateral_dir / "Реализация" / "Реализация принятие РТК Залог.docx", "Определение о принятии"
+            if app_kind == "other":
+                return base_dir / "физ иниц рестр + реал" / "Принятие заявления о призании должника банкротом.docx", "Определение о принятии"
+            if is_restructuring:
+                return base_dir / "физ реструк ВКЛ в РТК" / "Реструктуризация принятие РТК.docx", "Определение о принятии"
+            return base_dir / "физ реализация ВКЛ в РТК" / "Реализация принятие РТК.docx", "Определение о принятии"
+
+        def _short_text_path(procedure: str, collateral: bool) -> Path:
+            """Путь к «короткому тексту» (резолютивке) по процедуре + залогу — ОДИН общий
+            на генерацию. Для конкурсного и наблюдения-с-залогом резолютивки пока нет —
+            возвращаем ожидаемый путь (файла нет → генератор выдаст «нет шаблона»)."""
+            if collateral:
+                if procedure == 'realization':
+                    return collateral_dir / "Реализация" / "Резолютивка ВКЛ реализация Залог (+ наблюдение).docx"
+                if procedure == 'restructuring':
+                    return collateral_dir / "Реструктуризация" / "Резолютивка ВКЛ реструктуризация Залог.docx"
+                if procedure == 'observation':
+                    return collateral_dir / "Наблюдение" / "Резолютивка ВКЛ наблюдение Залог.docx"
+                return collateral_dir / "Конкурсное" / "Резолютивка ВКЛ конкурсное Залог.docx"
+            if procedure == 'realization':
+                return base_dir / "физ реализация ВКЛ в РТК" / "Резолютивка ВКЛ реализация.docx"
+            if procedure == 'restructuring':
+                return base_dir / "физ реструк ВКЛ в РТК" / "!Резолютивка ВКЛ реструктуризация.docx"
+            if procedure == 'observation':
+                return base_dir / "юр ВКЛ в РТК наблюдение" / "Наблюдение ВКЛ в РТК (Резолютивка).docx"
+            return base_dir / "юр инициир набл + конкурс" / "Резолютивка ВКЛ конкурсное.docx"
 
         # Дедуп с сохранением порядка: повтор одного ID не должен считаться
         # нерезолвленным на второй итерации (проверка ниже смотрит на прирост templates).
@@ -878,6 +951,7 @@ class TemplatesResolverMixin:
         # используем его, иначе падаем в общую ветку ниже.
         is_fns = self._is_fns_creditor(data)
         is_self = self._is_self_bankruptcy(data)
+        is_deceased = str(data.get("selectedDebtorStatus") or data.get("debtorStatus") or "").strip().lower() == "deceased"
 
         for act_id in act_ids:
             templates_before = len(templates)
@@ -896,6 +970,13 @@ class TemplatesResolverMixin:
                     templates[key] = entry(name, path, order)
                     order += 1
                     continue
+            if is_deceased:
+                resolved = self._resolve_deceased_act(act_id, data)
+                if resolved:
+                    key, path, name = resolved
+                    templates[key] = entry(name, path, order)
+                    order += 1
+                    continue
 
             # Финальные СА (строго по выбранному залогу и типу лица)
             if act_id == 'final_realization':
@@ -906,92 +987,102 @@ class TemplatesResolverMixin:
                         order
                     )
                 else:
-                    # Без залога: реализация — для ФЛ и ИП.
-                    # Для физлиц по РТК используем отдельный единый шаблон rtk.docx, если он есть.
-                    root_dir = self._templates_root()
-                    rtk_template = root_dir / "ртк.docx"
-                    if entity_type == "individual" and rtk_template.exists():
-                        templates[act_id] = entry(
-                            "Реализация ВКЛ (РТК)",
-                            rtk_template,
-                            order
-                        )
-                    else:
-                        d = _no_collateral_dir("реализация", entity_type)
-                        templates[act_id] = entry(
-                            "Реализация ВКЛ",
-                            d / "Реализация ВКЛ несколько договоров.docx",
-                            order
-                        )
-                order += 1
-            elif act_id == 'final_competition':
-                if has_collateral:
+                    # Без залога: "Решение реализация" — акт инициирования (решение о
+                    # введении реализации), не путать с final_rtk_inclusion (акт включения
+                    # в РТК — отдельный документ, см. ветку final_rtk_inclusion ниже).
                     templates[act_id] = entry(
-                        "Конкурсное ВКЛ в РТК Залог" + (" (авто)" if is_auto_collateral else ""),
-                        collateral_dir / "Конкурсное" / "Конкурсное ВКЛ в РТК Залог.docx",
+                        "Решение о введении реализации имущества (заемщик)",
+                        base_dir / "физ иниц рестр + реал" / "решение реализ заемщик.docx",
                         order
                     )
-                else:
-                    d = _resolve_competition_dir()
-                    preferred = d / "Решение конкурсное.docx"
-                    if preferred.exists():
-                        template_path = preferred
+                order += 1
+            elif act_id == 'final_competition':
+                # "Решение конкурсное" — акт введения конкурсного производства, не путать
+                # с final_rtk_inclusion (акт включения в РТК — отдельный документ).
+                # Различаем ликвидируемый/отсутствующий по selectedDebtorStatus.
+                debtor_status = str(data.get("selectedDebtorStatus") or data.get("debtorStatus") or "").strip().lower()
+                if has_collateral:
+                    competition_collateral_dir = collateral_dir / "Конкурсное" if not is_auto_collateral else (root_dir / "Залог" / "Конкурсное")
+                    if debtor_status == "absent":
+                        template_path = competition_collateral_dir / "О введении конкурсное отсутствующий (залог).docx"
                     else:
-                        template_path = _pick_docx_by_keywords_multi(d, [
-                            ["РЕШЕНИЕ", "КОНКУРС", "ПРОИЗВОДСТВА"],
-                            ["РЕШЕНИЕ", "КОНКУРС", "ЗАВЕРШЕНИИ"],
-                            ["РЕШЕНИЕ", "КОНКУРС"]
-                        ])
-                    if template_path is None and (base_dir / "юр инициир набл + конкурс").exists():
-                        alt_d = base_dir / "юр инициир набл + конкурс"
-                        template_path = _pick_docx_by_keywords_multi(alt_d, [
-                            ["РЕШЕНИЕ", "КОНКУРС", "ПРОИЗВОДСТВА"],
-                            ["РЕШЕНИЕ", "КОНКУРС"]
-                        ])
-                    if template_path is None:
-                        template_path = preferred if preferred.exists() else (d / "Решение конкурсное.docx")
-
+                        template_path = competition_collateral_dir / "О введении конкурсное ликвидируемый (залог).docx"
+                    templates[act_id] = entry("Решение конкурсное" + (" (авто)" if is_auto_collateral else ""), template_path, order)
+                else:
+                    initiation_legal_dir = base_dir / "юр инициир набл + конкурс"
+                    if debtor_status == "absent":
+                        template_path = initiation_legal_dir / "!О введении конкурсное отсутствующий.docx"
+                    elif debtor_status == "liquidation":
+                        template_path = initiation_legal_dir / "!О введении конкурсное ликвидируемый.docx"
+                    else:
+                        # Статус не указан явно — подбор по ключевым словам как последняя линия обороны.
+                        d = _resolve_competition_dir()
+                        preferred = d / "Решение конкурсное.docx"
+                        if preferred.exists():
+                            template_path = preferred
+                        else:
+                            template_path = _pick_docx_by_keywords_multi(d, [
+                                ["РЕШЕНИЕ", "КОНКУРС", "ПРОИЗВОДСТВА"],
+                                ["РЕШЕНИЕ", "КОНКУРС", "ЗАВЕРШЕНИИ"],
+                                ["РЕШЕНИЕ", "КОНКУРС"]
+                            ])
+                        if template_path is None and initiation_legal_dir.exists():
+                            template_path = _pick_docx_by_keywords_multi(initiation_legal_dir, [
+                                ["РЕШЕНИЕ", "КОНКУРС", "ПРОИЗВОДСТВА"],
+                                ["РЕШЕНИЕ", "КОНКУРС"]
+                            ])
+                        if template_path is None:
+                            template_path = preferred if preferred.exists() else (d / "Решение конкурсное.docx")
                     templates[act_id] = entry("Решение конкурсное", template_path, order)
                 order += 1
             elif act_id == 'final_restructuring':
+                # "Определение реструктуризация" — акт инициирования (введение процедуры),
+                # не путать с final_rtk_inclusion (акт включения в РТК, отдельный документ).
                 if has_collateral:
                     templates[act_id] = entry(
-                        "Реструктуризация ВКЛ Залог" + (" (авто)" if is_auto_collateral else ""),
-                        collateral_dir / "Реструктуризация" / "Реструктуризация ВКЛ Залог.docx",
+                        "Определение о введении реструктуризации долгов (заемщик)" + (" (авто)" if is_auto_collateral else ""),
+                        collateral_dir / "Реструктуризация" / "Определение о введении реструктуризации долгов (заемщик) (залог).docx",
                         order
                     )
                 else:
-                    d = _no_collateral_dir("реструк", entity_type)
                     templates[act_id] = entry(
-                        "Реструктуризация ВКЛ",
-                        d / "Реструктуризация ВКЛ.docx",
+                        "Определение о введении реструктуризации долгов (заемщик)",
+                        base_dir / "физ иниц рестр + реал" / "Определение о введении реструктуризации ЗАЕМЩИК.docx",
                         order
                     )
                 order += 1
             elif act_id == 'final_observation':
-                if has_collateral:
-                    templates[act_id] = entry(
-                        "Наблюдение ВКЛ в РТК Залог" + (" (авто)" if is_auto_collateral else ""),
-                        collateral_dir / "Наблюдение" / "Наблюдение ВКЛ в РТК  Залог.docx",
-                        order
-                    )
-                else:
-                    if entity_type == "kfh":
+                # "Определение Наблюдение" — акт введения процедуры наблюдения, не путать
+                # с final_rtk_inclusion (акт включения в РТК — отдельный документ).
+                if entity_type == "kfh":
+                    if has_collateral:
+                        templates[act_id] = entry(
+                            "Наблюдение КФХ Залог",
+                            root_dir / "КФХ" / "Наблюдение КФХ Залог.docx",
+                            order
+                        )
+                    else:
                         templates[act_id] = entry(
                             "Наблюдение КФХ",
                             root_dir / "КФХ" / "Наблюдение КФХ.docx",
                             order
                         )
-                    else:
-                        templates[act_id] = entry(
-                            "Наблюдение ВКЛ в РТК",
-                            base_dir / "юр ВКЛ в РТК наблюдение" / "Наблюдение ВКЛ в РТК.docx",
-                            order
-                        )
+                elif has_collateral:
+                    templates[act_id] = entry(
+                        "Определение Наблюдение (залог)" + (" (авто)" if is_auto_collateral else ""),
+                        collateral_dir / "Наблюдение" / "Принятие РТК наблюдение (залог).docx",
+                        order
+                    )
+                else:
+                    templates[act_id] = entry(
+                        "Определение Наблюдение",
+                        base_dir / "юр ВКЛ в РТК наблюдение" / "Наблюдение_ЮрЛицо.docx",
+                        order
+                    )
                 order += 1
             elif act_id == 'final_rtk_inclusion':
-                # Определение ВКЛ в РТК
-                # Проверяем, есть ли выбранный вариант (реализация / реструктуризация / конкурсное / наблюдение / зареестр)
+                # Определение ВКЛ в РТК (акт включения в реестр — отдельный документ от
+                # final_realization/restructuring/observation/competition, см. выше).
                 rtk_variant = data.get("final_rtk_inclusion_variant")
 
                 if rtk_variant == 'registry':
@@ -1000,149 +1091,33 @@ class TemplatesResolverMixin:
                         new_acts_dir / "внести зареестр.docx",
                         order
                     )
-                elif rtk_variant == 'realization':
-                    if has_collateral:
-                        templates['rtk_inclusion'] = entry(
-                            "Определение ВКЛ в РТК (реализация с залогом)",
-                            collateral_dir / "Реализация" / "Реализация ВКЛ Залог.docx",
-                            order
-                        )
-                    else:
-                        # Используем шаблон из "шаблоны актов без залогов\ртк.docx"
-                        path = base_dir / "ртк.docx"
-                        templates['rtk_inclusion'] = entry(
-                            "Определение ВКЛ в РТК (реализация)",
-                            path,
-                            order
-                        )
-                elif rtk_variant == 'restructuring':
-                    if has_collateral:
-                        templates['rtk_inclusion'] = entry(
-                            "Определение ВКЛ в РТК (реструктуризация с залогом)",
-                            collateral_dir / "Реструктуризация" / "Реструктуризация ВКЛ Залог.docx",
-                            order
-                        )
-                    else:
-                        # Используем шаблон из "шаблоны актов без залогов\ртк.docx"
-                        path = base_dir / "ртк.docx"
-                        templates['rtk_inclusion'] = entry(
-                            "Определение ВКЛ в РТК (реструктуризация)",
-                            path,
-                            order
-                        )
-                elif rtk_variant == 'competition':
-                    if has_collateral:
-                        templates['rtk_inclusion'] = entry(
-                            "Определение ВКЛ в РТК (конкурсное с залогом)",
-                            collateral_dir / "Конкурсное" / "Конкурсное ВКЛ в РТК Залог.docx",
-                            order
-                        )
-                    else:
-                        d = _resolve_competition_dir()
-                        preferred = d / "Конкурсное ВКЛ в РТК.docx"
-                        if preferred.exists():
-                            template_path = preferred
-                        else:
-                            template_path = _pick_docx_by_keywords_multi(d, [
-                                ["ОПРЕДЕЛЕНИЕ", "ВКЛЮЧЕНИИ", "ТРЕБОВАНИЙ", "РЕЕСТР"],
-                                ["ОПРЕДЕЛЕНИЕ", "ВКЛ", "РЕЕСТР", "КРЕДИТОР"],
-                                ["ОПРЕДЕЛЕНИЕ", "КОНКУРС", "ВКЛ"],
-                                ["ОПРЕДЕЛЕНИЕ", "ВКЛ", "ТРЕБОВАНИЙ"],
-                                ["ОПРЕДЕЛЕНИЕ", "ВКЛ"]
-                            ])
-                        if template_path is None:
-                            template_path = preferred if preferred.exists() else (d / "Конкурсное ВКЛ в РТК.docx")
-
-                        templates['rtk_inclusion'] = entry("Определение ВКЛ в РТК (конкурсное)", template_path, order)
-                elif rtk_variant == 'observation':
-                    if has_collateral:
-                        templates['rtk_inclusion'] = entry(
-                            "Определение ВКЛ в РТК (наблюдение с залогом)",
-                            collateral_dir / "Наблюдение" / "Наблюдение ВКЛ в РТК  Залог.docx",
-                            order
-                        )
-                    else:
-                        if entity_type == "kfh":
-                            templates['rtk_inclusion'] = entry(
-                                "Определение ВКЛ в РТК (наблюдение КФХ)",
-                                root_dir / "КФХ" / "Наблюдение КФХ.docx",
-                                order
-                            )
-                        else:
-                            templates['rtk_inclusion'] = entry(
-                                "Определение ВКЛ в РТК (наблюдение)",
-                                base_dir / "юр ВКЛ в РТК наблюдение" / "Наблюдение ВКЛ в РТК.docx",
-                                order
-                            )
                 else:
-                    # Вариант не указан: по типу лица — ЮЛ/КФХ наблюдение, ФЛ/ИП реализация
-                    if entity_type in ('legal', 'kfh'):
-                        if has_collateral:
-                            templates['rtk_inclusion'] = entry(
-                                "Определение ВКЛ в РТК (наблюдение с залогом)",
-                                collateral_dir / "Наблюдение" / "Наблюдение ВКЛ в РТК  Залог.docx",
-                                order
-                            )
-                        else:
-                            if entity_type == "kfh":
-                                templates['rtk_inclusion'] = entry(
-                                    "Определение ВКЛ в РТК (наблюдение КФХ)",
-                                    root_dir / "КФХ" / "Наблюдение КФХ.docx",
-                                    order
-                                )
-                            else:
-                                templates['rtk_inclusion'] = entry(
-                                    "Определение ВКЛ в РТК (наблюдение)",
-                                    base_dir / "юр ВКЛ в РТК наблюдение" / "Наблюдение ВКЛ в РТК.docx",
-                                    order
-                                )
-                    else:
-                        if has_collateral:
-                            templates['rtk_inclusion'] = entry(
-                                "Определение ВКЛ в РТК (реализация с залогом)",
-                                collateral_dir / "Реализация" / "Реализация ВКЛ Залог.docx",
-                                order
-                            )
-                        else:
-                            # Используем шаблон из "шаблоны актов без залогов\ртк.docx"
-                            path = base_dir / "ртк.docx"
-                            templates['rtk_inclusion'] = entry(
-                                "Определение ВКЛ в РТК (реализация)",
-                                path,
-                                order
-                            )
+                    variant = rtk_variant if rtk_variant in ('realization', 'restructuring', 'competition', 'observation') else None
+                    if variant is None:
+                        # Вариант не указан: по типу лица — ЮЛ/КФХ наблюдение, ФЛ/ИП реализация
+                        variant = 'observation' if entity_type in ('legal', 'kfh') else 'realization'
+                    template_path, label = _rtk_inclusion_path(variant, entity_type, has_collateral)
+                    if template_path is not None:
+                        templates['rtk_inclusion'] = entry(label, template_path, order)
                 order += 1
 
-            # Принятие (по типу лица: ФЛ/ЮЛ/ИП — принятие РТК, КФХ — инициирование КФХ)
+            # Принятие (по типу лица/залогу/инициирование-vs-ВКЛ — см. _acceptance_definition_path)
             elif act_id == 'acceptance_definition':
-                if entity_type == "kfh":
-                    path = root_dir / "КФХ" / "Принятие иницирование КФХ.docx"
-                else:
-                    # Используем шаблон из "промежуточные_особые\заменить Принятие\принятие ртк.docx"
-                    path = new_acts_dir / "заменить Принятие" / "принятие ртк.docx"
-                    # Если файл не найден, используем старый путь как fallback
-                    if not path.exists():
-                        if entity_type == "legal":
-                            path = base_dir / "юр ВКЛ в РТК наблюдение" / "Принятие РТК наблюдение.docx" if (base_dir / "юр ВКЛ в РТК наблюдение" / "Принятие РТК наблюдение.docx").exists() else (base_dir / "физ реализация ВКЛ в РТК" / "Реализация принятие РТК.docx")
-                        else:
-                            path = base_dir / "физ реализация ВКЛ в РТК" / "Реализация принятие РТК.docx"
-                templates['acceptance'] = entry(
-                    "Определение о принятии",
-                    path,
-                    order
-                )
+                application_kind = str(data.get("selectedApplicationKind") or data.get("applicationKind") or "").strip().lower()
+                path, label = _acceptance_definition_path(entity_type, has_collateral, application_kind)
+                templates['acceptance'] = entry(label, path, order)
                 order += 1
             elif act_id == 'acceptance_no_motion_no_duty':
                 templates['acceptance_no_motion'] = entry(
                     "Определение Б/Д нет ГП",
-                    new_acts_dir / "внести Обездвижка" / "бд ртк.docx",
+                    new_acts_dir / "внести Обездвижка" / "Определение БД нет ГП.docx",
                     order
                 )
                 order += 1
             elif act_id == 'acceptance_no_motion_no_duty_collateral':
                 templates['acceptance_no_motion_collateral'] = entry(
                     "Определение Б/Д нет ГП залог",
-                    new_acts_dir / "внести Обездвижка" / "бд ртк ГП залог недвижка.docx",
+                    new_acts_dir / "внести Обездвижка" / "Определение БД не гп залог.docx",
                     order
                 )
                 order += 1
@@ -1151,14 +1126,14 @@ class TemplatesResolverMixin:
                 for_parties = data.get('acceptance_no_motion_other_forParties', '')
                 templates['acceptance_no_motion_other'] = entry(
                     "Определение Б/Д иное",
-                    new_acts_dir / "внести Обездвижка" / "бд ртк правопреемство.docx",
+                    new_acts_dir / "Определение БД иное.docx",
                     order
                 )
                 order += 1
             elif act_id == 'acceptance_after_no_motion':
                 templates['acceptance_after_no_motion'] = entry(
                     "Принятие после Б/Д",
-                    new_acts_dir / "принятие ртк после БД.docx",
+                    new_acts_dir / "принятие после БД.docx",
                     order
                 )
                 order += 1
@@ -1167,10 +1142,9 @@ class TemplatesResolverMixin:
             elif act_id == 'intermediate_postponement':
                 reason = data.get('intermediate_postponement_reason', '')
                 for_parties = data.get('intermediate_postponement_forParties', '')
-                postponement_path = (new_acts_dir / "внести отложка" / "отложение залог+предл мир.docx") if has_collateral else (new_acts_dir / "внести отложка" / "отлож документар+мировое.docx")
                 templates['postponement'] = entry(
                     "Отложение",
-                    postponement_path,
+                    new_acts_dir / "внести отложка" / "отложение.docx",
                     order
                 )
                 order += 1
@@ -1186,21 +1160,21 @@ class TemplatesResolverMixin:
             elif act_id == 'intermediate_extend_no_motion':
                 templates['extend_no_motion'] = entry(
                     "Продление Б/Д",
-                    base_dir / "Промежуточные" / "Продление Б/Д.docx",
+                    new_acts_dir / "продление БД.docx",
                     order
                 )
                 order += 1
             elif act_id == 'intermediate_extend_simplified':
                 templates['extend_simplified'] = entry(
                     "Продление упрощёнка",
-                    base_dir / "Промежуточные" / "Продление упрощёнка.docx",
+                    new_acts_dir / "внести отложка" / "продление упрощенка.docx",
                     order
                 )
                 order += 1
             elif act_id == 'intermediate_simplified_to_main':
                 templates['simplified_to_main'] = entry(
                     "Переход из упрощёнки в основное производство",
-                    new_acts_dir / "внести Назначение после упрощенки" / "Назачение после упрощенки.docx",
+                    new_acts_dir / "внести Назначение после упрощенки" / "Переход из упрощенки в основное производство.docx",
                     order
                 )
                 order += 1
@@ -1208,6 +1182,28 @@ class TemplatesResolverMixin:
             if len(templates) == templates_before:
                 unresolved.append(act_id)
                 logger.warning(f"⚠️ Нет ветки маппинга для выбранного акта: {act_id}")
+
+        # «Короткий текст» (резолютивка) — доп. документ ОДИН на генерацию, если включён
+        # чекбокс. Процедуру берём из выбранного финального акта / варианта ВКЛ. Для ФНС
+        # включенка сама по себе является резолютивкой (генерится как final_rtk_inclusion) —
+        # отдельный короткий текст не добавляем.
+        want_short_text = bool(data.get("selectedShortText") or data.get("shortText"))
+        if want_short_text and not is_fns:
+            variant = data.get("final_rtk_inclusion_variant")
+            if variant in ('realization', 'restructuring', 'competition', 'observation'):
+                procedure = variant
+            elif 'final_restructuring' in act_ids:
+                procedure = 'restructuring'
+            elif 'final_competition' in act_ids:
+                procedure = 'competition'
+            elif 'final_observation' in act_ids:
+                procedure = 'observation'
+            elif 'final_realization' in act_ids:
+                procedure = 'realization'
+            else:
+                procedure = 'observation' if entity_type in ('legal', 'kfh') else 'realization'
+            templates['short_text'] = entry("Короткий текст (резолютивка)", _short_text_path(procedure, has_collateral), order)
+            order += 1
 
         return templates, unresolved
 

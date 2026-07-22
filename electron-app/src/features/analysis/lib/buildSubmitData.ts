@@ -16,6 +16,8 @@ export interface SubmitDataInput {
   debtorStatus: DebtorStatus | null;
   applicationKind: ApplicationKind;
   selectedActs: SelectedAct[];
+  /** Чекбокс «Короткий текст»: доп. генерация резолютивки основной процедуры. */
+  shortText?: boolean;
 }
 
 /**
@@ -25,7 +27,7 @@ export interface SubmitDataInput {
  * penalties→forfeit, stateDuty↔stateDuty16). Чистая функция — тестируется напрямую.
  */
 export const buildSubmitData = (input: SubmitDataInput): ExtractedData => {
-  const { analysisResult, editedFields, entityType, collateralOption, debtorStatus, applicationKind, selectedActs } =
+  const { analysisResult, editedFields, entityType, collateralOption, debtorStatus, applicationKind, selectedActs, shortText } =
     input;
 
   // Финальный тип лица: выбранный пользователем (с приведением) или автоопределённый
@@ -52,6 +54,7 @@ export const buildSubmitData = (input: SubmitDataInput): ExtractedData => {
       selectedApplicationKind: applicationKind || undefined,
       selectedActsIds: selected.map((a) => a.id).join(',') || undefined,
       selectedActsData: JSON.stringify(selected) || undefined,
+      selectedShortText: shortText ? 'true' : undefined,
     },
     collaterals: analysisResult.collaterals || [],
     thirdParties: analysisResult.thirdParties || [],

@@ -339,6 +339,19 @@ class ObligationsRenderMixin:
             self._replace_regex_in_doc(doc, r",\s*\.", ".")
             self._replace_regex_in_doc(doc, r"\s{2,}", " ")
 
+        # Голые остаточные слоты незаполненных договоров — БЕЗ гейта is_mortgage, т.к.
+        # у ипотеки порядок маркеров обратный ([100]=№, [110]=дата → "№ [100] от [110]"),
+        # и после обнуления остаётся хвост "№ от", а у обычных актов — "от № ". Чистим ОБА
+        # порядка. Пустые = после № и после "от" нет цифры → реальные "№ 123 от 12.03.2024"
+        # не трогаем. Пропускаем, если пустых слотов нет (obligations покрывают все).
+        if not skip_obligations and obligations_count < (max_slots if max_slots else 6):
+            for _ in range(8):
+                self._replace_regex_in_doc(doc, r"(?:,\s*)?от\s+№\s*(?=,|\.|\)|;|$)", "")
+                self._replace_regex_in_doc(doc, r"(?:,\s*)?№\s*от\s*(?=,|\.|\)|;|$)", "")
+            self._replace_regex_in_doc(doc, r",\s*,", ",")
+            self._replace_regex_in_doc(doc, r",\s*\.", ".")
+            self._replace_regex_in_doc(doc, r"\s{2,}", " ")
+
     def _format_obligation_entry(self, obligation: Dict[str, Any]) -> str:
         """Формирует человекочитаемое описание обязательства для текста документа."""
         if not isinstance(obligation, dict):
