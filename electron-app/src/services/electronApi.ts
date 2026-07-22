@@ -149,6 +149,8 @@ export interface ElectronAPI {
   /** Остановка sidecar-процесса (освобождает память после convert-шага). */
   converterStop: () => Promise<{ ok: boolean }>;
   converterStatus: () => Promise<ConverterProcessStatus>;
+  /** Версия приложения (десктоп — app.getVersion(); браузер — REACT_APP_VERSION). */
+  getAppVersion: () => Promise<string>;
 }
 
 declare global {
@@ -249,6 +251,9 @@ export const converterStart = (): Promise<ConverterStartResult> => webApi.conver
 export const converterStop = (): Promise<{ ok: boolean }> => webApi.converterStop();
 
 export const converterStatus = (): Promise<ConverterProcessStatus> => webApi.converterStatus();
+
+/** Версия приложения (десктоп — из main-процесса; браузер — REACT_APP_VERSION). */
+export const getAppVersion = (): Promise<string> => getApi().getAppVersion();
 
 /** Переключение DevTools с фолбэком на глобальную openDevTools (как было в App). */
 export const toggleDevTools = (): void => {

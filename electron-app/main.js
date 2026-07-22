@@ -510,6 +510,10 @@ ipcMain.handle('get-extracted-data', () => {
   return global.extractedData || null;
 });
 
+// Версия приложения — единый источник: корневой package.json (его же берёт
+// electron-builder для инсталлятора и latest.yml). Показывается в шапке фронта.
+ipcMain.handle('app:get-version', () => app.getVersion());
+
 ipcMain.handle('set-extracted-data', (event, data) => {
   global.extractedData = data;
   return true;

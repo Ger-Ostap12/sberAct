@@ -269,7 +269,10 @@ try {
   },
 
   // Метод для открытия DevTools из рендерера
-  toggleDevTools: () => ipcRenderer.invoke('toggle-devtools')
+  toggleDevTools: () => ipcRenderer.invoke('toggle-devtools'),
+
+  // Версия приложения из main-процесса (app.getVersion() = корневой package.json)
+  getAppVersion: () => ipcRenderer.invoke('app:get-version')
 });
 
 // Добавляем глобальную функцию для открытия DevTools через консоль

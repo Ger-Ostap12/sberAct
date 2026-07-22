@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box, Container, Typography, AppBar, Toolbar, IconButton, Tooltip } from '@mui/material';
 import { LocalOffer as DocumentIcon, BugReport as DevToolsIcon } from '@mui/icons-material';
@@ -8,6 +8,7 @@ import DocumentPreview from './features/preview/DocumentPreview';
 import ConvertScreen from './features/convert/ConvertScreen';
 import { DocumentData, TemplateType, ExtractedData, AnalysisResult } from './types';
 import { pickTemplate } from './templates';
+import { getAppVersion } from './services/electronApi';
 import { toggleDevTools } from './services/electronApi';
 
 const theme = createTheme({
@@ -56,6 +57,11 @@ function App() {
   const [generatedDocument, setGeneratedDocument] = useState<string | null>(null);
   /** PDF, ожидающий OCR-конвертации (шаг convert). */
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [appVersion, setAppVersion] = useState<string>('');
+
+  useEffect(() => {
+    getAppVersion().then(setAppVersion).catch(() => setAppVersion(''));
+  }, []);
 
   const handleDocumentUploaded = (data: DocumentData, analysisResult?: AnalysisResult) => {
     setDocumentData(data);
@@ -164,9 +170,18 @@ function App() {
         <AppBar position="static" elevation={0} sx={{ backgroundColor: 'white', color: 'primary.main' }}>
           <Toolbar>
             <DocumentIcon sx={{ mr: 2, fontSize: 32 }} />
-            <Typography variant="h4" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
+            <Typography variant="h4" component="div" sx={{ fontWeight: 600 }}>
               SberAct Document Generator
             </Typography>
+            {appVersion && (
+              <Typography
+                variant="body2"
+                sx={{ ml: 1.5, color: 'text.secondary', fontWeight: 500 }}
+              >
+                v{appVersion}
+              </Typography>
+            )}
+            <Box sx={{ flexGrow: 1 }} />
             <Tooltip title="Открыть консоль разработчика (F12)">
               <IconButton
                 color="inherit"
