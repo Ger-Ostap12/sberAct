@@ -17,11 +17,16 @@
 # -IncludeConverter also hashes the converter (~1-2 min) and includes changed
 # files. Omit it for an app-only update (converter unchanged).
 #
+# -BaselineOnly records the current converter as the delta baseline WITHOUT
+# building an update (no app artifacts, no file copies). Use it once for a version
+# whose converter is already shipped, so future deltas stay minimal.
+#
 # NOTE: keep this file ASCII-only. Windows PowerShell 5.1 reads .ps1 without a BOM
 # as cp1251 and mangles non-ASCII, breaking the parser.
 
 param(
-    [switch]$IncludeConverter
+    [switch]$IncludeConverter,
+    [switch]$BaselineOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -30,6 +35,41 @@ $release = Join-Path $root 'release'
 
 $pkg = Get-Content (Join-Path $root 'package.json') -Raw | ConvertFrom-Json
 $version = $pkg.version
+
+# Hashes every file under the converter into a manifest {version, files:[{path,sha256,size}]}.
+function Get-ConverterManifest([string]$converterSrc, [string]$fallbackVersion, [string]$projectRoot) {
+    $convVersion = $fallbackVersion
+    try {
+        $sha = (& git -C (Join-Path $projectRoot 'converter') rev-parse --short HEAD 2>$null)
+        if ($sha) { $convVersion = $sha.Trim() }
+    } catch { }
+
+    $rootLen = ($converterSrc.TrimEnd('\')).Length + 1
+    $files = New-Object System.Collections.Generic.List[object]
+    foreach ($f in (Get-ChildItem $converterSrc -Recurse -File)) {
+        $rel = $f.FullName.Substring($rootLen).Replace('\', '/')
+        if ($rel -eq 'converter-manifest.json') { continue }  # do not hash the manifest itself
+        # -LiteralPath: имена вроде [Content_Types].xml (python-docx) содержат
+        # квадратные скобки; с -Path они трактуются как wildcard -> null -> падение.
+        $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $f.FullName).Hash.ToLower()
+        $files.Add([pscustomobject]@{ path = $rel; sha256 = $hash; size = $f.Length })
+    }
+    return [pscustomobject]@{ version = $convVersion; files = $files }
+}
+
+# --- Baseline-only mode: record the converter baseline, build no update ---
+if ($BaselineOnly) {
+    $converterSrc = Join-Path $release 'converter'
+    if (-not (Test-Path $converterSrc)) { throw "Converter not found at $converterSrc. Run: npm run stage:converter" }
+
+    Write-Host "Baseline: hashing converter (this can take a minute)..."
+    $manifest = Get-ConverterManifest $converterSrc $version $root
+    $json = $manifest | ConvertTo-Json -Depth 5
+    $json | Out-File -Encoding utf8 (Join-Path $release 'converter-manifest.baseline.json')
+    $json | Out-File -Encoding utf8 (Join-Path $converterSrc 'converter-manifest.json')
+    Write-Host ("Baseline recorded: {0} files, version {1}. No update built." -f $manifest.files.Count, $manifest.version)
+    return
+}
 
 # --- 1. Locate electron-updater artifacts ---
 $yml = Join-Path $release 'latest.yml'
@@ -66,23 +106,8 @@ if ($IncludeConverter) {
         throw "Converter not found at $converterSrc. Run: npm run stage:converter"
     }
 
-    # Converter version = submodule short SHA (meaningful), fallback to app version.
-    $convVersion = $version
-    try {
-        $sha = (& git -C (Join-Path $root 'converter') rev-parse --short HEAD 2>$null)
-        if ($sha) { $convVersion = $sha.Trim() }
-    } catch { }
-
     Write-Host "Hashing converter (this can take a minute)..."
-    $rootLen = ($converterSrc.TrimEnd('\')).Length + 1
-    $manifestFiles = New-Object System.Collections.Generic.List[object]
-    foreach ($f in (Get-ChildItem $converterSrc -Recurse -File)) {
-        $rel = $f.FullName.Substring($rootLen).Replace('\', '/')
-        if ($rel -eq 'converter-manifest.json') { continue }  # do not hash the manifest itself
-        $hash = (Get-FileHash -Algorithm SHA256 -Path $f.FullName).Hash.ToLower()
-        $manifestFiles.Add([pscustomobject]@{ path = $rel; sha256 = $hash; size = $f.Length })
-    }
-    $manifest = [pscustomobject]@{ version = $convVersion; files = $manifestFiles }
+    $manifest = Get-ConverterManifest $converterSrc $version $root
 
     # Diff against baseline.
     $baseByPath = @{}
@@ -95,14 +120,15 @@ if ($IncludeConverter) {
 
     $convOut = Join-Path $outDir 'converter'
     $changed = 0
-    foreach ($mf in $manifestFiles) {
+    foreach ($mf in $manifest.files) {
         $prev = $null
         if ($baseByPath.ContainsKey($mf.path)) { $prev = $baseByPath[$mf.path] }
         if ($prev -ne $mf.sha256) {
             $relWin = $mf.path.Replace('/', '\')
             $dst = Join-Path $convOut $relWin
-            New-Item -ItemType Directory -Force (Split-Path $dst) | Out-Null
-            Copy-Item (Join-Path $converterSrc $relWin) $dst
+            New-Item -ItemType Directory -Force (Split-Path -LiteralPath $dst) | Out-Null
+            # -LiteralPath на источнике: скобки в именах не должны глобиться.
+            Copy-Item -LiteralPath (Join-Path $converterSrc $relWin) -Destination $dst
             $changed++
         }
     }
@@ -116,7 +142,7 @@ if ($IncludeConverter) {
     # Update the baseline for the next build's delta.
     $json | Out-File -Encoding utf8 $baselinePath
 
-    Write-Host ("Converter delta: {0} changed file(s), version {1}" -f $changed, $convVersion)
+    Write-Host ("Converter delta: {0} changed file(s), version {1}" -f $changed, $manifest.version)
     if ($changed -eq 0) {
         if (Test-Path $convOut) { Remove-Item -Recurse -Force $convOut }
         Remove-Item -Force (Join-Path $outDir 'converter-manifest.json') -ErrorAction SilentlyContinue
