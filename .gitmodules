@@ -1,3 +1,4 @@
 [submodule "converter"]
 	path = converter
 	url = https://github.com/Andrew09127/Converter_OCR_Tesseract
+	ignore = dirty

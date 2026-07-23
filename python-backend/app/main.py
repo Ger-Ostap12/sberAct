@@ -499,14 +499,34 @@ def _converter_command() -> Optional[list]:
     """
     is_windows = sys.platform == "win32"
     py_rel = Path("Scripts" if is_windows else "bin") / ("python.exe" if is_windows else "python")
+    # Прод: портируемый Python рядом с конвертером (assemble-converter.ps1), зависимости
+    # берём из .venv через PYTHONPATH (см. _converter_env). .venv сам не самодостаточен.
+    runtime_py = CONVERTER_DIR / "pyruntime" / ("python.exe" if is_windows else Path("bin") / "python")
     # install_offline.bat конвертера создаёт `.venv`; `venv` — фолбэк на ручную установку
     candidates = [CONVERTER_DIR / ".venv" / py_rel, CONVERTER_DIR / "venv" / py_rel]
     venv_python = next((p for p in candidates if p.exists()), None)
     entry = CONVERTER_DIR / "main.py"
-    launcher = Path(__file__).resolve().parent / "run_converter.py"
-    if venv_python is None or not entry.exists():
+    # Лаунчер: в проде рядом с конвертером (исходников бэкенда нет), в dev — в app/
+    launcher = CONVERTER_DIR / "run_converter.py"
+    if not launcher.exists():
+        launcher = Path(__file__).resolve().parent / "run_converter.py"
+    if not entry.exists():
         return None
-    return [str(venv_python), str(launcher)]
+    if runtime_py.exists():
+        return [str(runtime_py), str(launcher)]
+    if venv_python is not None:
+        return [str(venv_python), str(launcher)]
+    return None
+
+
+def _converter_env() -> dict:
+    """Доп. env для запуска конвертера: в проде — PYTHONPATH на .venv/site-packages."""
+    is_windows = sys.platform == "win32"
+    runtime_py = CONVERTER_DIR / "pyruntime" / ("python.exe" if is_windows else Path("bin") / "python")
+    if not runtime_py.exists():
+        return {}
+    site = CONVERTER_DIR / ".venv" / ("Lib/site-packages" if is_windows else "lib/python3.12/site-packages")
+    return {"PYTHONPATH": str(site)} if site.exists() else {}
 
 
 @app.post("/converter/start")
@@ -539,29 +559,37 @@ async def converter_start():
                 ),
             }
 
-        logger.info("Запускаем конвертер: %s", " ".join(command))
-        _converter_process = subprocess.Popen(
-            command,
-            cwd=str(CONVERTER_DIR),
-            env={
-                **os.environ,
-                "CONVERTER_PORT": CONVERTER_PORT,
-                "CONVERTER_DIR": str(CONVERTER_DIR),
-            },
-        )
+        # Любой сбой спавна/ожидания отдаём как {ok:false}, а не 500 — иначе фронт
+        # ловит HTTP-ошибку и показывает пользователю пугающий экран вместо «идёт запуск».
+        try:
+            logger.info("Запускаем конвертер: %s", " ".join(command))
+            _converter_process = subprocess.Popen(
+                command,
+                cwd=str(CONVERTER_DIR),
+                env={
+                    **os.environ,
+                    "CONVERTER_PORT": CONVERTER_PORT,
+                    "CONVERTER_DIR": str(CONVERTER_DIR),
+                    **_converter_env(),
+                },
+            )
 
-        deadline = asyncio.get_event_loop().time() + CONVERTER_START_TIMEOUT_S
-        while asyncio.get_event_loop().time() < deadline:
-            if _converter_process.poll() is not None:
-                code = _converter_process.returncode
-                _converter_process = None
-                return {"ok": False, "error": f"Конвертер завершился до готовности (код {code})"}
-            if await _converter_healthy():
-                return {"ok": True, "external": False}
-            await asyncio.sleep(1.0)
+            deadline = asyncio.get_event_loop().time() + CONVERTER_START_TIMEOUT_S
+            while asyncio.get_event_loop().time() < deadline:
+                if _converter_process.poll() is not None:
+                    code = _converter_process.returncode
+                    _converter_process = None
+                    return {"ok": False, "error": f"Конвертер завершился до готовности (код {code})"}
+                if await _converter_healthy():
+                    return {"ok": True, "external": False}
+                await asyncio.sleep(1.0)
 
-        _kill_converter()
-        return {"ok": False, "error": f"Конвертер не поднялся за {CONVERTER_START_TIMEOUT_S} с"}
+            _kill_converter()
+            return {"ok": False, "error": f"Конвертер не поднялся за {CONVERTER_START_TIMEOUT_S} с"}
+        except Exception as e:
+            logger.exception("Сбой запуска конвертера")
+            _kill_converter()
+            return {"ok": False, "error": f"Не удалось запустить конвертер: {e}"}
 
 
 def _kill_converter() -> None:

@@ -30,6 +30,24 @@ if (Test-Path $pyruntime) { Remove-Item -Recurse -Force $pyruntime }
 Write-Host "Copying Python 3.12: $basePython -> $pyruntime"
 Copy-Item -Recurse -Force $basePython $pyruntime
 
+# The base Python's global site-packages (torch, gradio, scipy, ...) are NOT needed:
+# converter deps come from .venv via PYTHONPATH (.venv has include-system-site-packages=false).
+# Shipping them bloats the installer by gigabytes and drags in junk files that break NSIS.
+# Keep only pip/setuptools essentials so the interpreter stays usable.
+$sitePkgs = Join-Path $pyruntime 'Lib\site-packages'
+if (Test-Path $sitePkgs) {
+    $keepPrefixes = @('pip', 'setuptools', '_distutils_hack', 'pkg_resources', 'wheel')
+    Get-ChildItem $sitePkgs -Force | Where-Object {
+        $n = $_.Name
+        $keepIt = $false
+        foreach ($p in $keepPrefixes) {
+            if ($n -eq $p -or $n -like "$p-*") { $keepIt = $true; break }
+        }
+        -not $keepIt
+    } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host "Pruned pyruntime site-packages (kept pip/setuptools only)"
+}
+
 # Launcher: backend sources are absent in production, ship a copy next to converter
 $launcherSrc = Join-Path $root 'python-backend\app\run_converter.py'
 Copy-Item -Force $launcherSrc (Join-Path $converter 'run_converter.py')

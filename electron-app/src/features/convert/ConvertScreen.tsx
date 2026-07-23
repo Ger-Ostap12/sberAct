@@ -149,7 +149,17 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
     const boot = async () => {
       setPhase('starting');
       setError(null);
-      const started = await converterStart();
+      // Холодный старт конвертера — до минуты, плюс бэкенд мог сам ещё подниматься
+      // при первом запуске приложения. Тихо ретраим, показывая «запускается», и
+      // только после нескольких неудач показываем ошибку — чтобы транзиентные сбои
+      // старта не пугали пользователя.
+      let started: { ok: boolean; error?: string } = { ok: false };
+      for (let attempt = 0; attempt < 5 && !cancelled; attempt++) {
+        started = await converterStart();
+        if (cancelled) return;
+        if (started.ok) break;
+        await new Promise((r) => setTimeout(r, 3000));
+      }
       if (cancelled) return;
       if (!started.ok) {
         setError(started.error || 'Конвертер недоступен');

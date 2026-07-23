@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box, Container, Typography, AppBar, Toolbar, IconButton, Tooltip } from '@mui/material';
-import { LocalOffer as DocumentIcon, BugReport as DevToolsIcon } from '@mui/icons-material';
+import { LocalOffer as DocumentIcon, BugReport as DevToolsIcon, SystemUpdateAlt as UpdateIcon } from '@mui/icons-material';
 import DocumentUpload from './features/upload/DocumentUpload';
 import DocumentAnalysis from './features/analysis/DocumentAnalysis';
 import DocumentPreview from './features/preview/DocumentPreview';
 import ConvertScreen from './features/convert/ConvertScreen';
 import { DocumentData, TemplateType, ExtractedData, AnalysisResult } from './types';
 import { pickTemplate } from './templates';
-import { getAppVersion } from './services/electronApi';
+import { getAppVersion, hasElectronAPI } from './services/electronApi';
 import { toggleDevTools } from './services/electronApi';
+import UpdateDialog from './features/update/UpdateDialog';
 
 const theme = createTheme({
   palette: {
@@ -58,6 +59,7 @@ function App() {
   /** PDF, ожидающий OCR-конвертации (шаг convert). */
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [appVersion, setAppVersion] = useState<string>('');
+  const [updateOpen, setUpdateOpen] = useState(false);
 
   useEffect(() => {
     getAppVersion().then(setAppVersion).catch(() => setAppVersion(''));
@@ -182,6 +184,13 @@ function App() {
               </Typography>
             )}
             <Box sx={{ flexGrow: 1 }} />
+            {hasElectronAPI() && (
+              <Tooltip title="Проверить обновления с флешки">
+                <IconButton color="inherit" onClick={() => setUpdateOpen(true)} sx={{ ml: 1 }}>
+                  <UpdateIcon />
+                </IconButton>
+              </Tooltip>
+            )}
             <Tooltip title="Открыть консоль разработчика (F12)">
               <IconButton
                 color="inherit"
@@ -193,6 +202,12 @@ function App() {
             </Tooltip>
           </Toolbar>
         </AppBar>
+
+        <UpdateDialog
+          open={updateOpen}
+          onClose={() => setUpdateOpen(false)}
+          currentVersion={appVersion}
+        />
 
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
           {renderCurrentStep()}

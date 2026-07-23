@@ -1,6 +1,6 @@
 {
   "name": "sberact-document-generator",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Генератор судебных актов на основе заявлений для Astra Linux",
   "main": "electron-app/main.js",
   "scripts": {
@@ -10,7 +10,9 @@
     "build": "cd electron-app && npm run build",
     "pack:backend": "python-backend\\venv\\Scripts\\pyinstaller.exe --noconfirm SberAct.spec",
     "pack:converter": "powershell -ExecutionPolicy Bypass -File scripts/assemble-converter.ps1",
-    "dist:win": "npm run build && npm run pack:backend && npm run pack:converter && electron-builder --win",
+    "stage:converter": "powershell -ExecutionPolicy Bypass -File scripts/stage-usb.ps1",
+    "build:update": "powershell -ExecutionPolicy Bypass -File scripts/build-update.ps1",
+    "dist:win": "npm run build && npm run pack:backend && npm run pack:converter && electron-builder --win && npm run stage:converter",
     "dist:linux": "electron-builder --linux",
     "postinstall": "electron-builder install-app-deps"
   },
@@ -20,9 +22,17 @@
     "directories": {
       "output": "release"
     },
+    "compression": "normal",
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://sberact.local/updates/"
+      }
+    ],
     "files": [
       "electron-app/build/**/*",
       "electron-app/main.js",
+      "electron-app/updater.js",
       "electron-app/preload.js",
       "electron-app/assets/icon.png",
       "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
@@ -41,19 +51,6 @@
       {
         "from": "dist/SberAct",
         "to": "backend"
-      },
-      {
-        "from": "converter",
-        "to": "converter",
-        "filter": [
-          "**/*",
-          "!**/__pycache__",
-          "!**/*.pyc",
-          "!**/*.log",
-          "!pdf_to_convert/**",
-          "!tests/**",
-          "!models/*.part*"
-        ]
       }
     ],
     "win": {
@@ -76,7 +73,8 @@
       "createStartMenuShortcut": true,
       "shortcutName": "SberAct",
       "installerIcon": "electron-app/assets/icon.ico",
-      "uninstallerIcon": "electron-app/assets/icon.ico"
+      "uninstallerIcon": "electron-app/assets/icon.ico",
+      "include": "scripts/installer.nsh"
     },
     "linux": {
       "target": [
@@ -94,7 +92,8 @@
     }
   },
   "dependencies": {
-    "electron-is-dev": "^2.0.0"
+    "electron-is-dev": "^2.0.0",
+    "electron-updater": "^6.3.9"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

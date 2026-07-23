@@ -13,8 +13,27 @@ const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const isDev = require('electron-is-dev');
+const { initUpdater, shutdownUpdater } = require('./updater');
 let mainWindow;
 let pythonProcess;
+
+// Убиваем процесс ВМЕСТЕ С ДЕРЕВОМ детей. Backend (SberAct.exe) сам спавнит
+// конвертер (python.exe ~6 ГБ) дочерним процессом. На Windows proc.kill() —
+// это TerminateProcess ТОЛЬКО родителя: конвертер осиротеет, продолжит держать
+// файлы resources\converter (из-за чего uninstall не может их снести) и память.
+// taskkill /T гасит всё дерево; на *nix шлём сигнал группе процессов.
+function killTree(proc) {
+  if (!proc || proc.killed || proc.pid == null) return;
+  if (process.platform === 'win32') {
+    try {
+      spawn('taskkill', ['/pid', String(proc.pid), '/T', '/F'], { stdio: 'ignore' });
+    } catch {
+      try { proc.kill(); } catch { /* уже мёртв */ }
+    }
+  } else {
+    try { process.kill(-proc.pid, 'SIGTERM'); } catch { try { proc.kill(); } catch { /* уже мёртв */ } }
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Менеджер локального сервиса-процесса (используется для OCR-конвертера).
@@ -105,7 +124,7 @@ class ManagedService {
     // Внешний (не наш) процесс не трогаем — мы его не запускали
     if (this.process) {
       console.log(`[${this.name}] stopping`);
-      this.process.kill();
+      killTree(this.process);
       this.process = null;
     }
   }
@@ -237,6 +256,9 @@ async function startPythonBackend() {
         ...backend.env,
         // Записываемые данные (generated/, temp/) — вне папки установки, переживают обновление
         SBERACT_DATA_DIR: app.getPath('userData'),
+        // Бэкенд владеет конвертером: в проде его дефолтный путь (от __file__) неверен
+        // во frozen — явно указываем resources/converter (куда его кладёт установщик).
+        ...(isDev ? {} : { CONVERTER_DIR: path.join(process.resourcesPath, 'converter'), CONVERTER_PORT }),
         PATH: process.env.PATH + (process.platform === 'win32' ? ';' : ':') + path.join(process.env.HOME || process.env.USERPROFILE, '.local/bin')
       }
     });
@@ -285,9 +307,10 @@ function createWindow() {
     // Не открываем DevTools автоматически, чтобы избежать спама сообщениями Autofill
   } else {
     mainWindow.loadFile(path.join(__dirname, 'build/index.html'));
-    // ВАЖНО: Автоматически открываем DevTools в production для отладки
-    // Можно закомментировать эту строку после исправления проблем
-    mainWindow.webContents.openDevTools();
+    // DevTools в проде — только по требованию (SBERACT_DEVTOOLS=1) или горячей клавишей.
+    if (process.env.SBERACT_DEVTOOLS === '1') {
+      mainWindow.webContents.openDevTools();
+    }
   }
 
   // Добавляем горячие клавиши для открытия DevTools
@@ -387,6 +410,15 @@ app.whenReady().then(() => {
   startPythonBackend();
   createWindow();
 
+  // Офлайн-обновление с флешки: конвертер лежит рядом с backend'ом в resources.
+  initUpdater({
+    getMainWindow: () => mainWindow,
+    converterDir: isDev
+      ? path.join(app.getAppPath(), 'converter')
+      : path.join(process.resourcesPath, 'converter'),
+    backendPort: 8000
+  });
+
   // Регистрируем глобальные шорткаты после создания окна
   // Используем альтернативные комбинации (F12 не работает как глобальный шорткат)
   const registerGlobalShortcuts = () => {
@@ -437,8 +469,11 @@ app.on('before-quit', (event) => {
   const finish = () => {
     if (_quitCleanupDone) return; // таймер и ответ backend'а гонятся — пускаем одного
     _quitCleanupDone = true;
-    if (pythonProcess) pythonProcess.kill();
+    // Дерево backend'а включает дочерний конвертер — гасим одним taskkill /T,
+    // чтобы python.exe не осиротел (иначе живёт и блокирует uninstall).
+    killTree(pythonProcess);
     converterService.stop(); // на случай внешнего/легаси-запуска через ManagedService
+    shutdownUpdater(); // закрываем локальный feed-сервер обновления
     app.quit();
   };
 

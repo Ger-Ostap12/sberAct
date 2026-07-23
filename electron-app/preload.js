@@ -272,7 +272,30 @@ try {
   toggleDevTools: () => ipcRenderer.invoke('toggle-devtools'),
 
   // Версия приложения из main-процесса (app.getVersion() = корневой package.json)
-  getAppVersion: () => ipcRenderer.invoke('app:get-version')
+  getAppVersion: () => ipcRenderer.invoke('app:get-version'),
+
+  // --- Офлайн-обновление с флешки ---
+  updatePickSource: () => ipcRenderer.invoke('update:pick-source'),
+  updateAutoDetect: () => ipcRenderer.invoke('update:auto-detect'),
+  updateCheck: (chosenPath) => ipcRenderer.invoke('update:check', chosenPath),
+  updateDownload: () => ipcRenderer.invoke('update:download'),
+  updateApply: (opts) => ipcRenderer.invoke('update:apply', opts),
+  // Подписки на прогресс/ошибки; возвращают функцию отписки.
+  onUpdateProgress: (cb) => {
+    const l = (_e, p) => cb(p);
+    ipcRenderer.on('update:progress', l);
+    return () => ipcRenderer.removeListener('update:progress', l);
+  },
+  onConverterProgress: (cb) => {
+    const l = (_e, p) => cb(p);
+    ipcRenderer.on('update:converter-progress', l);
+    return () => ipcRenderer.removeListener('update:converter-progress', l);
+  },
+  onUpdateError: (cb) => {
+    const l = (_e, p) => cb(p);
+    ipcRenderer.on('update:error', l);
+    return () => ipcRenderer.removeListener('update:error', l);
+  }
 });
 
 // Добавляем глобальную функцию для открытия DevTools через консоль
