@@ -141,3 +141,7 @@ python-backend/generated/
 config.json
 secrets.json
 .env.production
+
+# Личные рабочие доки — не в репозиторий
+/CLAUDE.md
+/handoff.md
