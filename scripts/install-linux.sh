@@ -91,12 +91,20 @@ ICON="$DEST/sberact-document-generator.png"
 if [ ! -f "$ICON" ]; then
   ICON="$(find "$DEST" -path '*icons*' -name '*.png' 2>/dev/null | head -1)"
 fi
+# Точка входа — сам бинарь electron, а НЕ AppRun: обёртка при запуске из
+# распакованной папки (без рантайма AppImage) ломает разбор аргументов и теряет
+# $APPDIR. Флаг --no-sandbox обязателен: SUID-песочница Chromium требует root
+# (mode 4755), которого на целевой машине нет; переключатель из main.js
+# инициализируется позже и не спасает. Имя бинаря берём из вложенного .desktop.
+APPBIN_NAME="$(basename "$(ls "$DEST"/*.desktop 2>/dev/null | head -1)" .desktop)"
+APPBIN="$DEST/$APPBIN_NAME"
+[ -x "$APPBIN" ] || APPBIN="$DEST/AppRun"   # страховка, если имя не определилось
 mkdir -p "$APPS"
 cat > "$APPS/sberact.desktop" <<EOF
 [Desktop Entry]
 Name=SberAct Document Generator
 Comment=Генератор судебных актов
-Exec=$DEST/AppRun
+Exec=$APPBIN --no-sandbox
 Icon=$ICON
 Type=Application
 Categories=Office;
