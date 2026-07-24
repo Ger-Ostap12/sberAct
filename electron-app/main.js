@@ -14,6 +14,16 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const isDev = require('electron-is-dev');
 const { initUpdater, shutdownUpdater } = require('./updater');
+
+// Linux: Chromium SUID-песочница требует setuid-root chrome-sandbox, а Ubuntu 24.04
+// по умолчанию режет и unprivileged-namespace-песочницу. Из AppImage приложение
+// без этого падает ещё до окна (FATAL: chrome-sandbox ... mode 4755). Для оффлайн-
+// инструмента песочница рендерера некритична — отключаем на Linux, чтобы AppImage
+// запускался обычным двойным кликом без флагов.
+if (process.platform === 'linux') {
+  app.commandLine.appendSwitch('no-sandbox');
+}
+
 let mainWindow;
 let pythonProcess;
 

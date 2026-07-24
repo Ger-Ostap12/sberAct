@@ -30,6 +30,15 @@ def main() -> None:
 
     port = int(os.environ.get("CONVERTER_PORT", "8008"))
 
+    # Linux: конвертер ищет tesseract через PATH (docling_dev/pipeline.py). В
+    # офлайн-сборке системного tesseract нет — вшитый лежит в vendor-linux/tesseract,
+    # кладём его bin в НАЧАЛО PATH, чтобы shutil.which нашёл именно его (обёртка сама
+    # выставит LD_LIBRARY_PATH/TESSDATA_PREFIX только для процесса tesseract).
+    if sys.platform.startswith("linux"):
+        tess_bin = converter_path / "vendor-linux" / "tesseract" / "bin"
+        if (tess_bin / "tesseract").exists():
+            os.environ["PATH"] = str(tess_bin) + os.pathsep + os.environ.get("PATH", "")
+
     # Конвертер полагается на запуск из своей папки (модели/фронт по
     # относительным путям) — работаем из неё.
     os.chdir(converter_path)

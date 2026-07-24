@@ -10,6 +10,7 @@ yarn-error.log*
 dist/
 build/
 release/
+release-linux/
 realise/
 *.AppImage
 *.deb

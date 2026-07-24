@@ -12,6 +12,8 @@
     "pack:converter": "powershell -ExecutionPolicy Bypass -File scripts/assemble-converter.ps1",
     "stage:converter": "powershell -ExecutionPolicy Bypass -File scripts/stage-usb.ps1",
     "build:update": "powershell -ExecutionPolicy Bypass -File scripts/build-update.ps1",
+    "build:linux": "powershell -ExecutionPolicy Bypass -File scripts/build-linux.ps1",
+    "build:linux-converter": "powershell -ExecutionPolicy Bypass -File scripts/build-converter-linux.ps1",
     "dist:win": "npm run build && npm run pack:backend && npm run pack:converter && electron-builder --win && npm run stage:converter",
     "dist:linux": "electron-builder --linux",
     "postinstall": "electron-builder install-app-deps"
