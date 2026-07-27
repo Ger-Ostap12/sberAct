@@ -6,7 +6,9 @@ import DocumentUpload from './features/upload/DocumentUpload';
 import DocumentAnalysis from './features/analysis/DocumentAnalysis';
 import DocumentPreview from './features/preview/DocumentPreview';
 import ConvertScreen from './features/convert/ConvertScreen';
-import { DocumentData, TemplateType, ExtractedData, AnalysisResult } from './types';
+import CategorySelection from './features/category/CategorySelection';
+import CollectionStub from './features/category/CollectionStub';
+import { DocumentData, TemplateType, ExtractedData, AnalysisResult, DocumentCategory } from './types';
 import { pickTemplate } from './templates';
 import { getAppVersion, hasElectronAPI } from './services/electronApi';
 import { toggleDevTools } from './services/electronApi';
@@ -51,7 +53,10 @@ const theme = createTheme({
 });
 
 function App() {
-  const [currentStep, setCurrentStep] = useState<'upload' | 'convert' | 'analysis' | 'preview'>('upload');
+  const [currentStep, setCurrentStep] = useState<'upload' | 'convert' | 'category' | 'collection-stub' | 'analysis' | 'preview'>('upload');
+  /** Режим экрана анализа: банкротство (полная форма) или ипотека (без банкротных
+   *  блоков, с созаёмщиком/поручителем/недвижимостью). Задаётся в меню категорий. */
+  const [analysisMode, setAnalysisMode] = useState<'bankruptcy' | 'mortgage'>('bankruptcy');
   const [documentData, setDocumentData] = useState<DocumentData | null>(null);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateType | null>(null);
@@ -70,6 +75,18 @@ function App() {
     if (analysisResult?.data) {
       setExtractedData(analysisResult.data);
     }
+    // После анализа показываем меню выбора категории (до формы полей).
+    setCurrentStep('category');
+  };
+
+  // Выбор категории в меню: банкротство/ипотека → форма в нужном режиме,
+  // взыскание → заглушка «в разработке».
+  const handleCategorySelected = (category: DocumentCategory) => {
+    if (category === 'collection') {
+      setCurrentStep('collection-stub');
+      return;
+    }
+    setAnalysisMode(category === 'mortgage' ? 'mortgage' : 'bankruptcy');
     setCurrentStep('analysis');
   };
 
@@ -105,6 +122,7 @@ function App() {
 
   const resetToUpload = () => {
     setCurrentStep('upload');
+    setAnalysisMode('bankruptcy');
     setDocumentData(null);
     setExtractedData(null);
     setSelectedTemplate(null);
@@ -136,13 +154,24 @@ function App() {
             onBack={resetToUpload}
           />
         );
+      case 'category':
+        return (
+          <CategorySelection
+            extractedData={extractedData || undefined}
+            onSelect={handleCategorySelected}
+            onBack={resetToUpload}
+          />
+        );
+      case 'collection-stub':
+        return <CollectionStub onBack={() => setCurrentStep('category')} />;
       case 'analysis':
         return (
           <DocumentAnalysis
             documentData={documentData!}
             extractedData={extractedData || undefined}
+            mode={analysisMode}
             onAnalysisComplete={handleAnalysisComplete}
-            onBack={() => setCurrentStep('upload')}
+            onBack={() => setCurrentStep('category')}
           />
         );
       case 'preview':

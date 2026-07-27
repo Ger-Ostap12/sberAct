@@ -466,3 +466,66 @@ describe('DocumentAnalysis — блок «Сведения о смерти»', (
     expect(screen.queryByText('Наследник 1')).not.toBeInTheDocument();
   });
 });
+
+// Режим «Ипотека»: скрыты банкротные блоки, показаны созаёмщик/поручитель/предмет.
+describe('DocumentAnalysis — режим «Ипотека»', () => {
+  const renderMortgage = (mutate?: (d: ExtractedData) => void) => {
+    const data = makeData();
+    data.fields = { ...data.fields, creditorName: 'ПАО Сбербанк' };
+    if (mutate) mutate(data);
+    return render(
+      <DocumentAnalysis
+        documentData={documentData}
+        extractedData={data}
+        mode="mortgage"
+        onAnalysisComplete={() => {}}
+        onBack={() => {}}
+      />,
+    );
+  };
+
+  it('скрывает управляющего, залог, выбор актов, третьи лица, сведения о взыскании', () => {
+    renderMortgage();
+    expect(screen.queryByText('Арбитражный управляющий')).not.toBeInTheDocument();
+    expect(screen.queryByText('Залог')).not.toBeInTheDocument();
+    expect(screen.queryByText('Выбор судебных актов')).not.toBeInTheDocument();
+    expect(screen.queryByText('Третьи лица')).not.toBeInTheDocument();
+    expect(screen.queryByText('Сведения о взыскании')).not.toBeInTheDocument();
+  });
+
+  it('показывает созаёмщика, поручителя, предмет ипотеки', () => {
+    renderMortgage();
+    expect(screen.getByText('Созаёмщик')).toBeInTheDocument();
+    expect(screen.getByText('Информация о поручителе')).toBeInTheDocument();
+    expect(screen.getByText('Предмет ипотеки')).toBeInTheDocument();
+  });
+
+  it('оставляет общие блоки: судебная информация, должник, кредитор, обязательства', () => {
+    renderMortgage();
+    expect(screen.getByText('Судебная информация')).toBeInTheDocument();
+    expect(screen.getByText('Информация о кредиторе')).toBeInTheDocument();
+    expect(screen.getByText(/Обязательство 1/)).toBeInTheDocument();
+  });
+
+  it('предзаполняет созаёмщиков из со-должников (debtors[1..]) и поручителей из третьих лиц', () => {
+    renderMortgage((d) => {
+      d.debtors = [
+        { id: 'd1', name: 'Основной Должник', inn: '111', address: 'адрес1' },
+        { id: 'd2', name: 'Со Заёмщиков Иван', inn: '222', address: 'адрес2' },
+      ];
+      d.thirdParties = [{ id: 'tp1', name: 'Поручитель Пётр', inn: '333', address: 'адрес3' }];
+    });
+    expect(screen.getByText('Созаёмщик 1')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Со Заёмщиков Иван')).toBeInTheDocument();
+    expect(screen.getByText('Поручитель 1')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Поручитель Пётр')).toBeInTheDocument();
+  });
+
+  it('«Добавить созаёмщика»/«Добавить поручителя» создают карточки', () => {
+    renderMortgage();
+    fireEvent.click(screen.getByRole('button', { name: 'Добавить созаёмщика' }));
+    expect(screen.getByText('Созаёмщик 1')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Добавить поручителя' }));
+    expect(screen.getByText('Поручитель 1')).toBeInTheDocument();
+  });
+});

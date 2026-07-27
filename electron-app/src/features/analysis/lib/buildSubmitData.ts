@@ -5,6 +5,7 @@ import {
   DebtorStatus,
   ApplicationKind,
   SelectedAct,
+  DocumentCategory,
 } from '../../../types';
 import { formatJudgeName } from '../../../shared/lib/judges';
 
@@ -18,6 +19,8 @@ export interface SubmitDataInput {
   selectedActs: SelectedAct[];
   /** Чекбокс «Короткий текст»: доп. генерация резолютивки основной процедуры. */
   shortText?: boolean;
+  /** Категория дела: 'bankruptcy' (по умолчанию) или 'mortgage'. */
+  documentCategory?: DocumentCategory;
 }
 
 /**
@@ -27,7 +30,7 @@ export interface SubmitDataInput {
  * penalties→forfeit, stateDuty↔stateDuty16). Чистая функция — тестируется напрямую.
  */
 export const buildSubmitData = (input: SubmitDataInput): ExtractedData => {
-  const { analysisResult, editedFields, entityType, collateralOption, debtorStatus, applicationKind, selectedActs, shortText } =
+  const { analysisResult, editedFields, entityType, collateralOption, debtorStatus, applicationKind, selectedActs, shortText, documentCategory } =
     input;
 
   // Финальный тип лица: выбранный пользователем (с приведением) или автоопределённый
@@ -55,11 +58,14 @@ export const buildSubmitData = (input: SubmitDataInput): ExtractedData => {
       selectedActsIds: selected.map((a) => a.id).join(',') || undefined,
       selectedActsData: JSON.stringify(selected) || undefined,
       selectedShortText: shortText ? 'true' : undefined,
+      documentCategory: documentCategory || undefined,
     },
     collaterals: analysisResult.collaterals || [],
     thirdParties: analysisResult.thirdParties || [],
     debtors: analysisResult.debtors || [],
     heirs: analysisResult.heirs || [],
+    coborrowers: analysisResult.coborrowers || [],
+    guarantors: analysisResult.guarantors || [],
   };
 
   // ФИО судьи → «Фамилия И.О.»

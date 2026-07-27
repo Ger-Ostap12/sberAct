@@ -12,7 +12,7 @@ import {
   Divider
 } from '@mui/material';
 import { ArrowBack as BackIcon, CheckCircle as CheckIcon } from '@mui/icons-material';
-import { DocumentData, ExtractedData, Obligation, Collateral, CollateralType, EntityType, CollateralOption, DebtorStatus, ApplicationKind, SelectedAct, ThirdParty, Debtor, Heir } from '../../types';
+import { DocumentData, ExtractedData, Obligation, Collateral, CollateralType, EntityType, CollateralOption, DebtorStatus, ApplicationKind, SelectedAct, ThirdParty, Debtor, Heir, PartyLite } from '../../types';
 import { useBanks } from './hooks/useBanks';
 import { extractCollateralData } from '../../shared/lib/collateral';
 import { isFnsCreditor, FNS_CREDITOR_KEY } from '../../shared/lib/banks';
@@ -32,10 +32,17 @@ import CreditorSection from './sections/CreditorSection';
 import FinancesSection from './sections/FinancesSection';
 import PriorCollectionSection from './sections/PriorCollectionSection';
 import ActSelectionSection from './sections/ActSelectionSection';
+import CoborrowerSection from './sections/CoborrowerSection';
+import GuarantorSection from './sections/GuarantorSection';
+import MortgagePropertySection from './sections/MortgagePropertySection';
 
 interface DocumentAnalysisProps {
   documentData: DocumentData;
   extractedData?: ExtractedData;
+  /** Режим формы: 'bankruptcy' — полный функционал (по умолчанию); 'mortgage' —
+   *  без блоков управляющий/акты/залог/статус/взыскание, с созаёмщиком/поручителем/
+   *  предметом ипотеки. */
+  mode?: 'bankruptcy' | 'mortgage';
   onAnalysisComplete: (data: ExtractedData) => void;
   onBack: () => void;
 }
@@ -43,9 +50,11 @@ interface DocumentAnalysisProps {
 const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   documentData,
   extractedData: propExtractedData,
+  mode = 'bankruptcy',
   onAnalysisComplete,
   onBack
 }) => {
+  const isMortgage = mode === 'mortgage';
   const [isAnalyzing, setIsAnalyzing] = useState(true);
   const [analysisResult, setAnalysisResult] = useState<ExtractedData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -365,13 +374,40 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           id: h.id || `heir-${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`
         }));
 
+        // Ипотека: со-должники и третьи лица ПЕРЕНОСЯТСЯ (а не дублируются) в
+        // блоки «Созаёмщик»/«Поручитель». Основной должник (debtors[0]) остаётся в
+        // «Должник», остальные становятся созаёмщиками; все третьи лица —
+        // поручителями. В режиме банкротства эти массивы пусты (блоки скрыты).
+        let debtorsForResult = initialDebtors;
+        let thirdPartiesForResult = initialThirdParties;
+        let initialCoborrowers: PartyLite[] = [];
+        let initialGuarantors: PartyLite[] = [];
+        if (isMortgage) {
+          initialCoborrowers = initialDebtors.slice(1).map((d, i) => ({
+            id: `coborrower-${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`,
+            name: d.name || '',
+            inn: d.inn || '',
+            address: d.address || ''
+          }));
+          initialGuarantors = initialThirdParties.map((tp, i) => ({
+            id: `guarantor-${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`,
+            name: tp.name || '',
+            inn: tp.inn || '',
+            address: tp.address || ''
+          }));
+          debtorsForResult = initialDebtors.slice(0, 1);
+          thirdPartiesForResult = [];
+        }
+
         const fullAnalysisResult = {
           ...propExtractedData,
           obligations: propExtractedData.obligations || [],
           collaterals: initialCollaterals,
-          thirdParties: initialThirdParties,
-          debtors: initialDebtors,
-          heirs: initialHeirs
+          thirdParties: thirdPartiesForResult,
+          debtors: debtorsForResult,
+          heirs: initialHeirs,
+          coborrowers: initialCoborrowers,
+          guarantors: initialGuarantors
         };
         setAnalysisResult(fullAnalysisResult);
 
@@ -438,7 +474,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     } else {
       setIsAnalyzing(false);
     }
-  }, [documentData, propExtractedData]);
+  }, [documentData, propExtractedData, isMortgage]);
 
   const handleFieldChange = (fieldName: string, value: string) => {
     setEditedFields(prev => ({
@@ -567,6 +603,54 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     if (!analysisResult?.thirdParties) return;
     const updated = analysisResult.thirdParties.filter((_, i) => i !== index);
     setAnalysisResult({ ...analysisResult, thirdParties: updated });
+  };
+
+  // --- Созаёмщики (ипотека): динамический список (как третьи лица) ---
+  const addCoborrower = () => {
+    if (!analysisResult) return;
+    const newCoborrower: PartyLite = {
+      id: `coborrower-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name: '', inn: '', address: ''
+    };
+    const coborrowers = [...(analysisResult.coborrowers || []), newCoborrower];
+    setAnalysisResult({ ...analysisResult, coborrowers });
+  };
+
+  const updateCoborrower = (index: number, field: keyof PartyLite, value: string) => {
+    if (!analysisResult?.coborrowers) return;
+    const updated = [...analysisResult.coborrowers];
+    updated[index] = { ...updated[index], [field]: value };
+    setAnalysisResult({ ...analysisResult, coborrowers: updated });
+  };
+
+  const removeCoborrower = (index: number) => {
+    if (!analysisResult?.coborrowers) return;
+    const updated = analysisResult.coborrowers.filter((_, i) => i !== index);
+    setAnalysisResult({ ...analysisResult, coborrowers: updated });
+  };
+
+  // --- Поручители (ипотека): динамический список (как третьи лица) ---
+  const addGuarantor = () => {
+    if (!analysisResult) return;
+    const newGuarantor: PartyLite = {
+      id: `guarantor-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name: '', inn: '', address: ''
+    };
+    const guarantors = [...(analysisResult.guarantors || []), newGuarantor];
+    setAnalysisResult({ ...analysisResult, guarantors });
+  };
+
+  const updateGuarantor = (index: number, field: keyof PartyLite, value: string) => {
+    if (!analysisResult?.guarantors) return;
+    const updated = [...analysisResult.guarantors];
+    updated[index] = { ...updated[index], [field]: value };
+    setAnalysisResult({ ...analysisResult, guarantors: updated });
+  };
+
+  const removeGuarantor = (index: number) => {
+    if (!analysisResult?.guarantors) return;
+    const updated = analysisResult.guarantors.filter((_, i) => i !== index);
+    setAnalysisResult({ ...analysisResult, guarantors: updated });
   };
 
   // --- Наследники умершего должника: динамический список (как третьи лица) ---
@@ -704,6 +788,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         applicationKind,
         selectedActs,
         shortText,
+        documentCategory: isMortgage ? 'mortgage' : 'bankruptcy',
       })
     );
   };
@@ -796,7 +881,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                   Тип документа:
                 </Typography>
                 <Chip
-                  label="Заявление о включении в РТК"
+                  label={isMortgage ? 'Ипотека' : 'Заявление о включении в РТК'}
                   color="primary"
                   size="small"
                 />
@@ -806,7 +891,8 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           </Card>
         </Grid>
 
-        {/* Блок выбора судебных актов */}
+        {/* Блок выбора судебных актов — только в режиме банкротства. */}
+        {!isMortgage && (
         <Grid item xs={12}>
           <ActSelectionSection
             entityType={entityType}
@@ -828,6 +914,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
             setShortText={setShortText}
           />
         </Grid>
+        )}
 
         {/* Извлеченные данные */}
         <Grid item xs={12}>
@@ -884,8 +971,9 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
 
                 {/* ФНС: две независимые колонки — слева «Управляющий» + «Финансы»
                     встык, справа «Сведения о взыскании». Построчный Grid даёт masonry-
-                    пустоту (высокие Финансы), поэтому для ФНС колонки собираем вручную. */}
-                {isFnsCreditor(editedFields.creditorName) && (
+                    пустоту (высокие Финансы), поэтому для ФНС колонки собираем вручную.
+                    В режиме ипотеки ФНС-раскладки нет. */}
+                {!isMortgage && isFnsCreditor(editedFields.creditorName) && (
                 <Grid item xs={12}>
                   <Grid container spacing={3}>
                     <Grid item xs={12} md={6}>
@@ -901,29 +989,30 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 </Grid>
                 )}
 
-                {/* Арбитражный управляющий (не-ФНС; у ФНС — в колонке выше) */}
-                {!isFnsCreditor(editedFields.creditorName) && (
+                {/* Арбитражный управляющий (не-ФНС; у ФНС — в колонке выше).
+                    В ипотеке управляющего нет. */}
+                {!isMortgage && !isFnsCreditor(editedFields.creditorName) && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
               <ManagerSection editedFields={editedFields} onFieldChange={handleFieldChange} showSro={showSroField} showFio={showFioField} />
                 </Grid>
                 )}
 
                 {/* Объявление о ликвидации — только при статусе «Ликвидируемый» (ЮЛ). */}
-                {debtorStatus === 'liquidation' && (
+                {!isMortgage && debtorStatus === 'liquidation' && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
               <LiquidationSection editedFields={editedFields} onFieldChange={handleFieldChange} />
                 </Grid>
                 )}
 
                 {/* Информация по счетам — только при статусе «Отсутствующий» (ЮЛ). */}
-                {debtorStatus === 'absent' && (
+                {!isMortgage && debtorStatus === 'absent' && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
               <AbsentDebtorSection editedFields={editedFields} onFieldChange={handleFieldChange} />
                 </Grid>
                 )}
 
                 {/* Сведения о смерти — только при статусе «Умерший» (физлицо). */}
-                {debtorStatus === 'deceased' && (
+                {!isMortgage && debtorStatus === 'deceased' && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
               <DeceasedSection
                 editedFields={editedFields}
@@ -937,8 +1026,8 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 )}
 
                 {/* Третьи лица — у ФНС-заявлений (уполномоченный орган) их нет,
-                    блок скрываем. */}
-                {!isFnsCreditor(editedFields.creditorName) && (
+                    блок скрываем. В ипотеке роль закрыта блоками созаёмщик/поручитель. */}
+                {!isMortgage && !isFnsCreditor(editedFields.creditorName) && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
               {/* Третьи лица */}
               <ThirdPartiesSection
@@ -947,6 +1036,37 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 onAdd={addThirdParty}
                 onRemove={removeThirdParty}
               />
+                </Grid>
+                )}
+
+                {/* Созаёмщик — только в режиме ипотеки. */}
+                {isMortgage && (
+                <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
+              <CoborrowerSection
+                coborrowers={analysisResult?.coborrowers || []}
+                onUpdate={updateCoborrower}
+                onAdd={addCoborrower}
+                onRemove={removeCoborrower}
+              />
+                </Grid>
+                )}
+
+                {/* Информация о поручителе — только в режиме ипотеки. */}
+                {isMortgage && (
+                <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
+              <GuarantorSection
+                guarantors={analysisResult?.guarantors || []}
+                onUpdate={updateGuarantor}
+                onAdd={addGuarantor}
+                onRemove={removeGuarantor}
+              />
+                </Grid>
+                )}
+
+                {/* Предмет ипотеки (недвижимость) — только в режиме ипотеки. */}
+                {isMortgage && (
+                <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
+              <MortgagePropertySection editedFields={editedFields} onFieldChange={handleFieldChange} />
                 </Grid>
                 )}
 
@@ -959,8 +1079,9 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 </Grid>
                 )}
 
-                {/* Сведения о взыскании (не-ФНС; у ФНС — в правой колонке выше) */}
-                {!isFnsCreditor(editedFields.creditorName) && (
+                {/* Сведения о взыскании (не-ФНС; у ФНС — в правой колонке выше).
+                    В ипотеке блока прежнего взыскания нет. */}
+                {!isMortgage && !isFnsCreditor(editedFields.creditorName) && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
               <PriorCollectionSection editedFields={editedFields} onFieldChange={handleFieldChange} />
                 </Grid>
@@ -981,8 +1102,8 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 )}
 
                 {/* Залог — у ФНС-заявлений (уполномоченный орган) залога не бывает,
-                    блок скрываем. */}
-                {!isFnsCreditor(editedFields.creditorName) && (
+                    блок скрываем. В ипотеке предмет — в блоке «Предмет ипотеки». */}
+                {!isMortgage && !isFnsCreditor(editedFields.creditorName) && (
                 <Grid item xs={12} sx={{ display: 'flex', minWidth: 0 }}>
                   <CollateralSection
                     collaterals={analysisResult?.collaterals || []}

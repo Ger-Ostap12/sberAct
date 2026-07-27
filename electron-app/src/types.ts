@@ -41,6 +41,21 @@ export interface Debtor {
   snils?: string;
 }
 
+/** Категория дела верхнего уровня — выбирается пользователем в меню после анализа.
+ *  'bankruptcy' — банкротство (полный функционал), 'collection' — взыскание
+ *  (заглушка, в разработке), 'mortgage' — ипотека (форма без банкротных блоков,
+ *  с созаёмщиком/поручителем/недвижимостью). Деривируется из documentType. */
+export type DocumentCategory = 'bankruptcy' | 'collection' | 'mortgage';
+
+/** Лёгкая сторона дела с одинаковым набором полей: созаёмщик / поручитель
+ *  (ипотека). ТЗ: ФИО, ИНН, адрес проживания. */
+export interface PartyLite {
+  id: string;
+  name: string;
+  inn?: string;
+  address?: string;
+}
+
 export type CollateralType = 'real_estate' | 'auto' | 'other';
 
 export interface Collateral {
@@ -174,6 +189,10 @@ export interface ExtractedData {
   /** Наследники умершего должника — заполняется только для статуса «Умерший». */
   heirs?: Heir[];
   debtors?: Debtor[];
+  /** Созаёмщики (режим «Ипотека»). Предзаполняются из со-должников, правятся вручную. */
+  coborrowers?: PartyLite[];
+  /** Поручители (режим «Ипотека»). Предзаполняются из третьих лиц, правятся вручную. */
+  guarantors?: PartyLite[];
   rawText: string;
   metadata: {
     pageCount: number;
