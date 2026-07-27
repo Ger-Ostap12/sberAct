@@ -2105,7 +2105,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             m_fio0 = None
             for cand in self._SB_FIO_RE.finditer(header):
                 fio_c = re.sub(r"\s+", " ", cand.group(0))
-                if re.search(r"суд|област|район", fio_c, re.IGNORECASE):
+                if re.search(r"суд|област|район|граждан", fio_c, re.IGNORECASE):
                     continue
                 if is_person_name(fio_c):
                     m_fio0 = cand
@@ -2122,8 +2122,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         fio = None
         for cand in self._SB_FIO_RE.finditer(blk[:300]):
             fio_c = re.sub(r"\s+", " ", cand.group(0)).strip()
-            # Отсев ложных «ФИО» из служебных строк (название суда и т.п.)
-            if re.search(r"суд|банкрот|заявл", fio_c, re.IGNORECASE):
+            # Отсев ложных «ФИО» из служебных строк (название суда, дескриптор
+            # гражданства «Гражданин Российской Федерации» и т.п.)
+            if re.search(r"суд|банкрот|заявл|граждан", fio_c, re.IGNORECASE):
                 continue
             if is_person_name(fio_c):
                 fio = fio_c
@@ -2136,7 +2137,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             pre = header[max(0, m_label.start() - 150) : m_label.start()]
             for cand in self._SB_FIO_RE.finditer(pre):
                 fio_c = re.sub(r"\s+", " ", cand.group(0)).strip()
-                if re.search(r"суд|банкрот|заявл|област|район", fio_c, re.IGNORECASE):
+                if re.search(r"суд|банкрот|заявл|област|район|граждан", fio_c, re.IGNORECASE):
                     continue
                 if is_person_name(fio_c):
                     fio = fio_c
@@ -3664,14 +3665,30 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             del extracted_fields["mortgageCollateralDescription1221"]
             collateral_description = None
             logger.info("Удалено ложное описание залога (Кому выдана ...)")
+        collaterals_list: List[Dict[str, Any]] = []
         if collateral_description:
             collateral_items = self._split_collateral_items(collateral_description)
             if collateral_items:
                 collaterals_list = [self._make_collateral_obj(idx, item_desc)
                                     for idx, item_desc in enumerate(collateral_items)]
-                # Сохраняем массив в extracted_fields для передачи во frontend
-                extracted_fields["collaterals"] = collaterals_list
-                logger.info(f" Создано {len(collaterals_list)} предметов залога")
+
+        # Довылавливаем залоговые авто/технику по VIN у ОСТАЛЬНЫХ «Обязательство №N»
+        # (см. _extract_vin_collateral_items) — дедуп по VIN, ничего не перезаписывает.
+        vin_items = self._extract_vin_collateral_items(text)
+        if vin_items:
+            existing_vins = {c.get("vin") for c in collaterals_list if c.get("vin")}
+            for desc in vin_items:
+                obj = self._make_collateral_obj(len(collaterals_list), desc)
+                if obj.get("vin") and obj["vin"] in existing_vins:
+                    continue
+                collaterals_list.append(obj)
+                if obj.get("vin"):
+                    existing_vins.add(obj["vin"])
+
+        if collaterals_list:
+            # Сохраняем массив в extracted_fields для передачи во frontend
+            extracted_fields["collaterals"] = collaterals_list
+            logger.info(f" Создано {len(collaterals_list)} предметов залога")
 
         # Теперь создаем отдельные обязательства
         obligations = self.extract_obligations(text, extracted_fields)
@@ -5030,6 +5047,39 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             return name[0].upper() + name[1:]
         return None
 
+    _VIN_COLLATERAL_RE = re.compile(
+        r"(?:[-–—]\s*)?(?:движимое\s+имущество|автомобиль)\s*[:：]\s*VIN\s*[:：]?\s*"
+        r"[A-ZА-Я0-9]{5,20}[^\n]*?\.(?=\s*(?:\n|$))",
+        re.IGNORECASE,
+    )
+
+    def _extract_vin_collateral_items(self, text: str) -> List[str]:
+        """Залоговые авто/спецтехника по VIN — глобальный скан по ВСЕМУ документу.
+
+        Заявления с несколькими «Обязательство №N» дают у КАЖДОГО своё
+        описание предмета залога («движимое имущество: VIN: … ; Год: …» /
+        «автомобиль: VIN: …»), но `mortgageCollateralDescription1221` берёт
+        только первое совпадение в тексте — остальные обязательства теряют
+        свой залог. Дедуп по VIN — один физический предмет может обеспечивать
+        сразу несколько обязательств (повторяется в тексте дословно).
+        """
+        if not text:
+            return []
+        norm = text.replace("\xa0", " ")
+        items: List[str] = []
+        seen_vins = set()
+        for m in self._VIN_COLLATERAL_RE.finditer(norm):
+            desc = re.sub(r"^\s*[-–—]\s*", "", m.group(0)).strip()
+            # Дедуп-ключ — сам код VIN как он есть в документе (не привязываемся к
+            # стандартной длине 17: в исходниках попадаются урезанные/опечатанные VIN).
+            vin_m = re.search(r"VIN\s*[:：]?\s*([A-ZА-Я0-9]{5,20})", desc, re.IGNORECASE)
+            key = vin_m.group(1).upper() if vin_m else desc
+            if key in seen_vins:
+                continue
+            seen_vins.add(key)
+            items.append(desc)
+        return items
+
     def _extract_all_collateral_items(self, text: str) -> List[str]:
         """Сканирует ВЕСЬ документ и собирает описания всех предметов залога.
 
@@ -5085,6 +5135,22 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         # «стоимостью N руб.»; строка «Общая стоимость … составляет …» — это итог, не
         # предмет (не содержит «стоимостью <число>» вплотную), поэтому не попадает.
         items.extend(self._extract_pledge_block_items(norm))
+
+        # «движимое имущество: VIN: …»/«автомобиль: VIN: …» без буллета из
+        # списка выше (метка «движимое имущество» в него не входит) — отдельные
+        # предметы залога у КАЖДОГО «Обязательство №N» в документах со
+        # Сбербанковским форматом кредитных линий. Дедуп по VIN — уже найденные
+        # тем же кодом (если предмет попал через bullet_re/pledge-выше) не дублируем.
+        seen_vins = {vm.group(1).upper() for it in items
+                     for vm in [re.search(r"VIN\s*[:：]?\s*([A-ZА-Я0-9]{5,20})", it, re.IGNORECASE)]
+                     if vm}
+        for desc in self._extract_vin_collateral_items(norm):
+            vm = re.search(r"VIN\s*[:：]?\s*([A-ZА-Я0-9]{5,20})", desc, re.IGNORECASE)
+            key = vm.group(1).upper() if vm else desc
+            if key in seen_vins:
+                continue
+            seen_vins.add(key)
+            items.append(desc)
         return items
 
     def _extract_pledge_block_items(self, norm: str) -> List[str]:
