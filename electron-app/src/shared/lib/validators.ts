@@ -34,3 +34,28 @@ export const isValidPassportNumber = (value?: string): boolean => {
   if (!v) return true;
   return /^\d{6}$/.test(v);
 };
+
+/** Оставляет только цифры и обрезает до max символов (жёсткая маска ввода). */
+export const digitsOnly = (value: string, max: number): string =>
+  value.replace(/\D/g, '').slice(0, max);
+
+/** Номер дела (ипотека): формат «2-<порядковый>/<год>», напр. «2-1223/2026». */
+export const isValidCaseNumber = (value?: string): boolean => {
+  const v = (value ?? '').trim();
+  if (!v) return true;
+  return /^2-\d+\/\d{4}$/.test(v);
+};
+
+// ФИО: «Фамилия Имя Отчество» или «Фамилия И.О.» (кириллица, дефис в фамилии
+// допустим: «Римский-Корсаков» — с заглавной после дефиса). Инициалы — с точками,
+// пробел между ними опционален.
+const FIO_WORD = '[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?';
+const FIO_FULL = new RegExp(`^${FIO_WORD}\\s+${FIO_WORD}\\s+${FIO_WORD}$`);
+const FIO_SHORT = new RegExp(`^${FIO_WORD}\\s+[А-ЯЁ]\\.\\s?[А-ЯЁ]\\.$`);
+
+/** ФИО в формате «Фамилия Имя Отчество» или «Фамилия И.О.». Пустое — валидно. */
+export const isValidFio = (value?: string): boolean => {
+  const v = (value ?? '').trim();
+  if (!v) return true;
+  return FIO_FULL.test(v) || FIO_SHORT.test(v);
+};

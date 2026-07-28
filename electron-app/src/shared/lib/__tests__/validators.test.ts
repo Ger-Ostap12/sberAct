@@ -3,6 +3,9 @@ import {
   isValidUrl,
   isValidPassportSeries,
   isValidPassportNumber,
+  isValidCaseNumber,
+  isValidFio,
+  digitsOnly,
 } from '../validators';
 
 describe('validators — пустая строка валидна', () => {
@@ -51,5 +54,43 @@ describe('паспорт', () => {
     expect(isValidPassportNumber('12345')).toBe(false);
     expect(isValidPassportNumber('1234567')).toBe(false);
     expect(isValidPassportNumber('12 45 6')).toBe(false);
+  });
+});
+
+describe('isValidCaseNumber', () => {
+  it('валидный формат 2-<номер>/<год>', () => {
+    expect(isValidCaseNumber('2-1223/2026')).toBe(true);
+    expect(isValidCaseNumber('2-1/2025')).toBe(true);
+    expect(isValidCaseNumber('')).toBe(true);
+  });
+  it('невалидные', () => {
+    expect(isValidCaseNumber('А40-1223/2026')).toBe(false);
+    expect(isValidCaseNumber('2-1223-2026')).toBe(false);
+    expect(isValidCaseNumber('3-1223/2026')).toBe(false);
+    expect(isValidCaseNumber('2-1223/26')).toBe(false);
+  });
+});
+
+describe('isValidFio', () => {
+  it('полное ФИО и краткое Фамилия И.О.', () => {
+    expect(isValidFio('Иванов Иван Иванович')).toBe(true);
+    expect(isValidFio('Иванов И.О.')).toBe(true);
+    expect(isValidFio('Иванов И. О.')).toBe(true);
+    expect(isValidFio('Римский-Корсаков Николай Андреевич')).toBe(true);
+    expect(isValidFio('')).toBe(true);
+  });
+  it('невалидные', () => {
+    expect(isValidFio('иванов иван иванович')).toBe(false); // без заглавных
+    expect(isValidFio('Иванов')).toBe(false); // одно слово
+    expect(isValidFio('Иванов Иван')).toBe(false); // два слова
+    expect(isValidFio('Ivanov Ivan Ivanovich')).toBe(false); // латиница
+  });
+});
+
+describe('digitsOnly', () => {
+  it('оставляет только цифры и режет до max', () => {
+    expect(digitsOnly('60a18b', 4)).toBe('6018');
+    expect(digitsOnly('12 34 56 78', 6)).toBe('123456');
+    expect(digitsOnly('abc', 4)).toBe('');
   });
 });
