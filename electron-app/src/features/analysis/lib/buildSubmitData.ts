@@ -66,6 +66,7 @@ export const buildSubmitData = (input: SubmitDataInput): ExtractedData => {
     heirs: analysisResult.heirs || [],
     coborrowers: analysisResult.coborrowers || [],
     guarantors: analysisResult.guarantors || [],
+    mortgageProperties: analysisResult.mortgageProperties || [],
   };
 
   // ФИО судьи → «Фамилия И.О.»

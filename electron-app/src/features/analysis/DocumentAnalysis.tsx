@@ -12,7 +12,7 @@ import {
   Divider
 } from '@mui/material';
 import { ArrowBack as BackIcon, CheckCircle as CheckIcon } from '@mui/icons-material';
-import { DocumentData, ExtractedData, Obligation, Collateral, CollateralType, EntityType, CollateralOption, DebtorStatus, ApplicationKind, SelectedAct, ThirdParty, Debtor, Heir, PartyLite, MortgageKind } from '../../types';
+import { DocumentData, ExtractedData, Obligation, Collateral, CollateralType, EntityType, CollateralOption, DebtorStatus, ApplicationKind, SelectedAct, ThirdParty, Debtor, Heir, PartyLite, MortgageKind, MortgageProperty } from '../../types';
 import { useBanks } from './hooks/useBanks';
 import { extractCollateralData } from '../../shared/lib/collateral';
 import { isFnsCreditor, FNS_CREDITOR_KEY } from '../../shared/lib/banks';
@@ -389,6 +389,20 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         const initialCoborrowers: PartyLite[] = [];
         const initialGuarantors: PartyLite[] = [];
 
+        // Предмет ипотеки: первый объект засеваем из извлечённых плоских полей
+        // (объектов может быть несколько — добавляются вручную). Если извлечение
+        // пустое — оставляем один пустой предмет, чтобы карточка была видна.
+        const pmf = propExtractedData.fields || {};
+        const initialMortgageProperties: MortgageProperty[] = [{
+          id: `mortgageProperty-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          description: pmf.mortgageCollateralDescription1221 || '',
+          cadastralNumber: pmf.mortgageCadastralNumber || '',
+          address: pmf.mortgagePropertyAddress || '',
+          value: pmf.mortgageCollateralValue1224 || '',
+          startingPrice: pmf.mortgageStartingPrice1225 || '',
+          appraisalReport: pmf.mortgageAppraisalReport1223 || ''
+        }];
+
         const fullAnalysisResult = {
           ...propExtractedData,
           obligations: propExtractedData.obligations || [],
@@ -397,7 +411,8 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           debtors: initialDebtors,
           heirs: initialHeirs,
           coborrowers: initialCoborrowers,
-          guarantors: initialGuarantors
+          guarantors: initialGuarantors,
+          mortgageProperties: initialMortgageProperties
         };
         setAnalysisResult(fullAnalysisResult);
 
@@ -449,6 +464,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
             if (!cleanFields.courtEmail) cleanFields.courtEmail = courtDefaults.email;
             if (!cleanFields.courtSite) cleanFields.courtSite = courtDefaults.site;
             if (!cleanFields.courtAddress && courtDefaults.address) cleanFields.courtAddress = courtDefaults.address;
+            if (!cleanFields.mortgageCourtNameGenitive) cleanFields.mortgageCourtNameGenitive = courtDefaults.genitive;
           }
         }
         setEditedFields(cleanFields);
@@ -536,6 +552,9 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         if (!next.courtEmail) next.courtEmail = d.email;
         if (!next.courtSite) next.courtSite = d.site;
         if (!next.courtAddress && d.address) next.courtAddress = d.address;
+        // Родительный падеж — «якорь» для акта: гарантированно верная форма для
+        // известного суда, минуя морфологию бэкенда.
+        if (!next.mortgageCourtNameGenitive) next.mortgageCourtNameGenitive = d.genitive;
       }
       return next;
     });
@@ -621,6 +640,35 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     if (!analysisResult?.thirdParties) return;
     const updated = analysisResult.thirdParties.filter((_, i) => i !== index);
     setAnalysisResult({ ...analysisResult, thirdParties: updated });
+  };
+
+  // --- Предметы ипотеки (ипотека): динамический список (как третьи лица) ---
+  const addMortgageProperty = () => {
+    if (!analysisResult) return;
+    const newProperty: MortgageProperty = {
+      id: `mortgageProperty-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      description: '',
+      cadastralNumber: '',
+      address: '',
+      value: '',
+      startingPrice: '',
+      appraisalReport: ''
+    };
+    const mortgageProperties = [...(analysisResult.mortgageProperties || []), newProperty];
+    setAnalysisResult({ ...analysisResult, mortgageProperties });
+  };
+
+  const updateMortgageProperty = (index: number, field: keyof MortgageProperty, value: string) => {
+    if (!analysisResult?.mortgageProperties) return;
+    const updated = [...analysisResult.mortgageProperties];
+    updated[index] = { ...updated[index], [field]: value };
+    setAnalysisResult({ ...analysisResult, mortgageProperties: updated });
+  };
+
+  const removeMortgageProperty = (index: number) => {
+    if (!analysisResult?.mortgageProperties) return;
+    const updated = analysisResult.mortgageProperties.filter((_, i) => i !== index);
+    setAnalysisResult({ ...analysisResult, mortgageProperties: updated });
   };
 
   // --- Созаёмщики (ипотека): динамический список (как третьи лица) ---
@@ -1112,7 +1160,12 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 {/* Предмет ипотеки (недвижимость) — только в режиме ипотеки. */}
                 {isMortgage && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
-              <MortgagePropertySection editedFields={editedFields} onFieldChange={handleFieldChange} />
+              <MortgagePropertySection
+                mortgageProperties={analysisResult?.mortgageProperties || []}
+                onUpdate={updateMortgageProperty}
+                onAdd={addMortgageProperty}
+                onRemove={removeMortgageProperty}
+              />
                 </Grid>
                 )}
 

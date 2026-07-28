@@ -66,6 +66,19 @@ export interface PartyLite {
   address?: string;
 }
 
+/** Предмет ипотеки (режим «Ипотека»): реквизиты одного заложенного объекта.
+ *  Поля повторяют плоские ключи извлечения (mortgageCollateral*), но в списке —
+ *  чтобы поддержать несколько объектов в одном деле. */
+export interface MortgageProperty {
+  id: string;
+  description?: string;
+  cadastralNumber?: string;
+  address?: string;
+  value?: string;
+  startingPrice?: string;
+  appraisalReport?: string;
+}
+
 export type CollateralType = 'real_estate' | 'auto' | 'other';
 
 export interface Collateral {
@@ -203,6 +216,9 @@ export interface ExtractedData {
   coborrowers?: PartyLite[];
   /** Поручители (режим «Ипотека»). Предзаполняются из третьих лиц, правятся вручную. */
   guarantors?: PartyLite[];
+  /** Предметы ипотеки (режим «Ипотека»). Заложенных объектов может быть несколько —
+   *  храним массивом, как третьих лиц. Первый засевается из извлечённых полей. */
+  mortgageProperties?: MortgageProperty[];
   rawText: string;
   metadata: {
     pageCount: number;
