@@ -23,6 +23,7 @@ const MortgageKindSection: React.FC<MortgageKindSectionProps> = ({ mortgageKind,
     >
       <FormControlLabel value="civil" control={<Radio size="small" />} label="Ипотека" />
       <FormControlLabel value="military" control={<Radio size="small" />} label="Военная ипотека" />
+      <FormControlLabel value="ddu" control={<Radio size="small" />} label="ДДУ" />
     </RadioGroup>
   </Box>
 );

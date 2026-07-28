@@ -623,6 +623,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
       birthDate: '',
       address: '',
       inn: '',
+      ogrn: '',
       snils: ''
     };
     const thirdParties = [...(analysisResult.thirdParties || []), newThirdParty];
@@ -1129,6 +1130,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 onUpdate={updateThirdParty}
                 onAdd={addThirdParty}
                 onRemove={removeThirdParty}
+                mode={mode}
               />
                 </Grid>
                 )}
@@ -1165,6 +1167,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 onUpdate={updateMortgageProperty}
                 onAdd={addMortgageProperty}
                 onRemove={removeMortgageProperty}
+                mortgageKind={mortgageKind}
               />
                 </Grid>
                 )}
@@ -1173,7 +1176,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                     финансов из просительной нет (суммы по каждому кредитору в теле) —
                     блок скрываем вместе с кредитором. */}
                 {!isFnsCreditor(editedFields.creditorName) && !isSelf && (
-                <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
+                <Grid item xs={12} md={isMortgage && mortgageKind === 'military' ? 12 : 6} sx={{ display: 'flex', minWidth: 0 }}>
               <FinancesSection editedFields={editedFields} onFieldChange={handleFieldChange} financeBreakdown={analysisResult?.financeBreakdown} mode={mode} mortgageKind={mortgageKind} />
                 </Grid>
                 )}

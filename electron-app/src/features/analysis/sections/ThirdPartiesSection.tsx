@@ -10,6 +10,8 @@ interface ThirdPartiesSectionProps {
   onUpdate: (index: number, field: keyof ThirdParty, value: string) => void;
   onAdd: () => void;
   onRemove: (index: number) => void;
+  /** Режим формы. В ипотеке добавляется поле ОГРН (третье лицо — юрлицо). */
+  mode?: 'bankruptcy' | 'mortgage';
 }
 
 /** Секция «Третьи лица»: карточки третьих лиц. Перенесено из DocumentAnalysis 1:1. */
@@ -18,6 +20,7 @@ const ThirdPartiesSection: React.FC<ThirdPartiesSectionProps> = ({
   onUpdate,
   onAdd,
   onRemove,
+  mode = 'bankruptcy',
 }) => (
   <Box sx={{ ...BLOCK_BOX_SX, mt: 3, width: '100%' }}>
     <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
@@ -92,6 +95,20 @@ const ThirdPartiesSection: React.FC<ThirdPartiesSectionProps> = ({
               />
             </Box>
           </Grid>
+          {mode === 'mortgage' && (
+          <Grid item xs={12}>
+            <Box sx={LABEL_OVERLAP_BOX}>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ОГРН:</Typography>
+              <TextField
+                fullWidth
+                value={thirdParty.ogrn || ''}
+                onChange={(e) => onUpdate(index, 'ogrn', e.target.value)}
+                size="small"
+                margin="dense"
+              />
+            </Box>
+          </Grid>
+          )}
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>СНИЛС:</Typography>

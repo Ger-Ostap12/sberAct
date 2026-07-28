@@ -21,6 +21,8 @@ export interface ThirdParty {
   birthDate?: string;
   address?: string;
   inn?: string;
+  /** ОГРН (режим «Ипотека»): третье лицо — юрлицо. */
+  ogrn?: string;
   snils?: string;
 }
 
@@ -53,9 +55,10 @@ export interface Debtor {
  *  с созаёмщиком/поручителем/недвижимостью). Деривируется из documentType. */
 export type DocumentCategory = 'bankruptcy' | 'collection' | 'mortgage';
 
-/** Вид ипотеки: 'civil' — обычная (гражданская), 'military' — военная (ЦЖЗ),
- *  меняет блок «Финансовые данные» на поля военной ипотеки. */
-export type MortgageKind = 'civil' | 'military';
+/** Вид ипотеки: 'civil' — обычная (гражданская), 'military' — военная (ЦЖЗ,
+ *  добавляет ставки/период и формульную сверку в финблок), 'ddu' — договор
+ *  долевого участия (финблок как у обычной, доп. поля в «Предмете ипотеки»). */
+export type MortgageKind = 'civil' | 'military' | 'ddu';
 
 /** Лёгкая сторона дела с одинаковым набором полей: созаёмщик / поручитель
  *  (ипотека). ТЗ: ФИО, ИНН, адрес проживания. */
@@ -77,6 +80,14 @@ export interface MortgageProperty {
   value?: string;
   startingPrice?: string;
   appraisalReport?: string;
+  /** Запись в ЕГРН (номер) и её дата. */
+  egrnRecord?: string;
+  egrnRecordDate?: string;
+  /** Стратегия определения начальной продажной цены (НПЦ). */
+  npcStrategy?: string;
+  /** ДДУ (вид ипотеки 'ddu'): номер договора долевого участия и его дата. */
+  dduContract?: string;
+  dduDate?: string;
 }
 
 export type CollateralType = 'real_estate' | 'auto' | 'other';

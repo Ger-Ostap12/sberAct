@@ -30,8 +30,28 @@ describe('MortgagePropertySection', () => {
     expect(screen.getByText('Кадастровый номер:')).toBeInTheDocument();
     expect(screen.getByText('Адрес объекта:')).toBeInTheDocument();
     expect(screen.getByText('Стоимость (оценка):')).toBeInTheDocument();
-    expect(screen.getByText('Начальная цена продажи:')).toBeInTheDocument();
+    expect(screen.getByText('Начальная продажная цена:')).toBeInTheDocument();
+    expect(screen.getByText('Стратегия определения НПЦ:')).toBeInTheDocument();
+    expect(screen.getByText('Запись в ЕГРН:')).toBeInTheDocument();
+    expect(screen.getByText('Дата записи ЕГРН:')).toBeInTheDocument();
     expect(screen.getByText('Отчёт об оценке:')).toBeInTheDocument();
+    // ДДУ-поля показываются только при mortgageKind='ddu'.
+    expect(screen.queryByText('Договор долевого участия:')).not.toBeInTheDocument();
+    expect(screen.queryByText('Дата ДДУ:')).not.toBeInTheDocument();
+  });
+
+  it('ДДУ: показываются поля договора долевого участия', () => {
+    render(
+      <MortgagePropertySection
+        mortgageProperties={[makeProperty()]}
+        onUpdate={() => {}}
+        onAdd={() => {}}
+        onRemove={() => {}}
+        mortgageKind="ddu"
+      />,
+    );
+    expect(screen.getByText('Договор долевого участия:')).toBeInTheDocument();
+    expect(screen.getByText('Дата ДДУ:')).toBeInTheDocument();
   });
 
   it('заполняет значения из объекта предмета', () => {

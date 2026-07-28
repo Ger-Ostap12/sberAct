@@ -3,7 +3,8 @@
 import React from 'react';
 import { Box, Typography, Card, IconButton, Grid, TextField, Button } from '@mui/material';
 import { Add as AddIcon, Close as CloseIcon } from '@mui/icons-material';
-import { MortgageProperty } from '../../../types';
+import { MortgageProperty, MortgageKind } from '../../../types';
+import { toInputDate, fromInputDate } from '../../../shared/lib/dates';
 import {
   LABEL_OVERLAP_BOX,
   LABEL_OVERLAP_SX,
@@ -15,6 +16,8 @@ interface MortgagePropertySectionProps {
   onUpdate: (index: number, field: keyof MortgageProperty, value: string) => void;
   onAdd: () => void;
   onRemove: (index: number) => void;
+  /** Вид ипотеки. При 'ddu' добавляются поля договора долевого участия. */
+  mortgageKind?: MortgageKind;
 }
 
 const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
@@ -22,6 +25,7 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
   onUpdate,
   onAdd,
   onRemove,
+  mortgageKind = 'civil',
 }) => (
   <Box sx={{ ...BLOCK_BOX_SX, mb: 3 }}>
     <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
@@ -99,13 +103,55 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
 
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
-              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Начальная цена продажи:</Typography>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Начальная продажная цена:</Typography>
               <TextField
                 fullWidth
                 value={property.startingPrice || ''}
                 onChange={(e) => onUpdate(index, 'startingPrice', e.target.value)}
                 size="small"
                 margin="dense"
+              />
+            </Box>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Box sx={LABEL_OVERLAP_BOX}>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Стратегия определения НПЦ:</Typography>
+              <TextField
+                fullWidth
+                multiline
+                value={property.npcStrategy || ''}
+                onChange={(e) => onUpdate(index, 'npcStrategy', e.target.value)}
+                size="small"
+                margin="dense"
+              />
+            </Box>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Box sx={LABEL_OVERLAP_BOX}>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Запись в ЕГРН:</Typography>
+              <TextField
+                fullWidth
+                value={property.egrnRecord || ''}
+                onChange={(e) => onUpdate(index, 'egrnRecord', e.target.value)}
+                size="small"
+                margin="dense"
+              />
+            </Box>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Box sx={LABEL_OVERLAP_BOX}>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата записи ЕГРН:</Typography>
+              <TextField
+                fullWidth
+                type="date"
+                value={toInputDate(property.egrnRecordDate)}
+                onChange={(e) => onUpdate(index, 'egrnRecordDate', fromInputDate(e.target.value))}
+                size="small"
+                margin="dense"
+                InputLabelProps={{ shrink: true }}
               />
             </Box>
           </Grid>
@@ -122,6 +168,39 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
               />
             </Box>
           </Grid>
+
+          {/* ДДУ (вид ипотеки 'ddu'): договор долевого участия и его дата. */}
+          {mortgageKind === 'ddu' && (
+          <Grid item xs={12}>
+            <Box sx={LABEL_OVERLAP_BOX}>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Договор долевого участия:</Typography>
+              <TextField
+                fullWidth
+                value={property.dduContract || ''}
+                onChange={(e) => onUpdate(index, 'dduContract', e.target.value)}
+                size="small"
+                margin="dense"
+              />
+            </Box>
+          </Grid>
+          )}
+
+          {mortgageKind === 'ddu' && (
+          <Grid item xs={12}>
+            <Box sx={LABEL_OVERLAP_BOX}>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата ДДУ:</Typography>
+              <TextField
+                fullWidth
+                type="date"
+                value={toInputDate(property.dduDate)}
+                onChange={(e) => onUpdate(index, 'dduDate', fromInputDate(e.target.value))}
+                size="small"
+                margin="dense"
+                InputLabelProps={{ shrink: true }}
+              />
+            </Box>
+          </Grid>
+          )}
         </Grid>
       </Card>
     ))}
