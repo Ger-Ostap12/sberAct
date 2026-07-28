@@ -484,41 +484,58 @@ describe('DocumentAnalysis — режим «Ипотека»', () => {
     );
   };
 
-  it('скрывает управляющего, залог, выбор актов, третьи лица, сведения о взыскании', () => {
+  it('скрывает управляющего, залог, выбор актов, сведения о взыскании', () => {
     renderMortgage();
     expect(screen.queryByText('Арбитражный управляющий')).not.toBeInTheDocument();
     expect(screen.queryByText('Залог')).not.toBeInTheDocument();
     expect(screen.queryByText('Выбор судебных актов')).not.toBeInTheDocument();
-    expect(screen.queryByText('Третьи лица')).not.toBeInTheDocument();
     expect(screen.queryByText('Сведения о взыскании')).not.toBeInTheDocument();
   });
 
-  it('показывает созаёмщика, поручителя, предмет ипотеки', () => {
+  it('показывает истца, ответчика, представителя, созаёмщика, поручителя, третьё лицо, предмет ипотеки', () => {
     renderMortgage();
+    expect(screen.getByText('Информация об истце')).toBeInTheDocument();
+    expect(screen.getByText('Данные ответчика')).toBeInTheDocument();
+    expect(screen.getByText('Представитель истца')).toBeInTheDocument();
+    expect(screen.getByText('Представитель ответчика')).toBeInTheDocument();
     expect(screen.getByText('Созаёмщик')).toBeInTheDocument();
     expect(screen.getByText('Информация о поручителе')).toBeInTheDocument();
+    expect(screen.getByText('Третьи лица')).toBeInTheDocument();
     expect(screen.getByText('Предмет ипотеки')).toBeInTheDocument();
   });
 
-  it('оставляет общие блоки: судебная информация, должник, кредитор, обязательства', () => {
+  it('оставляет общие блоки: судебная информация, обязательства', () => {
     renderMortgage();
     expect(screen.getByText('Судебная информация')).toBeInTheDocument();
-    expect(screen.getByText('Информация о кредиторе')).toBeInTheDocument();
     expect(screen.getByText(/Обязательство 1/)).toBeInTheDocument();
   });
 
-  it('предзаполняет созаёмщиков из со-должников (debtors[1..]) и поручителей из третьих лиц', () => {
+  it('ответчик ← ВСЕ должники; созаёмщик/поручитель пустые; третьё лицо ← третьи лица', () => {
     renderMortgage((d) => {
       d.debtors = [
-        { id: 'd1', name: 'Основной Должник', inn: '111', address: 'адрес1' },
-        { id: 'd2', name: 'Со Заёмщиков Иван', inn: '222', address: 'адрес2' },
+        { id: 'd1', name: 'Первый Ответчик', inn: '111', address: 'адрес1' },
+        { id: 'd2', name: 'Второй Ответчик', inn: '222', address: 'адрес2' },
       ];
-      d.thirdParties = [{ id: 'tp1', name: 'Поручитель Пётр', inn: '333', address: 'адрес3' }];
+      d.thirdParties = [{ id: 'tp1', name: 'Третье Лицо Пётр', inn: '333', address: 'адрес3' }];
     });
-    expect(screen.getByText('Созаёмщик 1')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Со Заёмщиков Иван')).toBeInTheDocument();
-    expect(screen.getByText('Поручитель 1')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Поручитель Пётр')).toBeInTheDocument();
+    // Оба должника — ответчики.
+    expect(screen.getByText('Ответчик 1')).toBeInTheDocument();
+    expect(screen.getByText('Ответчик 2')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Первый Ответчик')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Второй Ответчик')).toBeInTheDocument();
+    // Третье лицо подставлено из thirdParties.
+    expect(screen.getByDisplayValue('Третье Лицо Пётр')).toBeInTheDocument();
+    // Созаёмщик и поручитель пустые (без карточек).
+    expect(screen.queryByText('Созаёмщик 1')).not.toBeInTheDocument();
+    expect(screen.queryByText('Поручитель 1')).not.toBeInTheDocument();
+  });
+
+  it('ввод «Ворошиловский районный суд» подставляет email и сайт по умолчанию', () => {
+    renderMortgage();
+    const courtInput = screen.getByPlaceholderText('Арбитражный суд Ростовской области');
+    fireEvent.change(courtInput, { target: { value: 'Ворошиловский районный суд г. Ростова-на-Дону' } });
+    expect(screen.getByDisplayValue('voroshilovsky.ros@sudrf.ru')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('https://voroshilovsky--ros.sudrf.ru/')).toBeInTheDocument();
   });
 
   it('«Добавить созаёмщика»/«Добавить поручителя» создают карточки', () => {

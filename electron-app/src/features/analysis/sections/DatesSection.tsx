@@ -7,6 +7,9 @@ import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shar
 interface DatesSectionProps {
   editedFields: Record<string, string>;
   onFieldChange: (field: string, value: string) => void;
+  /** Режим формы. В ипотеке: метка «Дата принятия решения», скрыты сроки
+   *  возражений / рассмотрения / оставления без движения (банкротные). */
+  mode?: 'bankruptcy' | 'mortgage';
 }
 
 // Умная маска для полей сроков, допускающих «дата ИЛИ текст».
@@ -37,7 +40,8 @@ const clampNativeDateTime = (iso: string): string => {
   return `${m[1].slice(0, 4)}${m[2]}`;
 };
 
-const DatesSection: React.FC<DatesSectionProps> = ({ editedFields, onFieldChange }) => {
+const DatesSection: React.FC<DatesSectionProps> = ({ editedFields, onFieldChange, mode = 'bankruptcy' }) => {
+  const isMortgage = mode === 'mortgage';
   return (
               <Box sx={{ ...BLOCK_BOX_SX, mb: 3 }}>
                 <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
@@ -46,7 +50,7 @@ const DatesSection: React.FC<DatesSectionProps> = ({ editedFields, onFieldChange
                 <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
                     <Box sx={LABEL_OVERLAP_BOX}>
-                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата принятия определения:</Typography>
+                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{isMortgage ? 'Дата принятия решения:' : 'Дата принятия определения:'}</Typography>
                   <TextField
                     fullWidth
                         type="date"
@@ -95,6 +99,9 @@ const DatesSection: React.FC<DatesSectionProps> = ({ editedFields, onFieldChange
                     </Box>
                 </Grid>
 
+                {/* «Установка срока на предоставление возражений» — показываем в
+                    обоих режимах. Остальные банкротные сроки (рассмотрение / без
+                    движения) в ипотеке не применимы, скрываем. */}
                 <Grid item xs={12} sm={6}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Установка срока на предоставление возражений:</Typography>
@@ -109,6 +116,7 @@ const DatesSection: React.FC<DatesSectionProps> = ({ editedFields, onFieldChange
                     </Box>
                 </Grid>
 
+                {!isMortgage && (
                 <Grid item xs={12} sm={6}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>На рассмотрение заявления в срок:</Typography>
@@ -122,7 +130,9 @@ const DatesSection: React.FC<DatesSectionProps> = ({ editedFields, onFieldChange
                   />
                     </Box>
                 </Grid>
+                )}
 
+                {!isMortgage && (
                 <Grid item xs={12} sm={6}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Срок для оставления без движения:</Typography>
@@ -136,6 +146,7 @@ const DatesSection: React.FC<DatesSectionProps> = ({ editedFields, onFieldChange
                   />
                     </Box>
                 </Grid>
+                )}
 
                 <Grid item xs={12} sm={6}>
                     <Box sx={LABEL_OVERLAP_BOX}>

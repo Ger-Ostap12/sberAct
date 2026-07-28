@@ -20,6 +20,8 @@ interface ObligationsSectionProps {
   onUpdate: (index: number, patch: Partial<Obligation>) => void;
   onAdd: () => void;
   onRemove: (index: number) => void;
+  /** Режим формы. В ипотеке добавляется период взыскания по обязательству (с/по). */
+  mode?: 'bankruptcy' | 'mortgage';
 }
 
 /**
@@ -33,7 +35,10 @@ const ObligationsSection: React.FC<ObligationsSectionProps> = ({
   onUpdate,
   onAdd,
   onRemove,
-}) => (
+  mode = 'bankruptcy',
+}) => {
+  const isMortgage = mode === 'mortgage';
+  return (
   <Box sx={{ ...BLOCK_BOX_SX, mt: 3, width: '100%' }}>
     <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
       Обязательства
@@ -103,6 +108,39 @@ const ObligationsSection: React.FC<ObligationsSectionProps> = ({
                 />
               </Box>
             </Grid>
+            {/* Период взыскания по обязательству (с/по) — только в ипотеке. */}
+            {isMortgage && (
+              <>
+                <Grid item xs={12} sm={4}>
+                  <Box sx={LABEL_OVERLAP_BOX}>
+                    <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Период взыскания с:</Typography>
+                    <TextField
+                      fullWidth
+                      type="date"
+                      value={toInputDate(obligation.collectionPeriodFrom)}
+                      onChange={(e) => onUpdate(index, { collectionPeriodFrom: fromInputDate(e.target.value) })}
+                      size="small"
+                      margin="dense"
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Box sx={LABEL_OVERLAP_BOX}>
+                    <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Период взыскания по:</Typography>
+                    <TextField
+                      fullWidth
+                      type="date"
+                      value={toInputDate(obligation.collectionPeriodTo)}
+                      onChange={(e) => onUpdate(index, { collectionPeriodTo: fromInputDate(e.target.value) })}
+                      size="small"
+                      margin="dense"
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </Box>
+                </Grid>
+              </>
+            )}
           </Grid>
         </AccordionDetails>
       </Accordion>
@@ -117,6 +155,7 @@ const ObligationsSection: React.FC<ObligationsSectionProps> = ({
       Добавить обязательство
     </Button>
   </Box>
-);
+  );
+};
 
 export default ObligationsSection;

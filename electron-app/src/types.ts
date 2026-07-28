@@ -10,6 +10,9 @@ export interface Obligation {
   contractNumber: string;
   contractDate: string;
   obligationType: string;
+  /** Период взыскания по обязательству (режим «Ипотека»): даты с / по. */
+  collectionPeriodFrom?: string;
+  collectionPeriodTo?: string;
 }
 
 export interface ThirdParty {
@@ -39,6 +42,9 @@ export interface Debtor {
   birthDate?: string;
   birthPlace?: string;
   snils?: string;
+  /** Паспорт (режим «Ипотека», роль «Ответчик»): серия 4 цифры, номер 6 цифр. */
+  passportSeries?: string;
+  passportNumber?: string;
 }
 
 /** Категория дела верхнего уровня — выбирается пользователем в меню после анализа.
@@ -46,6 +52,10 @@ export interface Debtor {
  *  (заглушка, в разработке), 'mortgage' — ипотека (форма без банкротных блоков,
  *  с созаёмщиком/поручителем/недвижимостью). Деривируется из documentType. */
 export type DocumentCategory = 'bankruptcy' | 'collection' | 'mortgage';
+
+/** Вид ипотеки: 'civil' — обычная (гражданская), 'military' — военная (ЦЖЗ),
+ *  меняет блок «Финансовые данные» на поля военной ипотеки. */
+export type MortgageKind = 'civil' | 'military';
 
 /** Лёгкая сторона дела с одинаковым набором полей: созаёмщик / поручитель
  *  (ипотека). ТЗ: ФИО, ИНН, адрес проживания. */

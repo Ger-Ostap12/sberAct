@@ -13,7 +13,7 @@ import { ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
 import { toInputDate, fromInputDate } from '../../../shared/lib/dates';
 import { isFnsCreditor } from '../../../shared/lib/banks';
 import FieldQualityMark from '../../../shared/components/FieldQualityMark';
-import { FieldQuality } from '../../../types';
+import { FieldQuality, MortgageKind } from '../../../types';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';
 
 /** Разбивка полей финансов на слагаемые (из нескольких обязательств): ключ поля →
@@ -29,6 +29,11 @@ interface FinancesSectionProps {
    *  обводятся и получают тултип с причиной. Денежные поля — главная жертва
    *  чужого текста, поэтому подсветка здесь нужнее всего. */
   fieldQuality?: Record<string, FieldQuality>;
+  /** Режим формы. В ипотеке добавляется вычисляемая «Итоговая сумма»
+   *  (Общая сумма долга + банкротная госпошлина). */
+  mode?: 'bankruptcy' | 'mortgage';
+  /** Вид ипотеки. При 'military' блок финансов — поля военной ипотеки (ЦЖЗ). */
+  mortgageKind?: MortgageKind;
 }
 
 /** Оставляет только цифры/точку/запятую (сырое значение суммы). */
@@ -240,22 +245,185 @@ const FnsFinances: React.FC<FinancesSectionProps> = ({ editedFields, onFieldChan
   </Box>
 );
 
+/** Ячейка суммы (полуширина) с overlap-меткой — для военной ипотеки. */
+const MilAmountField: React.FC<{
+  label: string;
+  field: string;
+  editedFields: Record<string, string>;
+  onFieldChange: (field: string, value: string) => void;
+}> = ({ label, field, editedFields, onFieldChange }) => (
+  <Grid item xs={12} sm={6}>
+    <Box sx={LABEL_OVERLAP_BOX}>
+      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{label}</Typography>
+      <TextField
+        fullWidth
+        value={editedFields[field] || ''}
+        onChange={(e) => onFieldChange(field, rawAmount(e.target.value))}
+        size="small"
+        margin="dense"
+        placeholder="0.00"
+      />
+    </Box>
+  </Grid>
+);
+
+/** Число из строки суммы/ставки (пробелы/запятая/знак). */
+const milNum = (v?: string): number =>
+  parseFloat((v ?? '').toString().replace(/\s/g, '').replace(',', '.')) || 0;
+const milFmt = (n: number): string =>
+  n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** Дни просрочки = разница дат периода (по − с), в днях. 0, если даты пусты/некорректны. */
+const milOverdueDays = (fromStr?: string, toStr?: string): number => {
+  const fromIso = toInputDate(fromStr);
+  const toIso = toInputDate(toStr);
+  if (!fromIso || !toIso) return 0;
+  const from = new Date(fromIso).getTime();
+  const to = new Date(toIso).getTime();
+  if (Number.isNaN(from) || Number.isNaN(to) || to < from) return 0;
+  return Math.round((to - from) / 86400000);
+};
+
+// Стандартная база начисления процентов — 365 дней в году (при необходимости
+// заменить на 365/366 по году периода).
+const MIL_DAYS_IN_YEAR = 365;
+
+/**
+ * Строка сверки поля с формульным расчётом. Значение берём ИЗ ДОКУМЕНТА (поле выше),
+ * а расчёт показываем как проверку: расхождение → ⚠ с расчётной суммой; совпадает → ✓;
+ * поле пусто → подсказка с расчётом (нечего сверять, но видно ожидаемое число).
+ */
+const MilReconcile: React.FC<{ docValue: string | undefined; computed: number; extra?: string }> = ({ docValue, computed, extra }) => {
+  const has = (docValue ?? '').trim() !== '';
+  const doc = milNum(docValue);
+  const diff = Math.round((doc - computed) * 100) / 100;
+  const ok = Math.abs(diff) < 0.01;
+  const tail = extra ? ` ${extra}` : '';
+  return (
+    <Grid item xs={12}>
+      {!has ? (
+        <Typography variant="body2" sx={{ mt: 0.25, color: 'text.secondary' }}>
+          Расчёт по формуле: {milFmt(computed)}.{tail}
+        </Typography>
+      ) : (
+        <Typography variant="body2" sx={{ mt: 0.25, fontWeight: 500, color: ok ? 'success.main' : 'warning.main' }}>
+          {ok
+            ? `✓ Совпадает с расчётом (${milFmt(computed)})`
+            : `⚠ В документе ${milFmt(doc)}, расчёт по формуле ${milFmt(computed)} (расхождение ${milFmt(diff)}).${tail}`}
+        </Typography>
+      )}
+    </Grid>
+  );
+};
+
+/**
+ * Финансовый блок ВОЕННОЙ ипотеки (ЦЖЗ — целевой жилищный заём).
+ * ПРИОРИТЕТ — данные из документа: суммы редактируемые; расчёт по формулам
+ * показывается как СВЕРКА (✓/⚠), не перезаписывает введённое (согласовано).
+ * Формулы:
+ *   дни просрочки = «Период начисления процентов по» − «с»;
+ *   Проценты = Осн. долг ЦЖЗ × (Процентная ставка/100) × (дни / 365);
+ *   Пени     = Осн. долг ЦЖЗ × (Ставка пени/100) × дни;
+ *   Общая сумма взыскания = Осн. долг + Проценты(док) + Пени(док).
+ */
+const MilitaryFinances: React.FC<FinancesSectionProps> = ({ editedFields, onFieldChange }) => {
+  const principal = milNum(editedFields.milPrincipalCzz);
+  const interestRate = milNum(editedFields.milInterestRate);
+  const penaltyRate = milNum(editedFields.milPenaltyRate);
+  const days = milOverdueDays(editedFields.milInterestPeriodFrom, editedFields.milInterestPeriodTo);
+
+  const interestCalc = principal * (interestRate / 100) * (days / MIL_DAYS_IN_YEAR);
+  const penaltyCalc = principal * (penaltyRate / 100) * days;
+
+  // Итог сверяем с тем, что видит юрист (значения из документа), а не с формулой.
+  const claim = milNum(editedFields.milTotalClaim);
+  const totalFromDoc = principal + milNum(editedFields.milLoanInterest) + milNum(editedFields.milPenaltySum);
+  const totalDiff = Math.round((claim - totalFromDoc) * 100) / 100;
+  const totalOk = Math.abs(totalDiff) < 0.01;
+
+  return (
+  <Box sx={{ ...BLOCK_BOX_SX, mb: 3 }}>
+    <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
+      Финансовые данные
+    </Typography>
+    <Grid container spacing={2}>
+      <MilAmountField label="Основной долг по ЦЖЗ:" field="milPrincipalCzz" editedFields={editedFields} onFieldChange={onFieldChange} />
+      <MilAmountField label="Процентная ставка (%):" field="milInterestRate" editedFields={editedFields} onFieldChange={onFieldChange} />
+      <MilAmountField label="Ставка пени (%):" field="milPenaltyRate" editedFields={editedFields} onFieldChange={onFieldChange} />
+      <Grid item xs={12} sm={6} />
+      <Grid item xs={12} sm={6}>
+        <Box sx={LABEL_OVERLAP_BOX}>
+          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Период начисления процентов с:</Typography>
+          <TextField
+            fullWidth
+            type="date"
+            value={toInputDate(editedFields.milInterestPeriodFrom)}
+            onChange={(e) => onFieldChange('milInterestPeriodFrom', fromInputDate(e.target.value))}
+            size="small"
+            margin="dense"
+            InputLabelProps={{ shrink: true }}
+          />
+        </Box>
+      </Grid>
+      <Grid item xs={12} sm={6}>
+        <Box sx={LABEL_OVERLAP_BOX}>
+          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Период начисления процентов по:</Typography>
+          <TextField
+            fullWidth
+            type="date"
+            value={toInputDate(editedFields.milInterestPeriodTo)}
+            onChange={(e) => onFieldChange('milInterestPeriodTo', fromInputDate(e.target.value))}
+            size="small"
+            margin="dense"
+            InputLabelProps={{ shrink: true }}
+          />
+        </Box>
+      </Grid>
+
+      {/* Проценты (из документа) + сверка с формулой. */}
+      <MilAmountField label="Проценты за пользование займом:" field="milLoanInterest" editedFields={editedFields} onFieldChange={onFieldChange} />
+      <MilReconcile docValue={editedFields.milLoanInterest} computed={interestCalc} extra={`Дней просрочки: ${days}.`} />
+
+      {/* Пени (из документа) + сверка с формулой. */}
+      <MilAmountField label="Сумма пени:" field="milPenaltySum" editedFields={editedFields} onFieldChange={onFieldChange} />
+      <MilReconcile docValue={editedFields.milPenaltySum} computed={penaltyCalc} extra={`Дней просрочки: ${days}.`} />
+
+      {/* Общая сумма взыскания (из документа) + проверка = Осн. долг + Проценты + Пени. */}
+      <MilAmountField label="Общая сумма взыскания:" field="milTotalClaim" editedFields={editedFields} onFieldChange={onFieldChange} />
+      <Grid item xs={12}>
+        <Typography variant="body2" sx={{ mt: 0.25, fontWeight: 500, color: totalOk ? 'success.main' : 'warning.main' }}>
+          {totalOk
+            ? '✓ Общая сумма взыскания сходится (Осн. долг + Проценты + Пени)'
+            : `⚠ Общая сумма взыскания = ${milFmt(claim)}, а Осн. долг + Проценты + Пени = ${milFmt(totalFromDoc)} (расхождение ${milFmt(totalDiff)}).`}
+        </Typography>
+      </Grid>
+    </Grid>
+  </Box>
+  );
+};
+
 /**
  * Секция «Финансовые данные»: суммы долга + сверка (Общая = осн.долг + проценты +
  * неустойка + штрафы + ссудная ГП + комиссия) + даты ПП. Перенесено из
  * DocumentAnalysis 1:1 (мёртвый no-op onBlur убран).
  *
  * Для кредитора-ФНС (авто-детект или ручной выбор «ФНС») раскладка перестраивается
- * в 4 подблока по очередям реестра (FnsFinances).
+ * в 4 подблока по очередям реестра (FnsFinances). В военной ипотеке — MilitaryFinances.
  */
 const FinancesSection: React.FC<FinancesSectionProps> = ({
   editedFields,
   onFieldChange,
   financeBreakdown,
   fieldQuality,
+  mode = 'bankruptcy',
+  mortgageKind = 'civil',
 }) => {
   if (isFnsCreditor(editedFields.creditorName)) {
     return <FnsFinances editedFields={editedFields} onFieldChange={onFieldChange} />;
+  }
+  const isMortgage = mode === 'mortgage';
+  if (isMortgage && mortgageKind === 'military') {
+    return <MilitaryFinances editedFields={editedFields} onFieldChange={onFieldChange} />;
   }
   const brk = financeBreakdown || undefined;
   const q = (field: string) => fieldQuality?.[field];
@@ -434,6 +602,33 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
         })()}
       </Grid>
 
+      {/* Итоговая сумма (ипотека) = Общая сумма долга + банкротная госпошлина.
+          Вычисляется автоматически, поле только для чтения. */}
+      {isMortgage && (
+      <Grid item xs={12} sm={6}>
+        <Box sx={LABEL_OVERLAP_BOX}>
+          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Итоговая сумма:</Typography>
+          {(() => {
+            const num = (v?: string) => parseFloat((v ?? '').toString().replace(/\s/g, '').replace(',', '.')) || 0;
+            const total = num(editedFields.totalDebt) + num(editedFields.stateDuty16 ?? editedFields.stateDuty);
+            const fmt = total.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return (
+              <TextField
+                fullWidth
+                value={fmt}
+                size="small"
+                margin="dense"
+                InputProps={{ readOnly: true }}
+                aria-label="Итоговая сумма"
+              />
+            );
+          })()}
+        </Box>
+      </Grid>
+      )}
+
+      {/* Даты платёжных поручений (депозит/ГП) — банкротные, в ипотеке скрыты. */}
+      {!isMortgage && (
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата ПП депозит:</Typography>
@@ -450,7 +645,9 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
           />
         </Box>
       </Grid>
+      )}
 
+      {!isMortgage && (
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата ПП ГП:</Typography>
@@ -467,6 +664,7 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
           />
         </Box>
       </Grid>
+      )}
     </Grid>
   </Box>
   );

@@ -15,11 +15,13 @@ interface CreditorSectionProps {
   /** Уровень доверия по полям (backend `fieldQuality`): поле уровня 'low'
    *  обводится и получает тултип с причиной. */
   fieldQuality?: Record<string, FieldQuality>;
+  /** Режим формы. В ипотеке блок называется «Информация об истце». */
+  mode?: 'bankruptcy' | 'mortgage';
 }
 
 /**
- * Секция «Информация о кредиторе»: выбор банка из справочника (с автозаполнением)
- * либо ручной ввод + адрес/ОГРН/ИНН. Перенесено из DocumentAnalysis 1:1.
+ * Секция «Информация о кредиторе»/«Информация об истце»: выбор банка из справочника
+ * (с автозаполнением) либо ручной ввод + адрес/ОГРН/ИНН.
  */
 const CreditorSection: React.FC<CreditorSectionProps> = ({
   editedFields,
@@ -27,15 +29,19 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
   onCreditorChange,
   banks,
   fieldQuality,
-}) => (
+  mode = 'bankruptcy',
+}) => {
+  const isMortgage = mode === 'mortgage';
+  const party = isMortgage ? 'истца' : 'кредитора';
+  return (
   <Box sx={{ ...BLOCK_BOX_SX, mb: 3 }}>
     <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
-      Информация о кредиторе
+      {isMortgage ? 'Информация об истце' : 'Информация о кредиторе'}
     </Typography>
     <Grid container spacing={2}>
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
-          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Кредитор:</Typography>
+          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{isMortgage ? 'Истец:' : 'Кредитор:'}</Typography>
           <FormControl fullWidth size="small" margin="dense">
             <Select
               value={
@@ -62,7 +68,7 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
           </FormControl>
           {!matchBankKey(editedFields.creditorName, banks) ? (
             <Box sx={{ mt: 1, ...LABEL_OVERLAP_BOX }}>
-              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Название кредитора:</Typography>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{isMortgage ? 'Название истца:' : 'Название кредитора:'}</Typography>
               <TextField
                 fullWidth
                 value={editedFields.creditorName || ''}
@@ -79,7 +85,7 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
 
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
-          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Юридический адрес кредитора:</Typography>
+          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{`Юридический адрес ${party}:`}</Typography>
           <FieldQualityMark quality={fieldQuality?.creditorAddress}>
           <TextField
             fullWidth
@@ -96,7 +102,7 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
 
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
-          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ОГРН кредитора:</Typography>
+          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{`ОГРН ${party}:`}</Typography>
           <FieldQualityMark quality={fieldQuality?.creditorOgrn}>
           <TextField
             fullWidth
@@ -112,7 +118,7 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
 
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
-          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ИНН кредитора:</Typography>
+          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{`ИНН ${party}:`}</Typography>
           <FieldQualityMark quality={fieldQuality?.creditorInn}>
           <TextField
             fullWidth
@@ -127,6 +133,7 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
       </Grid>
     </Grid>
   </Box>
-);
+  );
+};
 
 export default CreditorSection;
