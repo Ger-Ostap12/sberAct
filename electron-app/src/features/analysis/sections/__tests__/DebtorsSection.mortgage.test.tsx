@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import DebtorsSection from '../DebtorsSection';
 import { Debtor } from '../../../../types';
 
@@ -48,5 +48,23 @@ describe('DebtorsSection — режим ипотеки (Ответчик)', () =
     );
     expect(screen.getByText('4 цифры')).toBeInTheDocument();
     expect(screen.queryByText('6 цифр')).not.toBeInTheDocument();
+  });
+
+  it('ипотека: серия паспорта — маска (только цифры, максимум 4)', () => {
+    const onUpdate = jest.fn();
+    render(
+      <DebtorsSection
+        debtors={[{ ...debtor, passportSeries: '' }]}
+        entityType="individual"
+        onUpdate={onUpdate}
+        onAdd={() => {}}
+        onRemove={() => {}}
+        mode="mortgage"
+      />,
+    );
+    const seriesInput = screen.getByPlaceholderText('6018');
+    fireEvent.change(seriesInput, { target: { value: '60a1855' } });
+    // Нецифры отброшены, обрезано до 4.
+    expect(onUpdate).toHaveBeenCalledWith(0, 'passportSeries', '6018');
   });
 });

@@ -2,6 +2,7 @@
 // Плоское поле editedFields.respondentRepresentativeName.
 import React from 'react';
 import { Box, Typography, Grid, TextField } from '@mui/material';
+import { isValidFio } from '../../../shared/lib/validators';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';
 
 interface RespondentRepresentativeSectionProps {
@@ -27,6 +28,8 @@ const RespondentRepresentativeSection: React.FC<RespondentRepresentativeSectionP
             onChange={(e) => onFieldChange('respondentRepresentativeName', e.target.value)}
             size="small"
             margin="dense"
+            error={!isValidFio(editedFields.respondentRepresentativeName)}
+            helperText={!isValidFio(editedFields.respondentRepresentativeName) ? 'ФИО: Фамилия Имя Отчество или Фамилия И.О.' : undefined}
           />
         </Box>
       </Grid>

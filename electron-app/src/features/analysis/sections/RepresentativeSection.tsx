@@ -3,6 +3,7 @@
 import React from 'react';
 import { Box, Typography, Grid, TextField } from '@mui/material';
 import { toInputDate, fromInputDate } from '../../../shared/lib/dates';
+import { isValidFio } from '../../../shared/lib/validators';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';
 
 interface RepresentativeSectionProps {
@@ -28,6 +29,8 @@ const RepresentativeSection: React.FC<RepresentativeSectionProps> = ({
             onChange={(e) => onFieldChange('representativeName', e.target.value)}
             size="small"
             margin="dense"
+            error={!isValidFio(editedFields.representativeName)}
+            helperText={!isValidFio(editedFields.representativeName) ? 'ФИО: Фамилия Имя Отчество или Фамилия И.О.' : undefined}
           />
         </Box>
       </Grid>

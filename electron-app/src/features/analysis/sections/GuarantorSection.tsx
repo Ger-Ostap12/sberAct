@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Typography, Card, IconButton, Grid, TextField, Button } from '@mui/material';
 import { Add as AddIcon, Close as CloseIcon } from '@mui/icons-material';
 import { PartyLite } from '../../../types';
+import { isValidFio } from '../../../shared/lib/validators';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';
 
 interface GuarantorSectionProps {
@@ -48,6 +49,8 @@ const GuarantorSection: React.FC<GuarantorSectionProps> = ({
                 onChange={(e) => onUpdate(index, 'name', e.target.value)}
                 size="small"
                 margin="dense"
+                error={!isValidFio(guarantor.name)}
+                helperText={!isValidFio(guarantor.name) ? 'ФИО: Фамилия Имя Отчество или Фамилия И.О.' : undefined}
               />
             </Box>
           </Grid>

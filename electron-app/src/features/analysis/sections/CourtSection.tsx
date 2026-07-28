@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import { JUDGES } from '../../../shared/constants/judges';
 import { formatJudgeName } from '../../../shared/lib/judges';
-import { isValidEmail, isValidUrl } from '../../../shared/lib/validators';
+import { isValidEmail, isValidUrl, isValidCaseNumber, isValidFio } from '../../../shared/lib/validators';
 import {
   LABEL_OVERLAP_BOX,
   LABEL_OVERLAP_SX,
@@ -63,6 +63,9 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                         onChange={(e) => onFieldChange('caseNumber', e.target.value)}
                     size="small"
                     margin="dense"
+                        error={isMortgage && !isValidCaseNumber(editedFields.caseNumber)}
+                        helperText={isMortgage && !isValidCaseNumber(editedFields.caseNumber) ? 'Формат: 2-1223/2026' : undefined}
+                        placeholder={isMortgage ? '2-1223/2026' : undefined}
                   />
                     </Box>
                 </Grid>
@@ -80,6 +83,8 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                           size="small"
                           margin="dense"
                           placeholder="Фамилия Имя Отчество"
+                          error={!isValidFio(editedFields.judge)}
+                          helperText={!isValidFio(editedFields.judge) ? 'ФИО: Фамилия Имя Отчество или Фамилия И.О.' : undefined}
                         />
                       ) : (
                       <FormControl fullWidth size="small" margin="dense">
@@ -214,6 +219,8 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                         onChange={(e) => onFieldChange('authorName', e.target.value)}
                         size="small"
                         margin="dense"
+                        error={isMortgage && !isValidFio(editedFields.authorName)}
+                        helperText={isMortgage && !isValidFio(editedFields.authorName) ? 'ФИО: Фамилия Имя Отчество или Фамилия И.О.' : undefined}
                       />
                     </Box>
                   </Grid>

@@ -3,7 +3,7 @@ import { Box, Typography, Card, IconButton, Grid, TextField, Button } from '@mui
 import { Add as AddIcon, Close as CloseIcon } from '@mui/icons-material';
 import { Debtor, EntityType, FieldQuality } from '../../../types';
 import { toInputDate, fromInputDate } from '../../../shared/lib/dates';
-import { isValidPassportSeries, isValidPassportNumber } from '../../../shared/lib/validators';
+import { isValidPassportSeries, isValidPassportNumber, digitsOnly } from '../../../shared/lib/validators';
 import FieldQualityMark from '../../../shared/components/FieldQualityMark';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';
 
@@ -166,9 +166,10 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
                   <TextField
                     fullWidth
                     value={debtor.passportSeries || ''}
-                    onChange={(e) => onUpdate(index, 'passportSeries', e.target.value)}
+                    onChange={(e) => onUpdate(index, 'passportSeries', digitsOnly(e.target.value, 4))}
                     size="small"
                     margin="dense"
+                    inputProps={{ inputMode: 'numeric', maxLength: 4 }}
                     error={!isValidPassportSeries(debtor.passportSeries)}
                     helperText={!isValidPassportSeries(debtor.passportSeries) ? '4 цифры' : undefined}
                     placeholder="6018"
@@ -181,9 +182,10 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
                   <TextField
                     fullWidth
                     value={debtor.passportNumber || ''}
-                    onChange={(e) => onUpdate(index, 'passportNumber', e.target.value)}
+                    onChange={(e) => onUpdate(index, 'passportNumber', digitsOnly(e.target.value, 6))}
                     size="small"
                     margin="dense"
+                    inputProps={{ inputMode: 'numeric', maxLength: 6 }}
                     error={!isValidPassportNumber(debtor.passportNumber)}
                     helperText={!isValidPassportNumber(debtor.passportNumber) ? '6 цифр' : undefined}
                     placeholder="123456"
