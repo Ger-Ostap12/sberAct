@@ -196,6 +196,17 @@ describe('FinancesSection — итоговая сумма (ипотека)', () 
     expect(screen.getByDisplayValue('105 000,00')).toBeInTheDocument();
   });
 
+  it('ипотека: «Ссудная госпошлина» скрыта; банкротство — показана', () => {
+    const { rerender } = render(
+      <FinancesSection editedFields={{ creditorName: 'ПАО Сбербанк' }} onFieldChange={() => {}} />,
+    );
+    expect(screen.getByText('Ссудная госпошлина:')).toBeInTheDocument();
+    rerender(
+      <FinancesSection editedFields={{ creditorName: 'ПАО Сбербанк' }} onFieldChange={() => {}} mode="mortgage" />,
+    );
+    expect(screen.queryByText('Ссудная госпошлина:')).not.toBeInTheDocument();
+  });
+
   it('ипотека: даты ПП депозит/ГП скрыты; банкротство — показаны', () => {
     const { rerender } = render(
       <FinancesSection editedFields={{ creditorName: 'ПАО Сбербанк' }} onFieldChange={() => {}} />,

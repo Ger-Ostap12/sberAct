@@ -547,6 +547,8 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
         </Box>
       </Grid>
 
+      {/* Ссудная госпошлина — банкротный реквизит, в ипотеке не нужен. */}
+      {!isMortgage && (
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Ссудная госпошлина:</Typography>
@@ -562,6 +564,7 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
           </BreakdownTip>
         </Box>
       </Grid>
+      )}
 
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
@@ -586,7 +589,8 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
             + num(editedFields.interest)
             + num(editedFields.forfeit)
             + num(editedFields.penalties)
-            + num(editedFields.loanStateDuty17)
+            // Ссудная госпошлина скрыта в ипотеке — не учитываем её в сверке.
+            + (isMortgage ? 0 : num(editedFields.loanStateDuty17))
             + num(editedFields.bankCommission);
           const total = num(editedFields.totalDebt);
           const diff = Math.round((total - sum) * 100) / 100;
