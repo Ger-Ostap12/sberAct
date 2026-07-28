@@ -755,6 +755,18 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             # Они будут заменены из обязательств в replace_obligations_data
             field_mapping.pop("contractDate", None)
             field_mapping.pop("contractNumber", None)
+
+            # Родительный падеж названия суда для акта ([002.1]). Приоритет —
+            # значение из формы (mortgageCourtNameGenitive — «якорь» справочника,
+            # гарантированно верная форма); иначе склоняем название суда морфологией.
+            court_gen = (cleaned_data.get("mortgageCourtNameGenitive") or "").strip()
+            if not court_gen:
+                court_src = cleaned_data.get("mortgageCourtName002") or cleaned_data.get("courtName") or ""
+                court_gen = self._court_name_to_genitive(court_src)
+            if court_gen:
+                cleaned_data["mortgageCourtNameGenitive"] = court_gen
+                field_mapping["mortgageCourtNameGenitive"] = "002.1"
+                logger.info(f"Родительный падеж названия суда для [002.1]: {court_gen}")
             # Для ипотеки используем mortgageDebtorName или debtorName вместо applicantName для [2]
             def strip_ooo(name: str) -> str:
                 """Remove ООО/Общество с ограниченной ответственностью prefix to leave only the org name."""
@@ -885,6 +897,43 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             else:
                 logger.warning(f"Не удалось найти правильное ФИО ответчика. mortgageDebtorName: {mortgage_debtor_name}, debtorName: {debtor_name[:100] if debtor_name else 'None'}, applicantName: {current_applicant_name[:100] if current_applicant_name else 'None'}")
         return field_mapping
+
+    def _court_name_to_case(self, name: str, grammeme: str) -> str:
+        """Название суда → заданный падеж (grammeme pymorphy: 'gent'/'datv'/'loct'/…).
+        Одно поле формы (именительный) → любой падеж для акта. Склоняем пословно
+        прилагательные и слово «суд» (до него включительно); хвост (город,
+        «г. Ростова-на-Дону») оставляем как есть — иначе морфология искажает топоним.
+        Fallback — исходное слово, если pymorphy не разобрал. Регистр первого
+        символа каждого слова сохраняем."""
+        if not name or not name.strip():
+            return name
+        try:
+            from pymorphy3 import MorphAnalyzer
+            morph = MorphAnalyzer()
+        except Exception as e:
+            logger.warning(f"pymorphy недоступен для склонения суда: {e}")
+            return name
+        words = name.split()
+        result: list = []
+        inflect_done = False
+        for word in words:
+            if inflect_done:
+                result.append(word)
+                continue
+            parsed = morph.parse(word)[0]
+            form = parsed.inflect({grammeme})
+            inflected = form.word if form else word
+            if word[:1].isupper():
+                inflected = inflected[:1].upper() + inflected[1:]
+            result.append(inflected)
+            # После слова с леммой «суд» склонение прекращаем (город — как есть).
+            if parsed.normal_form == "суд":
+                inflect_done = True
+        return " ".join(result)
+
+    def _court_name_to_genitive(self, name: str) -> str:
+        """Родительный падеж названия суда («…районного суда…»)."""
+        return self._court_name_to_case(name, "gent")
 
     def _base_field_mapping(self) -> Dict[str, str]:
         """Базовый маппинг полей данных на номера маркеров шаблона

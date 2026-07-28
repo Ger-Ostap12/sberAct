@@ -5,6 +5,8 @@ export interface CourtDefaults {
   email: string;
   site: string;
   address: string;
+  /** Название суда в родительном падеже — «якорь» для акта (минуя морфологию). */
+  genitive: string;
 }
 
 /**
@@ -20,5 +22,5 @@ export const findCourtDefaults = (courtName?: string): CourtDefaults | null => {
     COURTS.find((c) => norm(c.display) === low) ||
     COURTS.find((c) => c.aliases.some((alias) => low.includes(norm(alias))));
   if (!match) return null;
-  return { email: match.email, site: match.site, address: match.address };
+  return { email: match.email, site: match.site, address: match.address, genitive: match.genitive };
 };

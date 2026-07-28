@@ -4,6 +4,8 @@
 export interface Court {
   /** Каноничное название суда. */
   display: string;
+  /** Название суда в родительном падеже («…районного суда…») — для акта. */
+  genitive: string;
   /** Электронный адрес суда. */
   email: string;
   /** Адрес сайта суда. */
@@ -17,6 +19,7 @@ export interface Court {
 export const COURTS: Court[] = [
   {
     display: 'Ворошиловский районный суд г. Ростова-на-Дону',
+    genitive: 'Ворошиловского районного суда г. Ростова-на-Дону',
     email: 'voroshilovsky.ros@sudrf.ru',
     site: 'https://voroshilovsky--ros.sudrf.ru/',
     address: '',

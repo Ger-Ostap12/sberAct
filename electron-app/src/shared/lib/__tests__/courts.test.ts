@@ -6,6 +6,7 @@ describe('findCourtDefaults', () => {
     expect(d).not.toBeNull();
     expect(d!.email).toBe('voroshilovsky.ros@sudrf.ru');
     expect(d!.site).toBe('https://voroshilovsky--ros.sudrf.ru/');
+    expect(d!.genitive).toBe('Ворошиловского районного суда г. Ростова-на-Дону');
   });
 
   it('распознаёт по алиасу-подстроке (регистр/ё игнорируются)', () => {
