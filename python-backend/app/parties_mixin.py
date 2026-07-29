@@ -1104,7 +1104,13 @@ class PartiesMixin:
             extracted_fields.update(self._combine_debtors(parsed_debtors))
             debtors_result = parsed_debtors
         else:
-            debtors_result = [self._single_debtor_from_fields(extracted_fields)]
+            single = self._single_debtor_from_fields(extracted_fields)
+            # Восполняем пустой адрес из распознанной записи блока «Ответчик:/Должник:».
+            # Плоский applicantAddress мог не извлечься, когда блок «Представитель
+            # истца:» между Истцом и Ответчиком сбивает разбор адреса (ипотека).
+            if not single.get("address") and len(parsed_debtors) == 1 and parsed_debtors[0].get("address"):
+                single["address"] = parsed_debtors[0]["address"]
+            debtors_result = [single]
 
         # Несколько третьих лиц: извлекаем массив (физлица и организации). Если
         # извлеклось — отдаём как есть; иначе одно лицо из плоских полей (если есть).

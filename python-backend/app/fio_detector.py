@@ -55,6 +55,28 @@ def is_person_name(value: str) -> bool:
     return _looks_like_fio(value or "")
 
 
+# Несовершеннолетний со-ответчик записывается как «<ФИО ребёнка> в лице законного
+# представителя <ФИО представителя>». Такая строка не проходит _looks_like_fio
+# (лишние слова-связки), поэтому распознаём её отдельным паттерном — вся строка
+# целиком идёт в поле ФИО ответчика (по требованию: связка сохраняется как есть).
+_NAME_SEQ_RE = r"[А-ЯЁ][А-ЯЁа-яё]*(?:-[А-ЯЁ][А-ЯЁа-яё]*)?(?:\s+[А-ЯЁ][А-ЯЁа-яё]*(?:-[А-ЯЁ][А-ЯЁа-яё]*)?){1,3}"
+_LEGAL_REP_RE = re.compile(
+    rf"^(?P<child>{_NAME_SEQ_RE})\s+[Вв]\s+лице\s+законного\s+представител\w*\s+"
+    rf"(?P<guardian>{_NAME_SEQ_RE})\s*$"
+)
+
+
+def _represented_minor_name(line: str):
+    """Если строка — «<ребёнок> в лице законного представителя <ФИО>», возвращает
+    нормализованную строку целиком (обе части Titlecase); иначе None."""
+    m = _LEGAL_REP_RE.match(line.strip().strip(","))
+    if not m:
+        return None
+    child = _normalize_fio(m.group("child"))
+    guardian = _normalize_fio(m.group("guardian"))
+    return f"{child} в лице законного представителя {guardian}"
+
+
 def _normalize_fio(line: str) -> str:
     """Приводит ФИО к виду 'Фамилия Имя Отчество' (Titlecase, с сохранением скобок/дефисов)."""
     line = line.strip().strip(",")
@@ -253,9 +275,15 @@ def _strip_address_label(addr: str) -> str:
 def _parse_debtor_record(rec_text: str):
     """Разбирает запись одного должника: name, birthDate, birthPlace, snils, inn, address."""
     lines = [l.strip() for l in rec_text.split("\n") if l.strip()]
-    if not lines or not _looks_like_fio(lines[0]):
+    if not lines:
         return None
-    d = {"name": _normalize_fio(lines[0])}
+    rep_name = _represented_minor_name(lines[0])
+    if rep_name:
+        d = {"name": rep_name}
+    elif _looks_like_fio(lines[0]):
+        d = {"name": _normalize_fio(lines[0])}
+    else:
+        return None
 
     bd = _find_birthdate(rec_text)
     if bd:
@@ -315,7 +343,7 @@ def extract_debtors(text: str) -> list:
     nonempty_after = []
     for i, line in enumerate(lines):
         s = line.strip()
-        if not s or not _looks_like_fio(s):
+        if not s or not (_looks_like_fio(s) or _represented_minor_name(s)):
             continue
         # Смотрим следующие до двух непустых строк на маркер даты рождения.
         window = []
