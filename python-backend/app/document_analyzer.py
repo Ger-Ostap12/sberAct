@@ -487,6 +487,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # полям синхронизирует их (и набор актов) с финальным типом лица.
             recommended_acts = self._get_recommended_acts(document_type, extracted_fields, text)
 
+            # Ипотека: структурированные предметы залога для формы (стоимость/НПЦ/
+            # отчёт/ЕГРН реконсилируются из абзаца оценки и записей ЕГРН). Top-level,
+            # вне fields и collaterals — golden-снимок его не фиксирует.
+            mortgage_properties = (
+                self._build_mortgage_properties(text, collaterals_final)
+                if document_type == "mortgage_claim" else []
+            )
+
             # Формируем результат
             result = {
                 "documentType": document_type,
@@ -494,6 +502,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 "fields": extracted_fields,
                 "obligations": extracted_fields.get('obligations', []),
                 "collaterals": collaterals_final,
+                "mortgageProperties": mortgage_properties,
                 "financeBreakdown": finance_breakdown,
                 "applicationKind": application_kind,
                 "debtorStatusHint": debtor_status_hint,
@@ -1436,6 +1445,38 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         extended_address = self._extend_address_from_text(text, address)
         if extended_address:
             fields["applicantAddress"] = extended_address
+
+        # Представитель истца: реальные заявления не содержат маркера [2.2], поэтому
+        # паттерн mortgageRepresentative22 не срабатывает. Извлекаем ФИО из блока
+        # «Представитель истца:», пропуская строку отделения/филиала банка.
+        if not fields.get("mortgageRepresentative22"):
+            rep = self._extract_representative_name(text)
+            if rep:
+                fields["mortgageRepresentative22"] = rep
+
+    def _extract_representative_name(self, text: str) -> Optional[str]:
+        """ФИО представителя истца из блока «Представитель истца:».
+
+        Первая строка записи часто — отделение/филиал банка (с номером), а ФИО идёт
+        ниже. Берём первую строку-ФИО в пределах нескольких строк после метки,
+        останавливаясь на следующем разделе/реквизите."""
+        m = re.search(r"Представител\w*\s+истца\s*:?", text, re.IGNORECASE)
+        if not m:
+            return None
+        from fio_detector import is_person_name, _normalize_fio
+        for line in text[m.end():].split("\n")[:6]:
+            s = line.strip().strip(",")
+            if not s:
+                continue
+            if re.match(
+                r"(?:Ответчик|Истец|СНИЛС|ИНН|ОГРН|Почтов\w+\s+адрес|Адрес|"
+                r"Цена\s+иска|Госпошлин|Дата\s+рождения|Паспорт)\b",
+                s, re.IGNORECASE,
+            ):
+                break
+            if is_person_name(s):
+                return _normalize_fio(s)
+        return None
 
     def _extract_mortgage_collateral_block(self, text: str) -> Optional[str]:
         """
@@ -5046,6 +5087,224 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             name = m.group(1).strip()
             return name[0].upper() + name[1:]
         return None
+
+    # ------------------------------------------------------------------ #
+    # Предмет ипотеки: структурированные объекты залога для формы.        #
+    # Отдельный top-level ключ result["mortgageProperties"] — вне fields  #
+    # и вне collaterals, поэтому golden-снимок его не фиксирует.          #
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _mp_num(s: str) -> str:
+        """Число суммы → канон без разрядных пробелов, десятичная запятая как есть."""
+        s = (s or "").replace(" ", " ").replace(" ", " ")
+        return re.sub(r"\s+", "", s).strip(" .,")
+
+    @staticmethod
+    def _mp_type(name: str) -> Optional[str]:
+        """Тип объекта из его наименования/описания (для сопоставления «в том числе»)."""
+        n = (name or "").lower()
+        if "участ" in n:
+            return "участок"
+        if "дом" in n:
+            return "дом"
+        if "квартир" in n:
+            return "квартира"
+        if "машино" in n:
+            return "машиноместо"
+        if "гараж" in n:
+            return "гараж"
+        if "помещ" in n:
+            return "помещение"
+        return None
+
+    def _mp_description(self, raw: str) -> str:
+        """Основное описание объекта: до адреса/кадастра/записи ЕГРН."""
+        d = (raw or "").strip().lstrip("-–—• \t").strip()
+        d = re.split(
+            r",?\s*(?:расположен\w*|находящ\w*|по\s+адресу|кадастров\w+|Запис\w+\s+в\s+ЕГРН)",
+            d, maxsplit=1, flags=re.IGNORECASE,
+        )[0].strip(" ,;.")
+        return (d[0].upper() + d[1:]) if d else d
+
+    def _mp_egrn(self, desc: str):
+        """(номер ЕГРН, дата) из «Запись в ЕГРН: …, № … от …» описания объекта.
+
+        Долевая собственность даёт несколько записей (2/4, 1/4, 1/4) — собираем все
+        с метками долей: «2/4 <№>; 1/4 <№>; …», дата — первой записи."""
+        m = re.search(r"Запис\w+\s+в\s+ЕГРН\s*:?\s*(.+?)(?:Ипотека|$)", desc or "", re.IGNORECASE | re.DOTALL)
+        if not m:
+            return "", ""
+        seg = m.group(1)
+        recs = re.findall(
+            r"(?:(\d\s*/\s*\d)\s*,\s*)?(?:№|N)\s*([0-9A-Za-zА-Яа-я:/\-]+?)\s+от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})",
+            seg,
+        )
+        if not recs:
+            m2 = re.search(r"(?:№|N)\s*([0-9A-Za-zА-Яа-я:/\-]+)", seg)
+            return (m2.group(1).strip(" .") if m2 else ""), ""
+        if len(recs) == 1:
+            _share, num, date = recs[0]
+            return num.strip(" ."), date.replace(",", ".")
+        parts = []
+        for share, num, _date in recs:
+            num = num.strip(" .")
+            parts.append(f"{share.replace(' ', '')} {num}" if share else num)
+        return "; ".join(parts), recs[0][2].replace(",", ".")
+
+    def _mp_breakdown(self, region: str) -> Dict[str, str]:
+        """Разбивка «в том числе <тип> — <сумма> руб.» → {тип: сумма}."""
+        bd: Dict[str, str] = {}
+        for m in re.finditer(
+            r"(жил\w+\s+дом\w*|земельн\w+\s+участ\w*|квартир\w+|нежил\w+\s+помещени\w*|"
+            r"помещени\w+|гараж\w*|машино-?мест\w*)\s*[-–—:]?\s*"
+            r"([\d][\d\s  .,]*\d|\d)\s*руб",
+            region, re.IGNORECASE,
+        ):
+            typ = self._mp_type(m.group(1))
+            if typ and typ not in bd:
+                bd[typ] = self._mp_num(m.group(2))
+        return bd
+
+    def _mp_amounts(self, text: str, kind: str):
+        """(итог, разбивка) для оценки (kind='value') или начальной цены (kind='start')."""
+        if kind == "value":
+            pats = [
+                r"котор\w+\s+составил\w*\s+([\d\s  .,]+?)\s*руб",
+                r"рыночн\w+\s+стоимост\w+[^.]{0,80}?составля\w+\s+([\d\s  .,]+?)\s*руб",
+            ]
+        else:
+            pats = [
+                r"начальн\w+\s+продажн\w+\s+цен\w+[^.]{0,80}?составля\w+\s+([\d\s  .,]+?)\s*руб",
+                r"Установить\s+начальн\w+\s+цен\w+\s+продажи[^.]{0,90}?в\s+размере\s+([\d\s  .,]+?)\s*руб",
+                r"начальн\w+\s+продажн\w+\s+цен\w+\s+должна\s+быть\s+установлен\w*\s+в\s+размере\s+([\d\s  .,]+?)\s*руб",
+            ]
+        stops = r"(?:Таким\s+образом|Следовательно|Определить|Согласно|В\s+соответствии|\n\n)"
+        for pat in pats:
+            m = re.search(pat, text, re.IGNORECASE)
+            if m:
+                total = self._mp_num(m.group(1))
+                region = re.split(stops, text[m.end(): m.end() + 300], maxsplit=1, flags=re.IGNORECASE)[0]
+                return total, self._mp_breakdown(region)
+        return "", {}
+
+    def _mp_npc_strategy(self, text: str) -> str:
+        """Стратегия НПЦ (%): приоритет «залоговая стоимость … в размере NN%»,
+        фолбэк — словесное «восьмидесяти процентам» = 80%."""
+        m = re.search(r"залогов\w+\s+стоимост\w+[^\n]{0,80}?в\s+размере\s+(\d{1,3})\s*%", text, re.IGNORECASE)
+        if m:
+            return m.group(1) + "%"
+        if re.search(r"восьмидесяти\s+процент", text, re.IGNORECASE):
+            return "80%"
+        return ""
+
+    def _mp_appraisal_report(self, text: str) -> str:
+        """Отчёт об оценке: «№<номер> от <дата>» (общий для всех объектов)."""
+        m = re.search(
+            r"отчет\w*\s+об\s+оценк\w+[^\n№N]{0,40}?(?:№|N)\s*([^\s,()\n]+)"
+            r"(?:\s+(?:от|г\.?)\s*(\d{1,2}[.,]\d{1,2}[.,]\d{4}))?",
+            text, re.IGNORECASE,
+        )
+        if m:
+            num = m.group(1).strip(" .,")
+            date = (m.group(2) or "").replace(",", ".")
+            return f"№{num} от {date}" if date else f"№{num}"
+        m2 = re.search(
+            r"заключени\w+\s+о\s+стоимости\s+имуществ\w*\s+от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})",
+            text, re.IGNORECASE,
+        )
+        if m2:
+            return "от " + m2.group(1).replace(",", ".")
+        return ""
+
+    # Начало записи объекта залога (в начале строки, после снятого буллета).
+    _MP_OBJ_START_RE = re.compile(
+        r"^(?:жил\w+\s+дом|квартир\w+|земельн\w+\s+участ\w+|нежил\w+\s+(?:помещени\w+|здани\w+)|"
+        r"помещени\w+|гараж\w*|машино-?мест\w*|здани\w+|строени\w+|комнат\w+)",
+        re.IGNORECASE,
+    )
+
+    def _mp_collateral_chunks(self, text: str) -> List[str]:
+        """Абзацы-предметы из блока «…залог… а именно: …» до «В силу п.1 ст. 77…».
+
+        Объекты идут отдельными строками, но буллет «-» бывает только у первого
+        (грязная вёрстка). Поэтому режем не по буллетам, а по строкам, начинающимся
+        с ключевого слова вида объекта; строки-продолжения (перенос адреса) клеим
+        к текущему объекту."""
+        m = re.search(
+            r"а\s+именно\s*:?\s*(.+?)(?:В\s+силу\s+(?:п\.?\s*1\s+)?ст\.?\s*77|В\s+силу\s+ст\.|"
+            r"Банк\s+исполнил|Право\s+собственности\s+на\s+вышеуказанн|\n\s*\n|$)",
+            text, re.IGNORECASE | re.DOTALL,
+        )
+        if not m:
+            return []
+        block = m.group(1)
+        chunks: List[str] = []
+        cur: Optional[str] = None
+        for raw in block.split("\n"):
+            ln = raw.strip(" -–—•\t")
+            if not ln:
+                continue
+            if self._MP_OBJ_START_RE.match(ln):
+                if cur:
+                    chunks.append(cur)
+                cur = ln
+            elif cur is not None:
+                cur += " " + ln
+        if cur:
+            chunks.append(cur)
+        return chunks
+
+    @staticmethod
+    def _mp_cadastral(chunk: str) -> str:
+        m = re.search(r"кадастров\w+\s+номер\s*:?\s*(\d{2}:\d{2}:\d{5,7}:\d+)", chunk, re.IGNORECASE)
+        return m.group(1) if m else ""
+
+    @staticmethod
+    def _mp_address(chunk: str) -> str:
+        m = re.search(r"по\s+адресу\s*:?\s*(.+?)(?:,?\s*кадастров\w+\s+номер|\.\s*Запис\w+|$)", chunk, re.IGNORECASE)
+        return m.group(1).strip(" ,;.") if m else ""
+
+    def _build_mortgage_properties(self, text: str, collaterals: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Структурированные предметы ипотеки для формы.
+
+        Объекты (вид/описание/кадастр/адрес/ЕГРН) разбираем прямо из блока залога —
+        надёжнее общего `collaterals`, который на грязной вёрстке (буллет только у
+        первого объекта) теряет второй. Стоимость/начальную цену берём из абзаца
+        оценки (разбивка «в том числе <тип>»), сопоставляя по типу объекта; стратегию
+        НПЦ и отчёт об оценке — общие для всех объектов."""
+        chunks = self._mp_collateral_chunks(text)
+        # Фолбэк: если блок не найден, но общий парсер что-то дал — используем его.
+        if not chunks and collaterals:
+            chunks = [c.get("description") or c.get("objectName") or "" for c in collaterals]
+        chunks = [c for c in chunks if c and len(c) >= 10]
+        if not chunks:
+            return []
+
+        npc = self._mp_npc_strategy(text)
+        report = self._mp_appraisal_report(text)
+        val_total, val_bd = self._mp_amounts(text, "value")
+        st_total, st_bd = self._mp_amounts(text, "start")
+        single = len(chunks) == 1
+        out: List[Dict[str, Any]] = []
+        for i, chunk in enumerate(chunks):
+            typ = self._mp_type(chunk)
+            value = (val_bd.get(typ) if val_bd else "") or (val_total if single else "")
+            start = (st_bd.get(typ) if st_bd else "") or (st_total if single else "")
+            egrn, egrn_date = self._mp_egrn(chunk)
+            out.append({
+                "id": f"mortgageProperty-{i}",
+                "description": self._mp_description(chunk),
+                "cadastralNumber": self._mp_cadastral(chunk),
+                "address": self._mp_address(chunk),
+                "value": value or "",
+                "startingPrice": start or "",
+                "npcStrategy": npc,
+                "appraisalReport": report,
+                "egrnRecord": egrn,
+                "egrnRecordDate": egrn_date,
+            })
+        return out
 
     _VIN_COLLATERAL_RE = re.compile(
         r"(?:[-–—]\s*)?(?:движимое\s+имущество|автомобиль)\s*[:：]\s*VIN\s*[:：]?\s*"
