@@ -59,3 +59,30 @@ export const isValidFio = (value?: string): boolean => {
   if (!v) return true;
   return FIO_FULL.test(v) || FIO_SHORT.test(v);
 };
+
+/** Кадастровый номер: NN:NN:NNNNNNN:NN (только сам номер). Пустое — валидно. */
+export const isValidCadastralNumber = (value?: string): boolean => {
+  const v = (value ?? '').trim();
+  if (!v) return true;
+  return /^\d{2}:\d{2}:\d{5,7}:\d+$/.test(v);
+};
+
+/** Запись ЕГРН: регистрационный номер (цифры + разделители «:/-»). Долевая
+ * собственность — несколько записей через «;», каждая может нести метку доли
+ * «2/4 <номер>». Пустое — валидно. */
+export const isValidEgrnRecord = (value?: string): boolean => {
+  const v = (value ?? '').trim();
+  if (!v) return true;
+  return v.split(';').every((part) => {
+    const t = part.trim().replace(/^\d\/\d\s+/, '');
+    return /^[0-9А-Яа-яA-Za-z][0-9А-Яа-яA-Za-z:/-]{7,}$/.test(t) && /[:-]/.test(t);
+  });
+};
+
+/** Денежная сумма: только число (пробелы-разряды допустимы, десятичная «,» или «.»).
+ * Пустое — валидно. */
+export const isValidMoney = (value?: string): boolean => {
+  const v = (value ?? '').trim();
+  if (!v) return true;
+  return /^\d{1,15}([.,]\d{1,2})?$/.test(v.replace(/[\s\u00a0\u202f]/g, ''));
+};

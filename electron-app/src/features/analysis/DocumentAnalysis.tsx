@@ -393,19 +393,52 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         // (объектов может быть несколько — добавляются вручную). Если извлечение
         // пустое — оставляем один пустой предмет, чтобы карточка была видна.
         const pmf = propExtractedData.fields || {};
-        const initialMortgageProperties: MortgageProperty[] = [{
-          id: `mortgageProperty-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          description: pmf.mortgageCollateralDescription1221 || '',
-          cadastralNumber: pmf.mortgageCadastralNumber || '',
-          address: pmf.mortgagePropertyAddress || '',
-          value: pmf.mortgageCollateralValue1224 || '',
-          startingPrice: pmf.mortgageStartingPrice1225 || '',
-          appraisalReport: pmf.mortgageAppraisalReport1223 || ''
-        }];
+        // Предмет(ы) ипотеки: приоритет — структурированный массив с бэкенда
+        // (несколько объектов, стоимость/НПЦ/ЕГРН реконсилированы). Фолбэк на один
+        // объект из плоских полей — если бэкенд массив не дал (нестандартный формат).
+        const backendProps = propExtractedData.mortgageProperties;
+        const initialMortgageProperties: MortgageProperty[] =
+          Array.isArray(backendProps) && backendProps.length > 0
+            ? backendProps.map((p, i) => ({
+                id: p.id || `mortgageProperty-${i}-${Math.random().toString(36).slice(2)}`,
+                description: p.description || '',
+                cadastralNumber: p.cadastralNumber || '',
+                address: p.address || '',
+                value: p.value || '',
+                startingPrice: p.startingPrice || '',
+                appraisalReport: p.appraisalReport || '',
+                egrnRecord: p.egrnRecord || '',
+                egrnRecordDate: p.egrnRecordDate || '',
+                npcStrategy: p.npcStrategy || '',
+                dduContract: p.dduContract || '',
+                dduDate: p.dduDate || '',
+              }))
+            : [{
+                id: `mortgageProperty-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                description: pmf.mortgageCollateralDescription1221 || '',
+                cadastralNumber: pmf.mortgageCadastralNumber || '',
+                address: pmf.mortgagePropertyAddress || '',
+                value: pmf.mortgageCollateralValue1224 || '',
+                startingPrice: pmf.mortgageStartingPrice1225 || '',
+                appraisalReport: pmf.mortgageAppraisalReport1223 || '',
+              }];
+
+        // Ипотека: период взыскания извлекается в плоские поля [120]/[121];
+        // объект обязательства их не несёт — сеем в (единственное) обязательство,
+        // если период на нём ещё не задан. Только для ипотеки.
+        const initialObligations = (propExtractedData.obligations || []).map((o, i) =>
+          isMortgage && i === 0
+            ? {
+                ...o,
+                collectionPeriodFrom: o.collectionPeriodFrom || pmf.mortgagePeriodStart120 || '',
+                collectionPeriodTo: o.collectionPeriodTo || pmf.mortgagePeriodEnd121 || '',
+              }
+            : o,
+        );
 
         const fullAnalysisResult = {
           ...propExtractedData,
-          obligations: propExtractedData.obligations || [],
+          obligations: initialObligations,
           collaterals: initialCollaterals,
           thirdParties: initialThirdParties,
           debtors: initialDebtors,
@@ -458,6 +491,14 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         if (isMortgage) {
           if (!cleanFields.representativeName && cleanFields.mortgageRepresentative22) {
             cleanFields.representativeName = cleanFields.mortgageRepresentative22;
+          }
+          // Название/адрес суда извлекаются бэкендом в плоские поля с маркерами
+          // [002]/[001]; форма читает courtName/courtAddress — переносим, если пусто.
+          if (!cleanFields.courtName && cleanFields.mortgageCourtName002) {
+            cleanFields.courtName = cleanFields.mortgageCourtName002;
+          }
+          if (!cleanFields.courtAddress && cleanFields.mortgageCourtAddress001) {
+            cleanFields.courtAddress = cleanFields.mortgageCourtAddress001;
           }
           const courtDefaults = findCourtDefaults(cleanFields.courtName);
           if (courtDefaults) {

@@ -6,6 +6,11 @@ import { Add as AddIcon, Close as CloseIcon } from '@mui/icons-material';
 import { MortgageProperty, MortgageKind } from '../../../types';
 import { toInputDate, fromInputDate } from '../../../shared/lib/dates';
 import {
+  isValidCadastralNumber,
+  isValidEgrnRecord,
+  isValidMoney,
+} from '../../../shared/lib/validators';
+import {
   LABEL_OVERLAP_BOX,
   LABEL_OVERLAP_SX,
   BLOCK_BOX_SX,
@@ -68,6 +73,8 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
                 fullWidth
                 value={property.cadastralNumber || ''}
                 onChange={(e) => onUpdate(index, 'cadastralNumber', e.target.value)}
+                error={!isValidCadastralNumber(property.cadastralNumber)}
+                helperText={!isValidCadastralNumber(property.cadastralNumber) ? 'Формат: 23:50:7228765:587' : undefined}
                 size="small"
                 margin="dense"
               />
@@ -95,6 +102,8 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
                 fullWidth
                 value={property.value || ''}
                 onChange={(e) => onUpdate(index, 'value', e.target.value)}
+                error={!isValidMoney(property.value)}
+                helperText={!isValidMoney(property.value) ? 'Только число' : undefined}
                 size="small"
                 margin="dense"
               />
@@ -108,6 +117,8 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
                 fullWidth
                 value={property.startingPrice || ''}
                 onChange={(e) => onUpdate(index, 'startingPrice', e.target.value)}
+                error={!isValidMoney(property.startingPrice)}
+                helperText={!isValidMoney(property.startingPrice) ? 'Только число' : undefined}
                 size="small"
                 margin="dense"
               />
@@ -135,6 +146,8 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
                 fullWidth
                 value={property.egrnRecord || ''}
                 onChange={(e) => onUpdate(index, 'egrnRecord', e.target.value)}
+                error={!isValidEgrnRecord(property.egrnRecord)}
+                helperText={!isValidEgrnRecord(property.egrnRecord) ? 'Номер записи ЕГРН' : undefined}
                 size="small"
                 margin="dense"
               />

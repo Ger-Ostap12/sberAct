@@ -6,6 +6,9 @@ import {
   isValidCaseNumber,
   isValidFio,
   digitsOnly,
+  isValidCadastralNumber,
+  isValidEgrnRecord,
+  isValidMoney,
 } from '../validators';
 
 describe('validators — пустая строка валидна', () => {
@@ -92,5 +95,46 @@ describe('digitsOnly', () => {
     expect(digitsOnly('60a18b', 4)).toBe('6018');
     expect(digitsOnly('12 34 56 78', 6)).toBe('123456');
     expect(digitsOnly('abc', 4)).toBe('');
+  });
+});
+
+describe('isValidCadastralNumber', () => {
+  it('валидный кадастровый номер', () => {
+    expect(isValidCadastralNumber('23:50:7228765:0587')).toBe(true);
+    expect(isValidCadastralNumber('23:69:9464362:1223')).toBe(true);
+    expect(isValidCadastralNumber('')).toBe(true);
+  });
+  it('невалидные', () => {
+    expect(isValidCadastralNumber('23:50:7228765')).toBe(false); // мало групп
+    expect(isValidCadastralNumber('23-68-09/699/4620-144')).toBe(false); // это ЕГРН
+    expect(isValidCadastralNumber('просто текст')).toBe(false);
+  });
+});
+
+describe('isValidEgrnRecord', () => {
+  it('одиночная запись и долевая (несколько с долями)', () => {
+    expect(isValidEgrnRecord('23:26:5876727:9651-59/678/6420-2')).toBe(true);
+    expect(isValidEgrnRecord('23-68-09/699/4620-144')).toBe(true);
+    expect(isValidEgrnRecord('2/4 23:47:0250041:668-03/389/9020-2; 1/4 23:39:9163758:507-82/301/8620-2')).toBe(true);
+    expect(isValidEgrnRecord('')).toBe(true);
+  });
+  it('невалидные', () => {
+    expect(isValidEgrnRecord('abc')).toBe(false); // нет разделителей/коротко
+    expect(isValidEgrnRecord('12345')).toBe(false);
+  });
+});
+
+describe('isValidMoney', () => {
+  it('только число (пробелы-разряды и «,»/«.» ок)', () => {
+    expect(isValidMoney('4069525')).toBe(true);
+    expect(isValidMoney('3662572,50')).toBe(true);
+    expect(isValidMoney('6 307 002,10')).toBe(true);
+    expect(isValidMoney('9010003.00')).toBe(true);
+    expect(isValidMoney('')).toBe(true);
+  });
+  it('невалидные', () => {
+    expect(isValidMoney('4069525 руб')).toBe(false);
+    expect(isValidMoney('сто рублей')).toBe(false);
+    expect(isValidMoney('12,345')).toBe(false); // 3 знака после запятой
   });
 });
