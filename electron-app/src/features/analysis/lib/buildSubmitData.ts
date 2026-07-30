@@ -6,6 +6,7 @@ import {
   ApplicationKind,
   SelectedAct,
   DocumentCategory,
+  MortgageKind,
 } from '../../../types';
 import { formatJudgeName } from '../../../shared/lib/judges';
 
@@ -21,6 +22,8 @@ export interface SubmitDataInput {
   shortText?: boolean;
   /** Категория дела: 'bankruptcy' (по умолчанию) или 'mortgage'. */
   documentCategory?: DocumentCategory;
+  /** Вид ипотеки, выбранный юристом. Перебивает автоопределение анализатора. */
+  mortgageKind?: MortgageKind;
 }
 
 /**
@@ -30,7 +33,7 @@ export interface SubmitDataInput {
  * penalties→forfeit, stateDuty↔stateDuty16). Чистая функция — тестируется напрямую.
  */
 export const buildSubmitData = (input: SubmitDataInput): ExtractedData => {
-  const { analysisResult, editedFields, entityType, collateralOption, debtorStatus, applicationKind, selectedActs, shortText, documentCategory } =
+  const { analysisResult, editedFields, entityType, collateralOption, debtorStatus, applicationKind, selectedActs, shortText, documentCategory, mortgageKind } =
     input;
 
   // Финальный тип лица: выбранный пользователем (с приведением) или автоопределённый
@@ -58,6 +61,8 @@ export const buildSubmitData = (input: SubmitDataInput): ExtractedData => {
       selectedActsIds: selected.map((a) => a.id).join(',') || undefined,
       selectedActsData: JSON.stringify(selected) || undefined,
       selectedShortText: shortText ? 'true' : undefined,
+      // Выбор юриста в блоке «Вид ипотеки»: бэкенд по нему выбирает решение-резолютивку.
+      selectedMortgageKind: mortgageKind || undefined,
       documentCategory: documentCategory || undefined,
     },
     collaterals: analysisResult.collaterals || [],

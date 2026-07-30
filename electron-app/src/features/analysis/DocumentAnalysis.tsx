@@ -39,6 +39,7 @@ import RepresentativeSection from './sections/RepresentativeSection';
 import RespondentRepresentativeSection from './sections/RespondentRepresentativeSection';
 import MortgageKindSection from './sections/MortgageKindSection';
 import ClaimResolutionSection from './sections/ClaimResolutionSection';
+import SolidaryLiabilitySection from './sections/SolidaryLiabilitySection';
 import { findCourtDefaults } from '../../shared/lib/courts';
 
 interface DocumentAnalysisProps {
@@ -903,6 +904,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         selectedActs,
         shortText,
         documentCategory: isMortgage ? 'mortgage' : 'bankruptcy',
+        mortgageKind: isMortgage ? mortgageKind : undefined,
       })
     );
   };
@@ -1051,6 +1053,14 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 {isMortgage && (
                 <Grid item xs={12} sx={{ display: 'flex', minWidth: 0 }}>
               <MortgageKindSection mortgageKind={mortgageKind} onChange={setMortgageKind} />
+                </Grid>
+                )}
+
+                {/* Солидарность — только в ипотеке. Влияет на выбор акта вместе
+                    с наличием представителей истца и ответчика. */}
+                {isMortgage && (
+                <Grid item xs={12} sx={{ display: 'flex', minWidth: 0 }}>
+              <SolidaryLiabilitySection editedFields={editedFields} onFieldChange={handleFieldChange} />
                 </Grid>
                 )}
 
