@@ -87,8 +87,9 @@ def test_ddu_property_contract_and_fields():
         "Краснодарский край, г. Краснодар, ул. Обрывная, д. 293/6, номер кв. № 248, "
         "кадастровый номер земельного участка № 11:11:1111111:11111. Запись в ЕГРН от 30.10.2023 г. "
         "номер государственной регистрации № 11:11:1111111:11111-11/. Ипотека в силу закона.\n"
-        "Установить начальную цену продажи предмета залога равной восьмидесяти процентам рыночной "
-        "стоимости, определенной в заключении, в размере 3253600,00 руб.\n"
+        "Установить начальную цену продажи предмета залога равной восьмидесяти процентам "
+        "от рыночной стоимости, определенной в заключении № 2-250513-1847537 от 13.05.2025. "
+        "в размере 3253600,00 руб.\n"
     )
     props = da._build_mortgage_properties(text, [], "ddu")
     assert len(props) == 1
@@ -99,10 +100,13 @@ def test_ddu_property_contract_and_fields():
     assert p["egrnRecord"].startswith("11:11:1111111:11111")
     assert p["egrnRecordDate"] == "30.10.2023"
     assert p["description"].startswith("Имущественные права требования")
+    # Оценка задана как «в заключении № … от …» (без слов «об оценке»).
+    assert p["appraisalReport"] == "№2-250513-1847537 от 13.05.2025"
 
 
-def test_multi_object_no_breakdown_leaves_amounts_empty():
-    """Два объекта, но единый итог без «в том числе» — суммы не выдумываем."""
+def test_multi_object_common_total_applies_to_each():
+    """Два объекта, единый итог без «в том числе»: цена распространяется на всё
+    заложенное имущество — общий итог ставим в оба объекта (Андрей, вариант B)."""
     da = DocumentAnalyzer()
     text = (
         "залог приобретаемых объектов недвижимости, а именно:\n"
@@ -113,4 +117,4 @@ def test_multi_object_no_breakdown_leaves_amounts_empty():
     )
     props = da._build_mortgage_properties(text, [])
     assert len(props) == 2
-    assert all(p["value"] == "" and p["startingPrice"] == "" for p in props)
+    assert all(p["value"] == "4415000,00" and p["startingPrice"] == "4415000,00" for p in props)

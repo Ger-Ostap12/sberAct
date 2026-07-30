@@ -1416,8 +1416,8 @@
     "obligationType": "Кредитный договор"
    }
   ],
-  "rawTextLen": 17037,
-  "rawTextSha": "af11ae34ae3deb2bb2853804dae215d4283db35d5b719d4085fc015576319f9a",
+  "rawTextLen": 17038,
+  "rawTextSha": "7796645bdca2d903a7ab3a649728a08f05529fdbcfd644d670ccd32e01a85af7",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "individual",

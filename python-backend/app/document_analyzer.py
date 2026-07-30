@@ -5243,6 +5243,17 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             num = m.group(1).strip(" .,")
             date = (m.group(2) or "").replace(",", ".")
             return f"№{num} от {date}" if date else f"№{num}"
+        # ДДУ и часть исков: оценка ссылается на «заключение № <номер> от <дата>»
+        # (без слов «об оценке»/«о стоимости имущества»).
+        m3 = re.search(
+            r"заключени\w+[^\n№N]{0,20}?(?:№|N)\s*([^\s,()\n]+)"
+            r"\s+от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})",
+            text, re.IGNORECASE,
+        )
+        if m3:
+            num = m3.group(1).strip(" .,")
+            date = m3.group(2).replace(",", ".")
+            return f"№{num} от {date}"
         m2 = re.search(
             r"заключени\w+\s+о\s+стоимости\s+имуществ\w*\s+от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})",
             text, re.IGNORECASE,
@@ -5411,12 +5422,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         report = self._mp_appraisal_report(text)
         val_total, val_bd = self._mp_amounts(text, "value")
         st_total, st_bd = self._mp_amounts(text, "start")
-        single = len(chunks) == 1
         out: List[Dict[str, Any]] = []
         for i, chunk in enumerate(chunks):
             typ = self._mp_type(chunk)
-            value = (val_bd.get(typ) if val_bd else "") or (val_total if single else "")
-            start = (st_bd.get(typ) if st_bd else "") or (st_total if single else "")
+            # Есть разбивка «в том числе <тип>» — берём сумму объекта; иначе общий
+            # итог распространяется на всё заложенное имущество (ставим его на каждый).
+            value = val_bd.get(typ, "") if val_bd else (val_total or "")
+            start = st_bd.get(typ, "") if st_bd else (st_total or "")
             egrn, egrn_date = self._mp_egrn(chunk)
             out.append({
                 "id": f"mortgageProperty-{i}",
