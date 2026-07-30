@@ -1120,6 +1120,167 @@
    }
   ]
  },
+ "НОвая конвертация/Ипотека/ДДУ.docx": {
+  "collaterals": [
+   {
+    "address": "Краснодарский край, г. Краснодар, ул. Обрывная, д. 293/6, строительный номер кв. № 349, и государственной регистрации ипотеки",
+    "brandModel": "",
+    "cadastralNumber": "",
+    "collateralType": "real_estate",
+    "collateralValue": "",
+    "description": "квартиры, расположенной по адресу: Краснодарский край, г. Краснодар, ул. Обрывная, д. 293/6, строительный номер кв. № 349, и государственной регистрации ипотеки",
+    "id": "collateral-0",
+    "objectName": "Квартиры",
+    "otherDescription": "",
+    "vin": ""
+   },
+   {
+    "address": "Краснодарский край, г. Краснодар. ул. Обрывная, д. 293/6. номер кв. № 248",
+    "brandModel": "",
+    "cadastralNumber": "11:11:1111111:11111",
+    "collateralType": "real_estate",
+    "collateralValue": "",
+    "description": "имущественные права требования ФОНАРЕВОЙ ИННЫ ВИКТОРОВНЫ по ДОГОВОРУ № Л2 БС 3-248-Ф УЧАСТИЯ В ДОЛЕВОМ СТРОИТЕЛЬСТВЕ от 13.09.2022 на квартиру, расположенной по адресу: Краснодарский край, г. Краснодар. ул. Обрывная, д. 293/6. номер кв. № 248, кадастровый номер земельного участка № 11:11:1111111:11111. Запист в ЕГРН от 30.10.2023 г. номер государственной регистрации № 11:11:1111111:11111-11/. установленное ограничение прав и обременение объекта недвижимости. Ипотека в силу закона",
+    "id": "collateral-1",
+    "objectName": "Квартиру",
+    "otherDescription": "",
+    "vin": ""
+   }
+  ],
+  "confidence": 0.95,
+  "debtors": [
+   {
+    "address": "675014. АМУРСКАЯ ОБЛАСТЬ. Г БЛАГОВЕЩЕНСК, УЛ. ТЕКСТИЛЬНАЯ, ДОМ 86/2, КВАРТИРА 68",
+    "birthDate": "31.12.1982",
+    "birthPlace": "г. БЛАГОВЕЩЕНСК",
+    "inn": "280111111111",
+    "name": "Фонарева Инна Викторовна",
+    "ogrn": "",
+    "ogrnip": "",
+    "passportNumber": "111111",
+    "passportSeries": "1111",
+    "snils": ""
+   }
+  ],
+  "documentType": "mortgage_claim",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "",
+   "applicantName": "Фонарева Инна Викторовна",
+   "applicantNameAccusative": "Октябрьского районного суд",
+   "applicantNameGenitive": "ФОНАРЕВОЙ ИННЫ ВИКТООРОВНЫ",
+   "applicantNameInstrumental": "Октябрьским районным судом",
+   "applicationDate": "25.06.2025",
+   "birthDate": "31.12.1982",
+   "birthPlace": "г. БЛАГОВЕЩЕНСК",
+   "collaterals": [
+    {
+     "address": ". Краснодарский край, г. Краснодар, ул Обрывная, д. 293/6, строительный номер кв. № 349",
+     "brandModel": "",
+     "cadastralNumber": "",
+     "collateralType": "real_estate",
+     "collateralValue": "",
+     "description": "квартиры, находящейся по адресу. Краснодарский край, г. Краснодар, ул Обрывная, д. 293/6, строительный номер кв. № 349, кадастровый номер земельного участка № 11:11 1111111:11111",
+     "id": "collateral-0",
+     "objectName": "Квартиры",
+     "otherDescription": "",
+     "vin": ""
+    }
+   ],
+   "companyInn": "2309090540",
+   "contractDate": "23.09.2022",
+   "contractNumber": "467654",
+   "courtName": "Октябрьский районный суд г. Краснодара",
+   "creditInterestRate": "5,7",
+   "creditPenaltyRate": "5.7",
+   "creditTermMonths": "360",
+   "creditorAddress": "117997, г. Москва, ул. Вавилова, д. 19",
+   "creditorInn": "7707083893",
+   "creditorName": "ПАО Сбербанк",
+   "creditorOgrn": "1027700132195",
+   "debtAmount": "5 199 989,94",
+   "debtorName": "Фонарева Инна Викторовна",
+   "entityType": "individual",
+   "forfeit": "3 423,84",
+   "forfeit15": "3 423,84",
+   "inn": "2309090540",
+   "interest": "156 502,76",
+   "interest14": "156 502,76",
+   "loanDebt": "5 199 989,94",
+   "mortgageCollateralDescription1221": "квартиры, находящейся по адресу. Краснодарский край, г. Краснодар, ул Обрывная, д. 293/6, строительный номер кв. № 349, кадастровый номер земельного участка № 11:11 1111111:11111",
+   "mortgageCollateralValue1224": "4 067 000,00",
+   "mortgageCourtAddress001": "350001, г. Краснодар, ул. Ставропольская, д. 18/6",
+   "mortgageCourtName002": "Октябрьский районный суд г. Краснодара",
+   "mortgageCreditAmount111": "5 184 150,00",
+   "mortgageCreditTerm112": "360",
+   "mortgageDebtorName": "Фонарева Инна Викторовна",
+   "mortgageDebtorNameDative": "Фонареву Инне Викторовне",
+   "mortgageInterestAmount12": "156 502.76",
+   "mortgageInterestRate113": "5.7",
+   "mortgagePenaltyRate114": "5.7",
+   "mortgagePeriodAmount10": "5 199 989.94",
+   "mortgagePeriodEnd121": "23.05.2025",
+   "mortgagePeriodStart120": "05.12.2024",
+   "mortgagePrincipalAmount11": "5 040 063.34",
+   "mortgageRepresentative22": "Иванов Иван Иванович",
+   "mortgageStartingPrice1225": "3 253 600.00",
+   "obligationType": "Кредитный договор",
+   "obligations": [
+    {
+     "contractDate": "23.09.2022",
+     "contractNumber": "467654",
+     "id": "obligation_p_0",
+     "obligationType": "Кредитный договор"
+    }
+   ],
+   "penalties": "0,00",
+   "principalDebt": "5 040 063,34",
+   "principalDebt13": "5 040 063,34",
+   "registrationDate": "20.06.1991",
+   "requirementsSum": "5 199 989,94",
+   "sourceDocumentType": "mortgage_claim",
+   "stateDuty": "80 400,00",
+   "stateDuty16": "80 400,00",
+   "totalDebt": "5 199 989,94"
+  },
+  "heirs": [],
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 2374
+  },
+  "obligations": [
+   {
+    "contractDate": "23.09.2022",
+    "contractNumber": "467654",
+    "id": "obligation_p_0",
+    "obligationType": "Кредитный договор"
+   }
+  ],
+  "rawTextLen": 18353,
+  "rawTextSha": "58707006c18ed8b2788c351c4f9a2fdea3e2e56044f21465aeefcc1dbcde4ca9",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_realization",
+    "acceptance_definition"
+   ]
+  },
+  "thirdParties": [
+   {
+    "address": "350028, Краснодарский край. Краснодар г. Восточно- Кругликовская ул., дом 42/3, корпус 2, помещение 255",
+    "inn": "2311111111",
+    "name": "ООО \"СПЕЦИАЛИЗИРОВАННЫЙ ЗАСТРОЙШИК «Не гарантирую качество»"
+   },
+   {
+    "address": "350063 г. Краснодар ул. Ленина, д. 28",
+    "inn": "2309090540",
+    "name": "Управление Росреестра по Краснодарскому краю",
+    "ogrn": "1042304982510"
+   }
+  ]
+ },
  "НОвая конвертация/Ипотека/КАРПАКОВ 112923 воен ипотека Темрюкский рс КК.docx_depers.docx": {
   "collaterals": [
    {
@@ -3490,6 +3651,8 @@
     "name": "ОМЕЛЯНЧУК ЕВГЕНИЙ АЛЕКСЕЕВИЧ",
     "ogrn": "",
     "ogrnip": "",
+    "passportNumber": "011629",
+    "passportSeries": "6012",
     "snils": ""
    }
   ],
@@ -3596,6 +3759,8 @@
     "name": "ДАВЫДЕНКО КРИСТИНА СТАНИСЛАВОВНА",
     "ogrn": "",
     "ogrnip": "",
+    "passportNumber": "114178",
+    "passportSeries": "6023",
     "snils": ""
    }
   ],
@@ -3860,6 +4025,8 @@
     "name": "ПОЛЯКОВ ДМИТРИЙ ВЛАДИМИРОВИЧ",
     "ogrn": "",
     "ogrnip": "320619600092709",
+    "passportNumber": "529316",
+    "passportSeries": "6019",
     "snils": ""
    }
   ],
@@ -8548,6 +8715,8 @@
     "name": "Медведев Максим Юрьевич",
     "ogrn": "",
     "ogrnip": "",
+    "passportNumber": "561928",
+    "passportSeries": "6005",
     "snils": ""
    }
   ],
