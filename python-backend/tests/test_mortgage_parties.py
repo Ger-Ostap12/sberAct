@@ -84,3 +84,36 @@ def test_single_debtor_address_backfilled():
     debtors_result, _ = da._resolve_debtors_and_third_parties(fields, text, {})
     assert len(debtors_result) == 1
     assert debtors_result[0]["address"].startswith("353911")
+
+
+# --- Военная ипотека: детект вида + третье лицо ФГКУ «Росвоенипотека» ---------
+
+_ROSVOEN_HEAD = (
+    "Третье лицо: Федеральное государственное казенное учреждение \"Федеральное управление "
+    "накопительно-ипотечной системы жилищного обеспечения военнослужащих\"\n"
+    "Адрес: 123007, г. Москва, Хорошевское шоссе, д. 85Д, стр.4\n"
+    "ОГРН 1067781337095 от 8 июня 2006 г.\n"
+    "ИНН/КПП 7704159488/771401001\n"
+    "Цена иска: 1 844 383,84 руб.\n"
+    "ИСКОВОЕ ЗАЯВЛЕНИЕ\n"
+    "Публичное акционерное общество \"Сбербанк России\" (далее – Банк, Истец) выдало ипотечный "
+    "кредит «Военная ипотека – приобретение готового жилья» ...\n"
+)
+
+
+def test_detect_military_mortgage():
+    da = DocumentAnalyzer()
+    assert da._detect_military_mortgage(_ROSVOEN_HEAD) == "military"
+    assert da._detect_military_mortgage("выдало ипотечный кредит под залог квартиры") == "civil"
+
+
+def test_third_party_rosvoenipoteka_not_garbage():
+    """Блок третьих лиц не должен улетать в тело: единственное лицо — ФГКУ, без
+    ложных «ИСКОВОЕ ЗАЯВЛЕНИЕ»/«Сбербанк»."""
+    parties = fd.extract_third_parties(_ROSVOEN_HEAD)
+    assert len(parties) == 1
+    p = parties[0]
+    assert p["name"].startswith("Федеральное государственное казенное учреждение")
+    assert p.get("inn") == "7704159488"
+    assert p.get("ogrn") == "1067781337095"
+    assert p["address"].startswith("123007")

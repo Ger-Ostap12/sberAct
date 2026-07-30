@@ -494,6 +494,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 self._build_mortgage_properties(text, collaterals_final)
                 if document_type == "mortgage_claim" else []
             )
+            # Военная ипотека: третье лицо — ФГКУ «Росвоенипотека» (накопительно-
+            # ипотечная система) и/или продукт «Военная ипотека». Отдаём вид ипотеки
+            # top-level — фронт инициализирует переключатель (пользователь может сменить).
+            mortgage_kind = (
+                self._detect_military_mortgage(text)
+                if document_type == "mortgage_claim" else None
+            )
 
             # Формируем результат
             result = {
@@ -503,6 +510,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 "obligations": extracted_fields.get('obligations', []),
                 "collaterals": collaterals_final,
                 "mortgageProperties": mortgage_properties,
+                "mortgageKind": mortgage_kind,
                 "financeBreakdown": finance_breakdown,
                 "applicationKind": application_kind,
                 "debtorStatusHint": debtor_status_hint,
@@ -5264,6 +5272,19 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
     def _mp_address(chunk: str) -> str:
         m = re.search(r"по\s+адресу\s*:?\s*(.+?)(?:,?\s*кадастров\w+\s+номер|\.\s*Запис\w+|$)", chunk, re.IGNORECASE)
         return m.group(1).strip(" ,;.") if m else ""
+
+    def _detect_military_mortgage(self, text: str) -> str:
+        """Вид ипотеки: 'military', если это военная ипотека, иначе 'civil'.
+
+        Признаки военной ипотеки (достаточно одного): третье лицо — ФГКУ
+        «Росвоенипотека» (накопительно-ипотечная система жилищного обеспечения
+        военнослужащих) или кредитный продукт «Военная ипотека»."""
+        if re.search(
+            r"накопительно-?ипотечн\w+\s+систем\w+|Росвоенипотек\w*|Военн\w+\s+ипотек\w+",
+            text, re.IGNORECASE,
+        ):
+            return "military"
+        return "civil"
 
     def _build_mortgage_properties(self, text: str, collaterals: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Структурированные предметы ипотеки для формы.
