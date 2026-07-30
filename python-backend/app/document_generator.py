@@ -13,6 +13,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.shared import OxmlElement, qn
 # Локальный импорт анализатора без package-префикса, чтобы работать при запуске из app/
+from claim_resolution import CLAIM_RESOLUTION_TEXTS, PARTIAL, build_partial_denial
 from document_analyzer import DocumentAnalyzer
 from templates_resolver_mixin import TemplatesResolverMixin
 from generator_inflection_mixin import GeneratorInflectionMixin
@@ -1026,6 +1027,11 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             "mortgagePeriodStart120": "120",   # [120] - Начало расчетного периода (ипотека)
             "mortgagePeriodEnd121": "121",     # [121] - Конец расчетного периода (ипотека)
             "bankCommission": "122",           # [122] - Комиссия Банка (сумма)
+            # Ипотека, новая схема маркеров (ипотека_маркера.md). Значения приходят
+            # с формы «Ипотека», в разборе заявления их нет.
+            "noticeDate": "1310",              # [1310] - Дата извещения (дата исходящего в шапке)
+            "claimResolutionText": "888",      # [888] - Исход по иску (из claimResolution)
+            "claimPartialDenialText": "889",   # [889] - Отказ в остальной части (только «частично»)
             "mortgageCollateralDescription1221": "1221",  # [1221] - Описание предмета залога
             # Специальная дата для юр. инициирования конкурсного (ликвидируемый) — маркер [5555]
             "liquidationRecordDate5555": "5555",
@@ -1075,6 +1081,35 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             "priorStateDuty": "94",               # [94] - Госпошлина по ранее вынесенному (прошлому) делу
         }
         return field_mapping
+
+    def _apply_claim_resolution(self, cleaned_data: Dict[str, Any]) -> None:
+        """Готовит тексты [888] и [889] из выбора «Удовлетворение иска».
+
+        Мутирует cleaned_data, подстановку делает общий маппинг. Вызывать ДО
+        `_apply_field_mapping_replacements`, иначе поля не доедут до документа.
+
+        Незаполненная радиогруппа — норма для не-ипотечных актов: там маркеров
+        [888]/[889] в шаблоне нет, а если есть — их снимет зачистка пустых.
+        """
+        resolution = str(cleaned_data.get("claimResolution") or "").strip().lower()
+        if not resolution:
+            return
+
+        text = CLAIM_RESOLUTION_TEXTS.get(resolution)
+        if text is None:
+            # Не молчим: фронт мог прислать новое значение радиогруппы, о котором
+            # бэкенд не знает, — в акте это обернулось бы вычищенным маркером.
+            logger.warning(f"⚠️ Неизвестный claimResolution: {resolution!r}, [888]/[889] не заполняем")
+            return
+
+        cleaned_data["claimResolutionText"] = text
+        logger.info(f" Исход по иску [888]: {text}")
+
+        if resolution != PARTIAL:
+            return
+
+        cleaned_data["claimPartialDenialText"] = build_partial_denial(cleaned_data.get("creditorName"))
+        logger.info(" Частичное удовлетворение — заполнен абзац [889]")
 
     def _apply_field_mapping_replacements(self, doc: Document, cleaned_data: Dict[str, Any], field_mapping: Dict[str, str], is_mortgage_document: bool, is_ip: bool, is_physical_collateral: bool) -> None:
         """Подставляет значения полей в маркеры [N] согласно field_mapping.
@@ -1318,6 +1353,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # потом общий маппинг подставляет значения в оставшиеся маркеры.
         self._apply_extra_interested_persons(doc, cleaned_data)
         self._cleanup_empty_person_components(doc, cleaned_data)
+
+        # После нормализации creditorName — он уходит в текст абзаца [889] как есть.
+        self._apply_claim_resolution(cleaned_data)
 
         self._apply_field_mapping_replacements(doc, cleaned_data, field_mapping, is_mortgage_document, is_ip, is_physical_collateral)
 
@@ -1682,6 +1720,12 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # Собираем все маркеры из документа
         all_placeholders = self._collect_placeholders(doc)
 
+        # Ипотека: незаполненный маркер уносит всю фразу, а опустевший абзац
+        # удаляется целиком (требование от 30.07.2026). Банкротные акты идут
+        # прежним путём — их вывод зафиксирован golden-эталонами.
+        is_mortgage = (cleaned_data.get("sourceDocumentType") or "").lower() == "mortgage_claim"
+        drop_placeholder = self._remove_placeholder_phrase if is_mortgage else self._remove_placeholder_with_context
+
         # Создаем обратный маппинг: номер маркера -> список полей
         marker_to_fields = {}
         for field_name, marker_number in field_mapping.items():
@@ -1742,7 +1786,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 # Если значение False или пустое, удаляем маркер с контекстом
                 if not marker_value:
                     # Удаляем пустой специальный маркер с контекстом
-                    self._remove_placeholder_with_context(doc, placeholder)
+                    drop_placeholder(doc, placeholder)
                     removed_count += 1
                     logger.info(f" Удален пустой специальный маркер с контекстом: {placeholder}")
                 # Если значение есть, маркер уже был заменен в предыдущих шагах, пропускаем
@@ -1761,7 +1805,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
 
                 if not has_value:
                     # Удаляем пустой маркер с контекстом
-                    self._remove_placeholder_with_context(doc, placeholder)
+                    drop_placeholder(doc, placeholder)
                     removed_count += 1
                     logger.info(f" Удален пустой маркер с контекстом: {placeholder} (поля: {', '.join(marker_to_fields[placeholder])})")
             else:
@@ -1779,7 +1823,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
 
                 if not has_value_in_data:
                     # Удаляем его с контекстом, чтобы не было видно в финальном документе
-                    self._remove_placeholder_with_context(doc, placeholder)
+                    drop_placeholder(doc, placeholder)
                     removed_count += 1
                     logger.info(f" Удален неизвестный маркер с контекстом: {placeholder}")
 
@@ -1787,9 +1831,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # - если для [16] нет суммы — удаляем только её строку
         # - если для [17] нет суммы — удаляем только её строку
         if not has_state_duty_16:
-            self._remove_placeholder_with_context(doc, "[16]")
+            drop_placeholder(doc, "[16]")
         if not has_state_duty_17:
-            self._remove_placeholder_with_context(doc, "[17]")
+            drop_placeholder(doc, "[17]")
 
         if removed_count > 0:
             logger.info(f" Удалено {removed_count} пустых маркеров из документа")
@@ -2059,10 +2103,10 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             procedure_type = "initiation_legal_competition_liquidation"
             logger.info(" НАЧИНАЕМ ГЕНЕРАЦИЮ 2 ДОКУМЕНТОВ для инициирования ЮЛ (конкурсное, ликвидируемый должник)")
         elif normalized_template == "mortgage" or source_document_type_for_routing == "mortgage_claim":
-            templates = self._get_mortgage_templates()
+            templates = self._get_mortgage_templates(data)
             procedure_type = "mortgage"
             data["_skip_obligation_blocks"] = True
-            logger.info(" НАЧИНАЕМ ГЕНЕРАЦИЮ 1 ДОКУМЕНТА для ипотечного иска")
+            logger.info(f" НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для ипотечного иска")
         elif normalized_template == "observation_collateral" or source_document_type_for_routing == "observation_collateral":
             # Шаблоны для наблюдения с залогом
             if is_kfh:
