@@ -27,4 +27,11 @@ describe('DatesSection — режим ипотеки', () => {
     expect(screen.getByText('Дата поступления заявления в суд (согласно штампу):')).toBeInTheDocument();
     expect(screen.getByText('Дата и время судебного заседания:')).toBeInTheDocument();
   });
+
+  it('«Дата извещения» есть только в ипотеке', () => {
+    const { rerender } = render(<DatesSection editedFields={{}} onFieldChange={() => {}} />);
+    expect(screen.queryByText('Дата извещения:')).not.toBeInTheDocument();
+    rerender(<DatesSection editedFields={{}} onFieldChange={() => {}} mode="mortgage" />);
+    expect(screen.getByText('Дата извещения:')).toBeInTheDocument();
+  });
 });

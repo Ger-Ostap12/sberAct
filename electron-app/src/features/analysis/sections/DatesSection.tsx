@@ -82,6 +82,25 @@ const DatesSection: React.FC<DatesSectionProps> = ({ editedFields, onFieldChange
                     </Box>
                   </Grid>
 
+                {isMortgage && (
+                <Grid item xs={12} sm={6}>
+                    <Box sx={LABEL_OVERLAP_BOX}>
+                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата извещения:</Typography>
+                  <TextField
+                    fullWidth
+                        type="date"
+                        value={editedFields.noticeDate ?? ''}
+                        onChange={(e) => onFieldChange('noticeDate', clampNativeDate(e.target.value))}
+                    size="small"
+                    margin="dense"
+                        InputLabelProps={{
+                          shrink: true,
+                        }}
+                  />
+                    </Box>
+                </Grid>
+                )}
+
                 <Grid item xs={12} sm={6}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата поступления заявления в суд (согласно штампу):</Typography>

@@ -38,6 +38,7 @@ import MortgagePropertySection from './sections/MortgagePropertySection';
 import RepresentativeSection from './sections/RepresentativeSection';
 import RespondentRepresentativeSection from './sections/RespondentRepresentativeSection';
 import MortgageKindSection from './sections/MortgageKindSection';
+import ClaimResolutionSection from './sections/ClaimResolutionSection';
 import { findCourtDefaults } from '../../shared/lib/courts';
 
 interface DocumentAnalysisProps {
@@ -1050,6 +1051,13 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 {isMortgage && (
                 <Grid item xs={12} sx={{ display: 'flex', minWidth: 0 }}>
               <MortgageKindSection mortgageKind={mortgageKind} onChange={setMortgageKind} />
+                </Grid>
+                )}
+
+                {/* Удовлетворение иска — только в ипотеке, полностью ручной выбор. */}
+                {isMortgage && (
+                <Grid item xs={12} sx={{ display: 'flex', minWidth: 0 }}>
+              <ClaimResolutionSection editedFields={editedFields} onFieldChange={handleFieldChange} />
                 </Grid>
                 )}
 
