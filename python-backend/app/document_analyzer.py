@@ -1472,6 +1472,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if rep:
                 fields["mortgageRepresentative22"] = rep
 
+        # Представитель ответчика: отдельная метка «Представитель ответчика:» в блоке
+        # ответчика (в отличие от представителя истца). Заполняется вручную, но если
+        # в заявлении есть — засеваем.
+        if not fields.get("respondentRepresentativeName"):
+            resp_rep = self._extract_respondent_representative_name(text)
+            if resp_rep:
+                fields["respondentRepresentativeName"] = resp_rep
+
     def _fill_mortgage_state_duty(self, fields: Dict[str, Any], text: str) -> None:
         """Ипотека: госпошлина из шапки «Госпошлина: X руб.», если финансовый каскад
         её не заполнил. Каскад берёт госпошлину из блока «ПРОСИТ СУД» и спотыкается на
@@ -1505,6 +1513,29 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if re.match(
                 r"(?:Ответчик|Истец|СНИЛС|ИНН|ОГРН|Почтов\w+\s+адрес|Адрес|"
                 r"Цена\s+иска|Госпошлин|Дата\s+рождения|Паспорт)\b",
+                s, re.IGNORECASE,
+            ):
+                break
+            if is_person_name(s):
+                return _normalize_fio(s)
+        return None
+
+    def _extract_respondent_representative_name(self, text: str) -> Optional[str]:
+        """ФИО представителя ответчика из блока «Представитель ответчика:».
+
+        ФИО обычно идёт первой строкой после метки; берём первую строку-ФИО в
+        пределах нескольких строк, останавливаясь на следующем разделе/реквизите."""
+        m = re.search(r"Представител\w*\s+ответчик\w*\s*:?", text, re.IGNORECASE)
+        if not m:
+            return None
+        from fio_detector import is_person_name, _normalize_fio
+        for line in text[m.end():].split("\n")[:6]:
+            s = line.strip().strip(",")
+            if not s:
+                continue
+            if re.match(
+                r"(?:Ответчик|Истец|Треть\w+\s+лиц|СНИЛС|ИНН|ОГРН|Почтов\w+\s+адрес|Адрес|"
+                r"Цена\s+иска|Госпошлин|Дата\s+рождения|Паспорт|Контактн\w+\s+телефон)\b",
                 s, re.IGNORECASE,
             ):
                 break

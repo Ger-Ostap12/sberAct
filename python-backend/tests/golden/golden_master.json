@@ -1015,7 +1015,7 @@
     "birthPlace": "ГОР. ГРОЗНЫЙ",
     "inn": "201233777777",
     "name": "Жевнин Магомед Тимурович",
-    "ogrn": "1067781337095",
+    "ogrn": "",
     "ogrnip": "",
     "snils": "55615555555"
    }
@@ -1075,11 +1075,11 @@
      "obligationType": "Кредитный договор"
     }
    ],
-   "ogrn": "1067781337095",
    "penalties": "0,00",
    "principalDebt": "1 667 918,04",
    "principalDebt13": "1 667 918,04",
    "registrationDate": "20.06.1991",
+   "respondentRepresentativeName": "Падалко Андрей Александрович",
    "snils": "55615555555",
    "sourceDocumentType": "mortgage_claim",
    "stateDuty": "53 444,00",
@@ -1090,8 +1090,8 @@
   "heirs": [],
   "metadata": {
    "language": "ru",
-   "pageCount": 7,
-   "wordCount": 2284
+   "pageCount": 8,
+   "wordCount": 2316
   },
   "obligations": [
    {
@@ -1101,8 +1101,8 @@
     "obligationType": "Кредитный договор"
    }
   ],
-  "rawTextLen": 17147,
-  "rawTextSha": "fe96ead0ad977030162b5e293a48011c46b79c48448487d367c29f9c2b137c5e",
+  "rawTextLen": 17430,
+  "rawTextSha": "d4ec1e5783a28bc3a4378d56296da6b607edd6e3aea9b8d8bc3cac628ae05f7d",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "individual",

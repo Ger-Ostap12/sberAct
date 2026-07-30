@@ -66,6 +66,31 @@ def test_extract_representative_none_when_absent():
     assert da._extract_representative_name("Истец:\nПАО Сбербанк\n") is None
 
 
+# --- Представитель ответчика (метка «Представитель ответчика:») ---------------
+
+def test_extract_respondent_representative_name():
+    da = DocumentAnalyzer()
+    text = (
+        "Ответчик:\n"
+        "ЖЕВНИН МАГОМЕД ТИМУРОВИЧ\n"
+        "ИНН: 201233777777\n"
+        "Контактный телефон: +79386555555\n"
+        "Представитель ответчика:\n"
+        "ПАДАЛКО АНДРЕЙ АЛЕКСАНДРОВИЧ\n"
+        "Дата рождения: 07.10.1888\n"
+    )
+    assert da._extract_respondent_representative_name(text) == "Падалко Андрей Александрович"
+
+
+def test_respondent_representative_none_and_no_istec_confusion():
+    da = DocumentAnalyzer()
+    # Нет метки ответчика — None; метка истца не должна срабатывать.
+    assert da._extract_respondent_representative_name("Ответчик:\nИВАНОВ ИВАН ИВАНОВИЧ\n") is None
+    assert da._extract_respondent_representative_name(
+        "Представитель истца:\nЧепелов Иван Александрович\n"
+    ) is None
+
+
 # --- #4: адрес одиночного ответчика восполняется из записи блока -------------
 
 def test_single_debtor_address_backfilled():
