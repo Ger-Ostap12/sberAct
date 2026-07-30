@@ -17,6 +17,21 @@ from docx.oxml.shared import qn
 logger = logging.getLogger(__name__)
 
 
+class _ParagraphView:
+    """Абзац по его XML-элементу.
+
+    `doc.paragraphs` не видит абзацы внутри врезок (`w:txbxContent`), а в
+    ипотечных актах там лежат шапка суда и подпись секретаря — маркеры оттуда
+    тоже надо чистить. Полноценный `docx.text.paragraph.Paragraph` требует
+    родительскую часть, которой у нас на руках нет, поэтому обёртка минимальна.
+    """
+
+    __slots__ = ("_element",)
+
+    def __init__(self, element):
+        self._element = element
+
+
 class DocxOpsMixin:
 
     def _remove_placeholder_with_context(self, doc: Document, placeholder: str):
@@ -52,6 +67,106 @@ class DocxOpsMixin:
             self._replace_placeholder_in_doc(doc, placeholder, "")
             # Дополнительно: очищаем абзацы, где после удаления маркера остаётся только подпись/контекст
             self._clear_paragraphs_containing_only_placeholder(doc, placeholder)
+
+    # Граница предложения: точка/восклицательный/вопросительный/точка с запятой,
+    # за которыми пробел. Двоеточие границей НЕ считаем — «Дата извещения: [1310]»
+    # это одна фраза, и подпись должна уйти вместе с маркером.
+    _SENTENCE_END = re.compile(r"[.!?;]")
+
+    def _remove_placeholder_phrase(self, doc: Document, placeholder: str) -> None:
+        """Удаляет предложение с незаполненным маркером целиком, пустой абзац — вместе с абзацем.
+
+        Отличие от `_remove_placeholder_with_context`: та снимает маркер и
+        прилегающую пунктуацию, оставляя висеть подпись («Дата извещения:»).
+        В ипотечных актах подпись без значения — брак, поэтому убираем фразу.
+
+        Правим текст по run'ам, а не через `p.text = ...`: присваивание схлопывает
+        абзац в один run и теряет полужирный/курсив внутри него.
+
+        ТОЛЬКО для ипотеки. Банкротные акты ходят прежним путём — их поведение
+        зафиксировано golden-эталонами и меняться не должно.
+        """
+        # Список материализуем ДО правок: удаление абзаца на ходу сбивает
+        # ленивый обход lxml, и часть абзацев проскакивала бы необработанной.
+        emptied = []
+        for par in list(self._iter_all_paragraphs(doc)):
+            touched = False
+            # Маркер может быть разорван по run'ам — сверяемся по склейке абзаца.
+            while placeholder in self._paragraph_text(par):
+                text = self._paragraph_text(par)
+                pos = text.index(placeholder)
+                start, end = self._sentence_bounds(text, pos, len(placeholder))
+                if not self._delete_span_in_paragraph(par, start, end):
+                    break  # защита от зацикливания, если удалить не удалось
+                touched = True
+            # Удаляем ТОЛЬКО те абзацы, которые опустошили сами: пустые строки
+            # в шаблоне держат вёрстку, сносить их нельзя.
+            if touched and not self._paragraph_text(par).strip():
+                emptied.append(par._element)
+
+        for element in emptied:
+            parent = element.getparent()
+            # Последний абзац в ячейке/врезке удалять нельзя — Word считает
+            # такой контейнер повреждённым и отказывается открывать документ.
+            if parent is not None and len(parent.findall(qn("w:p"))) > 1:
+                parent.remove(element)
+
+    def _sentence_bounds(self, text: str, pos: int, length: int) -> tuple:
+        """Границы предложения вокруг маркера: [начало, конец) в координатах текста."""
+        left = 0
+        for match in self._SENTENCE_END.finditer(text, 0, pos):
+            left = match.end()
+        right = len(text)
+        tail = self._SENTENCE_END.search(text, pos + length)
+        if tail:
+            right = tail.end()
+        # Съедаем пробелы по краям, чтобы не оставить двойной пробел в абзаце.
+        while left < pos and text[left].isspace():
+            left += 1
+        while right < len(text) and text[right].isspace():
+            right += 1
+        return left, right
+
+    def _paragraph_text(self, par) -> str:
+        return "".join(node.text or "" for node in par._element.iter(qn("w:t")))
+
+    def _delete_span_in_paragraph(self, par, start: int, end: int) -> bool:
+        """Вырезает срез [start, end) из абзаца, не трогая форматирование остальных run'ов."""
+        if end <= start:
+            return False
+        offset = 0
+        changed = False
+        for node in par._element.iter(qn("w:t")):
+            value = node.text or ""
+            node_start, node_end = offset, offset + len(value)
+            offset = node_end
+            if node_end <= start or node_start >= end:
+                continue
+            head = value[: max(0, start - node_start)]
+            tail = value[max(0, end - node_start):] if end < node_end else ""
+            node.text = head + tail
+            node.set(qn("xml:space"), "preserve")
+            changed = True
+        return changed
+
+    def _iter_all_paragraphs(self, doc: Document):
+        """Абзацы тела, таблиц, врезок и колонтитулов — один проход без дублей."""
+        seen = set()
+        roots = [doc.element.body]
+        for section in doc.sections:
+            for part in (section.header, section.footer,
+                         section.first_page_header, section.first_page_footer,
+                         section.even_page_header, section.even_page_footer):
+                try:
+                    roots.append(part._element)
+                except Exception:  # у секции может не быть отдельного колонтитула
+                    continue
+        for root in roots:
+            for element in root.iter(qn("w:p")):
+                if id(element) in seen:
+                    continue
+                seen.add(id(element))
+                yield _ParagraphView(element)
 
     def _clear_paragraphs_containing_only_placeholder(self, doc: Document, placeholder: str) -> None:
         """Очищает абзацы, которые состоят только из подписи и пустого маркера (контекст удаляется)."""
