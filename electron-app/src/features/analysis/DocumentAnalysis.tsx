@@ -492,6 +492,11 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           if (!cleanFields.representativeName && cleanFields.mortgageRepresentative22) {
             cleanFields.representativeName = cleanFields.mortgageRepresentative22;
           }
+          // Вид ипотеки — авто-детект бэкендом (военная/гражданская). Инициализирует
+          // переключатель; пользователь может переопределить вручную.
+          if (propExtractedData.mortgageKind) {
+            setMortgageKind(propExtractedData.mortgageKind);
+          }
           // Название/адрес суда извлекаются бэкендом в плоские поля с маркерами
           // [002]/[001]; форма читает courtName/courtAddress — переносим, если пусто.
           if (!cleanFields.courtName && cleanFields.mortgageCourtName002) {
