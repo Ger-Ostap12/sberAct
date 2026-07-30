@@ -249,7 +249,9 @@ def _full_respondents_block(text: str) -> str:
     rest = text[m.end():]
     stop = re.search(
         r"\n\s*(?:Цена\s+иска|Госпошлин|При\s+определении|ИСКОВОЕ|ЗАЯВЛЕНИЕ|ПРОСИТ|"
-        r"Истец|Кредитор|Представитель|Третьи?\s+лиц|Финансов\w+\s+управляющ|"
+        # «Треть[иеё]\w* лиц» покрывает и «Третьи лица:», и «Третье лицо:» (иначе блок
+        # ответчика заглатывал третьих лиц и брал их валидный ИНН).
+        r"Истец|Кредитор|Представитель|Треть[иеё]\w*\s+лиц|Финансов\w+\s+управляющ|"
         r"Согласно|Публичное\s+акционерное|Требовани)",
         rest, re.IGNORECASE,
     )
@@ -300,6 +302,12 @@ def _parse_debtor_record(rec_text: str):
     if m:
         d["snils"] = m.group(1).strip()
 
+    # Паспорт: «Паспорт: серия 1111 № 111111» (серия — 4 цифры, номер — 6).
+    pm = re.search(r"Паспорт[^\d\n]{0,20}?(\d{2}\s?\d{2})\s*(?:№|N|номер)?\s*(\d{6})\b", rec_text, re.IGNORECASE)
+    if pm:
+        d["passportSeries"] = re.sub(r"\s", "", pm.group(1))
+        d["passportNumber"] = pm.group(2)
+
     inn_cands = [re.sub(r"\D", "", c) for c in re.findall(r"ИНН[:\s]*([0-9\s]{10,12})", rec_text, re.IGNORECASE)]
     inn_cands = [c for c in inn_cands if 10 <= len(c) <= 12]
     if inn_cands:
@@ -317,6 +325,8 @@ def _parse_debtor_record(rec_text: str):
         # Обрезаем хвост, если в адрес попали последующие метки (телефон/почта/реквизиты).
         addr = re.split(
             r"\s*(?:Контактн\w*\s+тел\w*\.?|Телефон|Тел\.?|E-?mail|Эл\.?\s*почт\w*|"
+            # «Иной (известный) адрес проживания» — вторичный адрес, в основной не тянем.
+            r"Ин[оы]\w*\s+(?:известн\w+\s+)?адрес|"
             r"СНИЛС|ИНН|ОГРН\w*|Паспорт|Дата\s+рождения)[:\s.]",
             addr, maxsplit=1, flags=re.IGNORECASE,
         )[0]
@@ -468,14 +478,19 @@ def extract_third_parties(text: str) -> list:
     block = _third_parties_block(text)
     if not block:
         return []
-    lines = block.split("\n")
-    starts = [i for i, l in enumerate(lines) if _is_party_start(l)]
     out = []
-    for k, idx in enumerate(starts):
-        end = starts[k + 1] if k + 1 < len(starts) else len(lines)
-        parsed = _parse_party_record("\n".join(lines[idx:end]))
-        if parsed:
-            out.append(parsed)
+    # Каждая метка «Третье лицо:» начинает новое лицо. При нормализации переносов
+    # метка склеивается с наименованием на след. строке («Третье лицо: Управление…»),
+    # из-за чего второе лицо не опознаётся как старт — поэтому режем блок ПО метке,
+    # а внутри сегмента добираем несколько лиц под одной меткой «Третьи лица:».
+    for seg in re.split(r"Треть[еи]\s+лиц\w*\s*:", block):
+        lines = seg.split("\n")
+        starts = [i for i, l in enumerate(lines) if _is_party_start(l)]
+        for k, idx in enumerate(starts):
+            end = starts[k + 1] if k + 1 < len(starts) else len(lines)
+            parsed = _parse_party_record("\n".join(lines[idx:end]))
+            if parsed:
+                out.append(parsed)
     return out
 
 

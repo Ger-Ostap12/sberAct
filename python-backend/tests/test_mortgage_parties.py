@@ -101,10 +101,59 @@ _ROSVOEN_HEAD = (
 )
 
 
-def test_detect_military_mortgage():
+def test_detect_mortgage_kind():
     da = DocumentAnalyzer()
-    assert da._detect_military_mortgage(_ROSVOEN_HEAD) == "military"
-    assert da._detect_military_mortgage("выдало ипотечный кредит под залог квартиры") == "civil"
+    assert da._detect_mortgage_kind(_ROSVOEN_HEAD) == "military"
+    assert da._detect_mortgage_kind("выдало ипотечный кредит под залог квартиры") == "civil"
+    assert da._detect_mortgage_kind(
+        "Кредит выдавался на инвестирование строительства недвижимости; права требования "
+        "участника долевого строительства по договору участия в долевом строительстве"
+    ) == "ddu"
+
+
+_DDU_THIRD_PARTIES = (
+    "Третье лицо:\n"
+    "ООО \"СПЕЦИАЛИЗИРОВАННЫЙ ЗАСТРОЙЩИК «Не гарантирую качество»\n"
+    "ИНН 2311111111, ОГРН 1202311111111, КПП 2311011111.\n"
+    "Адрес: 350028, Краснодарский край, г. Краснодар, Восточно-Кругликовская ул., дом 42/3\n"
+    "Третье лицо:\n"
+    "Управление Росреестра по Краснодарскому краю\n"
+    "ИНН 2309090540 ОГРН 1042304982510\n"
+    "Адрес: 350063 г. Краснодар ул. Ленина, д. 28\n"
+    "Цена иска: 1 000 000 руб.\n"
+)
+
+
+def test_two_third_parties_repeated_label():
+    """Две метки «Третье лицо:» подряд (застройщик + Росреестр) — оба лица, свои ИНН."""
+    parties = fd.extract_third_parties(_DDU_THIRD_PARTIES)
+    assert len(parties) == 2
+    assert parties[0]["inn"] == "2311111111"
+    assert parties[1]["name"].startswith("Управление Росреестра")
+    assert parties[1]["inn"] == "2309090540"
+    # Адрес первого лица не должен захватывать второе.
+    assert "Росреестра" not in parties[0]["address"]
+
+
+def test_debtor_passport_and_secondary_address():
+    """Паспорт серия/номер разбирается; вторичный «Иной известный адрес» в основной не тянется."""
+    text = (
+        "Ответчик:\n"
+        "ФОНАРЕВА ИННА ВИКТОРОВНА\n"
+        "Дата рождения 31.12.1982\n"
+        "Паспорт: серия 1111 № 111111\n"
+        "ИНН 280111111111\n"
+        "Адрес регистрации 675014, Амурская область, г. Благовещенск, ул. Текстильная, д. 86/2, кв. 68 "
+        "Иной известный адрес проживания: 350011, г. Краснодар, ул. Обрывная, д. 293/6\n"
+        "Цена иска: 5 000 000 руб.\n"
+    )
+    debtors = fd.extract_debtors(text)
+    assert len(debtors) == 1
+    d = debtors[0]
+    assert d["passportSeries"] == "1111"
+    assert d["passportNumber"] == "111111"
+    assert "Иной известный адрес" not in d["address"]
+    assert "Обрывная" not in d["address"]
 
 
 def test_third_party_rosvoenipoteka_not_garbage():

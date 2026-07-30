@@ -380,6 +380,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # это мусор (в документе отдельной банкротной госпошлины нет). Чистим.
             self._clear_garbage_bankruptcy_duty(extracted_fields)
 
+            # Ипотека: госпошлина из шапки, если финансовый каскад её не заполнил.
+            if document_type == "mortgage_claim":
+                self._fill_mortgage_state_duty(extracted_fields, text)
+
             # Ранее вынесенное решение другого суда (взыскание до банкротства).
             prior_decision = self._extract_prior_court_decision(text)
             if prior_decision:
@@ -490,16 +494,16 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # Ипотека: структурированные предметы залога для формы (стоимость/НПЦ/
             # отчёт/ЕГРН реконсилируются из абзаца оценки и записей ЕГРН). Top-level,
             # вне fields и collaterals — golden-снимок его не фиксирует.
-            mortgage_properties = (
-                self._build_mortgage_properties(text, collaterals_final)
-                if document_type == "mortgage_claim" else []
-            )
-            # Военная ипотека: третье лицо — ФГКУ «Росвоенипотека» (накопительно-
-            # ипотечная система) и/или продукт «Военная ипотека». Отдаём вид ипотеки
-            # top-level — фронт инициализирует переключатель (пользователь может сменить).
+            # Вид ипотеки (военная/ДДУ/гражданская) — top-level, фронт инициализирует
+            # переключатель (пользователь может сменить). Считаем ДО предмета: разбор
+            # предмета для ДДУ иной (права требования по договору долевого участия).
             mortgage_kind = (
-                self._detect_military_mortgage(text)
+                self._detect_mortgage_kind(text)
                 if document_type == "mortgage_claim" else None
+            )
+            mortgage_properties = (
+                self._build_mortgage_properties(text, collaterals_final, mortgage_kind)
+                if document_type == "mortgage_claim" else []
             )
 
             # Формируем результат
@@ -1439,15 +1443,21 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             fields.setdefault("interest14", interest_amount)
 
         creditor_name = fields.get("creditorName", "")
-        if (
+        # Мусорный истец: пусто, длинно, нарратив («…исходит из положений…», из-за
+        # опечатки метки «Истеп:» вместо «Истец:») или без признака организации.
+        looks_bad = (
             not creditor_name
             or len(creditor_name) > 80
-            or "имеет право" in creditor_name.lower()
-            or "досрочного" in creditor_name.lower()
-        ):
+            or bool(re.search(r"имеет\s+право|досрочног|исходит|положени|\bсуд\b", creditor_name, re.IGNORECASE))
+            or not re.search(r"\b(?:ООО|ОАО|ПАО|ЗАО|АО|Банк|Обществ\w+|Публичное|ФНС)\b", creditor_name, re.IGNORECASE)
+        )
+        if looks_bad:
             new_creditor = self._extract_creditor_name_from_text(text)
-            if new_creditor:
+            if new_creditor and not re.search(r"исходит|положени|\bсуд\b", new_creditor, re.IGNORECASE):
                 fields["creditorName"] = new_creditor
+            elif re.search(r"Сбербанк", text, re.IGNORECASE):
+                # Тело подтверждает «Публичное акционерное общество "Сбербанк России"».
+                fields["creditorName"] = "ПАО Сбербанк"
 
         address = fields.get("applicantAddress")
         extended_address = self._extend_address_from_text(text, address)
@@ -1461,6 +1471,22 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             rep = self._extract_representative_name(text)
             if rep:
                 fields["mortgageRepresentative22"] = rep
+
+    def _fill_mortgage_state_duty(self, fields: Dict[str, Any], text: str) -> None:
+        """Ипотека: госпошлина из шапки «Госпошлина: X руб.», если финансовый каскад
+        её не заполнил. Каскад берёт госпошлину из блока «ПРОСИТ СУД» и спотыкается на
+        числах с пробелом-разрядом и точкой-десятичной («80 400.00»); шапка — надёжный
+        якорь. Зовём ПОСЛЕ каскада, иначе значение затирается пересчётом финблока."""
+        if fields.get("stateDuty16") or fields.get("stateDuty"):
+            return
+        m = re.search(
+            r"Госпошлин[ауы]?\s*[:\-]\s*([0-9][0-9\s.,]*[0-9])\s*(?:руб|рублей)",
+            text, re.IGNORECASE,
+        )
+        if m:
+            duty = re.sub(r"\s+", " ", m.group(1)).strip()
+            fields["stateDuty16"] = duty
+            fields["stateDuty"] = duty
 
     def _extract_representative_name(self, text: str) -> Optional[str]:
         """ФИО представителя истца из блока «Представитель истца:».
@@ -5265,7 +5291,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
     @staticmethod
     def _mp_cadastral(chunk: str) -> str:
-        m = re.search(r"кадастров\w+\s+номер\s*:?\s*(\d{2}:\d{2}:\d{5,7}:\d+)", chunk, re.IGNORECASE)
+        # «кадастровый номер: 23:…» и «кадастровый номер земельного участка № 11:…»
+        # (между «номер» и числом могут стоять слова «земельного участка №»).
+        m = re.search(r"кадастров\w+\s+номер[^\d\n]{0,40}?(\d{2}:\d{2}:\d{5,7}:\d+)", chunk, re.IGNORECASE)
         return m.group(1) if m else ""
 
     @staticmethod
@@ -5273,27 +5301,104 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         m = re.search(r"по\s+адресу\s*:?\s*(.+?)(?:,?\s*кадастров\w+\s+номер|\.\s*Запис\w+|$)", chunk, re.IGNORECASE)
         return m.group(1).strip(" ,;.") if m else ""
 
-    def _detect_military_mortgage(self, text: str) -> str:
-        """Вид ипотеки: 'military', если это военная ипотека, иначе 'civil'.
+    def _detect_mortgage_kind(self, text: str) -> str:
+        """Вид ипотеки: 'military' | 'ddu' | 'civil'.
 
-        Признаки военной ипотеки (достаточно одного): третье лицо — ФГКУ
-        «Росвоенипотека» (накопительно-ипотечная система жилищного обеспечения
-        военнослужащих) или кредитный продукт «Военная ипотека»."""
+        Военная (приоритет): третье лицо — ФГКУ «Росвоенипотека» (накопительно-
+        ипотечная система жилищного обеспечения военнослужащих) или продукт «Военная
+        ипотека».
+        ДДУ: долевое строительство — «участник(а) долевого строительства», «договор
+        участия в долевом строительстве», «инвестирование строительства», застройщик
+        (кредит на строящееся жильё, предмет залога — права требования по ДДУ)."""
         if re.search(
             r"накопительно-?ипотечн\w+\s+систем\w+|Росвоенипотек\w*|Военн\w+\s+ипотек\w+",
             text, re.IGNORECASE,
         ):
             return "military"
+        if re.search(
+            r"долев\w+\s+строительств\w*|договор\w*\s+участия\s+в\s+строительстве|"
+            r"инвестировани\w+\s+строительств\w*|специализированн\w+\s+застройщик\w*|"
+            r"участник\w*\s+долевого\s+строительства",
+            text, re.IGNORECASE,
+        ):
+            return "ddu"
         return "civil"
 
-    def _build_mortgage_properties(self, text: str, collaterals: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _mp_ddu_contract(self, text: str):
+        """(номер договора ДДУ, дата) из предмета залога/тела: «по ДОГОВОРУ № <c>
+        УЧАСТИЯ В ДОЛЕВОМ СТРОИТЕЛЬСТВЕ от <d>» либо «договор участия в долевом
+        строительстве № <c> … от <d>»."""
+        m = re.search(
+            r"ДОГОВОР\w*\s*№?\s*(.+?)\s+УЧАСТИЯ\s+В\s+ДОЛЕВОМ\s+СТРОИТЕЛЬСТВЕ\s+от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})",
+            text, re.IGNORECASE,
+        )
+        if not m:
+            m = re.search(
+                r"договор\w*\s+участия\s+в\s+долевом\s+строительстве\s*№?\s*(.+?)\s+от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})",
+                text, re.IGNORECASE,
+            )
+        if not m:
+            return "", ""
+        num = re.sub(r"\s+", " ", m.group(1)).strip(" .,№")
+        return num, m.group(2).replace(",", ".")
+
+    @staticmethod
+    def _mp_ddu_egrn(seg: str):
+        """(номер записи ЕГРН, дата) для ДДУ: «Запись в ЕГРН от <дата> … номер … № <номер>»
+        (дата ПЕРЕД номером, в отличие от гражданской ипотеки)."""
+        m = re.search(
+            r"Запис\w*\s+в\s+ЕГРН\s+от\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})[^№N\n]{0,80}?(?:№|N)\s*([0-9:/\-]+)",
+            seg, re.IGNORECASE,
+        )
+        if m:
+            return m.group(2).strip(" ."), m.group(1).replace(",", ".")
+        return "", ""
+
+    def _build_ddu_property(self, text: str) -> List[Dict[str, Any]]:
+        """Предмет ипотеки для ДДУ: одна карточка — имущественные права требования
+        участника долевого строительства по договору (а не физический объект)."""
+        # Блок предмета залога из просительной части: «Обратить взыскание … на предмет
+        # залога: - имущественные права требования … по ДОГОВОРУ …».
+        m = re.search(
+            r"имуществен\w+\s+прав\w+\s+требован\w+(.+?)(?:Установить\s+начальн|Определить\s+способ|"
+            r"\n\s*\d+\.\s|$)",
+            text, re.IGNORECASE | re.DOTALL,
+        )
+        seg = m.group(0) if m else text
+        contract, ddate = self._mp_ddu_contract(seg if m else text)
+        egrn, egrn_date = self._mp_ddu_egrn(seg)
+        val_total, _ = self._mp_amounts(text, "value")
+        st_total, _ = self._mp_amounts(text, "start")
+        addr = self._mp_address(seg)
+        return [{
+            "id": "mortgageProperty-0",
+            "description": "Имущественные права требования участника долевого строительства",
+            "cadastralNumber": self._mp_cadastral(seg),
+            "address": addr,
+            "value": val_total or "",
+            "startingPrice": st_total or "",
+            "npcStrategy": self._mp_npc_strategy(text),
+            "appraisalReport": self._mp_appraisal_report(text),
+            "egrnRecord": egrn,
+            "egrnRecordDate": egrn_date,
+            "dduContract": contract,
+            "dduDate": ddate,
+        }]
+
+    def _build_mortgage_properties(
+        self, text: str, collaterals: List[Dict[str, Any]], kind: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
         """Структурированные предметы ипотеки для формы.
 
-        Объекты (вид/описание/кадастр/адрес/ЕГРН) разбираем прямо из блока залога —
-        надёжнее общего `collaterals`, который на грязной вёрстке (буллет только у
-        первого объекта) теряет второй. Стоимость/начальную цену берём из абзаца
-        оценки (разбивка «в том числе <тип>»), сопоставляя по типу объекта; стратегию
-        НПЦ и отчёт об оценке — общие для всех объектов."""
+        Для ДДУ — отдельная ветка (права требования по договору долевого участия).
+        Для гражданской/военной: объекты (вид/описание/кадастр/адрес/ЕГРН) разбираем
+        прямо из блока залога — надёжнее общего `collaterals`, который на грязной
+        вёрстке (буллет только у первого объекта) теряет второй. Стоимость/начальную
+        цену — из абзаца оценки (разбивка «в том числе <тип>») по типу объекта;
+        стратегию НПЦ и отчёт об оценке — общие для всех объектов."""
+        if kind == "ddu":
+            return self._build_ddu_property(text)
+
         chunks = self._mp_collateral_chunks(text)
         # Фолбэк: если блок не найден, но общий парсер что-то дал — используем его.
         if not chunks and collaterals:
@@ -5324,6 +5429,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 "appraisalReport": report,
                 "egrnRecord": egrn,
                 "egrnRecordDate": egrn_date,
+                "dduContract": "",
+                "dduDate": "",
             })
         return out
 

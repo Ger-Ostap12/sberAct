@@ -1100,21 +1100,32 @@ class PartiesMixin:
         # падежи через запятую (шаблоны не меняем). При 0/1 — одиночный должник
         # из текущих плоских полей (поведение прежнее, без регрессий).
         parsed_debtors = extract_debtors(text)
+        # Третьи лица считаем заранее — их ИНН нужны для отсева кросс-контаминации
+        # ИНН у одиночного должника (плоское поле могло взять ИНН третьего лица).
+        parsed_tp = extract_third_parties(text)
+        tp_ids = {p.get("inn") for p in parsed_tp if p.get("inn")}
         if len(parsed_debtors) >= 2:
             extracted_fields.update(self._combine_debtors(parsed_debtors))
             debtors_result = parsed_debtors
         else:
             single = self._single_debtor_from_fields(extracted_fields)
-            # Восполняем пустой адрес из распознанной записи блока «Ответчик:/Должник:».
+            # Восполняем поля из распознанной записи блока «Ответчик:/Должник:».
             # Плоский applicantAddress мог не извлечься, когда блок «Представитель
-            # истца:» между Истцом и Ответчиком сбивает разбор адреса (ипотека).
-            if not single.get("address") and len(parsed_debtors) == 1 and parsed_debtors[0].get("address"):
-                single["address"] = parsed_debtors[0]["address"]
+            # истца:» между Истцом и Ответчиком сбивает разбор адреса (ипотека);
+            # паспорт разбирается только в записи блока, не в плоских полях.
+            if len(parsed_debtors) == 1:
+                rec = parsed_debtors[0]
+                for k in ("address", "passportSeries", "passportNumber"):
+                    if not single.get(k) and rec.get(k):
+                        single[k] = rec[k]
+                # ИНН: если плоский совпал с ИНН третьего лица (контаминация из-за
+                # общей нормализации блоков), а запись блока даёт свой — берём из записи.
+                if single.get("inn") in tp_ids and rec.get("inn") and rec["inn"] not in tp_ids:
+                    single["inn"] = rec["inn"]
             debtors_result = [single]
 
-        # Несколько третьих лиц: извлекаем массив (физлица и организации). Если
-        # извлеклось — отдаём как есть; иначе одно лицо из плоских полей (если есть).
-        parsed_tp = extract_third_parties(text)
+        # Несколько третьих лиц: если извлеклись — отдаём как есть; иначе одно лицо
+        # из плоских полей (если есть).
         if parsed_tp:
             third_parties_result = parsed_tp
         elif extracted_fields.get("thirdPartyName"):
