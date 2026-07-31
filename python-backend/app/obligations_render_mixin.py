@@ -247,18 +247,18 @@ class ObligationsRenderMixin:
                 type_label = "кредитный договор"
 
             if is_mortgage:
-                # Для ипотеки: [100] - номер договора, [110] - дата договора
-                if contract_number:
-                    number_number = 100 + i  # 100, 101, 102, 103, 104, 105, ...
-                    placeholder = f"[{number_number}]"
-                    if self._replace_placeholder_in_doc(doc, placeholder, str(contract_number)):
-                        logger.info(f"Заменено {placeholder} на {contract_number}")
-
+                # Ипотечные шаблоны используют «№ [110] от [100]» / «от [100] № [110]»,
+                # т.е. как и везде: [100+i] - ДАТА договора, [110+i] - НОМЕР. Прежний
+                # обратный порядок давал «№ ‹дата› от ‹номер›» в резолютивке.
                 if contract_date:
-                    date_number = 110 + i  # 110, 111, 112, 113, 114, 115, ...
-                    placeholder = f"[{date_number}]"
+                    placeholder = f"[{100 + i}]"
                     if self._replace_placeholder_in_doc(doc, placeholder, str(contract_date)):
                         logger.info(f"Заменено {placeholder} на {contract_date}")
+
+                if contract_number:
+                    placeholder = f"[{110 + i}]"
+                    if self._replace_placeholder_in_doc(doc, placeholder, str(contract_number)):
+                        logger.info(f"Заменено {placeholder} на {contract_number}")
             else:
                 # Для остальных: [100] - дата договора, [110] - номер договора
                 if contract_date:

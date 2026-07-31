@@ -745,17 +745,41 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
 
         if is_mortgage_document:
             field_mapping = dict(field_mapping)
-            field_mapping.pop("totalDebt", None)
-            field_mapping["stateDuty16"] = "15"
-            field_mapping["stateDuty"] = "15"
-            field_mapping.pop("forfeit15", None)
-            field_mapping["pretrialExpenses16"] = "16"
+            # НОВАЯ схема финансов ипотеки (ипотека_маркера.md, разд. 2 «Финансовые данные»):
+            #   [12]=общая сумма долга, [13]=осн.долг, [14]=проценты, [15]=неустойка,
+            #   [16]=госпошлина, [1360]=итог, [1361]=досуд.экспертиза, [1362]=неустойка за проценты.
+            # База уже даёт totalDebt→12, principalDebt→13, interest→14, forfeit→15,
+            # stateDuty→16 — их НЕ трогаем. Снимаем только старую ипотечную схему
+            # ([10]/[11]/[12]-проценты) и переносим досуд.экспертизу [16]→[1361].
+            field_mapping.pop("mortgagePeriodAmount10", None)     # старое [10]
+            field_mapping.pop("mortgagePrincipalAmount11", None)  # старое [11]
+            field_mapping.pop("mortgageInterestAmount12", None)   # старое: проценты→[12]
+            field_mapping["pretrialExpenses16"] = "1361"
+            field_mapping["pretrialExpenses"] = "1361"
+            field_mapping["totalWithDuty1360"] = "1360"           # [1360] - итоговая сумма
             # Добавляем mortgageDebtorName в маппинг для [2]
             field_mapping["mortgageDebtorName"] = "2"
             # Для ипотеки убираем contractDate и contractNumber из маппинга
             # Они будут заменены из обязательств в replace_obligations_data
             field_mapping.pop("contractDate", None)
             field_mapping.pop("contractNumber", None)
+
+            # [1360] «а всего взыскать» = общая сумма долга + госпошлина.
+            if not cleaned_data.get("totalWithDuty1360"):
+                def _amount_to_num(raw: str) -> float:
+                    s = re.sub(r"[^\d.,]", "", re.sub(r"\s", "", str(raw or "")))
+                    if not s:
+                        return 0.0
+                    if "," in s:  # запятая — десятичный разделитель, точки — разряды
+                        s = s.replace(".", "").replace(",", ".")
+                    try:
+                        return float(s)
+                    except ValueError:
+                        return 0.0
+                _total = _amount_to_num(cleaned_data.get("totalDebt"))
+                _duty = _amount_to_num(cleaned_data.get("stateDuty16") or cleaned_data.get("stateDuty"))
+                if _total:
+                    cleaned_data["totalWithDuty1360"] = self._format_amount_value(_total + _duty)
 
             # Родительный падеж названия суда для акта ([002.1]). Приоритет —
             # значение из формы (mortgageCourtNameGenitive — «якорь» справочника,
@@ -823,6 +847,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     dative_name = self._decline_person_name(mortgage_debtor_name, "datv")
                     cleaned_data["mortgageDebtorNameDative"] = dative_name
                     field_mapping["mortgageDebtorNameDative"] = "2.2"
+                    # Творительный [2.3] «заключённый между … и <должник>»: для ипотеки
+                    # это ДОЛЖНИК, а не ЮЛ/суд из applicantNameInstrumental — перезаписываем.
+                    cleaned_data["applicantNameInstrumental"] = self._decline_person_name(mortgage_debtor_name, "ablt")
                     # Убираем старое поле mortgageRepresentative22 из маппинга для ипотеки
                     field_mapping.pop("mortgageRepresentative22", None)
                     logger.info(f"Преобразовано mortgageDebtorName в дательный падеж для [2.2]: {dative_name}")
@@ -849,6 +876,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     dative_name = self._decline_person_name(debtor_name, "datv")
                     cleaned_data["mortgageDebtorNameDative"] = dative_name
                     field_mapping["mortgageDebtorNameDative"] = "2.2"
+                    # Творительный [2.3] «заключённый между … и <должник>».
+                    cleaned_data["applicantNameInstrumental"] = self._decline_person_name(debtor_name, "ablt")
                     field_mapping.pop("mortgageRepresentative22", None)
                     logger.info(f"Преобразовано debtorName в дательный падеж для [2.2]: {dative_name}")
                 except Exception as e:
@@ -2156,6 +2185,16 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     logger.info(f"Склеено {len(valid_debtors)} должников: {combined.get('applicantName')}")
                 except Exception as exc:
                     logger.warning(f"Не удалось склеить должников при генерации: {exc}")
+            elif len(valid_debtors) == 1:
+                # Ипотека, один ответчик: плоский `inn` (маркер [4]) на грязном входе
+                # мог перехватить ИНН третьего лица (Росреестр в ДДУ). Берём ИНН из
+                # разобранной записи должника — он привязан к самому ответчику.
+                own_inn = (valid_debtors[0].get("inn") or "").strip()
+                if own_inn and own_inn != (data.get("inn") or fields.get("inn") or "").strip():
+                    data["inn"] = own_inn
+                    fields["inn"] = own_inn
+                    data["fields"] = fields
+                    logger.info(f"Ипотека: ИНН [4] взят из записи должника: {own_inn}")
             selected_acts_ids = data.get("selectedActsIds") or fields.get("selectedActsIds")
             selected_acts_data_str = data.get("selectedActsData") or fields.get("selectedActsData")
             selected_entity_type = data.get("selectedEntityType") or fields.get("selectedEntityType")

@@ -10,6 +10,12 @@ export const formatJudgeName = (fullName: string): string => {
     return fullName;
   }
 
+  // Уже в форме «Фамилия И.О.»/«Фамилия И.О.» — не переформатируем, иначе
+  // «Падалко А.А.» → «Падалко А.» (charAt(0) от «А.А.» теряет отчество).
+  if (parts.slice(1).some((p) => p.includes('.'))) {
+    return fullName.trim();
+  }
+
   // Фамилия - первое слово
   const lastName = parts[0];
 

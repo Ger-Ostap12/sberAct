@@ -506,6 +506,16 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 if document_type == "mortgage_claim" else []
             )
 
+            # [1221] описание предмета — чистое (из структурного mortgageProperties),
+            # а НЕ жадный блоб со всей правовой «водой» секции залога (ст.334 ГК, чужие
+            # ФИО из шаблонного текста заявления). Блоб уже отработал на разбиении
+            # collaterals выше, дальше в акт должно идти короткое описание объекта.
+            if document_type == "mortgage_claim" and mortgage_properties:
+                _descs = [str(p.get("description") or "").strip() for p in mortgage_properties]
+                _descs = [d for d in _descs if d]
+                if _descs:
+                    extracted_fields["mortgageCollateralDescription1221"] = "; ".join(_descs)
+
             # Формируем результат
             result = {
                 "documentType": document_type,

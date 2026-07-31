@@ -99,8 +99,38 @@ class GeneratorInflectionMixin:
         (Валидиновна, Викторовна, Кузьминична); мужские — на «-ич»/«-вич»."""
         return (patronymic or "").strip().lower().endswith("на")
 
+    def _female_full_name_instrumental(self, surname: str, name: str, patronymic: str) -> str:
+        """Женское ФИО в творительном падеже (Нуриева Елена Валидиновна ->
+        Нуриевой Еленой Валидиновной). Для типовых фамилий (-ова/-ева/-ина)
+        творительный совпадает с дательным."""
+        s = self._female_surname_to_genitive_dative(surname)[1]  # -овой/-евой/-иной/-ой/-ей
+        low = name.strip().lower()
+        if low.endswith("ия"):
+            given = name[:-2] + "ией"
+        elif low.endswith("ья"):
+            given = name[:-2] + "ьей"
+        elif low.endswith("я"):
+            given = name[:-1] + "ей"
+        elif low.endswith("а"):
+            given = name[:-1] + "ой"
+        else:
+            given = name
+        plow = patronymic.strip().lower()
+        if plow.endswith("овна"):
+            patr = patronymic[:-4] + "овной"
+        elif plow.endswith("евна") or plow.endswith("ёвна"):
+            patr = patronymic[:-4] + "евной"
+        elif plow.endswith("ична"):
+            patr = patronymic[:-4] + "ичной"
+        elif plow.endswith("а"):
+            patr = patronymic[:-1] + "ой"
+        else:
+            patr = patronymic
+        return f"{s} {given} {patr}".strip()
+
     def _decline_person_name(self, name: str, case: str) -> str:
-        """ФИО (Ф И О) в родительный ('gent') или дательный ('datv') падеж.
+        """ФИО (Ф И О) в родительный ('gent'), дательный ('datv') или творительный
+        ('ablt') падеж.
 
         Наивный пословный pymorphy (`parse[0]`) склоняет женскую фамилию по
         мужскому типу (Нуриева -> Нуриеву), поэтому для женщин (определяем по
@@ -108,8 +138,10 @@ class GeneratorInflectionMixin:
         нестандартных ФИО — пословный pymorphy. Регистр — корректный."""
         src = self._capitalize_full_name((name or "").strip())
         words = [w for w in src.split() if w]
-        idx = 0 if case == "gent" else 1
         if len(words) == 3 and self._is_female_by_patronymic(words[2]):
+            if case == "ablt":
+                return self._female_full_name_instrumental(words[0], words[1], words[2])
+            idx = 0 if case == "gent" else 1
             surname = self._female_surname_to_genitive_dative(words[0])[idx]
             given = self._female_name_to_genitive_dative(words[1])[idx]
             patr = self._female_patronymic_to_genitive_dative(words[2])[idx]
