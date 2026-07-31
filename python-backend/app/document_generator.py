@@ -797,6 +797,16 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             field_mapping["courtEmail"] = "1300"
             field_mapping["courtSite"] = "1301"
             field_mapping["noticeDate"] = "1310"
+            # Предмет ипотеки — новые маркеры (спека §2 «Предмет ипотеки»).
+            field_mapping["mortgageCadastralNumber1226"] = "1226"
+            field_mapping["mortgagePropertyAddress1227"] = "1227"
+            field_mapping["mortgageNpcStrategy1228"] = "1228"
+            field_mapping["mortgageEgrnRecord1229"] = "1229"
+            field_mapping["mortgageEgrnRecordDate1230"] = "1230"
+            field_mapping["mortgageDduContract1231"] = "1231"
+            field_mapping["mortgageDduDate1232"] = "1232"
+            field_mapping["mortgagePropertyArea1233"] = "1233"
+            field_mapping["mortgageSaleMethod1234"] = "1234"
             # Для ипотеки используем mortgageDebtorName или debtorName вместо applicantName для [2]
             def strip_ooo(name: str) -> str:
                 """Remove ООО/Общество с ограниченной ответственностью prefix to leave only the org name."""
@@ -2199,6 +2209,34 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     fields["inn"] = own_inn
                     data["fields"] = fields
                     logger.info(f"Ипотека: ИНН [4] взят из записи должника: {own_inn}")
+
+            # Ипотека: разворачиваем ПЕРВЫЙ предмет залога в плоские поля под маркеры
+            # предмета ([1226]-[1234]). Массив mortgageProperties строит анализатор;
+            # value/startingPrice/appraisal уже покрыты базой ([1224]/[1225]/[1223]).
+            mprops = data.get("mortgageProperties") or fields.get("mortgageProperties") or []
+            if isinstance(mprops, list) and mprops and isinstance(mprops[0], dict):
+                p0 = mprops[0]
+                area = ""
+                _am = re.search(r"площад[ьи][^\d]{0,12}([\d]+[.,]?\d*\s*(?:кв\.?\s*м|м2|м²|\+/-\s*\d+\s*кв))",
+                                str(p0.get("description") or ""), re.IGNORECASE)
+                if _am:
+                    area = _am.group(1).strip()
+                prop_flat = {
+                    "mortgageCadastralNumber1226": p0.get("cadastralNumber"),
+                    "mortgagePropertyAddress1227": p0.get("address"),
+                    "mortgageNpcStrategy1228": p0.get("npcStrategy"),
+                    "mortgageEgrnRecord1229": p0.get("egrnRecord"),
+                    "mortgageEgrnRecordDate1230": p0.get("egrnRecordDate"),
+                    "mortgageDduContract1231": p0.get("dduContract"),
+                    "mortgageDduDate1232": p0.get("dduDate"),
+                    "mortgagePropertyArea1233": area,
+                    "mortgageSaleMethod1234": "путем продажи с публичных торгов",
+                }
+                for k, v in prop_flat.items():
+                    if v and not (data.get(k) or fields.get(k)):
+                        data[k] = v
+                        fields[k] = v
+                data["fields"] = fields
             selected_acts_ids = data.get("selectedActsIds") or fields.get("selectedActsIds")
             selected_acts_data_str = data.get("selectedActsData") or fields.get("selectedActsData")
             selected_entity_type = data.get("selectedEntityType") or fields.get("selectedEntityType")
