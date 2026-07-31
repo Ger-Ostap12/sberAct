@@ -792,6 +792,11 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 cleaned_data["mortgageCourtNameGenitive"] = court_gen
                 field_mapping["mortgageCourtNameGenitive"] = "002.1"
                 logger.info(f"Родительный падеж названия суда для [002.1]: {court_gen}")
+            # Новые маркеры суда/извещения (спека §2, §3.2): эл. почта, сайт, дата
+            # исходящего письма. Поля приходят с формы плоскими editedFields.
+            field_mapping["courtEmail"] = "1300"
+            field_mapping["courtSite"] = "1301"
+            field_mapping["noticeDate"] = "1310"
             # Для ипотеки используем mortgageDebtorName или debtorName вместо applicantName для [2]
             def strip_ooo(name: str) -> str:
                 """Remove ООО/Общество с ограниченной ответственностью prefix to leave only the org name."""
@@ -850,8 +855,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     # Творительный [2.3] «заключённый между … и <должник>»: для ипотеки
                     # это ДОЛЖНИК, а не ЮЛ/суд из applicantNameInstrumental — перезаписываем.
                     cleaned_data["applicantNameInstrumental"] = self._decline_person_name(mortgage_debtor_name, "ablt")
-                    # Убираем старое поле mortgageRepresentative22 из маппинга для ипотеки
-                    field_mapping.pop("mortgageRepresentative22", None)
+                    # Представитель истца теперь [1440], ответчику [2.2] он больше не мешает.
                     logger.info(f"Преобразовано mortgageDebtorName в дательный падеж для [2.2]: {dative_name}")
                 except Exception as e:
                     logger.warning(f"Не удалось преобразовать mortgageDebtorName в падежи: {e}")
@@ -878,7 +882,6 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     field_mapping["mortgageDebtorNameDative"] = "2.2"
                     # Творительный [2.3] «заключённый между … и <должник>».
                     cleaned_data["applicantNameInstrumental"] = self._decline_person_name(debtor_name, "ablt")
-                    field_mapping.pop("mortgageRepresentative22", None)
                     logger.info(f"Преобразовано debtorName в дательный падеж для [2.2]: {dative_name}")
                 except Exception as e:
                     logger.warning(f"Не удалось преобразовать debtorName в падежи: {e}")
@@ -940,7 +943,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             "applicantNameGenitive": "2.1",  # [2.1] - ФИО должника в родительном падеже
             "applicantNameInstrumental": "2.3",  # [2.3] - ФИО должника в творительном падеже
             "applicantNameAccusative": "2.4",  # [2.4] - ФИО должника в винительном падеже
-            "mortgageRepresentative22": "2.2",  # [2.2] - Представитель истца (ипотека)
+            "mortgageRepresentative22": "1440",  # [1440] - Представитель истца ФИО (ипотека, спека)
+            "respondentRepresentativeName": "1445",  # [1445] - Представитель ответчика ФИО (ипотека)
             "birthDate": "3",            # [3] - Дата рождения
             "birthPlace": "3.1",        # [3.1] - Город/место рождения
             "inn": "4",                  # [4] - ИНН
