@@ -757,6 +757,17 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             field_mapping["pretrialExpenses16"] = "1361"
             field_mapping["pretrialExpenses"] = "1361"
             field_mapping["totalWithDuty1360"] = "1360"           # [1360] - итоговая сумма
+            # Представитель истца (ипотека_маркера.md, разд. «Представители»):
+            #   [1440]=ФИО, [1441]=доверенность с, [1442]=доверенность по.
+            # Фронт кладёт ФИО в representativeName (mortgageRepresentative22 копируется
+            # в него на форме), даты — representativePoaFrom/To (уже ДД.ММ.ГГГГ).
+            # Каноним — representativeName; старый ключ убираем, чтобы пустой не затирал [1440].
+            if not cleaned_data.get("representativeName") and cleaned_data.get("mortgageRepresentative22"):
+                cleaned_data["representativeName"] = cleaned_data["mortgageRepresentative22"]
+            field_mapping.pop("mortgageRepresentative22", None)
+            field_mapping["representativeName"] = "1440"
+            field_mapping["representativePoaFrom"] = "1441"
+            field_mapping["representativePoaTo"] = "1442"
             # Добавляем mortgageDebtorName в маппинг для [2]
             field_mapping["mortgageDebtorName"] = "2"
             # Для ипотеки убираем contractDate и contractNumber из маппинга
