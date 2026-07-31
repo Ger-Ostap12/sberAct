@@ -111,8 +111,9 @@ function App() {
 
   const handleAnalysisComplete = (data: ExtractedData) => {
     setExtractedData(data);
-    // Шаблон судебного акта подбирается автоматически — отдельной страницы выбора нет.
-    setSelectedTemplate(pickTemplate(data));
+    // Шаблон судебного акта подбирается автоматически, но выбор категории «Ипотека»
+    // в первом окне побеждает авто-классификацию (analysisMode = mortgage → ипотека).
+    setSelectedTemplate(pickTemplate(data, analysisMode === 'mortgage' ? 'mortgage' : 'bankruptcy'));
     setCurrentStep('preview');
   };
 

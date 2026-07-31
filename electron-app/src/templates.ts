@@ -1,4 +1,4 @@
-import { ExtractedData, TemplateType } from './types';
+import { ExtractedData, TemplateType, DocumentCategory } from './types';
 
 // Каталог доступных шаблонов судебных актов.
 // Раньше жил в компоненте TemplateSelection; вынесен сюда, чтобы автоподбор
@@ -403,7 +403,13 @@ const hasFilledCollaterals = (extractedData: ExtractedData): boolean => {
  * Определяет id рекомендуемого шаблона по результатам анализа.
  * Логика перенесена 1:1 из бывшего компонента TemplateSelection (loadTemplates).
  */
-const pickTemplateId = (extractedData: ExtractedData): string => {
+const pickTemplateId = (extractedData: ExtractedData, category?: DocumentCategory): string => {
+  // Выбор «Ипотека» в первом окне — авторитетный: генерим ипотечный пакет
+  // независимо от авто-классификации анализатора (пограничный документ мог
+  // быть распознан как банкротный, но пользователь явно указал ипотеку).
+  if (category === 'mortgage') {
+    return 'mortgage';
+  }
   let sourceDocumentType = getSourceDocumentType(extractedData);
 
   // Если приложение не определило залог, но пользователь заполнил блок залога — считаем акты с залогом
@@ -488,8 +494,8 @@ const pickTemplateId = (extractedData: ExtractedData): string => {
  * Возвращает полностью автоматически подобранный шаблон судебного акта.
  * Используется в App при переходе анализ → предпросмотр (страница выбора удалена).
  */
-export const pickTemplate = (extractedData: ExtractedData): TemplateType => {
-  const id = pickTemplateId(extractedData);
+export const pickTemplate = (extractedData: ExtractedData, category?: DocumentCategory): TemplateType => {
+  const id = pickTemplateId(extractedData, category);
   const tpl = ALL_TEMPLATES.find((t) => t.id === id);
   if (!tpl) {
     // Теоретически недостижимо: pickTemplateId всегда возвращает существующий id.
