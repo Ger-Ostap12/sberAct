@@ -1075,6 +1075,18 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 for idx in range(1, 6)
                 for field, marker in (("Name25", "25"), ("BirthDate52", "52"), ("Address54", "54"))
             },
+            # Ипотека: поименные слоты ответчиков [1400.x]-[1409.x] (спека §2).
+            # Данные (mortgageResp*_{idx}) заполняются в generate() из массива debtors.
+            **{
+                f"mortgageResp{field}_{idx}": f"{marker}.{idx}"
+                for idx in range(1, 6)
+                for field, marker in (
+                    ("Nom1400", "1400"), ("Gen1401", "1401"), ("Dat1402", "1402"),
+                    ("Addr1403", "1403"), ("Inn1404", "1404"), ("Birth1405", "1405"),
+                    ("BirthPlace1406", "1406"), ("PassSer1407", "1407"),
+                    ("PassNum1408", "1408"), ("Ins1409", "1409"),
+                )
+            },
             # Ранее вынесенное решение другого суда (вставляется только в те акты,
             # где эти маркеры физически есть в шаблоне «не во все»).
             "priorCourtName": "90",               # [90] - Суд ранее вынесенного решения
@@ -2237,6 +2249,30 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                         data[k] = v
                         fields[k] = v
                 data["fields"] = fields
+
+            # Ипотека: поименные СЛОТЫ ответчиков [1400.x]-[1409.x] для шапок
+            # (извещение/повестка) — до 5 ответчиков. Падежи склоняем гендер-aware.
+            for i, deb in enumerate(valid_debtors[:5], start=1):
+                nm = (deb.get("name") or "").strip()
+                if not nm:
+                    continue
+                slot = {
+                    f"mortgageRespNom1400_{i}": self._capitalize_full_name(nm),
+                    f"mortgageRespGen1401_{i}": self._decline_person_name(nm, "gent"),
+                    f"mortgageRespDat1402_{i}": self._decline_person_name(nm, "datv"),
+                    f"mortgageRespIns1409_{i}": self._decline_person_name(nm, "ablt"),
+                    f"mortgageRespAddr1403_{i}": deb.get("address"),
+                    f"mortgageRespInn1404_{i}": deb.get("inn"),
+                    f"mortgageRespBirth1405_{i}": deb.get("birthDate"),
+                    f"mortgageRespBirthPlace1406_{i}": deb.get("birthPlace") or deb.get("birthplace"),
+                    f"mortgageRespPassSer1407_{i}": deb.get("passportSeries"),
+                    f"mortgageRespPassNum1408_{i}": deb.get("passportNumber"),
+                }
+                for k, v in slot.items():
+                    if v:
+                        data[k] = v
+                        fields[k] = v
+            data["fields"] = fields
             selected_acts_ids = data.get("selectedActsIds") or fields.get("selectedActsIds")
             selected_acts_data_str = data.get("selectedActsData") or fields.get("selectedActsData")
             selected_entity_type = data.get("selectedEntityType") or fields.get("selectedEntityType")
