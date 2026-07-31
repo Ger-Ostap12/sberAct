@@ -797,6 +797,12 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             field_mapping["courtEmail"] = "1300"
             field_mapping["courtSite"] = "1301"
             field_mapping["noticeDate"] = "1310"
+            # [99] дата+время заседания: нормализуем ЗАРАНЕЕ (datetime-local
+            # «2026-08-08T20:42» → «08.08.2026 20:42»), иначе не-анкорная замена дат
+            # оставляет ISO-разделитель «T» в акте («08.08.2026T20:42»).
+            _hearing = str(cleaned_data.get("courtHearingDateTime99") or "").strip()
+            if "T" in _hearing:
+                cleaned_data["courtHearingDateTime99"] = self._normalize_date_format(_hearing)
             # Предмет ипотеки — новые маркеры (спека §2 «Предмет ипотеки»).
             field_mapping["mortgageCadastralNumber1226"] = "1226"
             field_mapping["mortgagePropertyAddress1227"] = "1227"
@@ -910,6 +916,35 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 logger.warning(f"applicantName содержит 'суд' ({current_applicant_name}), не используем для [2]. mortgageDebtorName: {mortgage_debtor_name}, debtorName: {debtor_name[:100] if debtor_name else 'None'}")
             else:
                 logger.warning(f"Не удалось найти правильное ФИО ответчика. mortgageDebtorName: {mortgage_debtor_name}, debtorName: {debtor_name[:100] if debtor_name else 'None'}, applicantName: {current_applicant_name[:100] if current_applicant_name else 'None'}")
+
+            # НАДЁЖНАЯ гарантия [2]/[2.1]/[2.2]/[2.3]: ветки выше заполняют падежи не
+            # всегда ([2.1] — только «при спец-условии»; несколько должников —
+            # склонение пропускается; пустой flat mortgageDebtorName). Пустой [2.2]
+            # уносит контекст-чисткой «[989] к [2.2] о расторжении…» вместе с истцом.
+            # Берём лучший источник имени и склоняем ПОИМЁННО (несколько — через запятую).
+            best_name = (mortgage_debtor_name or debtor_name or "").strip()
+            if not best_name:
+                cand = (cleaned_data.get("applicantName") or "").strip()
+                if cand and "суд" not in cand.lower():
+                    best_name = cand
+            if best_name and "суд" not in best_name.lower():
+                def _decline_multi(nm: str, case: str) -> str:
+                    return ", ".join(
+                        self._decline_person_name(part.strip(), case)
+                        for part in nm.split(",") if part.strip()
+                    )
+                if not cleaned_data.get("mortgageDebtorName"):
+                    cleaned_data["mortgageDebtorName"] = best_name
+                    field_mapping["mortgageDebtorName"] = "2"
+                if field_mapping.get("applicantNameGenitive") != "2.1":
+                    cleaned_data["applicantNameGenitive"] = _decline_multi(best_name, "gent")
+                    field_mapping["applicantNameGenitive"] = "2.1"
+                if not cleaned_data.get("mortgageDebtorNameDative"):
+                    cleaned_data["mortgageDebtorNameDative"] = _decline_multi(best_name, "datv")
+                    field_mapping["mortgageDebtorNameDative"] = "2.2"
+                inst = (cleaned_data.get("applicantNameInstrumental") or "")
+                if not inst or "суд" in inst.lower():
+                    cleaned_data["applicantNameInstrumental"] = _decline_multi(best_name, "ablt")
         return field_mapping
 
     def _court_name_to_case(self, name: str, grammeme: str) -> str:

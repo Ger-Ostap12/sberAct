@@ -669,6 +669,13 @@ class DocxOpsMixin:
             year = match2.group(3)
             return f"{day}.{month}.{year}"
 
+        # Datetime-local из формы: YYYY-MM-DDTHH:MM(:SS) -> DD.MM.YYYY HH:MM
+        # (иначе «T» из ISO-разделителя протекает в акт: «08.08.2026T20:42»).
+        m3 = re.match(r'^(\d{4})[.-](\d{1,2})[.-](\d{1,2})[T ](\d{1,2}):(\d{2})', date_str)
+        if m3:
+            return (f"{m3.group(3).zfill(2)}.{m3.group(2).zfill(2)}.{m3.group(1)} "
+                    f"{m3.group(4).zfill(2)}:{m3.group(5)}")
+
         # Если формат не распознан, возвращаем как есть
         return date_str
 
