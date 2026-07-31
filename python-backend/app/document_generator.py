@@ -812,35 +812,15 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 logger.info(f"Используем mortgageDebtorName для [2]: {mortgage_debtor_name}")
                 # Используем pymorphy для преобразования в разные падежи
                 try:
-                    from pymorphy3 import MorphAnalyzer
-                    morph = MorphAnalyzer()
-                    words = mortgage_debtor_name.split()
-
-                    # Преобразуем в родительный падеж для [2.1]
+                    # Родительный [2.1] — только при спец-условии (сохраняем поведение).
                     if applicant_name_genitive and "суд" in applicant_name_genitive.lower():
-                        genitive_words = []
-                        for word in words:
-                            parsed = morph.parse(word)[0]
-                            genitive = parsed.inflect({'gent'})
-                            if genitive:
-                                genitive_words.append(genitive.word)
-                            else:
-                                genitive_words.append(word)
-                        genitive_name = " ".join(genitive_words)
+                        genitive_name = self._decline_person_name(mortgage_debtor_name, "gent")
                         cleaned_data["applicantNameGenitive"] = genitive_name
                         field_mapping["applicantNameGenitive"] = "2.1"
                         logger.info(f"Преобразовано mortgageDebtorName в родительный падеж для [2.1]: {genitive_name}")
 
-                    # Преобразуем в дательный падеж для [2.2]
-                    dative_words = []
-                    for word in words:
-                        parsed = morph.parse(word)[0]
-                        dative = parsed.inflect({'datv'})
-                        if dative:
-                            dative_words.append(dative.word)
-                        else:
-                            dative_words.append(word)
-                    dative_name = self._capitalize_full_name(" ".join(dative_words))
+                    # Дательный [2.2] — с учётом женского рода (Нуриева -> Нуриевой).
+                    dative_name = self._decline_person_name(mortgage_debtor_name, "datv")
                     cleaned_data["mortgageDebtorNameDative"] = dative_name
                     field_mapping["mortgageDebtorNameDative"] = "2.2"
                     # Убираем старое поле mortgageRepresentative22 из маппинга для ипотеки
@@ -858,35 +838,15 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 logger.info(f"Используем debtorName для [2]: {debtor_name}")
                 # Преобразуем в разные падежи
                 try:
-                    from pymorphy3 import MorphAnalyzer
-                    morph = MorphAnalyzer()
-                    words = debtor_name.split()
-
-                    # Преобразуем в родительный падеж для [2.1]
+                    # Родительный [2.1] — только при спец-условии (сохраняем поведение).
                     if applicant_name_genitive and "суд" in applicant_name_genitive.lower():
-                        genitive_words = []
-                        for word in words:
-                            parsed = morph.parse(word)[0]
-                            genitive = parsed.inflect({'gent'})
-                            if genitive:
-                                genitive_words.append(genitive.word)
-                            else:
-                                genitive_words.append(word)
-                        genitive_name = " ".join(genitive_words)
+                        genitive_name = self._decline_person_name(debtor_name, "gent")
                         cleaned_data["applicantNameGenitive"] = genitive_name
                         field_mapping["applicantNameGenitive"] = "2.1"
                         logger.info(f"Преобразовано debtorName в родительный падеж для [2.1]: {genitive_name}")
 
-                    # Преобразуем в дательный падеж для [2.2]
-                    dative_words = []
-                    for word in words:
-                        parsed = morph.parse(word)[0]
-                        dative = parsed.inflect({'datv'})
-                        if dative:
-                            dative_words.append(dative.word)
-                        else:
-                            dative_words.append(word)
-                    dative_name = self._capitalize_full_name(" ".join(dative_words))
+                    # Дательный [2.2] — с учётом женского рода (Нуриева -> Нуриевой).
+                    dative_name = self._decline_person_name(debtor_name, "datv")
                     cleaned_data["mortgageDebtorNameDative"] = dative_name
                     field_mapping["mortgageDebtorNameDative"] = "2.2"
                     field_mapping.pop("mortgageRepresentative22", None)
