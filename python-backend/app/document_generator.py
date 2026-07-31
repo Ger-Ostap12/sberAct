@@ -807,6 +807,17 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             field_mapping["mortgageDduDate1232"] = "1232"
             field_mapping["mortgagePropertyArea1233"] = "1233"
             field_mapping["mortgageSaleMethod1234"] = "1234"
+            # ЦЖЗ / Росвоенипотека [1370]-[1377]: данных в заявлении нет — юрист вводит
+            # их вручную в финблоке формы (военная ипотека). Ключи mil* — как на фронте.
+            field_mapping["milPrincipalCzz"] = "1370"      # осн. долг по ЦЖЗ
+            field_mapping["milInterestRate"] = "1371"      # процентная ставка
+            field_mapping["milPenaltyRate"] = "1372"       # ставка пени
+            field_mapping["milInterestPeriodFrom"] = "1373"  # период начисления процентов с
+            field_mapping["milInterestPeriodTo"] = "1374"    # период по
+            field_mapping["milLoanInterest"] = "1375"      # проценты за пользование займом
+            field_mapping["milPenaltySum"] = "1376"        # пени
+            field_mapping["milTotalClaim"] = "1377"        # общая сумма взыскания
+            field_mapping["cjzClaimant1381"] = "1381"      # ФГКУ Росвоенипотека (взыскатель)
             # Для ипотеки используем mortgageDebtorName или debtorName вместо applicantName для [2]
             def strip_ooo(name: str) -> str:
                 """Remove ООО/Общество с ограниченной ответственностью prefix to leave only the org name."""
@@ -2221,6 +2232,13 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     fields["inn"] = own_inn
                     data["fields"] = fields
                     logger.info(f"Ипотека: ИНН [4] взят из записи должника: {own_inn}")
+                # Дата рождения [3] из записи должника — иначе пустой [3] в военной
+                # строке взыскания уносит контекстом соседний [1377] (нет запятых).
+                own_bd = (valid_debtors[0].get("birthDate") or "").strip()
+                if own_bd and not (data.get("birthDate") or fields.get("birthDate")):
+                    data["birthDate"] = own_bd
+                    fields["birthDate"] = own_bd
+                    data["fields"] = fields
 
             # Ипотека: разворачиваем ПЕРВЫЙ предмет залога в плоские поля под маркеры
             # предмета ([1226]-[1234]). Массив mortgageProperties строит анализатор;
@@ -2273,6 +2291,16 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                         data[k] = v
                         fields[k] = v
             data["fields"] = fields
+
+            # [1381] взыскатель ЦЖЗ — ФГКУ «Росвоенипотека» из третьих лиц.
+            if not (data.get("cjzClaimant1381") or fields.get("cjzClaimant1381")):
+                for tp in (data.get("thirdParties") or fields.get("thirdParties") or []):
+                    nm = (tp.get("name") or "") if isinstance(tp, dict) else ""
+                    if re.search(r"накопительно-ипотечн|росвоенипотек", nm, re.IGNORECASE):
+                        data["cjzClaimant1381"] = nm
+                        fields["cjzClaimant1381"] = nm
+                        data["fields"] = fields
+                        break
             selected_acts_ids = data.get("selectedActsIds") or fields.get("selectedActsIds")
             selected_acts_data_str = data.get("selectedActsData") or fields.get("selectedActsData")
             selected_entity_type = data.get("selectedEntityType") or fields.get("selectedEntityType")
