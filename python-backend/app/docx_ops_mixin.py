@@ -714,6 +714,13 @@ class DocxOpsMixin:
             nonlocal replaced
             for paragraph in paragraphs:
                 if placeholder in paragraph.text:
+                    # Абзац со встроенной фигурой (w:pict/w:drawing — напр. рамка-шапка
+                    # извещения): сеттер `paragraph.text` пересобирает run'ы абзаца и
+                    # УНИЧТОЖАЕТ фигуру. Такие абзацы пропускаем — их w:t заполнит
+                    # общий xml-проход ниже, не трогая структуру фигуры.
+                    el = paragraph._p
+                    if next(el.iter(qn("w:pict")), None) is not None or next(el.iter(qn("w:drawing")), None) is not None:
+                        continue
                     paragraph.text = paragraph.text.replace(placeholder, value)
                     replaced = True
 

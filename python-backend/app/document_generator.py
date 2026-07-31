@@ -769,10 +769,20 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             field_mapping["representativePoaFrom"] = "1441"
             field_mapping["representativePoaTo"] = "1442"
             # [1302] — вышестоящая инстанция (извещение: «поручением [1302]»,
-            # «в здании [1302]», «направлено в [1302]», подпись). Поле higherCourt
-            # заполняется юристом на форме; один маркер во всех позициях — по
-            # дизайну шаблона, склонять не нужно.
-            field_mapping["higherCourt"] = "1302"
+            # «в здании [1302]», «направлено в [1302]», подпись). Основные вхождения —
+            # родительный («поручением [суда]», «в здании [суда]»), поэтому склоняем
+            # higherCourt в родительный (решение Андрея 31.07.2026). В шаблоне убрано
+            # лишнее слово «суда» после [1302] — склонённая форма уже включает «суда».
+            higher_court = (cleaned_data.get("higherCourt") or "").strip()
+            if higher_court:
+                cleaned_data["higherCourtGenitive1302"] = self._court_name_to_case(higher_court, "gent", agree_gender="masc")
+                field_mapping["higherCourtGenitive1302"] = "1302"
+            else:
+                field_mapping["higherCourt"] = "1302"  # пусто → мягкая чистка сотрёт маркер
+            # [1308] адрес здания вышестоящей инстанции, [1309] адрес для почтовой
+            # корреспонденции вышестоящей инстанции — новые поля формы (извещение).
+            field_mapping["higherCourtAddress"] = "1308"
+            field_mapping["higherCourtPostalAddress"] = "1309"
             # Добавляем mortgageDebtorName в маппинг для [2]
             field_mapping["mortgageDebtorName"] = "2"
             # Для ипотеки убираем contractDate и contractNumber из маппинга
@@ -813,6 +823,10 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             field_mapping["courtEmail"] = "1300"
             field_mapping["courtSite"] = "1301"
             field_mapping["noticeDate"] = "1310"
+            # [001] адрес суда: форма шлёт courtAddress, маркер завязан на
+            # mortgageCourtAddress001 — бэкфилл, чтобы шапка извещения заполнялась.
+            if not cleaned_data.get("mortgageCourtAddress001") and cleaned_data.get("courtAddress"):
+                cleaned_data["mortgageCourtAddress001"] = cleaned_data["courtAddress"]
             # [99] дата+время заседания: нормализуем ЗАРАНЕЕ (datetime-local
             # «2026-08-08T20:42» → «08.08.2026 20:42»), иначе не-анкорная замена дат
             # оставляет ISO-разделитель «T» в акте («08.08.2026T20:42»).
@@ -963,13 +977,18 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     cleaned_data["applicantNameInstrumental"] = _decline_multi(best_name, "ablt")
         return field_mapping
 
-    def _court_name_to_case(self, name: str, grammeme: str) -> str:
+    def _court_name_to_case(self, name: str, grammeme: str, agree_gender: str = None) -> str:
         """Название суда → заданный падеж (grammeme pymorphy: 'gent'/'datv'/'loct'/…).
         Одно поле формы (именительный) → любой падеж для акта. Склоняем пословно
         прилагательные и слово «суд» (до него включительно); хвост (город,
         «г. Ростова-на-Дону») оставляем как есть — иначе морфология искажает топоним.
         Fallback — исходное слово, если pymorphy не разобрал. Регистр первого
-        символа каждого слова сохраняем."""
+        символа каждого слова сохраняем.
+
+        agree_gender ('masc'/'femn'/'neut') — навязать род прилагательным, чтобы они
+        согласовались с «суд» (муж.). pymorphy в отрыве иногда берёт женский разбор
+        «областной» → не склоняет; с agree_gender='masc' даёт «областного». По
+        умолчанию None — прежнее поведение (golden не затрагивается)."""
         if not name or not name.strip():
             return name
         try:
@@ -986,7 +1005,12 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 result.append(word)
                 continue
             parsed = morph.parse(word)[0]
-            form = parsed.inflect({grammeme})
+            grammemes = {grammeme}
+            # Прилагательные согласуем по роду с «суд», иначе pymorphy может оставить
+            # «областной» в женском разборе несклонённым.
+            if agree_gender and "ADJF" in parsed.tag:
+                grammemes = {grammeme, agree_gender, "sing"}
+            form = parsed.inflect(grammemes)
             inflected = form.word if form else word
             if word[:1].isupper():
                 inflected = inflected[:1].upper() + inflected[1:]
@@ -1341,6 +1365,19 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         is_physical_collateral = (cleaned_data.get("sourceDocumentType") or "").lower() in ["physical_realization_collateral", "physical_restructuring_collateral", "observation_collateral", "competition_collateral"]
 
         field_mapping = self._apply_debtor_name_field_mapping(cleaned_data, field_mapping, is_mortgage_document)
+
+        # Извещение: апеллянт [1401.2] должен перечислять ВСЕХ ответчиков (в шаблоне
+        # только один слот [1401.2], без [1401.1]). Собираем все слоты
+        # mortgageRespGen1401_{i} через запятую в слот _2 (решение Андрея 31.07.2026).
+        # Только для извещения — в резолютивках [1401.1]/[1401.2] раздельны, там не трогаем.
+        if is_mortgage_document and data.get("_current_doc_type") == "mortgage_notice":
+            appellants = [
+                (cleaned_data.get(f"mortgageRespGen1401_{i}") or "").strip()
+                for i in range(1, 6)
+            ]
+            appellants = [a for a in appellants if a]
+            if len(appellants) > 1:
+                cleaned_data["mortgageRespGen1401_2"] = ", ".join(appellants)
 
         # Коррекция падежей для женщин и восстановление обрезанной фамилии (ФЛ)
         self._correct_female_applicant_cases(cleaned_data)
