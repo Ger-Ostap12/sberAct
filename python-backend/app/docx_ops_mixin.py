@@ -115,6 +115,28 @@ class DocxOpsMixin:
             if parent is not None and len(parent.findall(qn("w:p"))) > 1:
                 parent.remove(element)
 
+    def _remove_placeholder_token(self, doc: Document, placeholder: str) -> None:
+        """Мягкое удаление: стираем ТОЛЬКО сам маркер, окружающий текст и абзац
+        оставляем нетронутыми.
+
+        Для boilerplate-актов (извещение), где каждый абзац — обязательный
+        шаблонный текст, а маркеры вроде [1302] могут не иметь источника данных.
+        Удалять предложение/абзац здесь нельзя: теряются шапка суда и половина
+        текста. Незаполненный маркер оставляет пустое место — вёрстка и текст
+        совпадают с шаблоном. ТОЛЬКО для ипотеки.
+        """
+        for par in list(self._iter_all_paragraphs(doc)):
+            while placeholder in self._paragraph_text(par):
+                text = self._paragraph_text(par)
+                pos = text.index(placeholder)
+                end = pos + len(placeholder)
+                # Схлопываем один прилегающий пробел, чтобы «поручением [X] [Y]»
+                # не превратилось в тройной пробел при пустом маркере.
+                if end < len(text) and text[end] == " " and pos > 0 and text[pos - 1] == " ":
+                    end += 1
+                if not self._delete_span_in_paragraph(par, pos, end):
+                    break  # защита от зацикливания
+
     def _sentence_bounds(self, text: str, pos: int, length: int) -> tuple:
         """Границы предложения вокруг маркера: [начало, конец) в координатах текста."""
         left = 0

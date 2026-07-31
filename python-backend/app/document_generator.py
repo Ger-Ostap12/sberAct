@@ -768,6 +768,11 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             field_mapping["representativeName"] = "1440"
             field_mapping["representativePoaFrom"] = "1441"
             field_mapping["representativePoaTo"] = "1442"
+            # [1302] — вышестоящая инстанция (извещение: «поручением [1302]»,
+            # «в здании [1302]», «направлено в [1302]», подпись). Поле higherCourt
+            # заполняется юристом на форме; один маркер во всех позициях — по
+            # дизайну шаблона, склонять не нужно.
+            field_mapping["higherCourt"] = "1302"
             # Добавляем mortgageDebtorName в маппинг для [2]
             field_mapping["mortgageDebtorName"] = "2"
             # Для ипотеки убираем contractDate и contractNumber из маппинга
@@ -1458,7 +1463,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 logger.info(f" Заменено [415] на {judge_value}")
 
         # Удаляем все пустые маркеры, для которых нет значений
-        self._remove_empty_placeholders(doc, cleaned_data, field_mapping)
+        self._remove_empty_placeholders(doc, cleaned_data, field_mapping, doc_type=data.get("_current_doc_type"))
 
         # ФНС: если компонент очереди (штрафы/пени/недоимка) пуст — после удаления
         # маркера остаётся осиротевшее ", руб. – штрафы". Подчищаем такие хвосты.
@@ -1777,7 +1782,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         else:
             self._replace_regex_in_doc(doc, r"\bсекретар[её]м\b", _make_sub("помощником"))
 
-    def _remove_empty_placeholders(self, doc: Document, cleaned_data: Dict[str, Any], field_mapping: Dict[str, str]):
+    def _remove_empty_placeholders(self, doc: Document, cleaned_data: Dict[str, Any], field_mapping: Dict[str, str], doc_type: Optional[str] = None):
         """
         Удаляет из документа все маркеры, для которых нет значений в данных.
         Также удаляет контекст вокруг маркеров (например, "Дело№ [1]" удаляется полностью).
@@ -1796,7 +1801,16 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # удаляется целиком (требование от 30.07.2026). Банкротные акты идут
         # прежним путём — их вывод зафиксирован golden-эталонами.
         is_mortgage = (cleaned_data.get("sourceDocumentType") or "").lower() == "mortgage_claim"
-        drop_placeholder = self._remove_placeholder_phrase if is_mortgage else self._remove_placeholder_with_context
+        # Извещение — сплошной обязательный boilerplate; вырезать предложение/абзац
+        # вокруг пустого маркера (напр. [1302], у которого нет источника данных)
+        # нельзя: пропадает шапка суда и половина текста. Для него — мягкое
+        # удаление только самого маркера, вёрстка и текст сохраняются как в шаблоне.
+        if is_mortgage and doc_type == "mortgage_notice":
+            drop_placeholder = self._remove_placeholder_token
+        elif is_mortgage:
+            drop_placeholder = self._remove_placeholder_phrase
+        else:
+            drop_placeholder = self._remove_placeholder_with_context
 
         # Создаем обратный маппинг: номер маркера -> список полей
         marker_to_fields = {}
@@ -2492,7 +2506,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 # Устанавливаем шрифт Times New Roman 11 для всего документа
                 self.set_times_new_roman_11(doc)
 
-                # Заменяем данные в документе
+                # Заменяем данные в документе. Тип акта нужен _remove_empty_placeholders,
+                # чтобы извещение чистило маркеры мягко (без вырезания предложений/абзацев).
+                data["_current_doc_type"] = doc_type
                 self.replace_document_data(doc, data)
 
                 # Генерируем уникальный ID для документа
