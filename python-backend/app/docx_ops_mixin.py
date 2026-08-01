@@ -137,15 +137,39 @@ class DocxOpsMixin:
                 if not self._delete_span_in_paragraph(par, pos, end):
                     break  # защита от зацикливания
 
+    def _is_clause_boundary(self, text: str, idx: int) -> bool:
+        """Настоящая ли граница клаузы символ `text[idx]`.
+
+        Точка внутри даты или числа границей НЕ является: «15.03.2026» — это одно
+        значение, а не три предложения. Без этой проверки зачистка соседнего
+        пустого маркера отрезала кусок даты и в акт уезжало «15.03.» вместо
+        «15.03.2026» (и «01.2025» вместо «01.01.2025»).
+
+        Точка в сокращении («г.Ростов», «ул.Мира») тоже не граница — после неё
+        нет пробела, фраза продолжается.
+        """
+        char = text[idx]
+        if char != ".":
+            return True
+        prev_char = text[idx - 1] if idx > 0 else ""
+        next_char = text[idx + 1] if idx + 1 < len(text) else ""
+        if prev_char.isdigit() and next_char.isdigit():
+            return False  # 15.03.2026
+        if next_char and not next_char.isspace():
+            return False  # г.Ростов, ул.Мира
+        return True
+
     def _sentence_bounds(self, text: str, pos: int, length: int) -> tuple:
         """Границы предложения вокруг маркера: [начало, конец) в координатах текста."""
         left = 0
         for match in self._SENTENCE_END.finditer(text, 0, pos):
-            left = match.end()
+            if self._is_clause_boundary(text, match.start()):
+                left = match.end()
         right = len(text)
-        tail = self._SENTENCE_END.search(text, pos + length)
-        if tail:
-            right = tail.end()
+        for match in self._SENTENCE_END.finditer(text, pos + length):
+            if self._is_clause_boundary(text, match.start()):
+                right = match.end()
+                break
         # Съедаем пробелы по краям, чтобы не оставить двойной пробел в абзаце.
         while left < pos and text[left].isspace():
             left += 1
