@@ -1,8 +1,54 @@
 // Секция «Даты и сроки» карточки анализа документа.
 // Даты принятия/направления/поступления и текстовые сроки (возражения, движение, заседание).
 import React from 'react';
-import { Box, Grid, TextField, Typography } from '@mui/material';
+import { Box, Grid, TextField, Typography, InputAdornment, IconButton, Tooltip } from '@mui/material';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import { toInputDate, fromInputDate } from '../../../shared/lib/dates';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';
+
+// Календарь для поля срока. Поле остаётся свободным: юрист может написать
+// «в течение 30 дней», а может выбрать конкретную дату мышью — выбор
+// подставляется как ДД.ММ.ГГГГ поверх текущего значения.
+//
+// Нативный input скрыт, а не показан рядом: у input[type=date] нельзя убрать
+// текстовую часть кроссбраузерно, и рядом с текстовым полем он выглядел бы
+// вторым полем ввода. Открываем его через showPicker() — в Electron (Chromium)
+// метод есть; если вдруг нет, падаем на обычный click по input.
+const DeadlineDatePicker: React.FC<{ value: string; onPick: (v: string) => void }> = ({ value, onPick }) => {
+  const ref = React.useRef<HTMLInputElement>(null);
+
+  const open = () => {
+    const el = ref.current;
+    if (!el) return;
+    const withPicker = el as HTMLInputElement & { showPicker?: () => void };
+    if (typeof withPicker.showPicker === 'function') {
+      withPicker.showPicker();
+    } else {
+      el.click();
+    }
+  };
+
+  return (
+    <>
+      <Tooltip title="Выбрать дату в календаре">
+        <IconButton size="small" edge="end" onClick={open} aria-label="Выбрать дату в календаре">
+          <CalendarTodayIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <input
+        ref={ref}
+        type="date"
+        // toInputDate вернёт пустую строку для свободного текста — календарь
+        // просто откроется на текущем месяце, введённый текст не потеряется.
+        value={toInputDate(value)}
+        onChange={(e) => onPick(fromInputDate(clampNativeDate(e.target.value)))}
+        style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }}
+        tabIndex={-1}
+        aria-hidden="true"
+      />
+    </>
+  );
+};
 
 interface DatesSectionProps {
   editedFields: Record<string, string>;
@@ -131,6 +177,16 @@ const DatesSection: React.FC<DatesSectionProps> = ({ editedFields, onFieldChange
                     size="small"
                     margin="dense"
                         placeholder="ДД.ММ.ГГГГ или текст"
+                        InputProps={{
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <DeadlineDatePicker
+                                value={editedFields.objectionsDeadline18 ?? ''}
+                                onPick={(v) => onFieldChange('objectionsDeadline18', v)}
+                              />
+                            </InputAdornment>
+                          ),
+                        }}
                   />
                     </Box>
                 </Grid>
