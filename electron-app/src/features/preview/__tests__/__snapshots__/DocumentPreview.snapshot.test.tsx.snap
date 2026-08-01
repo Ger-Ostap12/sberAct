@@ -1109,11 +1109,6 @@ exports[`DocumentPreview — снапшот предпросмотра по ша
                   <hr
                     class="MuiDivider-root MuiDivider-fullWidth css-1b008ma-MuiDivider-root"
                   />
-                  <p
-                    class="MuiTypography-root MuiTypography-body2 css-r40f8v-MuiTypography-root"
-                  >
-                    Предварительный просмотр недоступен для данного шаблона
-                  </p>
                 </div>
               </div>
             </div>
@@ -1439,11 +1434,6 @@ exports[`DocumentPreview — снапшот предпросмотра по ша
                   <hr
                     class="MuiDivider-root MuiDivider-fullWidth css-1b008ma-MuiDivider-root"
                   />
-                  <p
-                    class="MuiTypography-root MuiTypography-body2 css-r40f8v-MuiTypography-root"
-                  >
-                    Предварительный просмотр недоступен для данного шаблона
-                  </p>
                 </div>
               </div>
             </div>
@@ -1769,11 +1759,6 @@ exports[`DocumentPreview — снапшот предпросмотра по ша
                   <hr
                     class="MuiDivider-root MuiDivider-fullWidth css-1b008ma-MuiDivider-root"
                   />
-                  <p
-                    class="MuiTypography-root MuiTypography-body2 css-r40f8v-MuiTypography-root"
-                  >
-                    Предварительный просмотр недоступен для данного шаблона
-                  </p>
                 </div>
               </div>
             </div>
@@ -8755,12 +8740,12 @@ exports[`DocumentPreview — снапшот предпросмотра по ша
               <p
                 class="MuiTypography-root MuiTypography-body1 css-eflgtu-MuiTypography-root"
               >
-                Решение по ипотеке
+                Пакет по ипотеке (5 актов)
               </p>
               <p
                 class="MuiTypography-root MuiTypography-body2 css-r40f8v-MuiTypography-root"
               >
-                Шаблон решения суда по ипотечному иску с предметом залога
+                Повестка, определения о принятии (короткое и длинное), извещение и решение-резолютивка
               </p>
             </div>
             <hr
@@ -8798,7 +8783,7 @@ exports[`DocumentPreview — снапшот предпросмотра по ша
                   <p
                     class="MuiTypography-root MuiTypography-body2 MuiListItemText-primary css-q6yvc7-MuiTypography-root"
                   >
-                    Суд [002]
+                    Суд [0]
                   </p>
                   <p
                     class="MuiTypography-root MuiTypography-body2 MuiListItemText-secondary css-83ijpv-MuiTypography-root"
@@ -8836,7 +8821,7 @@ exports[`DocumentPreview — снапшот предпросмотра по ша
                   <p
                     class="MuiTypography-root MuiTypography-body2 MuiListItemText-secondary css-83ijpv-MuiTypography-root"
                   >
-                    344000, г. Ростов-на-Дону
+                    Не указано
                   </p>
                 </div>
               </li>
@@ -8864,12 +8849,12 @@ exports[`DocumentPreview — снапшот предпросмотра по ша
                   <p
                     class="MuiTypography-root MuiTypography-body2 MuiListItemText-primary css-q6yvc7-MuiTypography-root"
                   >
-                    Представитель истца [2.2]
+                    Номер дела [1]
                   </p>
                   <p
                     class="MuiTypography-root MuiTypography-body2 MuiListItemText-secondary css-83ijpv-MuiTypography-root"
                   >
-                    Сидоров С.С.
+                    А53-12345/2024
                   </p>
                 </div>
               </li>
@@ -8897,12 +8882,12 @@ exports[`DocumentPreview — снапшот предпросмотра по ша
                   <p
                     class="MuiTypography-root MuiTypography-body2 MuiListItemText-primary css-q6yvc7-MuiTypography-root"
                   >
-                    Сумма кредита [111]
+                    Истец [989]
                   </p>
                   <p
                     class="MuiTypography-root MuiTypography-body2 MuiListItemText-secondary css-83ijpv-MuiTypography-root"
                   >
-                    500000
+                    ПАО Сбербанк
                   </p>
                 </div>
               </li>
@@ -8930,7 +8915,139 @@ exports[`DocumentPreview — снапшот предпросмотра по ша
                   <p
                     class="MuiTypography-root MuiTypography-body2 MuiListItemText-primary css-q6yvc7-MuiTypography-root"
                   >
-                    Описание предмета залога [1221]
+                    Представитель истца [1440]
+                  </p>
+                  <p
+                    class="MuiTypography-root MuiTypography-body2 MuiListItemText-secondary css-83ijpv-MuiTypography-root"
+                  >
+                    Не указано
+                  </p>
+                </div>
+              </li>
+              <li
+                class="MuiListItem-root MuiListItem-dense MuiListItem-gutters MuiListItem-padding css-1grc615-MuiListItem-root"
+              >
+                <div
+                  class="MuiListItemIcon-root css-16myrmq-MuiListItemIcon-root"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="MuiSvgIcon-root MuiSvgIcon-colorPrimary MuiSvgIcon-fontSizeSmall css-1bptiuh-MuiSvgIcon-root"
+                    data-testid="DescriptionIcon"
+                    focusable="false"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8zm2 16H8v-2h8zm0-4H8v-2h8zm-3-5V3.5L18.5 9z"
+                    />
+                  </svg>
+                </div>
+                <div
+                  class="MuiListItemText-root MuiListItemText-dense MuiListItemText-multiline css-konndc-MuiListItemText-root"
+                >
+                  <p
+                    class="MuiTypography-root MuiTypography-body2 MuiListItemText-primary css-q6yvc7-MuiTypography-root"
+                  >
+                    Номер кредитного договора [110]
+                  </p>
+                  <p
+                    class="MuiTypography-root MuiTypography-body2 MuiListItemText-secondary css-83ijpv-MuiTypography-root"
+                  >
+                    Не указано
+                  </p>
+                </div>
+              </li>
+              <li
+                class="MuiListItem-root MuiListItem-dense MuiListItem-gutters MuiListItem-padding css-1grc615-MuiListItem-root"
+              >
+                <div
+                  class="MuiListItemIcon-root css-16myrmq-MuiListItemIcon-root"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="MuiSvgIcon-root MuiSvgIcon-colorPrimary MuiSvgIcon-fontSizeSmall css-1bptiuh-MuiSvgIcon-root"
+                    data-testid="DescriptionIcon"
+                    focusable="false"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8zm2 16H8v-2h8zm0-4H8v-2h8zm-3-5V3.5L18.5 9z"
+                    />
+                  </svg>
+                </div>
+                <div
+                  class="MuiListItemText-root MuiListItemText-dense MuiListItemText-multiline css-konndc-MuiListItemText-root"
+                >
+                  <p
+                    class="MuiTypography-root MuiTypography-body2 MuiListItemText-primary css-q6yvc7-MuiTypography-root"
+                  >
+                    Дата кредитного договора [100]
+                  </p>
+                  <p
+                    class="MuiTypography-root MuiTypography-body2 MuiListItemText-secondary css-83ijpv-MuiTypography-root"
+                  >
+                    Не указано
+                  </p>
+                </div>
+              </li>
+              <li
+                class="MuiListItem-root MuiListItem-dense MuiListItem-gutters MuiListItem-padding css-1grc615-MuiListItem-root"
+              >
+                <div
+                  class="MuiListItemIcon-root css-16myrmq-MuiListItemIcon-root"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="MuiSvgIcon-root MuiSvgIcon-colorPrimary MuiSvgIcon-fontSizeSmall css-1bptiuh-MuiSvgIcon-root"
+                    data-testid="DescriptionIcon"
+                    focusable="false"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8zm2 16H8v-2h8zm0-4H8v-2h8zm-3-5V3.5L18.5 9z"
+                    />
+                  </svg>
+                </div>
+                <div
+                  class="MuiListItemText-root MuiListItemText-dense MuiListItemText-multiline css-konndc-MuiListItemText-root"
+                >
+                  <p
+                    class="MuiTypography-root MuiTypography-body2 MuiListItemText-primary css-q6yvc7-MuiTypography-root"
+                  >
+                    Общая сумма долга [12]
+                  </p>
+                  <p
+                    class="MuiTypography-root MuiTypography-body2 MuiListItemText-secondary css-83ijpv-MuiTypography-root"
+                  >
+                    108000
+                  </p>
+                </div>
+              </li>
+              <li
+                class="MuiListItem-root MuiListItem-dense MuiListItem-gutters MuiListItem-padding css-1grc615-MuiListItem-root"
+              >
+                <div
+                  class="MuiListItemIcon-root css-16myrmq-MuiListItemIcon-root"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="MuiSvgIcon-root MuiSvgIcon-colorPrimary MuiSvgIcon-fontSizeSmall css-1bptiuh-MuiSvgIcon-root"
+                    data-testid="DescriptionIcon"
+                    focusable="false"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8zm2 16H8v-2h8zm0-4H8v-2h8zm-3-5V3.5L18.5 9z"
+                    />
+                  </svg>
+                </div>
+                <div
+                  class="MuiListItemText-root MuiListItemText-dense MuiListItemText-multiline css-konndc-MuiListItemText-root"
+                >
+                  <p
+                    class="MuiTypography-root MuiTypography-body2 MuiListItemText-primary css-q6yvc7-MuiTypography-root"
+                  >
+                    Описание предмета ипотеки [1221]
                   </p>
                   <p
                     class="MuiTypography-root MuiTypography-body2 MuiListItemText-secondary css-83ijpv-MuiTypography-root"
@@ -8963,7 +9080,7 @@ exports[`DocumentPreview — снапшот предпросмотра по ша
                   <p
                     class="MuiTypography-root MuiTypography-body2 MuiListItemText-primary css-q6yvc7-MuiTypography-root"
                   >
-                    Начальная цена продажи [1225]
+                    Начальная продажная цена [1225]
                   </p>
                   <p
                     class="MuiTypography-root MuiTypography-body2 MuiListItemText-secondary css-83ijpv-MuiTypography-root"
@@ -9002,11 +9119,6 @@ exports[`DocumentPreview — снапшот предпросмотра по ша
                   <hr
                     class="MuiDivider-root MuiDivider-fullWidth css-1b008ma-MuiDivider-root"
                   />
-                  <p
-                    class="MuiTypography-root MuiTypography-body2 css-r40f8v-MuiTypography-root"
-                  >
-                    Предварительный просмотр недоступен для данного шаблона
-                  </p>
                 </div>
               </div>
             </div>

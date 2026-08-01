@@ -27,6 +27,7 @@ import { ExtractedData, SelectedAct, TemplateType } from '../../types';
 import { useGenerateDocument } from './hooks/useGenerateDocument';
 import { useDownloadDocument } from './hooks/useDownloadDocument';
 import TemplatePreview from './TemplatePreview';
+import { buildMortgagePackage } from './lib/mortgagePackage';
 
 interface DocumentPreviewProps {
   extractedData: ExtractedData;
@@ -57,6 +58,15 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   const getFieldValue = (fieldName: string) => {
     return extractedData.fields[fieldName] || 'Не указано';
   };
+
+  // Ипотека не пользуется каталогом актов: пакет фиксированный (5 штук), а
+  // selectedActsData заполняет только банкротный ActSelectionSection. Без этой
+  // ветки предпросмотр показывал чужие акты либо пустоту.
+  const isMortgage = (extractedData.fields as any)?.documentCategory === 'mortgage';
+  const mortgageActs = buildMortgagePackage({
+    mortgageKind: extractedData.mortgageKind,
+    fields: extractedData.fields as Record<string, string | undefined>,
+  });
 
   const getSelectedActs = (): SelectedAct[] => {
     const raw = (extractedData.fields as any)?.selectedActsData;
@@ -196,8 +206,34 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
 
               <Paper sx={{ p: 3, backgroundColor: 'grey.50', border: '1px solid', borderColor: 'grey.300' }}>
                 <Grid container spacing={2}>
-                  {/* Окна по каждому акту */}
-                  {getSelectedActs().filter((a) => a?.selected).map((act) => {
+                  {/* Ипотека: фиксированный пакет из 5 актов */}
+                  {isMortgage && (
+                    <Grid item xs={12}>
+                      <Card variant="outlined" sx={{ backgroundColor: 'common.white', width: '100%' }}>
+                        <CardContent sx={{ pb: 2 }}>
+                          <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                            Будут сформированы {mortgageActs.length} актов
+                          </Typography>
+                          <List dense>
+                            {mortgageActs.map((act, i) => (
+                              <ListItem key={act.id} sx={{ py: 0.25 }}>
+                                <ListItemIcon sx={{ minWidth: 28 }}>
+                                  <DocumentIcon fontSize="small" color="primary" />
+                                </ListItemIcon>
+                                <ListItemText
+                                  primary={`${i + 1}. ${act.name}`}
+                                  primaryTypographyProps={{ variant: 'body2' }}
+                                />
+                              </ListItem>
+                            ))}
+                          </List>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  )}
+
+                  {/* Окна по каждому акту (банкротный каталог) */}
+                  {!isMortgage && getSelectedActs().filter((a) => a?.selected).map((act) => {
                     const fields = getDateFieldsForAct(act);
                     return (
                       <Grid key={act.id} item xs={12}>

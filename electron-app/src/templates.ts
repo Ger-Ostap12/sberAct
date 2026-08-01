@@ -33,16 +33,22 @@ export const ALL_TEMPLATES: TemplateType[] = [
   },
   {
     id: 'mortgage',
-    name: 'Решение по ипотеке',
-    description: 'Шаблон решения суда по ипотечному иску с предметом залога',
+    name: 'Пакет по ипотеке (5 актов)',
+    description: 'Повестка, определения о принятии (короткое и длинное), извещение и решение-резолютивка',
     category: 'Ипотека',
+    // Поля старой ипотечной схемы ([002], [2.2], [111]) убраны вместе со схемой —
+    // в предпросмотре они показывали «Не указано» для несуществующих полей.
     fields: [
-      { name: 'mortgageCourtName002', label: 'Суд [002]', type: 'text', required: true },
-      { name: 'mortgageCourtAddress001', label: 'Адрес суда [001]', type: 'text', required: false },
-      { name: 'mortgageRepresentative22', label: 'Представитель истца [2.2]', type: 'text', required: false },
-      { name: 'mortgageCreditAmount111', label: 'Сумма кредита [111]', type: 'text', required: true },
-      { name: 'mortgageCollateralDescription1221', label: 'Описание предмета залога [1221]', type: 'textarea', required: true },
-      { name: 'mortgageStartingPrice1225', label: 'Начальная цена продажи [1225]', type: 'text', required: true }
+      { name: 'courtName', label: 'Суд [0]', type: 'text', required: true },
+      { name: 'courtAddress', label: 'Адрес суда [001]', type: 'text', required: false },
+      { name: 'caseNumber', label: 'Номер дела [1]', type: 'text', required: true },
+      { name: 'creditorName', label: 'Истец [989]', type: 'text', required: true },
+      { name: 'representativeName', label: 'Представитель истца [1440]', type: 'text', required: false },
+      { name: 'contractNumber', label: 'Номер кредитного договора [110]', type: 'text', required: false },
+      { name: 'contractDate', label: 'Дата кредитного договора [100]', type: 'text', required: false },
+      { name: 'totalDebt', label: 'Общая сумма долга [12]', type: 'text', required: false },
+      { name: 'mortgageCollateralDescription1221', label: 'Описание предмета ипотеки [1221]', type: 'textarea', required: false },
+      { name: 'mortgageStartingPrice1225', label: 'Начальная продажная цена [1225]', type: 'text', required: false }
     ]
   },
   {

@@ -86,14 +86,11 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
   if (custom) return custom();
 
   const spec = specById.get(templateId);
-  if (!spec) {
-    // Дефолт из исходного getTemplatePreview для незнакомого шаблона.
-    return (
-      <Typography variant="body2" color="text.secondary">
-        Предварительный просмотр недоступен для данного шаблона
-      </Typography>
-    );
-  }
+  // Шаблона нет в спецификациях предпросмотра — просто ничего не показываем.
+  // Прежняя надпись «Предварительный просмотр недоступен для данного шаблона»
+  // выглядела как ошибка, хотя ниже уже перечислены акты и поля (решение
+  // пользователя 01.08.2026).
+  if (!spec) return null;
 
   const getFieldValue = (name: string): string =>
     extractedData.fields[name] || 'Не указано';
