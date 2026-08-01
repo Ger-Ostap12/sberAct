@@ -751,9 +751,13 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             # База уже даёт totalDebt→12, principalDebt→13, interest→14, forfeit→15,
             # stateDuty→16 — их НЕ трогаем. Снимаем только старую ипотечную схему
             # ([10]/[11]/[12]-проценты) и переносим досуд.экспертизу [16]→[1361].
-            field_mapping.pop("mortgagePeriodAmount10", None)     # старое [10]
-            field_mapping.pop("mortgagePrincipalAmount11", None)  # старое [11]
-            field_mapping.pop("mortgageInterestAmount12", None)   # старое: проценты→[12]
+            # Старая ипотечная схема ([10]/[11]/[12]-проценты, [111]-[114]) удалена из
+            # базового маппинга целиком — ни один ипотечный шаблон её не использует.
+            # Детали кредита теперь [1000]-[1003], номера договоров — [110]-[115].
+            field_mapping["mortgageCreditAmount111"] = "1000"
+            field_mapping["mortgageCreditTerm112"] = "1001"
+            field_mapping["mortgageInterestRate113"] = "1002"
+            field_mapping["mortgagePenaltyRate114"] = "1003"
             field_mapping["pretrialExpenses16"] = "1361"
             field_mapping["pretrialExpenses"] = "1361"
             field_mapping["totalWithDuty1360"] = "1360"           # [1360] - итоговая сумма
@@ -777,18 +781,33 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             if higher_court:
                 cleaned_data["higherCourtGenitive1302"] = self._court_name_to_case(higher_court, "gent", agree_gender="masc")
                 field_mapping["higherCourtGenitive1302"] = "1302"
+                # [1302.1] — та же инстанция в ИМЕНИТЕЛЬНОМ: «дело будет направлено
+                # в Ростовский областной суд». Родительный [1302] там давал
+                # «направлено в Ростовского областного суда».
+                cleaned_data["higherCourtNominative1302_1"] = higher_court
+                field_mapping["higherCourtNominative1302_1"] = "1302.1"
             else:
                 field_mapping["higherCourt"] = "1302"  # пусто → мягкая чистка сотрёт маркер
+                field_mapping["higherCourtNominative1302_1"] = "1302.1"
             # [1308] адрес здания вышестоящей инстанции, [1309] адрес для почтовой
             # корреспонденции вышестоящей инстанции — новые поля формы (извещение).
             field_mapping["higherCourtAddress"] = "1308"
             field_mapping["higherCourtPostalAddress"] = "1309"
             # Добавляем mortgageDebtorName в маппинг для [2]
             field_mapping["mortgageDebtorName"] = "2"
-            # Для ипотеки убираем contractDate и contractNumber из маппинга
-            # Они будут заменены из обязательств в replace_obligations_data
-            field_mapping.pop("contractDate", None)
-            field_mapping.pop("contractNumber", None)
+            # [100]/[110] обычно заполняет replace_obligations_data из массива
+            # obligations. Но в ипотечной форме договор один и приходит плоскими
+            # contractNumber/contractDate — без массива маркеры оставались пустыми,
+            # и зачистка уносила вместе с ними всю фразу «задолженность по
+            # кредитному договору № … от … за период … в размере …».
+            _obligations = cleaned_data.get("obligations")
+            if isinstance(_obligations, list) and _obligations:
+                field_mapping.pop("contractDate", None)
+                field_mapping.pop("contractNumber", None)
+            else:
+                field_mapping["contractDate"] = "100"
+                field_mapping["contractNumber"] = "110"
+                logger.info("Ипотека без массива обязательств — [100]/[110] из contractDate/contractNumber")
 
             # [1360] «а всего взыскать» = общая сумма долга + госпошлина.
             if not cleaned_data.get("totalWithDuty1360"):
@@ -823,6 +842,34 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             field_mapping["courtEmail"] = "1300"
             field_mapping["courtSite"] = "1301"
             field_mapping["noticeDate"] = "1310"
+            # [1304] УИД дела, [1306] категория дела — только с формы, источника в
+            # заявлении нет. [1307] город вынесения акта выводим из названия суда
+            # («Октябрьский районный суд г. Ростова-на-Дону» → «г. Ростов-на-Дону»):
+            # отдельного поля на форме нет, а без маркера зачистка резала соседнюю
+            # дату (см. _is_clause_boundary).
+            field_mapping["caseUid1304"] = "1304"
+            field_mapping["caseCategory1306"] = "1306"
+            field_mapping["actCity1307"] = "1307"
+            # [7] дата решения. Форма пишет «Дату принятия решения» в общее поле
+            # date (оттуда же берётся [66] для определений), а [7] завязан на
+            # courtDecisionDate — без бэкфилла маркер оставался пустым и уносил
+            # с собой «г.» перед городом («14.08.2026 г. Новороссийск» → «Новороссийск»).
+            if not cleaned_data.get("courtDecisionDate") and cleaned_data.get("date"):
+                cleaned_data["courtDecisionDate"] = cleaned_data["date"]
+                logger.info(f"[7] дата решения из поля date: {cleaned_data['date']}")
+            # Маркеры, которые есть в шаблонах, но до сих пор не были заведены. Пустой
+            # маркер не просто не заполняется — зачистка уносит вместе с ним соседнюю
+            # фразу, поэтому дыры в маппинге дороже, чем кажутся.
+            field_mapping["forfeitInterest1362"] = "1362"       # неустойка за просроченные проценты
+            field_mapping["stateDutyLocalBudget1363"] = "1363"  # госпошлина в доход местного бюджета
+            field_mapping["milCzzContractNumber"] = "1378"      # № договора ЦЖЗ (военная ипотека)
+            field_mapping["milCzzContractDate"] = "1379"        # дата договора ЦЖЗ
+            field_mapping["creditorBranchAddress1443"] = "1443"  # адрес филиала истца
+            if not cleaned_data.get("actCity1307"):
+                city = self._city_from_court_name(cleaned_data.get("courtName"))
+                if city:
+                    cleaned_data["actCity1307"] = city
+                    logger.info(f"Город вынесения акта [1307] из названия суда: {city}")
             # [001] адрес суда: форма шлёт courtAddress, маркер завязан на
             # mortgageCourtAddress001 — бэкфилл, чтобы шапка извещения заполнялась.
             if not cleaned_data.get("mortgageCourtAddress001") and cleaned_data.get("courtAddress"):
@@ -1024,6 +1071,39 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         """Родительный падеж названия суда («…районного суда…»)."""
         return self._court_name_to_case(name, "gent")
 
+    # Город в названии суда стоит в родительном («…суд г. Ростова-на-Дону»), а в
+    # шапке акта нужен именительный («г. Ростов-на-Дону»).
+    # Без IGNORECASE: заглавная буква — единственный признак, отличающий название
+    # города от продолжения слова («города Ростова-на-Дону» иначе даёт «ород»).
+    _COURT_CITY_RE = re.compile(r"(?:\bг\.|\bгор\.|\bгород[аеу]?\b)\s*([А-ЯЁ][А-Яа-яЁё\-]*)")
+
+    def _city_from_court_name(self, court_name: Optional[str]) -> str:
+        """Город вынесения акта ([1307]) из названия суда.
+
+        Отдельного поля на форме нет, а маркер есть во всех решениях и в длинном
+        определении. Пустой маркер опаснее неточного: зачистка уносила вместе с
+        ним соседнюю дату, поэтому выводим город из того, что уже заполнено.
+        """
+        match = self._COURT_CITY_RE.search(str(court_name or ""))
+        if not match:
+            return ""
+        source = match.group(1)
+        nominative = self._court_name_to_case(source, "nomn") or source
+        # pymorphy возвращает всё строчными («ростов-на-дону»), а в шапке акта
+        # нужен исходный регистр. Переносим его по частям через дефис: «на»
+        # остаётся строчной, «Дону» — заглавной.
+        src_parts = source.split("-")
+        out_parts = nominative.split("-")
+        if len(src_parts) == len(out_parts):
+            out_parts = [
+                part.capitalize() if src[:1].isupper() else part
+                for part, src in zip(out_parts, src_parts)
+            ]
+            nominative = "-".join(out_parts)
+        elif source[:1].isupper():
+            nominative = nominative.capitalize()
+        return f"г. {nominative}"
+
     def _base_field_mapping(self) -> Dict[str, str]:
         """Базовый маппинг полей данных на номера маркеров шаблона
         ([1], [2], [2.1], [13]…). Возвращает свежий словарь (вызывающий код
@@ -1034,7 +1114,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             "caseNumber": "1",           # [1] - Номер дела
             "courtName": "0",            # [0] - Название суда (арбитражный суд области/края/республики)
             "mortgageCourtAddress001": "001",  # [001] - Адрес суда (ипотека)
-            "mortgageCourtName002": "002",     # [002] - Наименование суда (ипотека)
+            # [002] (наименование суда) снят: по ипотека_маркера.md разд. 1 суд — это [0].
+            # Родительный падеж [002.1] остаётся, он живёт в определениях о принятии.
             "applicantName": "2",        # [2] - ФИО должника
             "applicantNameGenitive": "2.1",  # [2.1] - ФИО должника в родительном падеже
             "applicantNameInstrumental": "2.3",  # [2.3] - ФИО должника в творительном падеже
@@ -1052,11 +1133,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             "managerInn": "41",           # [41] - ИНН финансового управляющего
             "managerAddress": "42",       # [42] - Почтовый адрес финансового управляющего
             "messageNumber": "9",        # [9] - Номер сообщения ЕФРСБ
-            "mortgagePeriodAmount10": "10",  # [10] - Сумма за период (ипотека)
             "efirsbPublicationDate": "11",  # [11] - Дата публикации на сайте ЕФРСБ
             "kommersantNumber": "67",    # [67] - Номер газеты «Коммерсантъ»
             "kommersantDate": "68",      # [68] - Дата газеты «Коммерсантъ»
-            "mortgagePrincipalAmount11": "11",  # [11] - Просроченный основной долг (ипотека)
             "cpCaseDate": "554",         # [554] - Дата из номера CP-Case
             "debtSnapshotDate88": "88",  # [88] - Дата состояния задолженности (для инициирования ЮЛ)
             "lastTaxReportDate": "82",         # [82] - Дата последней налоговой отчётности (отсутствующий)
@@ -1067,7 +1146,6 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             "deathDate": "45",           # [45] - Дата смерти должника
             "deathCertificate": "46",    # [46] - Номер/реквизиты свидетельства о смерти
             "totalDebt": "12",           # [12] - Общая сумма долга
-            "mortgageInterestAmount12": "12",  # [12] - Просроченные проценты (ипотека)
             "sroName": "987",            # [987] - Название СРО (саморегулируемая организация)
             "creditorName": "989",       # [989] - Название кредитора
             "creditorAddress": "988",    # [988] - Юридический адрес кредитора
@@ -1109,10 +1187,6 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             "courtHearingDateTime99": "99",    # [99] - Дата и время судебного заседания
             "judge": "415",              # [415] - Судья
             "date": "DATE",              # [DATE] - Дата (пользовательская)
-            "mortgageCreditAmount111": "111",  # [111] - Сумма кредита (ипотека)
-            "mortgageCreditTerm112": "112",    # [112] - Срок кредита (ипотека)
-            "mortgageInterestRate113": "113",  # [113] - Процентная ставка (ипотека)
-            "mortgagePenaltyRate114": "114",   # [114] - Ставка неустойки (ипотека)
             "mortgagePeriodStart120": "120",   # [120] - Начало расчетного периода (ипотека)
             "mortgagePeriodEnd121": "121",     # [121] - Конец расчетного периода (ипотека)
             "bankCommission": "122",           # [122] - Комиссия Банка (сумма)
@@ -1221,9 +1295,10 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # Для ипотеки сначала заменяем приоритетные поля, чтобы избежать конфликтов
         if is_mortgage_document:
             # Приоритетные поля для ипотеки (заменяются первыми)
+            # Поля старой схемы ([10]/[11]/[12]-проценты) из списка убраны вместе
+            # со схемой — приоритет им больше не нужен, конфликтовать не с чем.
             priority_fields = ["mortgageDebtorName", "mortgageDebtorNameDative", "applicantNameGenitive",
-                             "mortgagePeriodEnd121", "mortgagePeriodStart120",
-                             "mortgageInterestAmount12", "mortgagePrincipalAmount11", "mortgagePeriodAmount10"]
+                             "mortgagePeriodEnd121", "mortgagePeriodStart120"]
 
             # Сначала заменяем приоритетные поля
             for field_key in priority_fields:
@@ -1378,6 +1453,17 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             appellants = [a for a in appellants if a]
             if len(appellants) > 1:
                 cleaned_data["mortgageRespGen1401_2"] = ", ".join(appellants)
+
+        # Резолютивки с представителями: блок «ответчика – [1400.2], представителя
+        # ответчика [1400.2] – [1445]». Оба маркера указывают на ОДНОГО ответчика —
+        # того, у кого представитель, — но слот в шаблоне жёстко второй. При
+        # единственном ответчике слот 2 пуст, и зачистка уносила весь блок.
+        # Подставляем в него первого ответчика.
+        if is_mortgage_document and not (cleaned_data.get("mortgageRespNom1400_2") or "").strip():
+            sole_respondent = (cleaned_data.get("mortgageRespNom1400_1") or "").strip()
+            if sole_respondent:
+                cleaned_data["mortgageRespNom1400_2"] = sole_respondent
+                logger.info("Один ответчик — слот [1400.2] заполнен из [1400.1]")
 
         # Коррекция падежей для женщин и восстановление обрезанной фамилии (ФЛ)
         self._correct_female_applicant_cases(cleaned_data)
@@ -2343,11 +2429,17 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             mprops = data.get("mortgageProperties") or fields.get("mortgageProperties") or []
             if isinstance(mprops, list) and mprops and isinstance(mprops[0], dict):
                 p0 = mprops[0]
-                area = ""
-                _am = re.search(r"площад[ьи][^\d]{0,12}([\d]+[.,]?\d*\s*(?:кв\.?\s*м|м2|м²|\+/-\s*\d+\s*кв))",
-                                str(p0.get("description") or ""), re.IGNORECASE)
-                if _am:
-                    area = _am.group(1).strip()
+                # Площадь [1233]: сперва готовое поле объекта (его заполняет
+                # анализатор и правит юрист на форме), и только если пусто —
+                # выковыриваем из описания. Раньше поле игнорировалось, и при
+                # заполненном area маркер оставался пустым, унося за собой
+                # «общей площадью …» из резолютивки.
+                area = str(p0.get("area") or "").strip()
+                if not area:
+                    _am = re.search(r"площад[ьи][^\d]{0,12}([\d]+[.,]?\d*\s*(?:кв\.?\s*м|м2|м²|\+/-\s*\d+\s*кв))",
+                                    str(p0.get("description") or ""), re.IGNORECASE)
+                    if _am:
+                        area = _am.group(1).strip()
                 prop_flat = {
                     "mortgageCadastralNumber1226": p0.get("cadastralNumber"),
                     "mortgagePropertyAddress1227": p0.get("address"),
