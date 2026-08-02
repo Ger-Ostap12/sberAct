@@ -34,9 +34,13 @@ finally {
     Pop-Location
 }
 
-# Fresh output folder.
-if (Test-Path $outDir) { Remove-Item -Recurse -Force $outDir }
+# Clear only our own artifacts. release-linux/ is shared with
+# build-converter-linux.ps1 (converter-linux.tar.gz, ~2 GB, 15-30 min to rebuild)
+# and with the staged models/ - wiping the whole folder destroyed them.
 New-Item -ItemType Directory -Force $outDir | Out-Null
+foreach ($pattern in @('*.AppImage', '*.AppImage.blockmap', 'latest-linux.yml')) {
+    Get-ChildItem $outDir -Filter $pattern -File -ErrorAction SilentlyContinue | Remove-Item -Force
+}
 
 # Extract the flat /out artifacts (no symlinks) from a throwaway container.
 if (docker ps -aq -f "name=^$container$") { docker rm -f $container | Out-Null }
@@ -53,4 +57,4 @@ $appimage = Get-ChildItem $outDir -Filter '*.AppImage' -ErrorAction SilentlyCont
 if (-not $appimage) { throw "No .AppImage produced in $outDir" }
 Write-Host ""
 Write-Host "Done. Linux artifacts in: $outDir"
-Get-ChildItem $outDir | ForEach-Object { "  {0}  ({1:N1} MB)" -f $_.Name, ($_.Length / 1MB) }
+Get-ChildItem $outDir -File | ForEach-Object { "  {0}  ({1:N1} MB)" -f $_.Name, ($_.Length / 1MB) }

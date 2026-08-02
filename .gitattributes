@@ -1,0 +1,16 @@
+# Скрипты для Linux обязаны храниться и выдаваться с LF: с CRLF bash падает на
+# самой первой строке — «bad interpreter: /usr/bin/env bash^M». Файл едет на
+# носитель как есть (scripts/build-dist-linux.ps1), так что чинить на целевой
+# машине уже некому.
+*.sh text eol=lf
+
+# Docker собирает Linux-образы: содержимое Dockerfile тоже читает Linux.
+Dockerfile text eol=lf
+*.Dockerfile text eol=lf
+
+# Бинарные форматы проекта — никакой нормализации переводов строк.
+*.docx binary
+*.pdf binary
+*.gguf binary
+*.safetensors binary
+*.AppImage binary

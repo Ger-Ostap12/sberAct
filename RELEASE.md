@@ -70,15 +70,55 @@ npm run stage:converter  # конвертер -> release\converter
 > Первый раз перед сборкой подними версию в `package.json` и
 > `electron-app/package.json` (см. «Правила версий»).
 
+### Если на системном диске мало места
+
+`release\converter` весит ~3–6 ГБ. Обе команды умеют работать с другого диска:
+```
+powershell -File scripts\stage-usb.ps1 -Destination "D:\SberAct-dist\converter"
+powershell -File scripts\build-update.ps1 -BaselineOnly -ConverterDir "D:\SberAct-dist\converter"
+```
+Эталон (`converter-manifest.baseline.json`) ляжет рядом — в `D:\SberAct-dist\`.
+
+### Если сборочная машина не та, где делали `.venv` конвертера
+
+`pack:converter` берёт базовый Python из `converter\.venv\pyvenv.cfg`, а там
+записан путь машины, где venv создавали. На другом ПК укажи свой Python явно:
+```
+powershell -File scripts\assemble-converter.ps1 -BasePython "C:\Users\<ты>\AppData\Local\Programs\Python\Python312"
+```
+Нужен **Python 3.12 x64**; скрипт сам проверит версию и разрядность, а в конце
+убедится, что собранный `pyruntime` действительно импортирует torch/llama-cpp.
+
+### Проверка перед раздачей — обязательна
+
+`stage-usb.ps1` теперь сам сверяет собранную папку с исходной (состав + объём) и
+падает, если копия оборвалась. **Не игнорируй его ошибку** — именно тихо
+неполная папка `converter\` даёт у пользователя «Конвертер не найден в …».
+После копирования на флешку сверь размер глазами: папка `converter\` на флешке
+должна весить столько же, сколько `release\converter` (±0).
+
 ## 1. Первая установка (новый ПК)
 
 Что кладём на флешку (в ОДНУ папку):
 ```
 SberAct-Setup-2.0.1.exe        (из папки release)
-converter\                     (папка целиком, из release, ~6 ГБ)
+converter.zip                  (архив конвертера, ~2-3 ГБ)
 ```
-Пользователь запускает `SberAct-Setup-2.0.1.exe` → обычная установка. Конвертер
-копируется автоматически. На рабочем столе и в меню — ярлык.
+Пользователь запускает `SberAct-Setup-2.0.1.exe` → обычная установка. Установщик
+сам распакует конвертер. На рабочем столе и в меню — ярлык.
+
+> **Почему архив, а не папка.** Конвертер — это ~37 000 файлов. На флешке (exFAT)
+> они пишутся со скоростью ~0.14 МБ/с (часы!), а любой обрыв оставляет
+> полупустую папку, которую установщик молча принимал за целую — пользователь
+> узнавал об этом только при первой конвертации («Конвертер не найден»). Один
+> архив пишется последовательно (на порядок быстрее), несёт CRC на каждый файл и
+> «наполовину установленным» быть не может.
+>
+> Собрать архив: `npm run stage:converter -- -Zip` (или
+> `powershell -File scripts\stage-usb.ps1 -Destination "D:\SberAct-dist\converter" -Zip`).
+>
+> Старый формат — папка `converter\` рядом с exe — по-прежнему поддерживается
+> установщиком, менять уже нарезанные флешки не обязательно.
 
 ## 2. Обновление приложения (анализ/генерация/интерфейс)
 
@@ -127,6 +167,30 @@ converter\                     (папка целиком, из release, ~6 ГБ
 
 ## Сборка артефактов Linux
 
+### Одной командой (обычный путь)
+
+```
+npm run dist:linux -- -Destination F:\
+```
+
+Это Linux-аналог `dist:win`: фронт → AppImage в Docker → конвертер в Docker →
+модели → запись комплекта на носитель → **перечитывание записанного мимо кэша
+ОС** и сверка хешей (`scripts/build-dist-linux.ps1`). На носитель кладутся
+AppImage, `converter-linux.tar.gz`, `models\`, `install-linux.sh`,
+`Readme-linux.txt` и `SHA256SUMS`.
+
+Проверка мимо кэша — не формальность: `Get-FileHash` сразу после записи читает
+из кэша Windows и подтверждает целостность даже на неисправной флешке (02.08 на
+этом потерян день). Скрипт читает с `FILE_FLAG_NO_BUFFERING`.
+
+Ключи: `-SkipApp` и `-SkipConverter` (не пересобирать готовое), `-Staging` (где
+держать промежуточные артефакты, по умолчанию `release-linux\`), `-NoVerify`.
+
+`-Destination` может быть и обычной папкой — тогда комплект просто собирается на
+диск (`-Destination D:\SberAct-linux`).
+
+### По шагам (когда нужен только один артефакт)
+
 1. `git checkout main`, подними версию в двух package.json.
 2. Приложение (AppImage):
    ```
@@ -139,18 +203,28 @@ converter\                     (папка целиком, из release, ~6 ГБ
    ```
 4. Модели (один раз, потом переиспользуются):
    ```
-   robocopy "converter\models" "release-linux\models" /E /NFL /NDL
+   robocopy "converter\models" "release-linux\models" /E /XF *.part* /NFL /NDL
    ```
 
 ## 1. Первая установка (новый ПК)
 
-На флешку — 4 объекта:
+На флешку — 4 объекта (при сборке через `npm run dist:linux` они уже там,
+вместе с `Readme-linux.txt` и `SHA256SUMS`):
 ```
 SberAct-2.0.1-x86_64.AppImage      (из release-linux)
 converter-linux.tar.gz             (из release-linux)
-models\                            (из release-linux, ~4.6 ГБ)
-install-linux.sh                   (из scripts)
+models\                            (из release-linux, ~1.4 ГБ)
+install-linux.sh                   (из scripts, ОБЯЗАТЕЛЬНО с LF-переводами строк)
 ```
+Если комплект собран не скриптом, а руками: `install-linux.sh` должен доехать с
+переводами строк LF. С CRLF bash отвечает `bad interpreter: /usr/bin/env bash^M`
+и не запускается (в репозитории LF закреплён `.gitattributes`).
+
+Целостность на целевой машине проверяется одной командой:
+```bash
+sha256sum -c SHA256SUMS
+```
+
 На Linux-машине пользователя (терминал, в папке с флешки):
 ```bash
 chmod +x install-linux.sh
@@ -238,7 +312,7 @@ converter-linux.tar.gz models`).
 
 | Случай | Файлы на флешке |
 |---|---|
-| Windows, установка (полная) | `SberAct-Setup-X.Y.Z.exe` + `converter\` |
+| Windows, установка (полная) | `SberAct-Setup-X.Y.Z.exe` + `converter.zip` (или папка `converter\`) |
 | Windows, установка (урезанная) | только `SberAct-Setup-X.Y.Z.exe` |
 | Windows, обновление | папка `SberAct-Update\` |
 | Linux, установка (полная) | `AppImage` + `converter-linux.tar.gz` + `models\` + `install-linux.sh` |
