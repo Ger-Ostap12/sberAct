@@ -526,7 +526,13 @@ def _converter_env() -> dict:
     if not runtime_py.exists():
         return {}
     site = CONVERTER_DIR / ".venv" / ("Lib/site-packages" if is_windows else "lib/python3.12/site-packages")
-    return {"PYTHONPATH": str(site)} if site.exists() else {}
+    if not site.exists():
+        return {}
+    # PYTHONNOUSERSITE: у пользователя может стоять свой Python 3.12 с пакетами в
+    # %APPDATA%\Python\Python312\site-packages — они попадают в sys.path РАНЬШЕ
+    # PYTHONPATH и способны подменить torch/докling чужой версией. Конвертер обязан
+    # брать зависимости только из своего .venv.
+    return {"PYTHONPATH": str(site), "PYTHONNOUSERSITE": "1"}
 
 
 @app.post("/converter/start")
