@@ -1295,7 +1295,15 @@ class AmountsMixin:
         # Если общая сумма долга похожа на сумму выдачи (значительно больше основной+проценты+неустойка),
         # подменяем на сумму principal+interest+forfeit
         try:
-            principal_f = float(self.normalize_amount_value(str(extracted_fields.get("principalDebt") or "0")).replace(" ", "").replace(",", "."))
+            principal_raw = extracted_fields.get("principalDebt")
+            # Основной долг живёт в двух полях: principalDebt (из блока «ПРОСИТ СУД»)
+            # и loanDebt («Ссудная задолженность» из таблицы расчёта). Раньше здесь
+            # смотрели только на первое, и когда основной долг попадал во второе,
+            # «сумма частей» сводилась к одним процентам — общий долг подменялся
+            # процентами (заявление Манукян: [12] и [14] оба 2 438 262,70).
+            if not str(principal_raw or "").strip():
+                principal_raw = extracted_fields.get("loanDebt")
+            principal_f = float(self.normalize_amount_value(str(principal_raw or "0")).replace(" ", "").replace(",", "."))
             interest_f = float(self.normalize_amount_value(str(extracted_fields.get("interest") or "0")).replace(" ", "").replace(",", "."))
             forfeit_f = float(self.normalize_amount_value(str(extracted_fields.get("forfeit") or "0")).replace(" ", "").replace(",", "."))
             sum_pif = principal_f + interest_f + forfeit_f
@@ -1303,7 +1311,15 @@ class AmountsMixin:
                 total_str = (extracted_fields.get("totalDebt") or "").strip()
                 if total_str:
                     total_f = float(self.normalize_amount_value(total_str).replace(" ", "").replace(",", "."))
-                    if total_f > sum_pif * 1.15:
+                    # Когда известны и основной долг, и проценты, общая сумма обязана
+                    # равняться их сумме: резолютивка пишет «в размере [12] руб., из
+                    # них [13] основного долга, [14] процентов», и части не могут не
+                    # сходиться с целым. Госпошлина в [12] не входит — она взыскивается
+                    # отдельным пунктом ([16]), поэтому «ИТОГО» из таблицы расчёта,
+                    # включающее пошлину, здесь не годится.
+                    both_components_known = principal_f > 0 and interest_f > 0
+                    mismatch = abs(total_f - sum_pif) > 0.01
+                    if total_f > sum_pif * 1.15 or (both_components_known and mismatch):
                         formatted_sum = f"{sum_pif:,.2f}".replace(",", " ").replace(".", ",")
                         extracted_fields["totalDebt"] = formatted_sum
                         if extracted_fields.get("debtAmount") == extracted_fields.get("totalDebt") or not extracted_fields.get("debtAmount"):
