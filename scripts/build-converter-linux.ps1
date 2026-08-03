@@ -12,11 +12,17 @@
 #
 # NOTE: keep this file ASCII-only (Windows PowerShell 5.1 reads no-BOM .ps1 as cp1251).
 
+param(
+    # Where to put converter-linux.tar.gz. Default: release-linux next to the
+    # project; build-dist-linux.ps1 passes its -Staging here.
+    [string]$OutDir
+)
+
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $image = 'sberact-converter-linux'
 $container = 'sberact-converter-extract'
-$outDir = Join-Path $root 'release-linux'
+$outDir = if ($OutDir) { $OutDir } else { Join-Path $root 'release-linux' }
 
 Push-Location $root
 try {

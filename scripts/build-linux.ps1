@@ -14,11 +14,18 @@
 #
 # NOTE: keep this file ASCII-only (Windows PowerShell 5.1 reads no-BOM .ps1 as cp1251).
 
+param(
+    # Where to put the artifacts. Default: release-linux next to the project.
+    # build-dist-linux.ps1 passes its -Staging here (the system drive may be
+    # too small for the whole kit).
+    [string]$OutDir
+)
+
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $image = 'sberact-linux'
 $container = 'sberact-linux-extract'
-$outDir = Join-Path $root 'release-linux'
+$outDir = if ($OutDir) { $OutDir } else { Join-Path $root 'release-linux' }
 
 if (-not (Test-Path (Join-Path $root 'electron-app/build/index.html'))) {
     throw "Frontend build missing. Run 'npm run build' first."
