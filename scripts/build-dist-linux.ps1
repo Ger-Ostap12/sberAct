@@ -143,7 +143,7 @@ if ($SkipApp) {
     Push-Location $root
     try { Invoke-Checked 'npm.cmd' @('run', 'build') 'npm run build' }
     finally { Pop-Location }
-    & (Join-Path $PSScriptRoot 'build-linux.ps1')
+    & (Join-Path $PSScriptRoot 'build-linux.ps1') -OutDir $Staging
 }
 $appImage = Get-ChildItem $Staging -Filter '*.AppImage' -File -ErrorAction SilentlyContinue |
             Sort-Object LastWriteTime -Descending | Select-Object -First 1
@@ -157,7 +157,7 @@ Write-Step 3 "Окружение конвертера (Python + tesseract, tar.g
 if ($SkipConverter) {
     Write-Host "  Пропущено (-SkipConverter)"
 } else {
-    & (Join-Path $PSScriptRoot 'build-converter-linux.ps1')
+    & (Join-Path $PSScriptRoot 'build-converter-linux.ps1') -OutDir $Staging
 }
 $converterTar = Join-Path $Staging 'converter-linux.tar.gz'
 if (-not (Test-Path $converterTar)) {
@@ -194,29 +194,63 @@ SberAct — установка на Linux (Astra Linux 1.7 / Ubuntu), верси
   models/                         — модели конвертера
   install-linux.sh                — установщик
   SHA256SUMS                      — контрольные суммы
+  Установить SberAct.desktop      — ярлык установки (см. способ 1)
+  install-flash.sh                — то же самое из терминала (см. способ 2)
 
-Установка (терминал, из папки с этими файлами):
+СПОСОБ 1 — ярлыком, без терминала
 
-  1. Скопируйте комплект с флешки на диск — с флешки установка идёт медленно:
-       mkdir -p ~/sberact-dist && cp -r ./* ~/sberact-dist/ && cd ~/sberact-dist
+  Двойной клик по «Установить SberAct».
+  Если система откажется запускать ярлык с флешки (так задумано в Linux:
+  файлам с внешних носителей не доверяют), нажмите на нём правой кнопкой и
+  выберите «Разрешить запуск» / «Свойства → Разрешить выполнение», затем
+  повторите двойной клик. Дальше всё пройдёт само, в открывшемся окне.
 
-  2. Проверьте, что всё доехало целым:
-       sha256sum -c SHA256SUMS
+СПОСОБ 2 — одной командой (работает всегда)
 
-  3. Установите:
-       chmod +x install-linux.sh
-       ./install-linux.sh $($appImage.Name) converter-linux.tar.gz models
+  Откройте эту папку в терминале (в файловом менеджере — правая кнопка,
+  «Открыть в терминале») и выполните:
 
-Ярлык «SberAct Document Generator» появится в меню приложений.
-Интернет не нужен — приложение и конвертер работают полностью офлайн.
+       bash install-flash.sh
+
+  chmod не нужен: запуск через «bash» не требует бита исполнения, которого
+  на флешке не бывает.
+
+Оба способа делают одно и то же: проверяют контрольные суммы, разворачивают
+приложение с конвертером и моделями и создают ярлык «SberAct Document
+Generator» в меню приложений. Root не нужен, интернет не нужен.
+
+Установка идёт прямо с флешки. Если хочется быстрее — сперва скопируйте папку
+на диск и запускайте оттуда:
+       cp -r . ~/sberact-dist && cd ~/sberact-dist && bash install-flash.sh
 
 Обновление только приложения (конвертер и модели сохраняются):
-       ./install-linux.sh <новый>.AppImage
+       bash install-linux.sh <новый>.AppImage
 
 Удаление:
        rm -rf ~/.local/opt/SberAct ~/.local/share/applications/sberact.desktop
 "@
 Write-LinuxText (Join-Path $Staging 'Readme-linux.txt') ($readme + "`n")
+
+# Обёртка «в один клик» и ярлык к ней.
+$flashScript = Join-Path $PSScriptRoot 'install-flash.sh'
+if (-not (Test-Path $flashScript)) { throw "Нет обёртки установки: $flashScript" }
+Write-LinuxText (Join-Path $Staging 'install-flash.sh') (Get-Content $flashScript -Raw)
+
+# %k — путь самого ярлыка; файловый менеджер запускает его с рабочим каталогом
+# в домашней папке, так что папку комплекта ярлык вычисляет из него сам
+# (${1%/*} — dirname без запуска подпроцесса; в файле «%» удвоен, таков формат
+# .desktop). Если путь приехал как file://-ссылка — снимаем схему.
+$desktop = @'
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Установить SberAct
+Comment=Установка SberAct и OCR-конвертера
+Exec=bash -c 'd="${1%%/*}"; d="${d#file://}"; if [ -f "$d/install-flash.sh" ]; then exec bash "$d/install-flash.sh"; fi; echo "Не удалось определить папку с комплектом: $1"; echo "Откройте папку с файлами в терминале и выполните: bash install-flash.sh"; printf "Enter для выхода... "; read -r _' _ %k
+Terminal=true
+Categories=System;Utility;
+'@
+Write-LinuxText (Join-Path $Staging 'Установить SberAct.desktop') $desktop
 
 # ────────────────────────────── Раздача на носитель ──────────────────────────────
 Write-Step 5 "Запись комплекта: $Destination"
@@ -225,6 +259,8 @@ $kit = @(
     @{ Source = $appImage.FullName;                        Relative = $appImage.Name },
     @{ Source = $converterTar;                             Relative = 'converter-linux.tar.gz' },
     @{ Source = (Join-Path $Staging 'install-linux.sh');   Relative = 'install-linux.sh' },
+    @{ Source = (Join-Path $Staging 'install-flash.sh');   Relative = 'install-flash.sh' },
+    @{ Source = (Join-Path $Staging 'Установить SberAct.desktop'); Relative = 'Установить SberAct.desktop' },
     @{ Source = (Join-Path $Staging 'Readme-linux.txt');   Relative = 'Readme-linux.txt' }
 )
 foreach ($file in $stagedModelFiles) {
@@ -288,4 +324,4 @@ if ($NoVerify) {
 
 Write-Host ""
 Write-Host ("Готово. Комплект {0} на {1}" -f $version, $Destination) -ForegroundColor Green
-Write-Host "На целевой машине: sha256sum -c SHA256SUMS, затем ./install-linux.sh (см. Readme-linux.txt)"
+Write-Host "На целевой машине: двойной клик по «Установить SberAct» или «bash install-flash.sh» (см. Readme-linux.txt)"
