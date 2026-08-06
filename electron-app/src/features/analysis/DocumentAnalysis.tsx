@@ -1237,9 +1237,11 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 )}
 
                 {/* Финансовые данные (не-ФНС; у ФНС — в колонке выше). У самобанкрота
-                    финансов из просительной нет (суммы по каждому кредитору в теле) —
-                    блок скрываем вместе с кредитором. */}
-                {!isFnsCreditor(editedFields.creditorName) && !isSelf && (
+                    блок ОСТАЁТСЯ: суммы там разложены по кредиторам, но общий долг в
+                    заявлении назван («общий объём задолженности составляет …») и уходит
+                    в акты — пряча блок, мы лишали юриста единственного способа его
+                    выправить. Скрывается только кредитор-заявитель, которого нет. */}
+                {!isFnsCreditor(editedFields.creditorName) && (
                 <Grid item xs={12} md={isMortgage && mortgageKind === 'military' ? 12 : 6} sx={{ display: 'flex', minWidth: 0 }}>
               <FinancesSection editedFields={editedFields} onFieldChange={handleFieldChange} financeBreakdown={analysisResult?.financeBreakdown} mode={mode} mortgageKind={mortgageKind} />
                 </Grid>

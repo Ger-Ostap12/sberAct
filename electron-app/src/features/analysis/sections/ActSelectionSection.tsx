@@ -13,7 +13,6 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  TextField,
   FormControl,
   InputLabel,
   Select,
@@ -39,7 +38,9 @@ interface ActSelectionSectionProps {
   setDebtorStatus: (v: DebtorStatus | null) => void;
   selectedActs: SelectedAct[];
   toggleActSelection: (actId: string) => void;
-  updateActAdditionalFields: (actId: string, field: 'reason' | 'forParties' | 'courtRequests', value: string) => void;
+  /** Больше не используется секцией: поля «Причина»/«Для сторон»/«Запросы суда»
+   *  убраны из окон актов. Проп оставлен — родитель по-прежнему им владеет. */
+  updateActAdditionalFields?: (actId: string, field: 'reason' | 'forParties' | 'courtRequests', value: string) => void;
   updateActRtkVariant: (actId: string, variant: 'realization' | 'restructuring' | 'competition' | 'observation' | 'registry') => void;
   recommendationsApplied: boolean;
   recommendedActs?: { entityType?: string; collateralOption?: string; recommendedActIds?: string[] } | undefined;
@@ -60,7 +61,6 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
   setDebtorStatus,
   selectedActs,
   toggleActSelection,
-  updateActAdditionalFields,
   updateActRtkVariant,
   recommendationsApplied,
   recommendedActs,
@@ -217,21 +217,6 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
               </Box>
             </Box>
 
-            {/* Короткий текст — доп. генерация резолютивки основной процедуры к выбранным
-                актам. Если резолютивки нет (конкурсное, наблюдение с залогом) — при
-                генерации придёт предупреждение «нет шаблона». */}
-            <Box sx={{ mb: 4 }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={shortText}
-                    onChange={(e) => setShortText(e.target.checked)}
-                  />
-                }
-                label="Короткий текст"
-              />
-            </Box>
-
             {/* Три окна с актами */}
             <Grid container spacing={2}>
               {/* 1. Принятие */}
@@ -272,44 +257,11 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                                 </Box>
                               }
                             />
-                            {act.selected && act.additionalFields && (
-                              <Box sx={{ ml: 4, mt: 1 }}>
-                                {/* Поля "Причина" и "Для сторон" для акта "Определение Б/Д иное" */}
-                                {act.additionalFields.reason !== undefined && act.id === 'acceptance_no_motion_other' && (
-                                  <>
-                                    <TextField
-                                      fullWidth
-                                      multiline
-                                      rows={3}
-                                      label="Причина"
-                                      value={act.additionalFields.reason || ''}
-                                      onChange={(e) => updateActAdditionalFields(act.id, 'reason', e.target.value)}
-                                      sx={{ mb: 1 }}
-                                    />
-                                    <TextField
-                                      fullWidth
-                                      multiline
-                                      rows={3}
-                                      label="Для сторон"
-                                      value={act.additionalFields.forParties || ''}
-                                      onChange={(e) => updateActAdditionalFields(act.id, 'forParties', e.target.value)}
-                                      sx={{ mb: 1 }}
-                                    />
-                                  </>
-                                )}
-                                {/* Поле "Запросы суда" для актов "Определение о принятии" и "Принятие после Б/Д" */}
-                                {act.additionalFields.courtRequests !== undefined && (
-                                  <TextField
-                                    fullWidth
-                                    multiline
-                                    rows={4}
-                                    label="Запросы суда"
-                                    value={act.additionalFields.courtRequests || ''}
-                                    onChange={(e) => updateActAdditionalFields(act.id, 'courtRequests', e.target.value)}
-                                  />
-                                )}
-                              </Box>
-                            )}
+                            {/* Поля «Причина», «Для сторон», «Запросы суда» убраны
+                                по требованию Андрея: окна выбора актов остаются
+                                списком чекбоксов. Сами поля в данных живут
+                                (additionalFields), пустые маркеры зачищаются при
+                                генерации. */}
                           </Box>
                         );
                         })}
@@ -356,63 +308,8 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
               </Box>
                               }
                             />
-                            {act.selected && act.additionalFields && (
-                              <Box sx={{ ml: 4, mt: 1 }}>
-                                {/* Поля "Причина" и "Для сторон" для акта "Возврат" */}
-                                {act.additionalFields.reason !== undefined && act.id === 'intermediate_return' && (
-                                  <>
-                                    <TextField
-                                      fullWidth
-                                      multiline
-                                      rows={3}
-                                      label="Причина"
-                                      value={act.additionalFields.reason || ''}
-                                      onChange={(e) => updateActAdditionalFields(act.id, 'reason', e.target.value)}
-                                      sx={{ mb: 1 }}
-                                    />
-                                    <TextField
-                                      fullWidth
-                                      multiline
-                                      rows={3}
-                                      label="Для сторон"
-                                      value={act.additionalFields.forParties || ''}
-                                      onChange={(e) => updateActAdditionalFields(act.id, 'forParties', e.target.value)}
-                                    />
-                                  </>
-                                )}
-                                {/* Поля "Причина", "Для сторон" и "Запросы суда" для акта "Отложение" */}
-                                {act.additionalFields.reason !== undefined && act.id === 'intermediate_postponement' && (
-                                  <>
-                                    <TextField
-                                      fullWidth
-                                      multiline
-                                      rows={3}
-                                      label="Причина"
-                                      value={act.additionalFields.reason || ''}
-                                      onChange={(e) => updateActAdditionalFields(act.id, 'reason', e.target.value)}
-                                      sx={{ mb: 1 }}
-                                    />
-                                    <TextField
-                                      fullWidth
-                                      multiline
-                                      rows={3}
-                                      label="Для сторон"
-                                      value={act.additionalFields.forParties || ''}
-                                      onChange={(e) => updateActAdditionalFields(act.id, 'forParties', e.target.value)}
-                                      sx={{ mb: 1 }}
-                                    />
-                                    <TextField
-                                      fullWidth
-                                      multiline
-                                      rows={4}
-                                      label="Запросы суда"
-                                      value={act.additionalFields.courtRequests || ''}
-                                      onChange={(e) => updateActAdditionalFields(act.id, 'courtRequests', e.target.value)}
-                                    />
-                                  </>
-                                )}
-                              </Box>
-                            )}
+                            {/* Поля «Причина», «Для сторон», «Запросы суда» убраны
+                                по требованию Андрея (см. окно «1. Принятие»). */}
                           </Box>
                         );
                         })}
@@ -503,6 +400,23 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                             </Box>
                           );
                         })}
+                    </Box>
+                    {/* Короткий текст — доп. генерация резолютивки основной процедуры
+                        к выбранным финальным актам. Стоит здесь, а не отдельным блоком
+                        сверху: относится ровно к этому окну (решение суда пишется в
+                        полном или коротком варианте). Если резолютивки нет (конкурсное,
+                        наблюдение с залогом) — при генерации придёт предупреждение
+                        «нет шаблона». */}
+                    <Box sx={{ mt: 1, pt: 1, borderTop: 1, borderColor: 'divider' }}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={shortText}
+                            onChange={(e) => setShortText(e.target.checked)}
+                          />
+                        }
+                        label="Короткий текст"
+                      />
                     </Box>
                   </AccordionDetails>
                 </Accordion>

@@ -26,7 +26,9 @@ export const TEMPLATE_PREVIEW_SPECS: TemplatePreviewSpec[] = [
     id: 'rtk_single_obligation',
     title: 'Решение о включении в РТК (одно обязательство)',
     rows: [
-      { kind: 'text', text: 'В Арбитражный суд города Москвы' },
+      // Строки «В Арбитражный суд города Москвы» здесь не было места: суд в
+      // предпросмотре был вписан намертво и не имел отношения к делу (акты идут
+      // в Арбитражный суд Ростовской области). Убрана по требованию Андрея.
       { kind: 'field', label: 'ФИО должника:', field: 'applicantName' },
       { kind: 'field', label: 'Адрес должника:', field: 'applicantAddress' },
       { kind: 'field', label: 'Дело №:', field: 'caseNumber' },
@@ -44,7 +46,7 @@ export const TEMPLATE_PREVIEW_SPECS: TemplatePreviewSpec[] = [
     id: 'rtk_multiple_obligations',
     title: 'Решение о включении в РТК (несколько обязательств)',
     rows: [
-      { kind: 'text', text: 'В Арбитражный суд города Москвы' },
+      // См. rtk_single_obligation: захардкоженный московский суд убран.
       { kind: 'field', label: 'ФИО должника:', field: 'applicantName' },
       { kind: 'field', label: 'Адрес должника:', field: 'applicantAddress' },
       { kind: 'field', label: 'Дело №:', field: 'caseNumber' },
