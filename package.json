@@ -54,6 +54,13 @@
       {
         "from": "dist/SberAct",
         "to": "backend"
+      },
+      {
+        "from": "vendor/msvc-runtime",
+        "to": "msvc-runtime",
+        "filter": [
+          "*.dll"
+        ]
       }
     ],
     "win": {
