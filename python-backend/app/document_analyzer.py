@@ -491,6 +491,12 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # не даёт ей сработать на чужом документе.
             self._apply_text_debt_table(extracted_fields, text)
 
+            # Самобанкротство: свой источник итога (сводная фраза «общий объём
+            # задолженности составляет …»). Последним — ни один слой выше такой
+            # раскладки не знает, а его итог перекрывает сумму первого кредитора.
+            if is_self_bk:
+                self._apply_self_bankruptcy_total(extracted_fields, text)
+
             self._contract_checkpoint(extracted_fields, "финансовый каскад")
 
             # ФНС-заявления: финансы по ОЧЕРЕДЯМ реестра (недоимка/налог/пени/штраф/
@@ -3790,6 +3796,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                             # Если групп нет, используем весь найденный текст
                             value = match.group(0).strip()
                         logger.info(f"  Найдено совпадение: '{value}'")
+                        # Значение ЭТОЙ итерации. Без сброса сюда доезжало
+                        # cleaned_value от предыдущего поля/паттерна: пустой захват
+                        # («требования:» без числа) не проходил фильтр ниже, а
+                        # присваивание в конце цикла отрабатывало — и в
+                        # requirementsSum уезжал номер дела «А47-7950/2011», который
+                        # дальше нормализатор сумм превращал в 4 779 502 011,00.
+                        cleaned_value = None
                         if value and len(value) > 2 and value.strip():  # Фильтруем слишком короткие значения и пустые строки
                             # Очищаем значение от звездочек
                             cleaned_value = self.clean_extracted_value(value)
@@ -3925,6 +3938,15 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                         # Не сохраняем creditorName, если подставился мусор ("кредиторов принимаются в установленном законом порядке")
                         if field_name == "creditorName" and cleaned_value and ("принимаются" in cleaned_value or "установленном законом" in cleaned_value):
                             logger.info(f"  Пропуск creditorName (мусорное значение): {cleaned_value[:60]}...")
+                            continue
+                        if not cleaned_value:
+                            # Захват пустой или отбракован очисткой — пробуем следующий
+                            # паттерн, а не сохраняем чужое значение.
+                            continue
+                        # Денежное поле обязано содержать денежный токен: иначе в
+                        # сумму уезжают номера дел, ИНН и даты (см. money_token_from_capture).
+                        if pattern_info.get("type") == "amount" and not self.money_token_from_capture(cleaned_value):
+                            logger.info(f"  Пропуск {field_name}: '{cleaned_value[:40]}' не денежная сумма")
                             continue
                         extracted_fields[field_name] = cleaned_value
                         logger.info(f"Extracted {field_name}: {cleaned_value}")
@@ -4874,6 +4896,15 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         # которые могли попасть жадными паттернами. В ипотечных исках на момент
         # подачи дела ещё нет — поле должно остаться пустым.
         _cn = extracted_fields.get("caseNumber")
+        if _cn and not self._is_valid_case_number(_cn):
+            _cn_norm = re.sub(r"\s+", "", str(_cn)).upper().replace("Ё", "Е")
+            if self._MAGISTRATE_CASE_NUMBER_RE.match(_cn_norm):
+                # Дело мирового участка («по делу № 2-7-3490/2025» — ссылка на
+                # судебный приказ в теле заявления). Номером арбитражного дела оно
+                # не является, а спасательная регулярка ниже отрезала бы ему голову
+                # и выдала правдоподобный, но чужой «7-3490/2025».
+                extracted_fields.pop("caseNumber", None)
+                _cn = None
         if _cn and not self._is_valid_case_number(_cn):
             # Хвост мог прилипнуть без пробела («…/2026Исх. Док.») — жадный класс
             # захватил заглавную букву после года. Спасаем канонический номер.
