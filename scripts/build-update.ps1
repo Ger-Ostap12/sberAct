@@ -26,12 +26,18 @@
 
 param(
     [switch]$IncludeConverter,
-    [switch]$BaselineOnly
+    [switch]$BaselineOnly,
+    # Staged converter to hash. Default: release\converter. Point it elsewhere when
+    # the staging lives off the system drive (see stage-usb.ps1 -Destination).
+    [string]$ConverterDir
 )
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $release = Join-Path $root 'release'
+# Baseline rides next to the staged converter so both stay together on one drive.
+$baselineDir = if ($ConverterDir) { Split-Path -Parent $ConverterDir } else { $release }
+if (-not (Test-Path $baselineDir)) { New-Item -ItemType Directory -Force $baselineDir | Out-Null }
 
 $pkg = Get-Content (Join-Path $root 'package.json') -Raw | ConvertFrom-Json
 $version = $pkg.version
@@ -59,13 +65,13 @@ function Get-ConverterManifest([string]$converterSrc, [string]$fallbackVersion, 
 
 # --- Baseline-only mode: record the converter baseline, build no update ---
 if ($BaselineOnly) {
-    $converterSrc = Join-Path $release 'converter'
+    $converterSrc = if ($ConverterDir) { $ConverterDir } else { Join-Path $release 'converter' }
     if (-not (Test-Path $converterSrc)) { throw "Converter not found at $converterSrc. Run: npm run stage:converter" }
 
     Write-Host "Baseline: hashing converter (this can take a minute)..."
     $manifest = Get-ConverterManifest $converterSrc $version $root
     $json = $manifest | ConvertTo-Json -Depth 5
-    $json | Out-File -Encoding utf8 (Join-Path $release 'converter-manifest.baseline.json')
+    $json | Out-File -Encoding utf8 (Join-Path $baselineDir 'converter-manifest.baseline.json')
     $json | Out-File -Encoding utf8 (Join-Path $converterSrc 'converter-manifest.json')
     Write-Host ("Baseline recorded: {0} files, version {1}. No update built." -f $manifest.files.Count, $manifest.version)
     return

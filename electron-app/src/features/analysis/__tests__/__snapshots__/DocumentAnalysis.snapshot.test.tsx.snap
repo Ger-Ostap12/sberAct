@@ -643,42 +643,6 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
             </div>
           </div>
           <div
-            class="MuiBox-root css-1yjvs5a"
-          >
-            <label
-              class="MuiFormControlLabel-root MuiFormControlLabel-labelPlacementEnd css-j204z7-MuiFormControlLabel-root"
-            >
-              <span
-                class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
-              >
-                <input
-                  class="PrivateSwitchBase-input css-1p3z7et-MuiSwitchBase-root"
-                  data-indeterminate="false"
-                  type="checkbox"
-                />
-                <svg
-                  aria-hidden="true"
-                  class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
-                  data-testid="CheckBoxOutlineBlankIcon"
-                  focusable="false"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"
-                  />
-                </svg>
-                <span
-                  class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
-                />
-              </span>
-              <span
-                class="MuiTypography-root MuiTypography-body1 MuiFormControlLabel-label css-ahj2mt-MuiTypography-root"
-              >
-                Короткий текст
-              </span>
-            </label>
-          </div>
-          <div
             class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-2 css-mhc70k-MuiGrid-root"
           >
             <div
@@ -1499,6 +1463,42 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                               </label>
                             </div>
                           </div>
+                          <div
+                            class="MuiBox-root css-ml8x20"
+                          >
+                            <label
+                              class="MuiFormControlLabel-root MuiFormControlLabel-labelPlacementEnd css-j204z7-MuiFormControlLabel-root"
+                            >
+                              <span
+                                class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
+                              >
+                                <input
+                                  class="PrivateSwitchBase-input css-1p3z7et-MuiSwitchBase-root"
+                                  data-indeterminate="false"
+                                  type="checkbox"
+                                />
+                                <svg
+                                  aria-hidden="true"
+                                  class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                                  data-testid="CheckBoxOutlineBlankIcon"
+                                  focusable="false"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"
+                                  />
+                                </svg>
+                                <span
+                                  class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
+                                />
+                              </span>
+                              <span
+                                class="MuiTypography-root MuiTypography-body1 MuiFormControlLabel-label css-ahj2mt-MuiTypography-root"
+                              >
+                                Короткий текст
+                              </span>
+                            </label>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -2051,16 +2051,49 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                           class="MuiFormControl-root MuiFormControl-marginDense MuiFormControl-fullWidth MuiTextField-root css-1z10yd4-MuiFormControl-root-MuiTextField-root"
                         >
                           <div
-                            class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-fullWidth MuiInputBase-formControl MuiInputBase-sizeSmall css-md26zr-MuiInputBase-root-MuiOutlinedInput-root"
+                            class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-fullWidth MuiInputBase-formControl MuiInputBase-sizeSmall MuiInputBase-adornedEnd css-154xyx0-MuiInputBase-root-MuiOutlinedInput-root"
                           >
                             <input
                               aria-invalid="false"
-                              class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
+                              class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall MuiInputBase-inputAdornedEnd css-19qh8xo-MuiInputBase-input-MuiOutlinedInput-input"
                               id=":rb:"
                               placeholder="ДД.ММ.ГГГГ или текст"
                               type="text"
                               value=""
                             />
+                            <div
+                              class="MuiInputAdornment-root MuiInputAdornment-positionEnd MuiInputAdornment-outlined MuiInputAdornment-sizeSmall css-1laqsz7-MuiInputAdornment-root"
+                            >
+                              <button
+                                aria-label="Выбрать дату в календаре"
+                                class="MuiButtonBase-root MuiIconButton-root MuiIconButton-edgeEnd MuiIconButton-sizeSmall css-1bkxqye-MuiButtonBase-root-MuiIconButton-root"
+                                data-mui-internal-clone-element="true"
+                                tabindex="0"
+                                type="button"
+                              >
+                                <svg
+                                  aria-hidden="true"
+                                  class="MuiSvgIcon-root MuiSvgIcon-fontSizeSmall css-ptiqhd-MuiSvgIcon-root"
+                                  data-testid="CalendarTodayIcon"
+                                  focusable="false"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2m0 18H4V8h16z"
+                                  />
+                                </svg>
+                                <span
+                                  class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
+                                />
+                              </button>
+                              <input
+                                aria-hidden="true"
+                                style="position: absolute; width: 0px; height: 0px; opacity: 0; pointer-events: none;"
+                                tabindex="-1"
+                                type="date"
+                                value=""
+                              />
+                            </div>
                             <fieldset
                               aria-hidden="true"
                               class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
@@ -2089,49 +2122,6 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                           class="MuiTypography-root MuiTypography-body2 css-ul1486-MuiTypography-root"
                         >
                           На рассмотрение заявления в срок:
-                        </p>
-                        <div
-                          class="MuiFormControl-root MuiFormControl-marginDense MuiFormControl-fullWidth MuiTextField-root css-1z10yd4-MuiFormControl-root-MuiTextField-root"
-                        >
-                          <div
-                            class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-fullWidth MuiInputBase-formControl MuiInputBase-sizeSmall css-md26zr-MuiInputBase-root-MuiOutlinedInput-root"
-                          >
-                            <input
-                              aria-invalid="false"
-                              class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":rc:"
-                              placeholder="ДД.ММ.ГГГГ или текст"
-                              type="text"
-                              value=""
-                            />
-                            <fieldset
-                              aria-hidden="true"
-                              class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
-                            >
-                              <legend
-                                class="css-1whs34k-MuiNotchedOutlined-root"
-                              >
-                                <span
-                                  class="notranslate"
-                                >
-                                  ​
-                                </span>
-                              </legend>
-                            </fieldset>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div
-                      class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 MuiGrid-grid-sm-6 css-1b3l6lk-MuiGrid-root"
-                    >
-                      <div
-                        class="MuiBox-root css-1qctysj"
-                      >
-                        <p
-                          class="MuiTypography-root MuiTypography-body2 css-ul1486-MuiTypography-root"
-                        >
-                          Срок для оставления без движения:
                         </p>
                         <div
                           class="MuiFormControl-root MuiFormControl-marginDense MuiFormControl-fullWidth MuiTextField-root css-1z10yd4-MuiFormControl-root-MuiTextField-root"
@@ -2174,7 +2164,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                         <p
                           class="MuiTypography-root MuiTypography-body2 css-ul1486-MuiTypography-root"
                         >
-                          Дата и время судебного заседания:
+                          Срок для оставления без движения:
                         </p>
                         <div
                           class="MuiFormControl-root MuiFormControl-marginDense MuiFormControl-fullWidth MuiTextField-root css-1z10yd4-MuiFormControl-root-MuiTextField-root"
@@ -2186,6 +2176,49 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
                               id=":re:"
+                              placeholder="ДД.ММ.ГГГГ или текст"
+                              type="text"
+                              value=""
+                            />
+                            <fieldset
+                              aria-hidden="true"
+                              class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
+                            >
+                              <legend
+                                class="css-1whs34k-MuiNotchedOutlined-root"
+                              >
+                                <span
+                                  class="notranslate"
+                                >
+                                  ​
+                                </span>
+                              </legend>
+                            </fieldset>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 MuiGrid-grid-sm-6 css-1b3l6lk-MuiGrid-root"
+                    >
+                      <div
+                        class="MuiBox-root css-1qctysj"
+                      >
+                        <p
+                          class="MuiTypography-root MuiTypography-body2 css-ul1486-MuiTypography-root"
+                        >
+                          Дата и время судебного заседания:
+                        </p>
+                        <div
+                          class="MuiFormControl-root MuiFormControl-marginDense MuiFormControl-fullWidth MuiTextField-root css-1z10yd4-MuiFormControl-root-MuiTextField-root"
+                        >
+                          <div
+                            class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-fullWidth MuiInputBase-formControl MuiInputBase-sizeSmall css-md26zr-MuiInputBase-root-MuiOutlinedInput-root"
+                          >
+                            <input
+                              aria-invalid="false"
+                              class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
+                              id=":rf:"
                               type="datetime-local"
                               value=""
                             />
@@ -2247,7 +2280,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                               <input
                                 aria-invalid="false"
                                 class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                                id=":rf:"
+                                id=":rg:"
                                 type="text"
                                 value="Иванов Иван Иванович"
                               />
@@ -2289,7 +2322,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                               <textarea
                                 aria-invalid="false"
                                 class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline MuiInputBase-inputSizeSmall css-12tl3rr-MuiInputBase-input-MuiOutlinedInput-input"
-                                id=":rg:"
+                                id=":rh:"
                                 style="height: 0px; overflow: hidden;"
                               >
                                 г. Ростов
@@ -2339,7 +2372,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                               <input
                                 aria-invalid="false"
                                 class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                                id=":rh:"
+                                id=":ri:"
                                 type="text"
                                 value="610000000000"
                               />
@@ -2381,7 +2414,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                               <input
                                 aria-invalid="false"
                                 class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                                id=":ri:"
+                                id=":rj:"
                                 type="text"
                                 value=""
                               />
@@ -2423,7 +2456,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                               <input
                                 aria-invalid="false"
                                 class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                                id=":rj:"
+                                id=":rk:"
                                 type="date"
                                 value=""
                               />
@@ -2506,7 +2539,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-sizeSmall css-1yk1gt9-MuiInputBase-root-MuiOutlinedInput-root-MuiSelect-root"
                           >
                             <div
-                              aria-controls=":rk:"
+                              aria-controls=":rl:"
                               aria-expanded="false"
                               aria-haspopup="listbox"
                               class="MuiSelect-select MuiSelect-outlined MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-jedpe8-MuiSelect-select-MuiInputBase-input-MuiOutlinedInput-input"
@@ -2568,7 +2601,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                               <textarea
                                 aria-invalid="false"
                                 class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline MuiInputBase-inputSizeSmall css-12tl3rr-MuiInputBase-input-MuiOutlinedInput-input"
-                                id=":rl:"
+                                id=":rm:"
                                 placeholder="Введите название банка вручную"
                                 style="height: 0px; overflow: hidden;"
                               >
@@ -2620,7 +2653,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             <textarea
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline MuiInputBase-inputSizeSmall css-12tl3rr-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":rm:"
+                              id=":rn:"
                               placeholder="117312, г. Москва, ул. Вавилова, д. 19"
                               style="height: 0px; overflow: hidden;"
                             />
@@ -2669,7 +2702,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             <input
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":rn:"
+                              id=":ro:"
                               placeholder="1027700132195"
                               type="text"
                               value=""
@@ -2712,7 +2745,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             <input
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":ro:"
+                              id=":rp:"
                               placeholder="7707083893"
                               type="text"
                               value=""
@@ -2772,7 +2805,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             <textarea
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline MuiInputBase-inputSizeSmall css-12tl3rr-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":rp:"
+                              id=":rq:"
                               style="height: 0px; overflow: hidden;"
                             />
                             <textarea
@@ -2820,7 +2853,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             <textarea
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline MuiInputBase-inputSizeSmall css-12tl3rr-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":rq:"
+                              id=":rr:"
                               style="height: 0px; overflow: hidden;"
                             />
                             <textarea
@@ -2923,7 +2956,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             <input
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":rr:"
+                              id=":rs:"
                               placeholder="0.00"
                               type="text"
                               value="108000"
@@ -2966,7 +2999,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             <input
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":rs:"
+                              id=":rt:"
                               placeholder="0.00"
                               type="text"
                               value="5000"
@@ -3009,7 +3042,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             <input
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":rt:"
+                              id=":ru:"
                               placeholder="0.00"
                               type="text"
                               value=""
@@ -3052,7 +3085,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             <input
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":ru:"
+                              id=":rv:"
                               placeholder="0.00"
                               type="text"
                               value=""
@@ -3095,7 +3128,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             <input
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":rv:"
+                              id=":r10:"
                               placeholder="0.00"
                               type="text"
                               value="100000"
@@ -3138,7 +3171,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             <input
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":r10:"
+                              id=":r11:"
                               placeholder="0.00"
                               type="text"
                               value=""
@@ -3181,7 +3214,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             <input
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":r11:"
+                              id=":r12:"
                               placeholder="0.00"
                               type="text"
                               value=""
@@ -3224,7 +3257,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             <input
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":r12:"
+                              id=":r13:"
                               placeholder="0.00"
                               type="text"
                               value=""
@@ -3276,7 +3309,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             <input
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":r13:"
+                              id=":r14:"
                               type="date"
                               value=""
                             />
@@ -3318,7 +3351,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             <input
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":r14:"
+                              id=":r15:"
                               type="date"
                               value=""
                             />
@@ -3377,7 +3410,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             <input
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":r15:"
+                              id=":r16:"
                               placeholder="Ворошиловский районный суд г. Ростова-на-Дону"
                               type="text"
                               value=""
@@ -3420,7 +3453,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             <input
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":r16:"
+                              id=":r17:"
                               placeholder="2-2523/2025"
                               type="text"
                               value=""
@@ -3463,7 +3496,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             <input
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":r17:"
+                              id=":r18:"
                               placeholder="0.00"
                               type="text"
                               value=""
@@ -3506,7 +3539,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             <input
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":r18:"
+                              id=":r19:"
                               type="date"
                               value=""
                             />
@@ -3548,7 +3581,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                             <input
                               aria-invalid="false"
                               class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                              id=":r19:"
+                              id=":r1a:"
                               placeholder="0.00"
                               type="text"
                               value=""
@@ -3687,7 +3720,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                         <textarea
                                           aria-invalid="false"
                                           class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline MuiInputBase-inputSizeSmall css-12tl3rr-MuiInputBase-input-MuiOutlinedInput-input"
-                                          id=":r1a:"
+                                          id=":r1b:"
                                           style="height: 0px; overflow: hidden;"
                                         >
                                           123
@@ -3737,7 +3770,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                         <input
                                           aria-invalid="false"
                                           class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputSizeSmall css-1n4twyu-MuiInputBase-input-MuiOutlinedInput-input"
-                                          id=":r1b:"
+                                          id=":r1c:"
                                           type="date"
                                           value="2024-02-01"
                                         />
@@ -3779,7 +3812,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                         <textarea
                                           aria-invalid="false"
                                           class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline MuiInputBase-inputSizeSmall css-12tl3rr-MuiInputBase-input-MuiOutlinedInput-input"
-                                          id=":r1c:"
+                                          id=":r1d:"
                                           style="height: 0px; overflow: hidden;"
                                         >
                                           Кредитный договор

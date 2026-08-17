@@ -628,6 +628,70 @@ class ObligationsMixin:
             res.append(obj)
         return res
 
+    # Перечень долгов в заявлении САМОБАНКРОТА: нумерованный список
+    # «N. <КРЕДИТОР>. Задолженность по кредитному договору от DD.MM.YYYY г. на
+    # сумму X рублей.» Номера договора в таком перечне обычно нет вовсе — банк
+    # его не называет, гражданин переписывает из кредитной истории. Именно
+    # поэтому канонический экстрактор («<тип> №NUM от DATE») здесь молчал, и в
+    # блоке «Обязательства» не появлялось ни одной строки.
+    _SB_OBL_RE = re.compile(
+        r"по\s+(?P<kind>кредитн\w+\s+договор\w*|договор\w*\s+займа|договор\w*\s+поручительства"
+        r"|кредитн\w+\s+карт\w*|договор\w*\s+ипотеки)"
+        r"(?:\s*№\s*(?P<num>[0-9A-ZА-ЯЁ][0-9A-ZА-ЯЁ/.\-]{3,39}))?"
+        r"\s*от\s*(?P<date>[0-3]?\d[.,][01]?\d[.,]\d{4})\s*г?\.?"
+        r"[^.\n]{0,80}?(?:на\s+сумму|составляет)\s*(?P<amount>\d[\d   ]*(?:[.,]\d{1,2})?)",
+        re.IGNORECASE,
+    )
+    # Гейт: перечень существует только там, где долг описан этой формулой.
+    _SB_OBL_GATE = re.compile(r"задолженност\w*\s+по\s+кредитн\w+\s+договор", re.IGNORECASE)
+
+    def _extract_obligations_self_bankruptcy(self, text, detect_text=None):
+        """Обязательства из перечня долгов заявления самобанкрота.
+
+        Возвращает [] на любом другом документе: гейт — детектор самобанкротства
+        плюс сама формулировка «Задолженность по кредитному договору …».
+        Номер договора необязателен (в таком перечне его чаще нет) — это
+        нормально: в акте маркер номера пустой и зачищается вместе с «№».
+
+        `detect_text` — ПОЛНЫЙ текст для детектора: `extract_obligations` режет
+        текст по слову «заявление», а приметы самобанкротства (шапка «Должник:»
+        первым, заголовок «заявление гражданина») стоят до этого места, и на
+        обрезке детектор молчит.
+        """
+        if not text or not self._SB_OBL_GATE.search(text):
+            return []
+        try:
+            if not self._detect_self_bankruptcy(detect_text or text):
+                return []
+        except Exception:  # детектор не должен ронять извлечение
+            return []
+
+        res = []
+        for m in self._SB_OBL_RE.finditer(text):
+            kind = (m.group("kind") or "").lower()
+            typ = ("Кредитная карта" if "карт" in kind
+                   else "Кредитный договор" if "кредит" in kind
+                   else "Договор займа" if "займ" in kind
+                   else "Договор поручительства" if "поручит" in kind
+                   else "Договор ипотеки" if "ипотек" in kind
+                   else "Договор")
+            date = self._normalize_obl_date(m.group("date"))
+            num = (m.group("num") or "").strip(" .,;/")
+            amount = self.normalize_amount_value(
+                self.money_token_from_capture(m.group("amount")) or "")
+            obj = {
+                "id": f"obligation_sb_{len(res)}",
+                "contractNumber": num,
+                "contractDate": date or "Не указана",
+                "obligationType": typ,
+            }
+            if amount:
+                obj["amount"] = amount
+            res.append(obj)
+        if res:
+            logger.info("Самобанкротство: обязательств из перечня долгов — %d", len(res))
+        return res
+
     def extract_obligations(self, text: str, extracted_fields: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
         """
         Извлекает отдельные обязательства из текста
@@ -650,6 +714,10 @@ class ObligationsMixin:
             r'заявление\s+в\s+суд',
             r'исковое\s+заявление\s+в\s+суд'
         ]
+
+        # Полный текст до обрезки: нужен детектору самобанкротства (его приметы
+        # стоят в шапке, то есть ДО слова «заявление», по которому режем).
+        _text_full = text
 
         statement_start_pos = 0
         for keyword in statement_keywords:
@@ -696,13 +764,24 @@ class ObligationsMixin:
                 if table:
                     obligations.extend(table)
                 else:
-                    self._parse_obligations_fallback(extracted_fields, text, obligations)
+                    # Перечень долгов самобанкрота: договоры без номеров, канон
+                    # и таблица их не видят.
+                    self_bk = self._extract_obligations_self_bankruptcy(text, _text_full)
+                    if self_bk:
+                        obligations.extend(self_bk)
+                    else:
+                        self._parse_obligations_fallback(extracted_fields, text, obligations)
 
         unique_obligations = []
         seen_norm: Dict[str, Dict[str, str]] = {}
 
         for obligation in obligations:
             key = re.sub(r"[\s/\-.]", "", obligation.get("contractNumber", "")).lower()
+            if not key:
+                # Договор без номера (перечень долгов самобанкрота) — иначе все
+                # такие обязательства схлопнулись бы в одно по пустому ключу.
+                key = "б/н:{}/{}".format(obligation.get("contractDate", ""),
+                                         obligation.get("obligationType", ""))
             if key not in seen_norm:
                 seen_norm[key] = obligation
                 unique_obligations.append(obligation)
@@ -829,6 +908,22 @@ class ObligationsMixin:
         for item in items:
             number = (item.get("contractNumber") or "").strip()
             date = (item.get("contractDate") or "").strip()
+            obl_type = (item.get("obligationType") or "").strip()
+            if not number:
+                # Договор БЕЗ номера — законная запись перечня долгов самобанкрота
+                # («Задолженность по кредитному договору от 01.04.2025 на сумму …»):
+                # номер там не называют вовсе. Раньше такие записи целиком выпадали
+                # здесь, и блок «Обязательства» оставался пустым. Пускаем только
+                # структурные: с датой и конкретным типом (голый «Договор» — мусор
+                # fallback-пути). Ключ дедупа — дата + тип.
+                if date in ("", "Не указана") or obl_type in ("", "Договор"):
+                    continue
+                key = "б/н:{}/{}".format(date, obl_type).lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                deduped.append(item)
+                continue
             if not self._is_valid_contract_number(number):
                 continue
             # Убираем дубли по номеру договора (дата может дублироваться/шуметь).

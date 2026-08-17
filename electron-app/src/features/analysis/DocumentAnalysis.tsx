@@ -43,6 +43,7 @@ import RepresentativeSection from './sections/RepresentativeSection';
 import RespondentRepresentativeSection from './sections/RespondentRepresentativeSection';
 import MortgageKindSection from './sections/MortgageKindSection';
 import ClaimResolutionSection from './sections/ClaimResolutionSection';
+import SolidaryLiabilitySection from './sections/SolidaryLiabilitySection';
 import { findCourtDefaults } from '../../shared/lib/courts';
 
 interface DocumentAnalysisProps {
@@ -941,6 +942,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         selectedActs,
         shortText,
         documentCategory: isMortgage ? 'mortgage' : 'bankruptcy',
+        mortgageKind: isMortgage ? mortgageKind : undefined,
       })
     );
   };
@@ -1125,6 +1127,14 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 </Grid>
                 )}
 
+                {/* Солидарность — только в ипотеке. Влияет на выбор акта вместе
+                    с наличием представителей истца и ответчика. */}
+                {isMortgage && (
+                <Grid item xs={12} sx={{ display: 'flex', minWidth: 0 }}>
+              <SolidaryLiabilitySection editedFields={editedFields} onFieldChange={handleFieldChange} />
+                </Grid>
+                )}
+
                 {/* Удовлетворение иска — только в ипотеке, полностью ручной выбор. */}
                 {isMortgage && (
                 <Grid item xs={12} sx={{ display: 'flex', minWidth: 0 }}>
@@ -1298,9 +1308,11 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 )}
 
                 {/* Финансовые данные (не-ФНС; у ФНС — в колонке выше). У самобанкрота
-                    финансов из просительной нет (суммы по каждому кредитору в теле) —
-                    блок скрываем вместе с кредитором. */}
-                {!isFnsCreditor(editedFields.creditorName) && !isSelf && (
+                    блок ОСТАЁТСЯ: суммы там разложены по кредиторам, но общий долг в
+                    заявлении назван («общий объём задолженности составляет …») и уходит
+                    в акты — пряча блок, мы лишали юриста единственного способа его
+                    выправить. Скрывается только кредитор-заявитель, которого нет. */}
+                {!isFnsCreditor(editedFields.creditorName) && (
                 <Grid item xs={12} md={isMortgage && mortgageKind === 'military' ? 12 : 6} sx={{ display: 'flex', minWidth: 0 }}>
               <FinancesSection editedFields={editedFields} onFieldChange={handleFieldChange} financeBreakdown={analysisResult?.financeBreakdown} mode={mode} mortgageKind={mortgageKind} />
                 </Grid>

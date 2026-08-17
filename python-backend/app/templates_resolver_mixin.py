@@ -762,9 +762,69 @@ class TemplatesResolverMixin:
 
         return templates
 
-    def _get_mortgage_templates(self) -> Dict[str, Dict[str, Any]]:
+    def _mortgage_selection(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Вид ипотеки, солидарность и наличие представителей из формы.
+
+        Выбор пользователя перебивает автоопределение анализатора: юрист видит
+        документ целиком, анализатор — только совпавшие паттерны.
+
+        Селекции приходят то в `data`, то в `data["fields"]` (зависит от версии
+        фронта), поэтому читаем оба места — как и остальные ветки резолвера.
         """
-        Возвращает шаблон решения суда по ипотечному иску.
+        fields = data.get("fields") or {}
+
+        def pick(*keys: str) -> str:
+            for key in keys:
+                value = data.get(key) or fields.get(key)
+                if value:
+                    return str(value).strip()
+            return ""
+
+        kind = (pick("selectedMortgageKind", "mortgageKind") or "civil").lower()
+        if kind not in ("civil", "military", "ddu"):
+            logger.warning(f"⚠️ Неизвестный вид ипотеки: {kind!r} — берём обычную (civil)")
+            kind = "civil"
+
+        # «Хотя бы один» — решение пользователя (30.07.2026): достаточно
+        # представителя одной стороны, чтобы акт шёл по варианту «представители».
+        has_representative = bool(pick("representativeName") or pick("respondentRepresentativeName"))
+
+        return {
+            "kind": kind,
+            "solidary": pick("solidaryLiability").lower() == "true",
+            "representatives": has_representative,
+        }
+
+    def _mortgage_decision_file(self, selection: Dict[str, Any]) -> str:
+        """Имя файла «Решения резолютивки» по виду ипотеки, солидарности и представителям.
+
+        Военная ипотека ветвлений не имеет — один акт на все сочетания.
+
+        Имена файлов и папок заданы юристом и НЕ унифицированы: в «обычной»
+        папке «не солидарное» через пробел, в «дду» — «не_солидарное» через
+        подчёркивание. Собирать их по шаблону из флагов нельзя, только таблицей.
+        """
+        if selection["kind"] == "military":
+            return "Решение резолютивка военка.docx"
+
+        table = {
+            # (вид, представители, солидарное) -> относительный путь от Templates/ипотека
+            ("civil", True, True): "обычная ипотека решения/реш_рез представители солидарное обычная ипот.docx",
+            ("civil", True, False): "обычная ипотека решения/реш_рез обычная представители не солидарное ипотека.docx",
+            ("civil", False, True): "обычная ипотека решения/реш_рез обычная должник солидарное ипот.docx",
+            ("civil", False, False): "обычная ипотека решения/реш_рез обычная должник не солидарное ипот.docx",
+            ("ddu", True, True): "дду решения ипотека/реш_рез дду представители солидарное ипотека.docx",
+            ("ddu", True, False): "дду решения ипотека/реш_рез дду представители не_солидарное ипотека.docx",
+            ("ddu", False, True): "дду решения ипотека/реш_рез дду должник солидарное ипотека.docx",
+            ("ddu", False, False): "дду решения ипотека/реш_рез дду должник не_солидарное ипотека.docx",
+        }
+        return table[(selection["kind"], selection["representatives"], selection["solidary"])]
+
+    def _get_mortgage_templates(self, data: Optional[Dict[str, Any]] = None) -> Dict[str, Dict[str, Any]]:
+        """Пакет ипотечной генерации — ВСЕГДА ровно 5 актов.
+
+        Четыре одинаковы при любых настройках; пятый («Решение резолютивка»)
+        выбирается по виду ипотеки, солидарности и наличию представителей.
         """
         root_dir = self._templates_root()
         base_dir = root_dir / "ипотека"
@@ -774,13 +834,22 @@ class TemplatesResolverMixin:
             logger.info(f" Шаблон ипотека: {name} -> {path} (существует: {path.exists()})")
             return {"name": name, "path": path, "order": order}
 
-        return {
-            "mortgage_decision": entry(
-                "Шаблон решения суда по ипотеке",
-                "Шаблон решения суда.docx",
-                1
-            )
+        templates = {
+            "mortgage_summons": entry("Судебная повестка", "Повестка_8647_МАРКИРОВАННЫЙ.docx", 1),
+            "mortgage_acceptance_short": entry("Определение о принятии (короткий)", "Определение о принятии короткий.docx", 2),
+            "mortgage_acceptance_long": entry("Определение о принятии (длинный)", "Определение о принятии длинный ипотека.docx", 3),
+            "mortgage_notice": entry("Извещение", "Извещение_МАРКИРОВАННЫЙ.docx", 4),
         }
+
+        selection = self._mortgage_selection(data or {})
+        logger.info(
+            f" Ипотека: вид={selection['kind']}, солидарное={selection['solidary']}, "
+            f"представители={selection['representatives']}"
+        )
+        templates["mortgage_decision"] = entry(
+            "Решение резолютивка", self._mortgage_decision_file(selection), 5
+        )
+        return templates
 
     def _map_selected_acts_to_templates(self, selected_acts_ids: str, entity_type: str, collateral_option: str, data: Dict[str, Any]):
         """

@@ -187,6 +187,38 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                   </Grid>
                   )}
 
+                  {isMortgage && (
+                  <Grid item xs={12}>
+                    <Box sx={LABEL_OVERLAP_BOX}>
+                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес вышестоящей инстанции:</Typography>
+                      <TextField
+                        fullWidth
+                        multiline
+                        value={editedFields.higherCourtAddress || ''}
+                        onChange={(e) => onFieldChange('higherCourtAddress', e.target.value)}
+                        size="small"
+                        margin="dense"
+                      />
+                    </Box>
+                  </Grid>
+                  )}
+
+                  {isMortgage && (
+                  <Grid item xs={12}>
+                    <Box sx={LABEL_OVERLAP_BOX}>
+                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес почтовой корреспонденции вышестоящей инстанции:</Typography>
+                      <TextField
+                        fullWidth
+                        multiline
+                        value={editedFields.higherCourtPostalAddress || ''}
+                        onChange={(e) => onFieldChange('higherCourtPostalAddress', e.target.value)}
+                        size="small"
+                        margin="dense"
+                      />
+                    </Box>
+                  </Grid>
+                  )}
+
                   {/* Роль составителя: меняет абзац «кем подготовлен акт» при генерации */}
                   <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>

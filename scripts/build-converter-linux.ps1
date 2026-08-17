@@ -1,7 +1,7 @@
 # Builds the Linux converter environment (relocatable Python + deps + code) inside
 # Docker and extracts it as release-linux/converter-linux.tar.gz.
 #
-# Models (~4.6 GB) are NOT in the tar - they are platform-independent and reused
+# Models (~1.4 GB after gemma was dropped) are NOT in the tar - platform-independent, reused
 # from the Windows converter (converter/models). Copy them to the flash yourself
 # (see the printed hint). tesseract is installed on the target (apt), not bundled.
 #
@@ -12,11 +12,17 @@
 #
 # NOTE: keep this file ASCII-only (Windows PowerShell 5.1 reads no-BOM .ps1 as cp1251).
 
+param(
+    # Where to put converter-linux.tar.gz. Default: release-linux next to the
+    # project; build-dist-linux.ps1 passes its -Staging here.
+    [string]$OutDir
+)
+
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $image = 'sberact-converter-linux'
 $container = 'sberact-converter-extract'
-$outDir = Join-Path $root 'release-linux'
+$outDir = if ($OutDir) { $OutDir } else { Join-Path $root 'release-linux' }
 
 Push-Location $root
 try {
@@ -49,7 +55,7 @@ Write-Host ""
 Write-Host "For the flash you need (from release-linux) + models:"
 Write-Host "  1) SberAct-*.AppImage"
 Write-Host "  2) converter-linux.tar.gz"
-Write-Host "  3) models/  (copy converter/models manually, ~4.6 GB, into release-linux/models)"
+Write-Host "  3) models/  (copy converter/models manually, ~1.4 GB, into release-linux/models)"
 Write-Host "  + scripts/install-linux.sh"
 Write-Host ""
 $modelsSrc = Join-Path $root 'converter\models'

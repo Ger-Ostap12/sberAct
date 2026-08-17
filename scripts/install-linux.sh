@@ -70,7 +70,7 @@ if [ -n "$CONV_TAR" ]; then
   fi
   if [ -n "$MODELS_DIR" ]; then
     if [ ! -d "$MODELS_DIR" ]; then echo "Не найдена папка моделей: $MODELS_DIR"; exit 1; fi
-    echo "[3/4] Копирование моделей (~4.6 ГБ, может занять время)..."
+    echo "[3/4] Копирование моделей (~1.4 ГБ, может занять время)..."
     mkdir -p "$RES/converter/models"
     cp -r "$MODELS_DIR/." "$RES/converter/models/"
   else

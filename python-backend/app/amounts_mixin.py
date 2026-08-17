@@ -14,6 +14,37 @@ class AmountsMixin:
         # (mixin-класс вызывает метод, который появится в итоговом составном классе).
         def _extract_kommersant_publication(self, extracted_fields: Dict[str, Any], text: str) -> None: ...
 
+    # Денежный токен целиком: «180 532,78», «1 234 567», «7013,00», «0,00».
+    # Разряды — РОВНО по три цифры, копейки только в конце. Иначе за сумму
+    # сходит склейка соседних чисел таблицы («221 487,12 446 340,73») и любая
+    # цифровая строка, из которой нормализатор выбрасывает разделители
+    # (номер дела «А47-7950/2011» -> 4 779 502 011,00).
+    _MONEY_TOKEN_RE = re.compile(
+        r"\d{1,3}(?:[   ]\d{3})+(?:[.,]\d{1,2})?(?!\d)"
+        r"|\d+(?:[.,]\d{1,2})?(?!\d)"
+    )
+    # Буква в захвате денежного поля — верный признак, что поймано не число
+    # («А47-7950/2011», «Кому выдана», «руб.» отрезаем отдельно).
+    _MONEY_LETTERS_RE = re.compile(r"[^\W\d_]", re.UNICODE)
+
+    def money_token_from_capture(self, raw: Union[str, None]) -> str:
+        """Первый денежный токен из захвата паттерна; '' — денег в захвате нет.
+
+        Захваты вида `([0-9\\s,]+)` тянутся через переводы строк и склеивают
+        соседние ячейки таблицы, а `normalize_amount_value` молча выбрасывает
+        любые не-цифры — вместе они превращали номер дела в миллиардный долг.
+        Здесь захват сначала обрезается по первому переводу строки, затем из
+        него берётся первый корректно сгруппированный токен.
+        """
+        if not raw:
+            return ""
+        text = str(raw).split("\n")[0]
+        text = re.sub(r"(?:руб(?:\.|лей|ля)?|₽|коп(?:\.|еек)?)", " ", text, flags=re.IGNORECASE)
+        if self._MONEY_LETTERS_RE.search(text):
+            return ""
+        match = self._MONEY_TOKEN_RE.search(text)
+        return match.group(0).strip() if match else ""
+
     def normalize_amount_value(self, value: str) -> str:
         """
         Приводит строку с денежной суммой к виду '4 111 142,81'
@@ -411,6 +442,10 @@ class AmountsMixin:
                 if not match_value:
                     continue
 
+                # Захват `[0-9\s,]+` тянется через переводы строк и склеивает
+                # соседние числа таблицы в одно — берём из него первый корректный
+                # денежный токен, а не всё подряд.
+                match_value = self.money_token_from_capture(match_value) or match_value
                 normalized_amount = self.normalize_amount_value(match_value)
                 if normalized_amount:
                     pattern_values.append(normalized_amount)
@@ -452,6 +487,63 @@ class AmountsMixin:
     def _fin_fmt(self, v: float) -> str:
         """Форматирует float в «1 234 567,89»."""
         return f"{v:,.2f}".replace(",", " ").replace(".", ",").replace(" ", " ")
+
+    # Сумма в самобанкротной формулировке: разряды пробелами, копейки могут быть
+    # оторваны пробелом («24 395 516, 3 руб.» — так печатает конвертер скана).
+    _SB_AMOUNT = r"(\d[\d   ]*(?:,[   ]?\d{1,2})?)"
+
+    # Грандтотал в заявлении САМОБАНКРОТА. Кредитора-заявителя здесь нет, суммы
+    # разложены по кредиторам, а общий долг назван отдельной фразой. Требование
+    # «перед кредиторами»/«общий объём» отсекает построчные «общая сумма
+    # задолженности ПО кредитному договору №… составляет …» — их в заявлении
+    # десяток, и любая из них уезжала в итог вместо целого.
+    _SB_TOTAL_RES = (
+        re.compile(
+            r"общ\w+\s+объ[её]м\w*\s+задолженност\w+\s+составляет\s*" + _SB_AMOUNT,
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"(?:размер|сумма|общая\s+сумма)\s+(?:непогашенн\w+\s+)?задолженност\w+\s+"
+            r"(?:должника\s+)?перед\s+кредиторами\s+составляет\s*" + _SB_AMOUNT,
+            re.IGNORECASE,
+        ),
+    )
+
+    def _apply_self_bankruptcy_total(self, fields: Dict[str, Any], text: str) -> None:
+        """Общая сумма долга в заявлении самобанкрота — из его сводной фразы.
+
+        В таком заявлении нет ни таблицы расчёта, ни просительной с разбивкой:
+        долг перечислен по кредиторам, а целое названо один раз («общий объём
+        задолженности составляет 824 831,33 рублей»). Без этой фразы в итог
+        попадала сумма ПЕРВОГО кредитора из списка (или мусор из соседней
+        ячейки), и она же уезжала во все акты.
+        """
+        if not text:
+            return
+        for rx in self._SB_TOTAL_RES:
+            match = rx.search(text)
+            if not match:
+                continue
+            raw = re.sub(r",[   ]+(\d)", r",\1", match.group(1))  # «516, 3» -> «516,3»
+            token = self.money_token_from_capture(raw)
+            total = self._fin_amount(token)
+            if total <= 0:
+                continue
+            formatted = self._fin_fmt(total)
+            fields["totalDebt"] = formatted
+            fields["debtAmount"] = formatted
+            fields["requirementsSum"] = formatted
+            # Разбивка (если её успели набрать регулярки) относится к ОДНОМУ
+            # кредитору из списка, а не к целому: печатать её в акте как
+            # «из них основного долга …» нельзя.
+            parts = sum(self._fin_amount(fields.get(k)) for k in
+                        ("principalDebt", "loanDebt", "interest", "forfeit", "penalties"))
+            if parts and abs(parts - total) > 0.05:
+                for key in ("principalDebt", "loanDebt", "interest", "forfeit", "penalties"):
+                    fields.pop(key, None)
+                logger.info("Самобанкротство: разбивка долга не сходится с целым — очищена")
+            logger.info("Самобанкротство: общая сумма долга %s", formatted)
+            return
 
     def _apply_prayer_finances(self, fields: Dict[str, Any], text: str) -> None:
         """Финансы из ПРОСИТЕЛЬНОЙ части: суммирует разбивки долга по категориям
@@ -1253,7 +1345,15 @@ class AmountsMixin:
         # Если общая сумма долга похожа на сумму выдачи (значительно больше основной+проценты+неустойка),
         # подменяем на сумму principal+interest+forfeit
         try:
-            principal_f = float(self.normalize_amount_value(str(extracted_fields.get("principalDebt") or "0")).replace(" ", "").replace(",", "."))
+            principal_raw = extracted_fields.get("principalDebt")
+            # Основной долг живёт в двух полях: principalDebt (из блока «ПРОСИТ СУД»)
+            # и loanDebt («Ссудная задолженность» из таблицы расчёта). Раньше здесь
+            # смотрели только на первое, и когда основной долг попадал во второе,
+            # «сумма частей» сводилась к одним процентам — общий долг подменялся
+            # процентами (заявление Манукян: [12] и [14] оба 2 438 262,70).
+            if not str(principal_raw or "").strip():
+                principal_raw = extracted_fields.get("loanDebt")
+            principal_f = float(self.normalize_amount_value(str(principal_raw or "0")).replace(" ", "").replace(",", "."))
             interest_f = float(self.normalize_amount_value(str(extracted_fields.get("interest") or "0")).replace(" ", "").replace(",", "."))
             forfeit_f = float(self.normalize_amount_value(str(extracted_fields.get("forfeit") or "0")).replace(" ", "").replace(",", "."))
             sum_pif = principal_f + interest_f + forfeit_f
@@ -1261,7 +1361,15 @@ class AmountsMixin:
                 total_str = (extracted_fields.get("totalDebt") or "").strip()
                 if total_str:
                     total_f = float(self.normalize_amount_value(total_str).replace(" ", "").replace(",", "."))
-                    if total_f > sum_pif * 1.15:
+                    # Когда известны и основной долг, и проценты, общая сумма обязана
+                    # равняться их сумме: резолютивка пишет «в размере [12] руб., из
+                    # них [13] основного долга, [14] процентов», и части не могут не
+                    # сходиться с целым. Госпошлина в [12] не входит — она взыскивается
+                    # отдельным пунктом ([16]), поэтому «ИТОГО» из таблицы расчёта,
+                    # включающее пошлину, здесь не годится.
+                    both_components_known = principal_f > 0 and interest_f > 0
+                    mismatch = abs(total_f - sum_pif) > 0.01
+                    if total_f > sum_pif * 1.15 or (both_components_known and mismatch):
                         formatted_sum = f"{sum_pif:,.2f}".replace(",", " ").replace(".", ",")
                         extracted_fields["totalDebt"] = formatted_sum
                         if extracted_fields.get("debtAmount") == extracted_fields.get("totalDebt") or not extracted_fields.get("debtAmount"):

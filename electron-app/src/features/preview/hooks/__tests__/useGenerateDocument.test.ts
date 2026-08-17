@@ -149,6 +149,26 @@ describe('useGenerateDocument', () => {
     });
   });
 
+  it('ипотека: sourceDocumentType=mortgage_claim, выбранные акты не уходят (иначе банкротная пара)', async () => {
+    mockedGenerate.mockResolvedValue({ success: true, document_id: 'x', file_path: 'p' });
+    const mortgageTpl: TemplateType = { id: 'mortgage', name: 'Ипотека', description: '', category: 'Ипотека', fields: [] };
+    const data = baseData();
+    data.documentType = 'mortgage_claim';
+    data.fields.selectedActsIds = 'physical_realization_decision,acceptance';
+    data.fields.selectedActsData = '[{"id":"physical_realization_decision"}]';
+    const { result } = renderHook(() => useGenerateDocument(data, mortgageTpl, jest.fn()));
+
+    await act(async () => {
+      await result.current.generate();
+    });
+
+    const sent = mockedGenerate.mock.calls[0][0];
+    expect(sent.template_type).toBe('mortgage');
+    expect(sent.data.sourceDocumentType).toBe('mortgage_claim');
+    expect(sent.data.selectedActsIds).toBeUndefined();
+    expect(sent.data.selectedActsData).toBeUndefined();
+  });
+
   it('ошибка backend → generationResult.error', async () => {
     mockedGenerate.mockResolvedValue({ success: false, error: 'boom' });
     const { result } = renderHook(() =>

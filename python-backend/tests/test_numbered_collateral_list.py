@@ -1,0 +1,109 @@
+# -*- coding: utf-8 -*-
+"""Перечень предметов залога, пронумерованный «1)», «2)», «3)».
+
+Дефект с заявления «Манукян Сос Жораевич» (ПАО Сбербанк, дело 2-1142/2010):
+из трёх предметов в акт попадали два, а в адрес первого затекало начало
+второго — «…ул. Ленина, 65 2) Объект недвижимости-Жилой дом, общей».
+
+Три независимые причины, каждая закрыта своим тестом ниже:
+  1. маркером пункта работал только буллет, а нумерация — нет; дома распознавались
+     лишь потому, что внутри «недвижимости-Жилой» стоит дефис, а у «3) Земельный
+     участок» такого дефиса нет;
+  2. склейка переносов не останавливалась на следующем пункте;
+  3. дедуп различал недвижимость по адресу, а два дома стоят на одном участке
+     с одинаковым почтовым адресом — второй дом схлопывался с первым.
+"""
+import os
+import sys
+
+import pytest
+
+_THIS = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.abspath(os.path.join(_THIS, "..", "app")))
+
+from document_analyzer import DocumentAnalyzer  # noqa: E402
+
+# Фрагмент реального заявления (перенос строк сохранён как в PDF).
+PLEDGE_TEXT = """В обеспечение своевременного и полного исполнения обязательств по договору
+Заемщик предоставили в залог Банку следующее имущество:
+1) Объект недвижимости-Жилой дом, общей площадью 114,8 кв. м, расположенный
+по адресу: Ростовская область, г Каменск-Шахтинский, ул. Ленина, 65
+2) Объект недвижимости-Жилой дом, общей площадью 207,1 кв. м, расположенный
+по адресу: Ростовская область, г Каменск-Шахтинский, ул. Ленина, 65.
+3) Земельный участок, площадью 511 +/ - 4 кв.м, расположенный по адресу:
+Ростовская область, г Каменск-Шахтинский, ул. Ленина, 65
+ПАО Сбербанк обязательства по предоставлению кредита исполнены в полном
+объеме. Денежные средства выданы заемщикам.
+"""
+
+
+@pytest.fixture(scope="module")
+def items():
+    return DocumentAnalyzer()._extract_all_collateral_items(PLEDGE_TEXT)
+
+
+def test_all_three_items_found(items):
+    """Земельный участок терялся: у него нет дефиса, который работал буллетом."""
+    assert len(items) == 3, f"ожидались 3 предмета, получено {len(items)}: {items}"
+
+
+def test_land_plot_present(items):
+    joined = " | ".join(items)
+    assert "Земельный участок" in joined, joined
+
+
+def test_address_does_not_absorb_next_item(items):
+    """Адрес первого предмета не должен вбирать начало второго."""
+    first = items[0]
+    assert "2)" not in first, first
+    assert first.count("Жилой дом") == 1, first
+
+
+def test_last_item_stops_before_following_text(items):
+    """Последний пункт не имеет следующего маркера — склейка не должна утекать
+    в текст за перечнем."""
+    last = [i for i in items if "Земельный участок" in i][0]
+    assert "ПАО Сбербанк" not in last, last
+    assert "Денежные средства" not in last, last
+
+
+def test_two_houses_at_same_address_not_deduped():
+    """Два дома на одном участке различаются площадью, а не адресом."""
+    analyzer = DocumentAnalyzer()
+    objs = [
+        {"collateralType": "real_estate", "objectName": "Жилой дом, площадь 114,8 кв.м",
+         "address": "Ростовская область, г Каменск-Шахтинский, ул. Ленина, 65", "description": "дом 1"},
+        {"collateralType": "real_estate", "objectName": "Жилой дом, площадь 207,1 кв.м",
+         "address": "Ростовская область, г Каменск-Шахтинский, ул. Ленина, 65", "description": "дом 2"},
+    ]
+    assert len(analyzer._dedupe_collaterals(objs)) == 2
+
+
+def test_real_duplicate_still_deduped():
+    """Настоящий дубль (тот же объект, встреченный дважды) по-прежнему схлопывается."""
+    analyzer = DocumentAnalyzer()
+    obj = {"collateralType": "real_estate", "objectName": "Жилой дом, площадь 114,8 кв.м",
+           "address": "Ростовская область, ул. Ленина, 65", "description": "дом"}
+    assert len(analyzer._dedupe_collaterals([dict(obj), dict(obj)])) == 1
+
+
+def test_cadastral_number_wins_over_address():
+    """При наличии кадастрового номера различаем по нему, а не по адресу."""
+    analyzer = DocumentAnalyzer()
+    objs = [
+        {"collateralType": "real_estate", "cadastralNumber": "61:52:0010101:1",
+         "objectName": "Жилой дом", "address": "ул. Ленина, 65"},
+        {"collateralType": "real_estate", "cadastralNumber": "61:52:0010101:2",
+         "objectName": "Жилой дом", "address": "ул. Ленина, 65"},
+    ]
+    assert len(analyzer._dedupe_collaterals(objs)) == 2
+
+
+def test_bullet_list_still_works():
+    """Обычный буллетный перечень не должен пострадать от поддержки нумерации."""
+    text = ("в залог передано следующее имущество:\n"
+            "- Жилой дом, общей площадью 50 кв. м, расположенный по адресу: ул. Мира, 1;\n"
+            "- Земельный участок, площадью 600 кв.м, расположенный по адресу: ул. Мира, 1;\n")
+    items = DocumentAnalyzer()._extract_all_collateral_items(text)
+    joined = " | ".join(items)
+    assert "Жилой дом" in joined and "Земельный участок" in joined, joined

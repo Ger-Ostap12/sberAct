@@ -12,6 +12,9 @@ build/
 release/
 release-linux/
 realise/
+# Копии шаблонов «до правки» (scripts/fix-template-tabs.py). Лежат ВНЕ Templates:
+# всё её содержимое уходит в сборку бэкенда и на флешку.
+.template-backups/
 *.AppImage
 *.deb
 *.rpm

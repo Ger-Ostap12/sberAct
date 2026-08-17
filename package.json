@@ -14,8 +14,9 @@
     "build:update": "powershell -ExecutionPolicy Bypass -File scripts/build-update.ps1",
     "build:linux": "powershell -ExecutionPolicy Bypass -File scripts/build-linux.ps1",
     "build:linux-converter": "powershell -ExecutionPolicy Bypass -File scripts/build-converter-linux.ps1",
-    "dist:win": "npm run build && npm run pack:backend && npm run pack:converter && electron-builder --win && npm run stage:converter",
-    "dist:linux": "electron-builder --linux",
+    "test:updater": "node scripts/tests/converter-sync.test.js",
+    "dist:win": "npm run build && npm run pack:backend && npm run pack:converter && electron-builder --win && npm run stage:converter -- -Zip",
+    "dist:linux": "powershell -ExecutionPolicy Bypass -File scripts/build-dist-linux.ps1",
     "postinstall": "electron-builder install-app-deps"
   },
   "build": {
@@ -53,6 +54,13 @@
       {
         "from": "dist/SberAct",
         "to": "backend"
+      },
+      {
+        "from": "vendor/msvc-runtime",
+        "to": "msvc-runtime",
+        "filter": [
+          "*.dll"
+        ]
       }
     ],
     "win": {

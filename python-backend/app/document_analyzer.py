@@ -112,10 +112,170 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             logger.info(f"Начинаем анализ документа: {file_path}")
 
             text = self.extract_text(file_path)
-            return self.analyze_from_text(text, page_count=self.get_page_count(file_path))
+            result = self.analyze_from_text(text, page_count=self.get_page_count(file_path))
+            # Таблица расчёта задолженности разбирается точнее, чем плоский текст:
+            # см. _apply_table_amounts.
+            if str(file_path).lower().endswith(".docx"):
+                self._apply_table_amounts(file_path, result)
+            return result
         except Exception as e:
             logger.error(f"Ошибка при анализе документа: {str(e)}")
             raise
+
+    # Метки таблицы расчёта задолженности (формат Сбербанка) → поля.
+    _DEBT_TABLE_LABELS = (
+        ("итого задолженность", "totalDebt"),
+        ("ссудная задолженность", "loanDebt"),
+        ("проценты за кредит", "interest"),
+        ("задолженность по неустойке", "forfeit"),
+        ("госпошлина", "stateDuty"),
+    )
+
+    # Денежная ячейка целиком: «2 438 262,70» (в т.ч. с неразрывным пробелом,
+    # которым конвертер разделяет разряды).
+    _DEBT_AMOUNT_RE = re.compile(r"[\d\s ]+[,.]\d{2}")
+    # Та же сумма в конце строки — таблица, схлопнутая в «метка значение».
+    # Формат жёстче, чем у отдельной ячейки: слева стоит текст метки, и без
+    # границы «не цифра и не разделитель» в сумму затекала дата — из
+    # «…на 01.01.2026 126 000,00» получалось «2026 126 000,00».
+    _DEBT_TRAILING_AMOUNT_RE = re.compile(
+        r"(?<![\d.,])(\d{1,3}(?:[\s\u00a0]\d{3})+[,.]\d{2}|\d+[,.]\d{2})\s*$"
+    )
+
+    def _debt_amounts_from_rows(self, rows: List[Tuple[str, str]]) -> Dict[str, str]:
+        """Поля сумм из пар «метка → значение» таблицы расчёта задолженности.
+
+        Строки «в т.ч. …» — подпункты, их пропускаем: именно из-за них в акты
+        уезжала 7 559,11 («в т.ч. на просроченные проценты» — часть неустойки,
+        а не проценты по кредиту).
+
+        Возвращает {}, если таблица не наша или доверять ей нельзя: арифметика
+        обязана сходиться (ссудная + проценты + неустойка + госпошлина = ИТОГО).
+        Это страхует и от таблиц, где конвертер сдвинул ячейки, и от плоского
+        текста с перемешанным порядком строк (текстовый слой PDF через pypdf).
+        """
+        found: Dict[str, str] = {}
+        for label_raw, value_raw in rows:
+            label = re.sub(r"\s+", " ", label_raw).strip().lower()
+            value = value_raw.strip()
+            if label.startswith("в т.ч") or not value:
+                continue
+            if not self._DEBT_AMOUNT_RE.fullmatch(value):
+                continue
+            for needle, field in self._DEBT_TABLE_LABELS:
+                if needle in label and field not in found:
+                    found[field] = re.sub(r"\s+", " ", value).replace(".", ",")
+                    break
+
+        if "totalDebt" not in found or len(found) < 3:
+            return {}  # не наша таблица
+
+        def _num(key: str) -> float:
+            try:
+                return float(found.get(key, "0").replace(" ", "").replace(" ", "").replace(",", "."))
+            except ValueError:
+                return 0.0
+
+        total = _num("totalDebt")
+        parts = _num("loanDebt") + _num("interest") + _num("forfeit") + _num("stateDuty")
+        if total <= 0 or abs(total - parts) > 0.05:
+            logger.info(
+                "Таблица расчёта: ИТОГО %.2f не сходится с суммой строк %.2f — суммы из "
+                "таблицы не применяем", total, parts,
+            )
+            return {}
+
+        # Основной долг живёт в двух полях ([13] читает оба).
+        found["principalDebt"] = found.get("loanDebt", "")
+        # Общая сумма требований = ИТОГО из таблицы: именно её банк просит
+        # включить в реестр (п. 6 просительной части). Пересчитывать её на сумму
+        # частей не надо — расхождение как раз на госпошлину, которая в ИТОГО есть.
+        found["debtAmount"] = found["totalDebt"]
+        found["requirementsSum"] = found["totalDebt"]
+        return found
+
+    def _write_debt_amounts(self, fields: Dict[str, Any], found: Dict[str, str], source: str) -> None:
+        """Переносит выверенные суммы в поля, вытесняя добытое регулярками."""
+        for key, value in found.items():
+            if value:
+                fields[key] = value
+        logger.info("Суммы взяты из %s: %s", source, found)
+
+    def _debt_rows_from_text(self, text: str) -> List[Tuple[str, str]]:
+        """Пары «метка → значение» таблицы расчёта, восстановленные из ПЛОСКОГО текста.
+
+        Экстрактор разворачивает таблицу по ячейкам подряд, поэтому метка и её
+        сумма становятся соседними строками:
+
+            Ссудная задолженность
+            2 438 262,70
+
+        Реже (сжатая вёрстка, текстовый слой PDF) обе части лежат в одной строке:
+        «Проценты за кредит 0,00» — берём и такой вид. Пары отдаём как есть,
+        доверие к ним проверяет _debt_amounts_from_rows.
+        """
+        rows: List[Tuple[str, str]] = []
+        pending_label: Optional[str] = None
+        for raw in text.splitlines():
+            line = raw.strip()
+            if not line:
+                continue
+            if self._DEBT_AMOUNT_RE.fullmatch(line):
+                if pending_label:
+                    rows.append((pending_label, line))
+                    pending_label = None  # одна метка — одно значение
+                continue
+            match = self._DEBT_TRAILING_AMOUNT_RE.search(line)
+            if match and line[:match.start()].strip():
+                rows.append((line[:match.start()].strip(), match.group(1).strip()))
+                pending_label = None
+                continue
+            pending_label = line
+        return rows
+
+    def _apply_text_debt_table(self, fields: Dict[str, Any], text: str) -> None:
+        """Суммы таблицы расчёта, когда на входе только текст (файла нет).
+
+        Конвертерный путь (PDF → DOCX → правка текста в предпросмотре →
+        /analyze-text) файла-источника не имеет, и `_apply_table_amounts` там не
+        отрабатывает — а таблица к этому моменту уже развёрнута в строки.
+        Регулярки по такому тексту цепляли первую подходящую подпись:
+        «в т.ч. на просроченные проценты\\n7 559,11» читалось как проценты по
+        кредиту, и 7 559,11 уезжала во ВСЕ акты вместе с общей суммой долга.
+        """
+        found = self._debt_amounts_from_rows(self._debt_rows_from_text(text))
+        if found:
+            self._write_debt_amounts(fields, found, "таблицы расчёта в тексте")
+
+    def _apply_table_amounts(self, file_path: str, result: Dict[str, Any]) -> None:
+        """Суммы из НАСТОЯЩЕЙ таблицы DOCX — источник надёжнее плоского текста.
+
+        Пары «метка → значение» здесь заданы разметкой, а не соседством строк,
+        поэтому при наличии файла берём их отсюда, поверх текстового разбора.
+        """
+        try:
+            from docx import Document as _Docx
+            doc = _Docx(file_path)
+        except Exception as exc:
+            logger.debug(f"Таблицы DOCX недоступны: {exc}")
+            return
+
+        rows: List[Tuple[str, str]] = []
+        for table in doc.tables:
+            for row in table.rows:
+                cells = [c.text.strip() for c in row.cells]
+                if len(cells) < 2:
+                    continue
+                rows.append((cells[0], cells[-1]))
+
+        found = self._debt_amounts_from_rows(rows)
+        if not found:
+            return
+
+        fields = result.get("fields")
+        if not isinstance(fields, dict):
+            return
+        self._write_debt_amounts(fields, found, "таблицы расчёта задолженности")
 
     def analyze_from_text(self, text: str, page_count: Optional[int] = None) -> Dict[str, Any]:
         """
@@ -279,6 +439,18 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
 
             self._apply_table_breakdown_finances(extracted_fields, text)
+
+            # Таблица расчёта задолженности, развёрнутая в строки текста («метка»,
+            # следом «значение»). Последней в каскаде: пары из таблицы точнее
+            # любой регулярки по плоскому тексту, а гейт на сходимость арифметики
+            # не даёт ей сработать на чужом документе.
+            self._apply_text_debt_table(extracted_fields, text)
+
+            # Самобанкротство: свой источник итога (сводная фраза «общий объём
+            # задолженности составляет …»). Последним — ни один слой выше такой
+            # раскладки не знает, а его итог перекрывает сумму первого кредитора.
+            if is_self_bk:
+                self._apply_self_bankruptcy_total(extracted_fields, text)
 
             self._contract_checkpoint(extracted_fields, "финансовый каскад")
 
@@ -481,6 +653,16 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 self._build_mortgage_properties(text, collaterals_final, mortgage_kind)
                 if document_type == "mortgage_claim" else []
             )
+
+            # [1221] описание предмета — чистое (из структурного mortgageProperties),
+            # а НЕ жадный блоб со всей правовой «водой» секции залога (ст.334 ГК, чужие
+            # ФИО из шаблонного текста заявления). Блоб уже отработал на разбиении
+            # collaterals выше, дальше в акт должно идти короткое описание объекта.
+            if document_type == "mortgage_claim" and mortgage_properties:
+                _descs = [str(p.get("description") or "").strip() for p in mortgage_properties]
+                _descs = [d for d in _descs if d]
+                if _descs:
+                    extracted_fields["mortgageCollateralDescription1221"] = "; ".join(_descs)
 
             # Формируем результат
             result = {
@@ -3375,6 +3557,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                         else:
                             value = match.group(0).strip()
                         logger.info(f"  Найдено совпадение: '{value}'")
+                        # Значение ЭТОЙ итерации. Без сброса сюда доезжало
+                        # cleaned_value от предыдущего поля/паттерна: пустой захват
+                        # («требования:» без числа) не проходил фильтр ниже, а
+                        # присваивание в конце цикла отрабатывало — и в
+                        # requirementsSum уезжал номер дела «А47-7950/2011», который
+                        # дальше нормализатор сумм превращал в 4 779 502 011,00.
+                        cleaned_value = None
                         if value and len(value) > 2 and value.strip():  # Фильтруем слишком короткие значения и пустые строки
                             cleaned_value = self.clean_extracted_value(value)
 
@@ -3492,6 +3681,15 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                         # Не сохраняем creditorName, если подставился мусор ("кредиторов принимаются в установленном законом порядке")
                         if field_name == "creditorName" and cleaned_value and ("принимаются" in cleaned_value or "установленном законом" in cleaned_value):
                             logger.info(f"  Пропуск creditorName (мусорное значение): {cleaned_value[:60]}...")
+                            continue
+                        if not cleaned_value:
+                            # Захват пустой или отбракован очисткой — пробуем следующий
+                            # паттерн, а не сохраняем чужое значение.
+                            continue
+                        # Денежное поле обязано содержать денежный токен: иначе в
+                        # сумму уезжают номера дел, ИНН и даты (см. money_token_from_capture).
+                        if pattern_info.get("type") == "amount" and not self.money_token_from_capture(cleaned_value):
+                            logger.info(f"  Пропуск {field_name}: '{cleaned_value[:40]}' не денежная сумма")
                             continue
                         extracted_fields[field_name] = cleaned_value
                         logger.info(f"Extracted {field_name}: {cleaned_value}")
@@ -4372,6 +4570,15 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
         _cn = extracted_fields.get("caseNumber")
         if _cn and not self._is_valid_case_number(_cn):
+            _cn_norm = re.sub(r"\s+", "", str(_cn)).upper().replace("Ё", "Е")
+            if self._MAGISTRATE_CASE_NUMBER_RE.match(_cn_norm):
+                # Дело мирового участка («по делу № 2-7-3490/2025» — ссылка на
+                # судебный приказ в теле заявления). Номером арбитражного дела оно
+                # не является, а спасательная регулярка ниже отрезала бы ему голову
+                # и выдала правдоподобный, но чужой «7-3490/2025».
+                extracted_fields.pop("caseNumber", None)
+                _cn = None
+        if _cn and not self._is_valid_case_number(_cn):
             # Хвост мог прилипнуть без пробела («…/2026Исх. Док.») — жадный класс
             # захватил заглавную букву после года. Спасаем канонический номер.
             _core = re.search(
@@ -5186,8 +5393,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 last = im
             return bool(last) and "залог" not in ctx[last.end():].lower()
 
+        # Маркер пункта перечня: буллет ЛИБО нумерация «1)», «2.», «3 )».
+        # Нумерация обязательна, иначе списки вида «1) Объект недвижимости-Жилой
+        # дом … 3) Земельный участок …» распознавались лишь частично: буллетом
+        # ошибочно работал дефис внутри «недвижимости-Жилой», а у пунктов без
+        # такого дефиса (земельный участок) маркера не находилось вовсе.
         bullet_re = re.compile(
-            r"[-–—•]\s*((?:Автомобил\w*|марк[аи]\s*[:：]|жил\w*\s*дом|\bдом\b|квартир\w*|"
+            r"(?:[-–—•]|(?:^|\n)[ \t]*\d{1,2}\s*[).])\s*"
+            r"((?:Автомобил\w*|марк[аи]\s*[:：]|жил\w*\s*дом|\bдом\b|квартир\w*|"
             r"земельн\w+\s+участ\w*|нежил\w*|помещени\w*|здани\w*|гараж\w*|машино-?мест\w*|"
             r"комнат\w*|строени\w*|сооружени\w*|"
             # «иное»: ценные бумаги, доли, оборудование, товары, имущественные права и т.п.
@@ -5275,7 +5488,19 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if re.search(r"[;.]\s*$", acc):
             return acc
         for cur in (ln.strip() for ln in lines[1:]):
-            if not cur or re.match(r"[-–—•]\s*\S", cur):
+            # Стоп на следующем пункте перечня. Нумерация («2) Объект…») здесь так
+            # же обязательна, как буллет: без неё адрес первого предмета вбирал в
+            # себя начало второго — «…ул. Ленина, 65 2) Объект недвижимости-Жилой
+            # дом, общей». Пункт без завершающей точки — обычное дело в заявлениях.
+            if not cur or re.match(r"(?:[-–—•]|\d{1,2}\s*[).])\s*\S", cur):
+                break
+            # Последний пункт перечня не имеет следующего маркера, и склейка
+            # утекала в текст за перечнем («…ул. Ленина, 65 ПАО Сбербанк
+            # обязательства по предоставлению кредита исполнены…»). Адрес,
+            # оканчивающийся номером дома, считаем завершённым — продолжаем только
+            # ради кадастрового номера, который дописывают отдельной строкой.
+            if (re.search(r"по\s+адресу", acc, re.IGNORECASE) and re.search(r"\d\s*$", acc)
+                    and not re.match(r"[(\[]|кадастр", cur, re.IGNORECASE)):
                 break
             acc = (acc[:-1] + cur) if acc.endswith("-") else (acc + " " + cur)
             if re.search(r"[;.]\s*$", acc):
@@ -5288,7 +5513,17 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if t == "auto":
             return ("auto", (obj.get("vin") or obj.get("brandModel") or obj.get("description", "")[:60]).upper())
         if t == "real_estate":
-            return ("re", (obj.get("cadastralNumber") or obj.get("address") or obj.get("description", "")[:60]).lower())
+            # Кадастровый номер уникален — им и различаем. Без него адреса мало:
+            # на одном участке стоят два жилых дома с одним почтовым адресом, и
+            # ключ по адресу схлопывал их в один предмет. Добавляем название с
+            # площадью («Жилой дом, площадь 114,8 кв.м»), которое их и различает;
+            # для настоящего дубля оно совпадает, так что дедуп продолжает работать.
+            cadastral = (obj.get("cadastralNumber") or "").strip()
+            if cadastral:
+                return ("re", cadastral.lower())
+            address = (obj.get("address") or "").strip().lower()
+            name = (obj.get("objectName") or obj.get("description", "")[:60]).strip().lower()
+            return ("re", address, name)
         # «Иное»: описания однотипных предметов (линия № 6 / № 7) совпадают в первых
         # символах — добавляем стоимость, чтобы разные предметы не схлопнулись.
         return ("other", obj.get("description", "")[:80].lower(), obj.get("collateralValue", ""))

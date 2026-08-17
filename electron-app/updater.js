@@ -165,18 +165,20 @@ function readManifest(file) {
   }
 }
 
-// Сравниваем манифест на флешке с установленным (по path+sha) без хэширования
-// 6 ГБ на каждой проверке: доверяем установленному манифесту. Если его нет —
-// сверяем по существованию файла (одноразовая полная докачка на старых установках).
-function diffConverter() {
-  if (!sourceDir) return { available: false };
-  const flashManifestPath = path.join(sourceDir, CONVERTER_MANIFEST);
-  const flashManifest = readManifest(flashManifestPath);
-  if (!flashManifest || !Array.isArray(flashManifest.files)) {
-    return { available: false }; // на флешке нет обновления конвертера
-  }
-  const converterDir = deps.converterDir;
-  const installedManifest = readManifest(path.join(converterDir, CONVERTER_MANIFEST));
+// Что именно надо докопировать/удалить. Чистая функция (никакого модульного
+// состояния) — она же покрыта тестами scripts/tests/converter-sync.test.js.
+//
+// Манифесты сравниваем по path+sha, не хэшируя 6 ГБ на каждой проверке, НО
+// дополнительно смотрим на файл на диске: installer.nsh копирует конвертер
+// шелл-копией и обрыв копирования не замечает, а манифест (мелкий файл)
+// доезжает всегда — установка выглядит целой, будучи наполовину пустой. Именно
+// так приезжали сборки, где из 33 682 файлов доехало 19 163. statSync по
+// ~37 тыс. путей занимает секунды, в отличие от хэширования.
+function planConverterSync(flashManifest, installedManifest, converterDir, statFile) {
+  const stat = statFile || ((p) => {
+    try { return fs.statSync(p); } catch (_e) { return null; }
+  });
+
   const installedByPath = new Map();
   if (installedManifest && Array.isArray(installedManifest.files)) {
     for (const f of installedManifest.files) installedByPath.set(f.path, f.sha256);
@@ -186,23 +188,40 @@ function diffConverter() {
   let bytes = 0;
   for (const f of flashManifest.files) {
     const known = installedByPath.get(f.path);
-    if (known !== undefined) {
-      if (known !== f.sha256) { toCopy.push(f); bytes += f.size || 0; }
-    } else {
-      // Нет в установленном манифесте: если файла физически нет или размер иной —
-      // копируем. (Без манифеста считаем изменённым по факту отсутствия.)
-      const target = path.join(converterDir, f.path);
-      let st = null;
-      try { st = fs.statSync(target); } catch (_e) { st = null; }
-      if (!st || (f.size != null && st.size !== f.size)) { toCopy.push(f); bytes += f.size || 0; }
+    if (known !== undefined && known !== f.sha256) {
+      toCopy.push(f); // манифесты расходятся — файл точно изменился
+      bytes += f.size || 0;
+      continue;
+    }
+    const st = stat(path.join(converterDir, f.path));
+    if (!st || (f.size != null && st.size !== f.size)) {
+      toCopy.push(f);
+      bytes += f.size || 0;
     }
   }
+
   // Файлы, исчезнувшие в новом манифесте — под удаление.
   const flashPaths = new Set(flashManifest.files.map((f) => f.path));
   const toDelete = [];
   for (const p of installedByPath.keys()) {
     if (!flashPaths.has(p)) toDelete.push(p);
   }
+
+  return { toCopy, toDelete, bytes };
+}
+
+function diffConverter() {
+  if (!sourceDir) return { available: false };
+  const flashManifestPath = path.join(sourceDir, CONVERTER_MANIFEST);
+  const flashManifest = readManifest(flashManifestPath);
+  if (!flashManifest || !Array.isArray(flashManifest.files)) {
+    return { available: false }; // на флешке нет обновления конвертера
+  }
+  const converterDir = deps.converterDir;
+  const installedManifest = readManifest(path.join(converterDir, CONVERTER_MANIFEST));
+
+  const { toCopy, toDelete, bytes } =
+    planConverterSync(flashManifest, installedManifest, converterDir);
 
   const changed = toCopy.length > 0 || toDelete.length > 0;
   return {
@@ -380,4 +399,6 @@ function shutdownUpdater() {
   }
 }
 
-module.exports = { initUpdater, shutdownUpdater };
+// planConverterSync экспортируется ради тестов (scripts/tests/converter-sync.test.js):
+// CRA-jest видит только electron-app/src, до main-процесса он не достаёт.
+module.exports = { initUpdater, shutdownUpdater, planConverterSync };

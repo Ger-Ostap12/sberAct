@@ -238,18 +238,18 @@ class ObligationsRenderMixin:
                 type_label = "кредитный договор"
 
             if is_mortgage:
-                # Для ипотеки: [100] - номер договора, [110] - дата договора
-                if contract_number:
-                    number_number = 100 + i  # 100, 101, 102, 103, 104, 105, ...
-                    placeholder = f"[{number_number}]"
-                    if self._replace_placeholder_in_doc(doc, placeholder, str(contract_number)):
-                        logger.info(f"Заменено {placeholder} на {contract_number}")
-
+                # Ипотечные шаблоны используют «№ [110] от [100]» / «от [100] № [110]»,
+                # т.е. как и везде: [100+i] - ДАТА договора, [110+i] - НОМЕР. Прежний
+                # обратный порядок давал «№ ‹дата› от ‹номер›» в резолютивке.
                 if contract_date:
-                    date_number = 110 + i  # 110, 111, 112, 113, 114, 115, ...
-                    placeholder = f"[{date_number}]"
+                    placeholder = f"[{100 + i}]"
                     if self._replace_placeholder_in_doc(doc, placeholder, str(contract_date)):
                         logger.info(f"Заменено {placeholder} на {contract_date}")
+
+                if contract_number:
+                    placeholder = f"[{110 + i}]"
+                    if self._replace_placeholder_in_doc(doc, placeholder, str(contract_number)):
+                        logger.info(f"Заменено {placeholder} на {contract_number}")
             else:
                 # Для остальных: [100] - дата договора, [110] - номер договора
                 if contract_date:
@@ -330,9 +330,21 @@ class ObligationsRenderMixin:
         # порядка. Пустые = после № и после "от" нет цифры реальные "№ 123 от 12.03.2024"
         # не трогаем. Пропускаем, если пустых слотов нет (obligations покрывают все).
         if not skip_obligations and obligations_count < (max_slots if max_slots else 6):
+            # Хвост может стоять не только перед знаком препинания или концом
+            # абзаца, но и в середине фразы: «…по кредитным договорам от
+            # 21.03.2008 № 716994, от № в размере 2 438 262,70 руб.». Поэтому,
+            # помимо знаков препинания, границей считаем букву — но только
+            # русскую строчную: она означает продолжение предложения («в
+            # размере», «на сумму»). Цифра границей НЕ является, иначе живое
+            # «от 21.03.2008 № 716994» тоже попало бы под зачистку.
             for _ in range(8):
+                # Перед знаком препинания или концом абзаца хвост убираем начисто.
                 self._replace_regex_in_doc(doc, r"(?:,\s*)?от\s+№\s*(?=,|\.|\)|;|$)", "")
                 self._replace_regex_in_doc(doc, r"(?:,\s*)?№\s*от\s*(?=,|\.|\)|;|$)", "")
+                # В середине фразы оставляем пробел: вырезание вместе с ведущей
+                # запятой склеивало слова — «№ 716994в размере 2 438 262,70 руб.».
+                self._replace_regex_in_doc(doc, r"(?:,\s*)?от\s+№\s*(?=[а-яё])", " ")
+                self._replace_regex_in_doc(doc, r"(?:,\s*)?№\s*от\s*(?=[а-яё])", " ")
             self._replace_regex_in_doc(doc, r",\s*,", ",")
             self._replace_regex_in_doc(doc, r",\s*\.", ".")
             self._replace_regex_in_doc(doc, r"\s{2,}", " ")
