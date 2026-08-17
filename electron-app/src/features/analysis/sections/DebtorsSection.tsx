@@ -3,6 +3,7 @@ import { Box, Typography, Card, IconButton, Grid, TextField, Button } from '@mui
 import { Add as AddIcon, Close as CloseIcon } from '@mui/icons-material';
 import { Debtor, EntityType, FieldQuality } from '../../../types';
 import { toInputDate, fromInputDate } from '../../../shared/lib/dates';
+import { isValidPassportSeries, isValidPassportNumber, digitsOnly } from '../../../shared/lib/validators';
 import FieldQualityMark from '../../../shared/components/FieldQualityMark';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';
 
@@ -16,11 +17,13 @@ interface DebtorsSectionProps {
    *  `debtors[N].address`: карточки строятся мимо `fields` (ловушка §J.3),
    *  поэтому у них СВОИ ключи, а не плоские имена полей. */
   fieldQuality?: Record<string, FieldQuality>;
+  /** Режим формы. В ипотеке роль называется «Ответчик» и добавляется паспорт. */
+  mode?: 'bankruptcy' | 'mortgage';
 }
 
 /**
- * Секция «Данные должника»: карточки должников с реквизитами по типу лица
- * (ОГРН/ОГРНИП, место/дата рождения). Перенесено из DocumentAnalysis 1:1.
+ * Секция «Данные должника»/«Данные ответчика»: карточки лиц с реквизитами по типу
+ * лица (ОГРН/ОГРНИП, место/дата рождения). В ипотеке — «Ответчик» + паспорт.
  */
 const DebtorsSection: React.FC<DebtorsSectionProps> = ({
   debtors,
@@ -29,22 +32,27 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
   onAdd,
   onRemove,
   fieldQuality,
-}) => (
+  mode = 'bankruptcy',
+}) => {
+  const isMortgage = mode === 'mortgage';
+  const role = isMortgage ? 'ответчик' : 'должник';
+  const Role = isMortgage ? 'Ответчик' : 'Должник';
+  return (
   <Box sx={{ ...BLOCK_BOX_SX, mb: 3 }}>
     <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
-      Данные должника
+      {isMortgage ? 'Данные ответчика' : 'Данные должника'}
     </Typography>
     {debtors.map((debtor: Debtor, index: number) => (
       <Card key={debtor.id} sx={{ mb: 2, p: 2, border: '1px solid #e0e0e0' }}>
         {debtors.length > 1 && (
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-              Должник {index + 1}
+              {Role} {index + 1}
             </Typography>
             <IconButton
               size="small"
               onClick={() => onRemove(index)}
-              aria-label="Удалить должника"
+              aria-label={`Удалить ${role}а`}
               sx={{ color: 'text.secondary' }}
             >
               <CloseIcon fontSize="small" />
@@ -54,7 +62,7 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
         <Grid container spacing={2}>
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
-              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО/наименование:</Typography>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{isMortgage ? 'ФИО:' : 'ФИО/наименование:'}</Typography>
               <TextField
                 fullWidth
                 value={debtor.name || ''}
@@ -66,7 +74,7 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
           </Grid>
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
-              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес должника:</Typography>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{isMortgage ? 'Адрес ответчика:' : 'Адрес должника:'}</Typography>
               <FieldQualityMark quality={fieldQuality?.[`debtors[${index}].address`]}>
                 <TextField
                   fullWidth
@@ -149,6 +157,43 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
               </Box>
             </Grid>
           )}
+          {/* Паспорт — только в ипотеке (роль «Ответчик»). Серия 4 / номер 6 цифр. */}
+          {isMortgage && (
+            <>
+              <Grid item xs={6}>
+                <Box sx={LABEL_OVERLAP_BOX}>
+                  <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Паспорт (серия):</Typography>
+                  <TextField
+                    fullWidth
+                    value={debtor.passportSeries || ''}
+                    onChange={(e) => onUpdate(index, 'passportSeries', digitsOnly(e.target.value, 4))}
+                    size="small"
+                    margin="dense"
+                    inputProps={{ inputMode: 'numeric', maxLength: 4 }}
+                    error={!isValidPassportSeries(debtor.passportSeries)}
+                    helperText={!isValidPassportSeries(debtor.passportSeries) ? '4 цифры' : undefined}
+                    placeholder="6018"
+                  />
+                </Box>
+              </Grid>
+              <Grid item xs={6}>
+                <Box sx={LABEL_OVERLAP_BOX}>
+                  <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Паспорт (номер):</Typography>
+                  <TextField
+                    fullWidth
+                    value={debtor.passportNumber || ''}
+                    onChange={(e) => onUpdate(index, 'passportNumber', digitsOnly(e.target.value, 6))}
+                    size="small"
+                    margin="dense"
+                    inputProps={{ inputMode: 'numeric', maxLength: 6 }}
+                    error={!isValidPassportNumber(debtor.passportNumber)}
+                    helperText={!isValidPassportNumber(debtor.passportNumber) ? '6 цифр' : undefined}
+                    placeholder="123456"
+                  />
+                </Box>
+              </Grid>
+            </>
+          )}
         </Grid>
       </Card>
     ))}
@@ -159,9 +204,10 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
       size="small"
       sx={{ mt: 1 }}
     >
-      Добавить должника
+      {isMortgage ? 'Добавить ответчика' : 'Добавить должника'}
     </Button>
   </Box>
-);
+  );
+};
 
 export default DebtorsSection;

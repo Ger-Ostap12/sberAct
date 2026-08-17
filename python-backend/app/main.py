@@ -21,6 +21,7 @@ from document_analyzer import DocumentAnalyzer
 from document_generator import DocumentGenerator
 from template_manager import TemplateManager
 from creditor_registry import list_banks
+import paths as app_paths
 
 logger = logging.getLogger(__name__)
 
@@ -197,7 +198,7 @@ async def analyze_document(document: UploadFile = File(...)):
     Анализирует загруженный документ и извлекает данные.
     Поддерживаются форматы: .docx (Word), .pdf. Генерация актов по-прежнему только в .docx.
     """
-    print("🔍 API: Получен запрос на анализ документа")
+    print(" API: Получен запрос на анализ документа")
     try:
         filename_lower = (document.filename or "").lower()
         if not (filename_lower.endswith(".docx") or filename_lower.endswith(".pdf")):
@@ -248,7 +249,7 @@ async def analyze_text(request: AnalyzeTextRequest):
     именно текст — файла-источника на этом пути нет.
     Формат ответа и ошибок идентичен /analyze-document.
     """
-    print("🔍 API: Получен запрос на анализ текста")
+    print(" API: Получен запрос на анализ текста")
     try:
         analysis_result = document_analyzer.analyze_from_text(
             request.text, page_count=request.page_count
@@ -474,14 +475,34 @@ def _converter_command() -> Optional[list]:
     """
     is_windows = sys.platform == "win32"
     py_rel = Path("Scripts" if is_windows else "bin") / ("python.exe" if is_windows else "python")
+    # Прод: портируемый Python рядом с конвертером (assemble-converter.ps1), зависимости
+    # берём из .venv через PYTHONPATH (см. _converter_env). .venv сам не самодостаточен.
+    runtime_py = CONVERTER_DIR / "pyruntime" / ("python.exe" if is_windows else Path("bin") / "python")
     # install_offline.bat конвертера создаёт `.venv`; `venv` — фолбэк на ручную установку
     candidates = [CONVERTER_DIR / ".venv" / py_rel, CONVERTER_DIR / "venv" / py_rel]
     venv_python = next((p for p in candidates if p.exists()), None)
     entry = CONVERTER_DIR / "main.py"
-    launcher = Path(__file__).resolve().parent / "run_converter.py"
-    if venv_python is None or not entry.exists():
+    # Лаунчер: в проде рядом с конвертером (исходников бэкенда нет), в dev — в app/
+    launcher = CONVERTER_DIR / "run_converter.py"
+    if not launcher.exists():
+        launcher = Path(__file__).resolve().parent / "run_converter.py"
+    if not entry.exists():
         return None
-    return [str(venv_python), str(launcher)]
+    if runtime_py.exists():
+        return [str(runtime_py), str(launcher)]
+    if venv_python is not None:
+        return [str(venv_python), str(launcher)]
+    return None
+
+
+def _converter_env() -> dict:
+    """Доп. env для запуска конвертера: в проде — PYTHONPATH на .venv/site-packages."""
+    is_windows = sys.platform == "win32"
+    runtime_py = CONVERTER_DIR / "pyruntime" / ("python.exe" if is_windows else Path("bin") / "python")
+    if not runtime_py.exists():
+        return {}
+    site = CONVERTER_DIR / ".venv" / ("Lib/site-packages" if is_windows else "lib/python3.12/site-packages")
+    return {"PYTHONPATH": str(site)} if site.exists() else {}
 
 
 @app.post("/converter/start")
@@ -514,29 +535,37 @@ async def converter_start():
                 ),
             }
 
-        logger.info("Запускаем конвертер: %s", " ".join(command))
-        _converter_process = subprocess.Popen(
-            command,
-            cwd=str(CONVERTER_DIR),
-            env={
-                **os.environ,
-                "CONVERTER_PORT": CONVERTER_PORT,
-                "CONVERTER_DIR": str(CONVERTER_DIR),
-            },
-        )
+        # Любой сбой спавна/ожидания отдаём как {ok:false}, а не 500 — иначе фронт
+        # ловит HTTP-ошибку и показывает пользователю пугающий экран вместо «идёт запуск».
+        try:
+            logger.info("Запускаем конвертер: %s", " ".join(command))
+            _converter_process = subprocess.Popen(
+                command,
+                cwd=str(CONVERTER_DIR),
+                env={
+                    **os.environ,
+                    "CONVERTER_PORT": CONVERTER_PORT,
+                    "CONVERTER_DIR": str(CONVERTER_DIR),
+                    **_converter_env(),
+                },
+            )
 
-        deadline = asyncio.get_event_loop().time() + CONVERTER_START_TIMEOUT_S
-        while asyncio.get_event_loop().time() < deadline:
-            if _converter_process.poll() is not None:
-                code = _converter_process.returncode
-                _converter_process = None
-                return {"ok": False, "error": f"Конвертер завершился до готовности (код {code})"}
-            if await _converter_healthy():
-                return {"ok": True, "external": False}
-            await asyncio.sleep(1.0)
+            deadline = asyncio.get_event_loop().time() + CONVERTER_START_TIMEOUT_S
+            while asyncio.get_event_loop().time() < deadline:
+                if _converter_process.poll() is not None:
+                    code = _converter_process.returncode
+                    _converter_process = None
+                    return {"ok": False, "error": f"Конвертер завершился до готовности (код {code})"}
+                if await _converter_healthy():
+                    return {"ok": True, "external": False}
+                await asyncio.sleep(1.0)
 
-        _kill_converter()
-        return {"ok": False, "error": f"Конвертер не поднялся за {CONVERTER_START_TIMEOUT_S} с"}
+            _kill_converter()
+            return {"ok": False, "error": f"Конвертер не поднялся за {CONVERTER_START_TIMEOUT_S} с"}
+        except Exception as e:
+            logger.exception("Сбой запуска конвертера")
+            _kill_converter()
+            return {"ok": False, "error": f"Не удалось запустить конвертер: {e}"}
 
 
 def _kill_converter() -> None:
@@ -599,8 +628,8 @@ async def generate_document(request_data: Dict[str, Any]):
     """
     Генерирует документ на основе выбранного шаблона и данных
     """
-    print("🚀 API: Получен запрос на генерацию документа")
-    print(f"📊 API: Данные запроса: {request_data}")
+    print(" API: Получен запрос на генерацию документа")
+    print(f" API: Данные запроса: {request_data}")
     try:
         # Извлекаем данные из запроса
         template_type = request_data.get("template_type")
@@ -679,7 +708,7 @@ async def download_zip_get(ids: str = ""):
     """
     import logging
     logger = logging.getLogger(__name__)
-    logger.warning("⚠️ Используется GET /download-zip - это fallback! Electron IPC должен использоваться вместо этого.")
+    logger.warning(" Используется GET /download-zip - это fallback! Electron IPC должен использоваться вместо этого.")
 
     if not ids:
         raise HTTPException(status_code=400, detail="Не указаны ID документов (ids)")
@@ -809,14 +838,14 @@ async def download_all_documents(request: dict):
         import tempfile
         from pathlib import Path
 
-        logger.info(f"🔽 API: Получен запрос на скачивание документов")
-        logger.info(f"📋 API: Данные запроса: {request}")
+        logger.info(f" API: Получен запрос на скачивание документов")
+        logger.info(f" API: Данные запроса: {request}")
 
         document_ids = request.get('document_ids', '')
         download_path = request.get('download_path', '')
 
-        logger.info(f"📄 API: ID документов: {document_ids}")
-        logger.info(f"📁 API: Путь для скачивания: {download_path}")
+        logger.info(f" API: ID документов: {document_ids}")
+        logger.info(f" API: Путь для скачивания: {download_path}")
 
         # Парсим ID документов
         ids = document_ids.split(',') if document_ids else []
@@ -844,10 +873,10 @@ async def download_all_documents(request: dict):
                     zipf.write(file_path, f"{doc_name}.docx")
 
         # Всегда возвращаем файл для скачивания через Electron диалог
-        logger.info(f"✅ API: Возвращаем файл для скачивания: {zip_path}")
+        logger.info(f" API: Возвращаем файл для скачивания: {zip_path}")
         # ВНИМАНИЕ: Этот endpoint используется только как fallback
         # В Electron приложении файл должен сохраняться через диалог, а не напрямую
-        logger.warning(f"⚠️ Файл будет скачан в папку загрузок браузера: generated_documents.zip")
+        logger.warning(f" Файл будет скачан в папку загрузок браузера: generated_documents.zip")
         return FileResponse(
             path=str(zip_path),
             filename="generated_documents.zip",
@@ -864,10 +893,7 @@ async def get_download_paths():
     try:
         from pathlib import Path
 
-        logger.info(f"📁 API: Получен запрос на список путей для скачивания")
-
-        # Получаем корень проекта
-        project_root = Path(__file__).parent.parent.parent.absolute()
+        logger.info(f" API: Получен запрос на список путей для скачивания")
 
         # Предлагаем несколько вариантов путей
         paths = [
@@ -877,9 +903,9 @@ async def get_download_paths():
                 "description": "Сохранить на рабочий стол"
             },
             {
-                "name": "Папка проекта",
-                "path": str(project_root / "generated"),
-                "description": "Сохранить в папку проекта"
+                "name": "Папка приложения",
+                "path": str(app_paths.generated_dir()),
+                "description": "Сохранить в рабочую папку приложения"
             },
             {
                 "name": "Документы",
@@ -917,44 +943,14 @@ if __name__ == "__main__":
         if getattr(sys, "frozen", False):
             os.chdir(Path(sys.executable).parent)
 
-        os.makedirs("temp", exist_ok=True)
-        os.makedirs("generated", exist_ok=True)
+        # Записываемые каталоги — в data dir (в проде вне папки установки)
+        app_paths.temp_dir()
+        app_paths.generated_dir()
 
         if getattr(sys, "frozen", False):
-            import threading
-            import time
-
-            def run_server():
-                uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
-
-            server_thread = threading.Thread(target=run_server, daemon=True)
-            server_thread.start()
-            time.sleep(2)
-
-            # Автоматически открываем браузер, чтобы приложение всегда было доступно,
-            # даже если встроенный WebView (Edge Chromium / WebView2 или MSHTML) не работает.
-            try:
-                import webbrowser
-                webbrowser.open("http://127.0.0.1:8000")
-            except Exception as e:
-                logger.warning("Не удалось автоматически открыть браузер: %s", e)
-
-            try:
-                import webview
-                webview.create_window(
-                    "SberAct",
-                    "http://127.0.0.1:8000",
-                    width=1280,
-                    height=800,
-                    resizable=True,
-                    min_size=(800, 600),
-                )
-                webview.start(gui="edgechromium")
-            except (KeyboardInterrupt, SystemExit):
-                pass
-            except Exception as e:
-                logger.warning("Окно приложения недоступно (%s), открываю браузер", e)
-                server_thread.join()
+            # Десктоп: бэкенд — чистый API-сервер на loopback, окно даёт Electron.
+            # (Старый standalone-режим с webview/браузером убран вместе с onefile-сборкой.)
+            uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
         else:
             uvicorn.run(
                 "main:app",

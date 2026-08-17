@@ -176,3 +176,193 @@ describe('FinancesSection — подсветка подозрительных п
     expect(screen.getAllByTestId('field-quality-low')).toHaveLength(1);
   });
 });
+
+describe('FinancesSection — итоговая сумма (ипотека)', () => {
+  it('банкротство: поля «Итоговая сумма» нет', () => {
+    render(<FinancesSection editedFields={{ creditorName: 'ПАО Сбербанк' }} onFieldChange={() => {}} />);
+    expect(screen.queryByText('Итоговая сумма:')).not.toBeInTheDocument();
+  });
+
+  it('ипотека: «Итоговая сумма» = Общая сумма долга + банкротная госпошлина', () => {
+    render(
+      <FinancesSection
+        editedFields={{ creditorName: 'ПАО Сбербанк', totalDebt: '100000', stateDuty16: '5000' }}
+        onFieldChange={() => {}}
+        mode="mortgage"
+      />,
+    );
+    expect(screen.getByText('Итоговая сумма:')).toBeInTheDocument();
+    // 100000 + 5000 = 105 000,00 (формат ru-RU).
+    expect(screen.getByDisplayValue('105 000,00')).toBeInTheDocument();
+  });
+
+  it('ипотека: «Ссудная госпошлина» скрыта; банкротство — показана', () => {
+    const { rerender } = render(
+      <FinancesSection editedFields={{ creditorName: 'ПАО Сбербанк' }} onFieldChange={() => {}} />,
+    );
+    expect(screen.getByText('Ссудная госпошлина:')).toBeInTheDocument();
+    rerender(
+      <FinancesSection editedFields={{ creditorName: 'ПАО Сбербанк' }} onFieldChange={() => {}} mode="mortgage" />,
+    );
+    expect(screen.queryByText('Ссудная госпошлина:')).not.toBeInTheDocument();
+  });
+
+  it('ипотека: даты ПП депозит/ГП скрыты; банкротство — показаны', () => {
+    const { rerender } = render(
+      <FinancesSection editedFields={{ creditorName: 'ПАО Сбербанк' }} onFieldChange={() => {}} />,
+    );
+    expect(screen.getByText('Дата ПП депозит:')).toBeInTheDocument();
+    expect(screen.getByText('Дата ПП ГП:')).toBeInTheDocument();
+    rerender(
+      <FinancesSection editedFields={{ creditorName: 'ПАО Сбербанк' }} onFieldChange={() => {}} mode="mortgage" />,
+    );
+    expect(screen.queryByText('Дата ПП депозит:')).not.toBeInTheDocument();
+    expect(screen.queryByText('Дата ПП ГП:')).not.toBeInTheDocument();
+  });
+});
+
+describe('FinancesSection — ипотека: убраны поля, переименована госпошлина (п.1)', () => {
+  it('ипотека: «Штрафные санкции» и «Комиссия Банка» скрыты; банкротство — показаны', () => {
+    const { rerender } = render(
+      <FinancesSection editedFields={{ creditorName: 'ПАО Сбербанк' }} onFieldChange={() => {}} />,
+    );
+    expect(screen.getByText('Штрафные санкции:')).toBeInTheDocument();
+    expect(screen.getByText('Комиссия Банка:')).toBeInTheDocument();
+    rerender(
+      <FinancesSection editedFields={{ creditorName: 'ПАО Сбербанк' }} onFieldChange={() => {}} mode="mortgage" />,
+    );
+    expect(screen.queryByText('Штрафные санкции:')).not.toBeInTheDocument();
+    expect(screen.queryByText('Комиссия Банка:')).not.toBeInTheDocument();
+  });
+
+  it('ипотека: госпошлина без «Банкротная»; банкротство — «Банкротная госпошлина»', () => {
+    const { rerender } = render(
+      <FinancesSection editedFields={{ creditorName: 'ПАО Сбербанк' }} onFieldChange={() => {}} />,
+    );
+    expect(screen.getByText('Банкротная госпошлина:')).toBeInTheDocument();
+    rerender(
+      <FinancesSection editedFields={{ creditorName: 'ПАО Сбербанк' }} onFieldChange={() => {}} mode="mortgage" />,
+    );
+    expect(screen.queryByText('Банкротная госпошлина:')).not.toBeInTheDocument();
+    expect(screen.getByText('Госпошлина:')).toBeInTheDocument();
+  });
+});
+
+describe('FinancesSection — военная ипотека: два блока (кредит + ЦЖЗ)', () => {
+  it('civil: один блок «Финансовые данные», без блока ЦЖЗ', () => {
+    render(
+      <FinancesSection editedFields={{ creditorName: 'ПАО Сбербанк' }} onFieldChange={() => {}} mode="mortgage" mortgageKind="civil" />,
+    );
+    expect(screen.getByText('Финансовые данные')).toBeInTheDocument();
+    expect(screen.getByText('Проценты:')).toBeInTheDocument();
+    expect(screen.getByText('Госпошлина:')).toBeInTheDocument();
+    expect(screen.queryByText('Основной долг по ЦЖЗ:')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Росвоенипотека/)).not.toBeInTheDocument();
+  });
+
+  it('military — Часть 1 «Задолженность по кредитному договору»: поля обычной ипотеки', () => {
+    render(
+      <FinancesSection editedFields={{ creditorName: 'ПАО Сбербанк' }} onFieldChange={() => {}} mode="mortgage" mortgageKind="military" />,
+    );
+    expect(screen.getByText('Задолженность по кредитному договору')).toBeInTheDocument();
+    expect(screen.getByText('Общая сумма долга:')).toBeInTheDocument();
+    expect(screen.getByText('Проценты:')).toBeInTheDocument();
+    expect(screen.getByText('Неустойка:')).toBeInTheDocument();
+    expect(screen.getByText('Просроченный основной долг:')).toBeInTheDocument();
+    expect(screen.getByText('Госпошлина:')).toBeInTheDocument();
+    expect(screen.getByText('Итоговая сумма:')).toBeInTheDocument();
+    // Реквизиты кредитного договора и период задолженности.
+    expect(screen.getByText('Номер кредитного договора:')).toBeInTheDocument();
+    expect(screen.getByText('Дата кредитного договора:')).toBeInTheDocument();
+    expect(screen.getByText('Период задолженности с:')).toBeInTheDocument();
+    expect(screen.getByText('Период задолженности по:')).toBeInTheDocument();
+  });
+
+  it('civil: реквизитов кредитного договора нет (только военная Часть 1)', () => {
+    render(
+      <FinancesSection editedFields={{ creditorName: 'ПАО Сбербанк' }} onFieldChange={() => {}} mode="mortgage" mortgageKind="civil" />,
+    );
+    expect(screen.queryByText('Номер кредитного договора:')).not.toBeInTheDocument();
+    expect(screen.queryByText('Период задолженности с:')).not.toBeInTheDocument();
+  });
+
+  it('military — Часть 2 «Росвоенипотека (ЦЖЗ)»: поля ввода пользователя', () => {
+    render(
+      <FinancesSection editedFields={{ creditorName: 'ПАО Сбербанк' }} onFieldChange={() => {}} mode="mortgage" mortgageKind="military" />,
+    );
+    expect(screen.getByText(/Росвоенипотека/)).toBeInTheDocument();
+    expect(screen.getByText('Общая сумма взыскания:')).toBeInTheDocument();
+    expect(screen.getByText('Основной долг по ЦЖЗ:')).toBeInTheDocument();
+    expect(screen.getByText('Проценты за пользование займом:')).toBeInTheDocument();
+    expect(screen.getByText('Пени:')).toBeInTheDocument();
+    expect(screen.getByText('Процентная ставка (%):')).toBeInTheDocument();
+    expect(screen.getByText('Ставка пени (%):')).toBeInTheDocument();
+    expect(screen.getByText('Период начисления процентов с:')).toBeInTheDocument();
+    expect(screen.getByText('Период начисления процентов по:')).toBeInTheDocument();
+  });
+
+  it('military ЦЖЗ: показывается справочный расчёт по формуле (нейтрально)', () => {
+    // Осн.долг ЦЖЗ=1 000 000, ставка 10%, ставка пени 0.1%,
+    // период 15.01–14.02.2023 = 30 дней.
+    // Проценты = 1000000*0.10*(30/365) = 8219,18. Пени = 1000000*0.001*30 = 30 000,00.
+    render(
+      <FinancesSection
+        editedFields={{
+          creditorName: 'ПАО Сбербанк',
+          milPrincipalCzz: '1000000',
+          milInterestRate: '10',
+          milPenaltyRate: '0.1',
+          milInterestPeriodFrom: '15.01.2023',
+          milInterestPeriodTo: '14.02.2023',
+        }}
+        onFieldChange={() => {}}
+        mode="mortgage"
+        mortgageKind="military"
+      />,
+    );
+    expect(screen.getByText(/Расчёт по формуле \(ориентировочно\): 8 219,18/)).toBeInTheDocument();
+    expect(screen.getByText(/Расчёт по формуле \(ориентировочно\): 30 000,00/)).toBeInTheDocument();
+  });
+
+  it('military ЦЖЗ: расхождение ввода с формулой НЕ помечается как ошибка (⚠)', () => {
+    const base = {
+      creditorName: 'ПАО Сбербанк',
+      milPrincipalCzz: '1000000',
+      milInterestRate: '10',
+      milPenaltyRate: '0.1',
+      milInterestPeriodFrom: '15.01.2023',
+      milInterestPeriodTo: '14.02.2023',
+    };
+    // Проценты (ввод) = 9000,00 ≠ расчёт 8 219,18 — но это НЕ ошибка, показываем
+    // справочный расчёт нейтрально, без «В документе …».
+    render(
+      <FinancesSection
+        editedFields={{ ...base, milLoanInterest: '9000' }}
+        onFieldChange={() => {}}
+        mode="mortgage"
+        mortgageKind="military"
+      />,
+    );
+    expect(screen.queryByText(/В документе/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Расчёт по формуле \(ориентировочно\): 8 219,18/)).toBeInTheDocument();
+  });
+
+  it('military ЦЖЗ: проверка Общей суммы взыскания = Осн.долг ЦЖЗ + Проценты + Пени', () => {
+    // 1 000 000 + 8 219,18 + 30 000,00 = 1 038 219,18.
+    const base = {
+      creditorName: 'ПАО Сбербанк',
+      milPrincipalCzz: '1000000',
+      milLoanInterest: '8219.18',
+      milPenaltySum: '30000',
+    };
+    const { rerender } = render(
+      <FinancesSection editedFields={{ ...base, milTotalClaim: '1038219.18' }} onFieldChange={() => {}} mode="mortgage" mortgageKind="military" />,
+    );
+    expect(screen.getByText(/Общая сумма взыскания сходится/)).toBeInTheDocument();
+
+    rerender(
+      <FinancesSection editedFields={{ ...base, milTotalClaim: '999999' }} onFieldChange={() => {}} mode="mortgage" mortgageKind="military" />,
+    );
+    expect(screen.getByText(/Общая сумма взыскания = 999 999,00/)).toBeInTheDocument();
+  });
+});

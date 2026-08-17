@@ -261,4 +261,7 @@ export const webApi: ElectronAPI = {
       return { running: false, healthy: false };
     }
   },
+
+  // В браузере нет Electron: версия из сборочной переменной (иначе метка «dev»).
+  getAppVersion: async (): Promise<string> => process.env.REACT_APP_VERSION || 'dev',
 };

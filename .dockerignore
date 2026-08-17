@@ -1,0 +1,35 @@
+# Контекст сборки шлётся демону целиком — исключаем тяжёлое и ненужное.
+# Backend-образу нужны только python-backend/, SberAct.spec, Templates/,
+# а AppImage-образу дополнительно electron-app/build + package.json.
+
+# Конвертер: код нужен для сборки Linux-окружения, но тяжёлое исключаем.
+# (Windows .venv/pyruntime/vendor не годятся под Linux; models едут отдельно.)
+converter/.venv/
+converter/pyruntime/
+converter/models/
+converter/vendor/
+converter/__pycache__/
+converter/.git
+converter/offline_kit/wheels/
+converter/pdf_to_convert/
+converter/tests/
+converter/frontend/node_modules/
+converter/*.log
+
+release/
+realise/
+dist/
+node_modules/
+electron-app/node_modules/
+.git/
+**/__pycache__/
+**/venv/
+**/.venv/
+*.log
+
+# Крупные каталоги данных, не нужные в образе
+Заявления/
+docs/
+generated/
+python-backend/generated/
+python-backend/venv/

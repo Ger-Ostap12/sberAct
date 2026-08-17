@@ -13,8 +13,37 @@ const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const isDev = require('electron-is-dev');
+const { initUpdater, shutdownUpdater } = require('./updater');
+
+// Linux: Chromium SUID-песочница требует setuid-root chrome-sandbox, а Ubuntu 24.04
+// по умолчанию режет и unprivileged-namespace-песочницу. Из AppImage приложение
+// без этого падает ещё до окна (FATAL: chrome-sandbox ... mode 4755). Для оффлайн-
+// инструмента песочница рендерера некритична — отключаем на Linux, чтобы AppImage
+// запускался обычным двойным кликом без флагов.
+if (process.platform === 'linux') {
+  app.commandLine.appendSwitch('no-sandbox');
+}
+
 let mainWindow;
 let pythonProcess;
+
+// Убиваем процесс ВМЕСТЕ С ДЕРЕВОМ детей. Backend (SberAct.exe) сам спавнит
+// конвертер (python.exe ~6 ГБ) дочерним процессом. На Windows proc.kill() —
+// это TerminateProcess ТОЛЬКО родителя: конвертер осиротеет, продолжит держать
+// файлы resources\converter (из-за чего uninstall не может их снести) и память.
+// taskkill /T гасит всё дерево; на *nix шлём сигнал группе процессов.
+function killTree(proc) {
+  if (!proc || proc.killed || proc.pid == null) return;
+  if (process.platform === 'win32') {
+    try {
+      spawn('taskkill', ['/pid', String(proc.pid), '/T', '/F'], { stdio: 'ignore' });
+    } catch {
+      try { proc.kill(); } catch { /* уже мёртв */ }
+    }
+  } else {
+    try { process.kill(-proc.pid, 'SIGTERM'); } catch { try { proc.kill(); } catch { /* уже мёртв */ } }
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Менеджер локального сервиса-процесса (используется для OCR-конвертера).
@@ -105,7 +134,7 @@ class ManagedService {
     // Внешний (не наш) процесс не трогаем — мы его не запускали
     if (this.process) {
       console.log(`[${this.name}] stopping`);
-      this.process.kill();
+      killTree(this.process);
       this.process = null;
     }
   }
@@ -115,29 +144,50 @@ class ManagedService {
 const CONVERTER_PORT = process.env.CONVERTER_PORT || '8008';
 
 function resolveConverterCommand() {
+  const isWindows = process.platform === 'win32';
   // CONVERTER_DIR — на случай, если конвертер пришлось поставить в ASCII-путь
   // (tesseract/llama-cpp бывают нетерпимы к кириллице в путях).
-  const projectRoot = isDev ? app.getAppPath() : path.join(__dirname, '../app.asar.unpacked');
-  const converterDir = process.env.CONVERTER_DIR || path.join(projectRoot, 'converter');
-  const isWindows = process.platform === 'win32';
+  // В проде конвертер лежит в resources/converter (extraResources).
+  const converterDir = process.env.CONVERTER_DIR
+    || (isDev ? path.join(app.getAppPath(), 'converter')
+              : path.join(process.resourcesPath, 'converter'));
   const pyRel = path.join(isWindows ? 'Scripts' : 'bin', isWindows ? 'python.exe' : 'python');
-  // install_offline.bat конвертера создаёт `.venv`; `venv` — фолбэк на ручную установку
-  const venvPython = [path.join(converterDir, '.venv', pyRel), path.join(converterDir, 'venv', pyRel)]
-    .find((p) => fs.existsSync(p));
   const entry = path.join(converterDir, 'main.py');
-  // Запускаем через лаунчер sberAct (порт у upstream захардкожен на 8000,
-  // run_converter.py поднимает то же приложение на CONVERTER_PORT без правок
-  // кода конвертера).
-  const launcher = path.join(projectRoot, 'python-backend', 'app', 'run_converter.py');
-  if (!venvPython || !fs.existsSync(entry)) {
+  // Лаунчер поднимает конвертер на CONVERTER_PORT без правок его кода (порт у
+  // upstream захардкожен на 8000). В dev — из исходников бэкенда; в проде
+  // исходников нет, копия лаунчера лежит рядом с конвертером (кладётся при сборке).
+  const launcher = isDev
+    ? path.join(app.getAppPath(), 'python-backend', 'app', 'run_converter.py')
+    : path.join(converterDir, 'run_converter.py');
+
+  let command;
+  const extraEnv = {};
+  if (isDev) {
+    // install_offline.bat конвертера создаёт `.venv`; `venv` — фолбэк на ручную установку
+    command = [path.join(converterDir, '.venv', pyRel), path.join(converterDir, 'venv', pyRel)]
+      .find((p) => fs.existsSync(p));
+  } else {
+    // Прод: бандленный pyruntime (полноценный Python 3.12), зависимости
+    // конвертера подключаем из .venv/site-packages через PYTHONPATH —
+    // .venv сам по себе не самодостаточен (см. scripts/assemble-converter.ps1).
+    const runtimePy = path.join(converterDir, 'pyruntime', isWindows ? 'python.exe' : path.join('bin', 'python'));
+    command = fs.existsSync(runtimePy) ? runtimePy : undefined;
+    const sitePkgs = [
+      path.join(converterDir, '.venv', 'Lib', 'site-packages'),
+      path.join(converterDir, '.venv', 'lib', 'python3.12', 'site-packages')
+    ].find((p) => fs.existsSync(p));
+    if (sitePkgs) extraEnv.PYTHONPATH = sitePkgs;
+  }
+
+  if (!command || !fs.existsSync(entry)) {
     console.warn(`[converter] not installed at ${converterDir}`);
     return null;
   }
   return {
-    command: venvPython,
+    command,
     args: [launcher],
     cwd: converterDir,
-    env: { CONVERTER_PORT, CONVERTER_DIR: converterDir }
+    env: { CONVERTER_PORT, CONVERTER_DIR: converterDir, SBERACT_DATA_DIR: app.getPath('userData'), ...extraEnv }
   };
 }
 
@@ -149,29 +199,27 @@ const converterService = new ManagedService({
   startTimeoutMs: 180000
 });
 
-function resolvePythonEntry() {
+// Команда запуска бэкенда. В проде — собранный PyInstaller-бинарник (Python на
+// машине пользователя не нужен). В dev — интерпретатор venv + main.py из исходников.
+function resolveBackendCommand() {
+  const isWindows = process.platform === 'win32';
   if (isDev) {
-    // В dev вычисляем от каталога приложения, а не от cwd
-    const appRoot = app.getAppPath();
-    return path.join(appRoot, 'python-backend', 'app', 'main.py');
-  } else {
-    return path.join(__dirname, '../app.asar.unpacked/python-backend/app/main.py');
-  }}
-
-function resolvePythonExecutable() {
-  if (isDev) {
-    // Для Windows используем Scripts/python.exe, для Unix - bin/python
-    const isWindows = process.platform === 'win32';
     const pythonDir = isWindows ? 'Scripts' : 'bin';
     const pythonExe = isWindows ? 'python.exe' : 'python';
     const venvPath = path.join(__dirname, '../python-backend/venv', pythonDir, pythonExe);
-
-    if (fs.existsSync(venvPath)) {
-      return venvPath;
-    }
-    return isWindows ? 'python' : 'python3';
+    const command = fs.existsSync(venvPath) ? venvPath : (isWindows ? 'python' : 'python3');
+    const appRoot = app.getAppPath();
+    return {
+      command,
+      args: [path.join(appRoot, 'python-backend', 'app', 'main.py')],
+      cwd: path.join(appRoot, 'python-backend', 'app'),
+      env: { PYTHONPATH: path.join(__dirname, '../python-backend') }
+    };
   }
-  return process.platform === 'win32' ? 'python' : 'python3';
+  // extraResources кладёт onedir-сборку бэкенда в resources/backend/
+  const binName = isWindows ? 'SberAct.exe' : 'SberAct';
+  const backendBin = path.join(process.resourcesPath, 'backend', binName);
+  return { command: backendBin, args: [], cwd: path.dirname(backendBin), env: {} };
 }
 
 function resolveIcon() {
@@ -207,16 +255,20 @@ async function startPythonBackend() {
     } catch (_) {
       // Недоступен — запускаем локально
     }
-    const pythonPath = resolvePythonEntry();
-    const pythonExecutable = resolvePythonExecutable();
+    const backend = resolveBackendCommand();
 
-    console.log(`Starting Python backend with: ${pythonExecutable} ${pythonPath}`);
+    console.log(`Starting Python backend with: ${backend.command} ${backend.args.join(' ')}`);
 
-    pythonProcess = spawn(pythonExecutable, [pythonPath], {
-      cwd: isDev ? path.join(app.getAppPath(), 'python-backend', 'app') : undefined,
+    pythonProcess = spawn(backend.command, backend.args, {
+      cwd: backend.cwd,
       env: {
         ...process.env,
-        PYTHONPATH: path.join(__dirname, '../python-backend'),
+        ...backend.env,
+        // Записываемые данные (generated/, temp/) — вне папки установки, переживают обновление
+        SBERACT_DATA_DIR: app.getPath('userData'),
+        // Бэкенд владеет конвертером: в проде его дефолтный путь (от __file__) неверен
+        // во frozen — явно указываем resources/converter (куда его кладёт установщик).
+        ...(isDev ? {} : { CONVERTER_DIR: path.join(process.resourcesPath, 'converter'), CONVERTER_PORT }),
         PATH: process.env.PATH + (process.platform === 'win32' ? ';' : ':') + path.join(process.env.HOME || process.env.USERPROFILE, '.local/bin')
       }
     });
@@ -265,9 +317,10 @@ function createWindow() {
     // Не открываем DevTools автоматически, чтобы избежать спама сообщениями Autofill
   } else {
     mainWindow.loadFile(path.join(__dirname, 'build/index.html'));
-    // ВАЖНО: Автоматически открываем DevTools в production для отладки
-    // Можно закомментировать эту строку после исправления проблем
-    mainWindow.webContents.openDevTools();
+    // DevTools в проде — только по требованию (SBERACT_DEVTOOLS=1) или горячей клавишей.
+    if (process.env.SBERACT_DEVTOOLS === '1') {
+      mainWindow.webContents.openDevTools();
+    }
   }
 
   // Добавляем горячие клавиши для открытия DevTools
@@ -367,6 +420,15 @@ app.whenReady().then(() => {
   startPythonBackend();
   createWindow();
 
+  // Офлайн-обновление с флешки: конвертер лежит рядом с backend'ом в resources.
+  initUpdater({
+    getMainWindow: () => mainWindow,
+    converterDir: isDev
+      ? path.join(app.getAppPath(), 'converter')
+      : path.join(process.resourcesPath, 'converter'),
+    backendPort: 8000
+  });
+
   // Регистрируем глобальные шорткаты после создания окна
   // Используем альтернативные комбинации (F12 не работает как глобальный шорткат)
   const registerGlobalShortcuts = () => {
@@ -417,8 +479,11 @@ app.on('before-quit', (event) => {
   const finish = () => {
     if (_quitCleanupDone) return; // таймер и ответ backend'а гонятся — пускаем одного
     _quitCleanupDone = true;
-    if (pythonProcess) pythonProcess.kill();
+    // Дерево backend'а включает дочерний конвертер — гасим одним taskkill /T,
+    // чтобы python.exe не осиротел (иначе живёт и блокирует uninstall).
+    killTree(pythonProcess);
     converterService.stop(); // на случай внешнего/легаси-запуска через ManagedService
+    shutdownUpdater(); // закрываем локальный feed-сервер обновления
     app.quit();
   };
 
@@ -489,6 +554,10 @@ ipcMain.handle('save-file', async (event, defaultName) => {
 ipcMain.handle('get-extracted-data', () => {
   return global.extractedData || null;
 });
+
+// Версия приложения — единый источник: корневой package.json (его же берёт
+// electron-builder для инсталлятора и latest.yml). Показывается в шапке фронта.
+ipcMain.handle('app:get-version', () => app.getVersion());
 
 ipcMain.handle('set-extracted-data', (event, data) => {
   global.extractedData = data;

@@ -173,7 +173,7 @@ class FormattingMixin:
         """
         Устанавливает шрифт Times New Roman 11 для всего документа
         """
-        logger.info("🔤 Устанавливаем шрифт Times New Roman 11 для всего документа")
+        logger.info(" Устанавливаем шрифт Times New Roman 11 для всего документа")
 
         # Устанавливаем шрифт для всех стилей
         for style in doc.styles:
@@ -197,7 +197,7 @@ class FormattingMixin:
                             run.font.name = 'Times New Roman'
                             run.font.size = Pt(11)
 
-        logger.info("✅ Шрифт Times New Roman 11 установлен для всего документа")
+        logger.info(" Шрифт Times New Roman 11 установлен для всего документа")
 
     def apply_document_styles(self, doc: Document):
         """

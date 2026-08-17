@@ -10,6 +10,9 @@ export interface Obligation {
   contractNumber: string;
   contractDate: string;
   obligationType: string;
+  /** Период взыскания по обязательству (режим «Ипотека»): даты с / по. */
+  collectionPeriodFrom?: string;
+  collectionPeriodTo?: string;
 }
 
 export interface ThirdParty {
@@ -18,6 +21,8 @@ export interface ThirdParty {
   birthDate?: string;
   address?: string;
   inn?: string;
+  /** ОГРН (режим «Ипотека»): третье лицо — юрлицо. */
+  ogrn?: string;
   snils?: string;
 }
 
@@ -37,6 +42,50 @@ export interface Debtor {
   birthDate?: string;
   birthPlace?: string;
   snils?: string;
+  /** Паспорт (режим «Ипотека», роль «Ответчик»): серия 4 цифры, номер 6 цифр. */
+  passportSeries?: string;
+  passportNumber?: string;
+}
+
+/** Категория дела верхнего уровня — выбирается пользователем в меню после анализа.
+ *  'bankruptcy' — банкротство (полный функционал), 'collection' — взыскание
+ *  (заглушка, в разработке), 'mortgage' — ипотека (форма без банкротных блоков,
+ *  с созаёмщиком/поручителем/недвижимостью). Деривируется из documentType. */
+export type DocumentCategory = 'bankruptcy' | 'collection' | 'mortgage';
+
+/** Вид ипотеки: 'civil' — обычная (гражданская), 'military' — военная (ЦЖЗ,
+ *  добавляет ставки/период и формульную сверку в финблок), 'ddu' — договор
+ *  долевого участия (финблок как у обычной, доп. поля в «Предмете ипотеки»). */
+export type MortgageKind = 'civil' | 'military' | 'ddu';
+
+/** Лёгкая сторона дела с одинаковым набором полей: созаёмщик / поручитель
+ *  (ипотека). ТЗ: ФИО, ИНН, адрес проживания. */
+export interface PartyLite {
+  id: string;
+  name: string;
+  inn?: string;
+  address?: string;
+}
+
+/** Предмет ипотеки (режим «Ипотека»): реквизиты одного заложенного объекта.
+ *  Поля повторяют плоские ключи извлечения (mortgageCollateral*), но в списке —
+ *  чтобы поддержать несколько объектов в одном деле. */
+export interface MortgageProperty {
+  id: string;
+  description?: string;
+  cadastralNumber?: string;
+  address?: string;
+  value?: string;
+  startingPrice?: string;
+  appraisalReport?: string;
+  /** Запись в ЕГРН (номер) и её дата. */
+  egrnRecord?: string;
+  egrnRecordDate?: string;
+  /** Стратегия определения начальной продажной цены (НПЦ). */
+  npcStrategy?: string;
+  /** ДДУ (вид ипотеки 'ddu'): номер договора долевого участия и его дата. */
+  dduContract?: string;
+  dduDate?: string;
 }
 
 export type CollateralType = 'real_estate' | 'auto' | 'other';
@@ -193,6 +242,16 @@ export interface ExtractedData {
   /** Наследники умершего должника — заполняется только для статуса «Умерший». */
   heirs?: Heir[];
   debtors?: Debtor[];
+  /** Созаёмщики (режим «Ипотека»). Предзаполняются из со-должников, правятся вручную. */
+  coborrowers?: PartyLite[];
+  /** Поручители (режим «Ипотека»). Предзаполняются из третьих лиц, правятся вручную. */
+  guarantors?: PartyLite[];
+  /** Предметы ипотеки (режим «Ипотека»). Заложенных объектов может быть несколько —
+   *  храним массивом, как третьих лиц. Первый засевается из извлечённых полей. */
+  mortgageProperties?: MortgageProperty[];
+  /** Вид ипотеки, авто-детект бэкендом ('military' — если ФГКУ «Росвоенипотека»/
+   *  продукт «Военная ипотека»). Инициализирует переключатель, пользователь может сменить. */
+  mortgageKind?: MortgageKind;
   rawText: string;
   metadata: {
     pageCount: number;

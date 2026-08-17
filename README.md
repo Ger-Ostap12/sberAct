@@ -42,7 +42,13 @@ SberAct Document Generator - это десктопное приложение д
 - **RAM**: 8 GB+
 - **Диск**: 20 GB свободного места
 
-### Установка
+### Установка (конечный пользователь)
+
+Готовый дистрибутив ставится **офлайн, с флешки, без интернета** — установщик под
+Windows и AppImage под Linux/Astra. Полный порядок сборки, установки и обновлений —
+в [RELEASE.md](RELEASE.md).
+
+### Установка для разработки
 
 1. **Клонируйте репозиторий**
    ```bash
@@ -50,47 +56,25 @@ SberAct Document Generator - это десктопное приложение д
    cd sberact-document-generator
    ```
 
-2. **Запустите установку**
-   ```bash
-   sudo bash install.sh
-   ```
-
-3. **Запустите приложение**
-   ```bash
-   bash start.sh
-   ```
-
-### Ручная установка
-
-Если автоматическая установка не работает:
-
-1. **Установите системные зависимости**
-   ```bash
-   sudo apt update
-   sudo apt install -y python3 python3-pip python3-venv build-essential git curl
-   ```
-
-2. **Установите Node.js 18+**
-   ```bash
-   curl -fsSL https://deb.nodesource.com/setup_18.x | sudo bash -
-   sudo apt install -y nodejs
-   ```
-
-3. **Установите npm зависимости**
+2. **Установите npm-зависимости**
    ```bash
    npm install
    cd electron-app && npm install && cd ..
    ```
 
-4. **Настройте Python backend**
+3. **Настройте Python backend**
    ```bash
    cd python-backend
    python3 -m venv venv
-   source venv/bin/activate
+   source venv/bin/activate        # Windows: venv\Scripts\activate
    pip install -r requirements.txt
-   python -m spacy download ru_core_news_sm
    deactivate
    cd ..
+   ```
+
+4. **Запуск в dev-режиме** (React на :3000 + Electron)
+   ```bash
+   npm run dev
    ```
 
 ## 📖 Использование
@@ -131,9 +115,9 @@ sberact-document-generator/
 │   ├── app/                  # Основной код
 │   ├── requirements.txt      # Python зависимости
 │   └── venv/                # Виртуальное окружение
-├── install.sh               # Скрипт установки
-├── start.sh                 # Скрипт запуска
-├── build.sh                 # Скрипт сборки
+├── docker/                  # Docker-сборка Linux-артефактов (AppImage, конвертер)
+├── scripts/                 # Упаковка и установка (install-linux.sh, build-*.ps1)
+├── RELEASE.md               # Сборка, установка и обновления (Win/Linux)
 └── package.json             # Основные зависимости
 ```
 
@@ -216,27 +200,9 @@ cd electron-app && npm start
 
 ## 🚀 Сборка и развертывание
 
-### Сборка для Linux
-
-```bash
-# Сборка AppImage
-npm run dist:linux
-
-# Результат в папке dist/
-# - SberAct-Document-Generator-1.0.0-x64.AppImage
-```
-
-### Развертывание
-
-1. **Скопируйте AppImage файл на целевой компьютер**
-2. **Сделайте файл исполняемым**
-   ```bash
-   chmod +x SberAct-Document-Generator-1.0.0-x64.AppImage
-   ```
-3. **Запустите приложение**
-   ```bash
-   ./SberAct-Document-Generator-1.0.0-x64.AppImage
-   ```
+Полные пошаговые инструкции по сборке дистрибутивов (Windows-установщик и
+Linux AppImage + конвертер), установке и обновлениям с флешки — в
+[RELEASE.md](RELEASE.md). Историю версий см. в [CHANGELOG.md](CHANGELOG.md).
 
 ## 🔒 Безопасность
 

@@ -149,6 +149,66 @@ export interface ElectronAPI {
   /** Остановка sidecar-процесса (освобождает память после convert-шага). */
   converterStop: () => Promise<{ ok: boolean }>;
   converterStatus: () => Promise<ConverterProcessStatus>;
+  /** Версия приложения (десктоп — app.getVersion(); браузер — REACT_APP_VERSION). */
+  getAppVersion: () => Promise<string>;
+
+  // --- Офлайн-обновление с флешки (только десктоп; в браузере отсутствуют) ---
+  /** Выбрать папку SberAct-Update на флешке вручную. */
+  updatePickSource?: () => Promise<{ ok: boolean; path?: string }>;
+  /** Автопоиск папки обновления на съёмных дисках. */
+  updateAutoDetect?: () => Promise<{ ok: boolean; path: string | null }>;
+  /** Проверить оба канала обновления (app+backend и converter). */
+  updateCheck?: (chosenPath?: string) => Promise<UpdateCheckResult>;
+  /** Скачать app-обновление в staging electron-updater. */
+  updateDownload?: () => Promise<{ ok: boolean; error?: string }>;
+  /** Применить: converter-sync + установка/перезапуск. */
+  updateApply?: (opts: UpdateApplyOptions) => Promise<{ ok: boolean; restarting?: boolean; error?: string }>;
+  /** Прогресс скачивания app-обновления. Возвращает функцию отписки. */
+  onUpdateProgress?: (cb: (p: UpdateDownloadProgress) => void) => () => void;
+  /** Прогресс копирования файлов конвертера. Возвращает функцию отписки. */
+  onConverterProgress?: (cb: (p: { done: number; total: number }) => void) => () => void;
+  /** Ошибки апдейтера. Возвращает функцию отписки. */
+  onUpdateError?: (cb: (message: string) => void) => () => void;
+}
+
+/** Состояние одного канала обновления (app или converter). */
+export interface UpdateChannelState {
+  available: boolean;
+  version?: string | null;
+  currentVersion?: string | null;
+  installedVersion?: string | null;
+  filesChanged?: number;
+  filesDeleted?: number;
+  bytes?: number;
+  error?: string;
+}
+
+/** Внутренний план converter-sync (передаётся обратно в updateApply как есть). */
+export interface ConverterSyncPlan {
+  toCopy: Array<{ path: string; sha256?: string; size?: number }>;
+  toDelete: string[];
+  flashManifestPath: string;
+}
+
+export interface UpdateCheckResult {
+  ok: boolean;
+  error?: string;
+  source?: string;
+  app: UpdateChannelState;
+  converter: UpdateChannelState;
+  _converterPlan?: ConverterSyncPlan | null;
+}
+
+export interface UpdateApplyOptions {
+  appDownloaded: boolean;
+  converterPlan?: ConverterSyncPlan | null;
+}
+
+export interface UpdateDownloadProgress {
+  percent: number;
+  transferred: number;
+  total: number;
+  bytesPerSecond: number;
 }
 
 declare global {
@@ -249,6 +309,29 @@ export const converterStart = (): Promise<ConverterStartResult> => webApi.conver
 export const converterStop = (): Promise<{ ok: boolean }> => webApi.converterStop();
 
 export const converterStatus = (): Promise<ConverterProcessStatus> => webApi.converterStatus();
+
+/** Версия приложения (десктоп — из main-процесса; браузер — REACT_APP_VERSION). */
+export const getAppVersion = (): Promise<string> => getApi().getAppVersion();
+
+// ── Офлайн-обновление с флешки (только десктоп) ──
+export const updateCheck = (chosenPath?: string): Promise<UpdateCheckResult> =>
+  getElectronAPI().updateCheck!(chosenPath);
+export const updatePickSource = (): Promise<{ ok: boolean; path?: string }> =>
+  getElectronAPI().updatePickSource!();
+export const updateAutoDetect = (): Promise<{ ok: boolean; path: string | null }> =>
+  getElectronAPI().updateAutoDetect!();
+export const updateDownload = (): Promise<{ ok: boolean; error?: string }> =>
+  getElectronAPI().updateDownload!();
+export const updateApply = (
+  opts: UpdateApplyOptions
+): Promise<{ ok: boolean; restarting?: boolean; error?: string }> =>
+  getElectronAPI().updateApply!(opts);
+export const onUpdateProgress = (cb: (p: UpdateDownloadProgress) => void): (() => void) =>
+  getElectronAPI().onUpdateProgress!(cb);
+export const onConverterProgress = (cb: (p: { done: number; total: number }) => void): (() => void) =>
+  getElectronAPI().onConverterProgress!(cb);
+export const onUpdateError = (cb: (message: string) => void): (() => void) =>
+  getElectronAPI().onUpdateError!(cb);
 
 /** Переключение DevTools с фолбэком на глобальную openDevTools (как было в App). */
 export const toggleDevTools = (): void => {

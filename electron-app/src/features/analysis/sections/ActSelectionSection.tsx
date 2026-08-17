@@ -43,6 +43,9 @@ interface ActSelectionSectionProps {
   updateActRtkVariant: (actId: string, variant: 'realization' | 'restructuring' | 'competition' | 'observation' | 'registry') => void;
   recommendationsApplied: boolean;
   recommendedActs?: { entityType?: string; collateralOption?: string; recommendedActIds?: string[] } | undefined;
+  /** Чекбокс «Короткий текст»: доп. генерация резолютивки основной процедуры. */
+  shortText: boolean;
+  setShortText: (v: boolean) => void;
 }
 
 const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
@@ -61,6 +64,8 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
   updateActRtkVariant,
   recommendationsApplied,
   recommendedActs,
+  shortText,
+  setShortText,
 }) => {
   return (
           <Card sx={{ p: 3 }}>
@@ -210,6 +215,21 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                   label="Без залога"
                 />
               </Box>
+            </Box>
+
+            {/* Короткий текст — доп. генерация резолютивки основной процедуры к выбранным
+                актам. Если резолютивки нет (конкурсное, наблюдение с залогом) — при
+                генерации придёт предупреждение «нет шаблона». */}
+            <Box sx={{ mb: 4 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={shortText}
+                    onChange={(e) => setShortText(e.target.checked)}
+                  />
+                }
+                label="Короткий текст"
+              />
             </Box>
 
             {/* Три окна с актами */}

@@ -46,7 +46,7 @@ def _insert_paragraph_after(anchor: Paragraph, text: str) -> Paragraph:
 
 
 class _LineTarget:
-    """Строка предпросмотра → объект DOCX, куда её правка применяется."""
+    """Строка предпросмотра объект DOCX, куда её правка применяется."""
 
     def __init__(self, paragraph: Paragraph, cell: Optional[_Cell] = None):
         self.paragraph = paragraph
@@ -73,7 +73,7 @@ def _body_line_targets(doc: DocxDocument) -> Tuple[List[str], List[_LineTarget]]
                 if not cell.text.strip():
                     continue
                 # cell.text == '\n'.join(текстов абзацев ячейки); экстрактор
-                # кладёт cell.text.strip() одной частью → при split('\n') это
+                # кладёт cell.text.strip() одной частью при split('\n') это
                 # строки соответствующих абзацев без пустых краёв.
                 cell_paragraph_texts = [p.text for p in cell.paragraphs]
                 first = 0

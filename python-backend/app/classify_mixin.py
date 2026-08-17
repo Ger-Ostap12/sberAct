@@ -236,7 +236,7 @@ class ClassifyMixin:
             return False
 
         support = [name for name, rx in _SELF_BK_SUPPORT_RES if rx.search(text)]
-        logger.info(f"✅ Самобанкротство: сильные сигналы {strong}, поддерживающие {support}")
+        logger.info(f" Самобанкротство: сильные сигналы {strong}, поддерживающие {support}")
         return True
 
     def _initiation_petition_window(self, text: str) -> str:
@@ -259,8 +259,8 @@ class ClassifyMixin:
         return bool(_INIT_DECLARE_RE.search(window) or _INIT_PROCEDURE_RE.search(window))
 
     def _initiation_type_by_entity(self, text: str, has_ip_name: bool, text_lower: str) -> str:
-        """Тип инициирующего заявления по ДОЛЖНИКУ: ЮЛ → initiation_legal; ИП →
-        ip_enforcement_* (процедура из текста); ФЛ → initiation_physical.
+        """Тип инициирующего заявления по ДОЛЖНИКУ: ЮЛ initiation_legal; ИП
+        ip_enforcement_* (процедура из текста); ФЛ initiation_physical.
 
         Форму берём из сегментов, называющих ДОЛЖНИКА («о признании <должника>…»,
         «в отношении <должника>…», «Признать <должника> …банкротом»), а НЕ из
@@ -634,7 +634,7 @@ class ClassifyMixin:
         Определяет тип должника: КФХ, ЮЛ, ИП или ФЛ по извлечённым данным.
         Важно: для решения используем только имя ДОЛЖНИКА (debtorName или applicantName как fallback),
         чтобы не принять за должника название кредитора (банка).
-        Приоритет: КФХ → ЮЛ (явно в названии) → ИП (явно ИП) → ФЛ (ФИО) → ЮЛ по реквизитам.
+        Приоритет: КФХ ЮЛ (явно в названии) ИП (явно ИП) ФЛ (ФИО) ЮЛ по реквизитам.
         """
         applicant_name_raw = (fields.get("applicantName") or "").strip()
         debtor_name_raw = (fields.get("debtorName") or "").strip()

@@ -77,12 +77,22 @@ def test_unknown_act_errors_without_substituting_standard_set(gen):
     assert not result.get("documents")
 
 
-def test_missing_template_warns_and_does_not_substitute_another_act(gen):
-    """Шаблона выбранного акта нет физически (ртк.docx): остальные выбранные акты
+def test_missing_template_warns_and_does_not_substitute_another_act(gen, tmp_path, monkeypatch):
+    """Шаблона выбранного акта нет физически: остальные выбранные акты
     генерируются, по отсутствующему приходит warning — но чужой акт под его именем
-    не подставляется."""
+    не подставляется. Результат маппинга подменён напрямую (а не через реально
+    отсутствующий файл в Templates), чтобы тест не зависел от того, какой конкретно
+    шаблон отсутствует на диске в данный момент."""
+    real_return_path = gen._templates_root() / "промежуточные_особые" / "внести Возврат" / "возврат ртк ГП.docx"
+    assert real_return_path.exists(), "тест рассчитан на существующий шаблон 'Возврат'"
+    corrupted_templates = {
+        "return": {"name": "Возврат (РТК ГП)", "path": real_return_path, "order": 1},
+        "rtk_inclusion": {"name": "Определение ВКЛ в РТК (реализация)", "path": tmp_path / "нет-такого-файла.docx", "order": 2},
+    }
+    monkeypatch.setattr(gen, "_map_selected_acts_to_templates", lambda *a, **kw: (corrupted_templates, []))
+
     result = gen.generate(AUTO_TEMPLATE, _data(
-        selectedActsIds="acceptance_definition,final_rtk_inclusion",
+        selectedActsIds="intermediate_return,final_rtk_inclusion",
         selectedActsData=json.dumps([
             {"id": "final_rtk_inclusion", "selected": True, "rtkVariant": "realization"},
         ]),
@@ -91,8 +101,8 @@ def test_missing_template_warns_and_does_not_substitute_another_act(gen):
     ))
 
     assert result["success"] and result["count"] == 1
-    assert list(result["documents"]) == ["acceptance"]
-    assert any("ртк.docx" in w for w in result["warnings"])
+    assert list(result["documents"]) == ["return"]
+    assert any("файл шаблона не найден" in w for w in result["warnings"])
 
 
 def test_duplicate_act_ids_are_not_reported_as_unresolved(gen):

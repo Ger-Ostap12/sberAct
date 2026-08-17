@@ -26,6 +26,7 @@ _STOP_WORDS = {
     "ОБЯЗАТЕЛЬСТВА", "ОБЯЗАТЕЛЬСТВО", "СУД", "ИСТЕЦ", "ПРЕДСТАВИТЕЛЬ",
     "РОЖДЕНИЯ", "НАХОЖДЕНИЯ", "РЕГИСТРАЦИИ", "ПОРУЧИТЕЛЬ", "КРЕДИТОР",
     "ОТДЕЛЕНИЕ", "ФИЛИАЛ", "СОГЛАСНО", "ДОГОВОР", "СЕРИЯ", "ВЫДАН",
+    "ИСКОВОЕ", "ЗАЯВЛЕНИЕ",
 }
 
 # Токен ФИО: слово с заглавной (Titlecase ИЛИ КАПС), допускаем дефис.
@@ -54,6 +55,28 @@ def _looks_like_fio(line: str) -> bool:
 def is_person_name(value: str) -> bool:
     """Публичная проверка: похоже ли значение на ФИО физлица."""
     return _looks_like_fio(value or "")
+
+
+# Несовершеннолетний со-ответчик записывается как «<ФИО ребёнка> в лице законного
+# представителя <ФИО представителя>». Такая строка не проходит _looks_like_fio
+# (лишние слова-связки), поэтому распознаём её отдельным паттерном — вся строка
+# целиком идёт в поле ФИО ответчика (по требованию: связка сохраняется как есть).
+_NAME_SEQ_RE = r"[А-ЯЁ][А-ЯЁа-яё]*(?:-[А-ЯЁ][А-ЯЁа-яё]*)?(?:\s+[А-ЯЁ][А-ЯЁа-яё]*(?:-[А-ЯЁ][А-ЯЁа-яё]*)?){1,3}"
+_LEGAL_REP_RE = re.compile(
+    rf"^(?P<child>{_NAME_SEQ_RE})\s+[Вв]\s+лице\s+законного\s+представител\w*\s+"
+    rf"(?P<guardian>{_NAME_SEQ_RE})\s*$"
+)
+
+
+def _represented_minor_name(line: str):
+    """Если строка — «<ребёнок> в лице законного представителя <ФИО>», возвращает
+    нормализованную строку целиком (обе части Titlecase); иначе None."""
+    m = _LEGAL_REP_RE.match(line.strip().strip(","))
+    if not m:
+        return None
+    child = _normalize_fio(m.group("child"))
+    guardian = _normalize_fio(m.group("guardian"))
+    return f"{child} в лице законного представителя {guardian}"
 
 
 def _normalize_fio(line: str) -> str:
@@ -86,6 +109,8 @@ def extract_debtor_name(text: str):
     for hdr in (r"(?:Ответчик(?:и)?|Должник)", r"(?:Заёмщик|Заемщик)"):
         for m in re.finditer(rf"{hdr}\s*:?[ \t]*\n*[ \t]*([^\n]+)", text, re.IGNORECASE):
             candidate = m.group(1).strip()
+            # Срезаем канцелярский префикс строки «На № …» (поле бланка перед ФИО):
+            # «На № Базов Георгий Николаевич» -> «Базов Георгий Николаевич».
             candidate = re.sub(r"^(?:На\s*№|№)\s*", "", candidate).strip()
             candidate = re.split(
                 r"\t|\s{2,}|\bИНН\b|\bСНИЛС\b|\bОГРН\w*|\d",
@@ -213,7 +238,9 @@ def _full_respondents_block(text: str) -> str:
     rest = text[m.end():]
     stop = re.search(
         r"\n\s*(?:Цена\s+иска|Госпошлин|При\s+определении|ИСКОВОЕ|ЗАЯВЛЕНИЕ|ПРОСИТ|"
-        r"Истец|Кредитор|Представитель|Третьи?\s+лиц|Финансов\w+\s+управляющ|"
+        # «Треть[иеё]\w* лиц» покрывает и «Третьи лица:», и «Третье лицо:» (иначе блок
+        # ответчика заглатывал третьих лиц и брал их валидный ИНН).
+        r"Истец|Кредитор|Представитель|Треть[иеё]\w*\s+лиц|Финансов\w+\s+управляющ|"
         r"Согласно|Публичное\s+акционерное|Требовани)",
         rest, re.IGNORECASE,
     )
@@ -228,7 +255,7 @@ _BIRTH_MARKER_RE = re.compile(
 
 
 def _strip_address_label(addr: str) -> str:
-    """Срезает ведущую метку адреса («Адрес регистрации: …» → «…»)."""
+    """Срезает ведущую метку адреса («Адрес регистрации: …» «…»)."""
     return re.sub(
         r"^\s*(?:Адрес(?:\s+регистрации|\s+проживания|\s+места\s+жительства)?|"
         r"Место\s+(?:жительства|регистрации|нахождения)|"
@@ -240,9 +267,15 @@ def _strip_address_label(addr: str) -> str:
 def _parse_debtor_record(rec_text: str):
     """Разбирает запись одного должника: name, birthDate, birthPlace, snils, inn, address."""
     lines = [l.strip() for l in rec_text.split("\n") if l.strip()]
-    if not lines or not _looks_like_fio(lines[0]):
+    if not lines:
         return None
-    d = {"name": _normalize_fio(lines[0])}
+    rep_name = _represented_minor_name(lines[0])
+    if rep_name:
+        d = {"name": rep_name}
+    elif _looks_like_fio(lines[0]):
+        d = {"name": _normalize_fio(lines[0])}
+    else:
+        return None
 
     bd = _find_birthdate(rec_text)
     if bd:
@@ -257,6 +290,12 @@ def _parse_debtor_record(rec_text: str):
     m = re.search(r"СНИЛС[:\s]*(\d{3}[-\s]?\d{3}[-\s]?\d{3}[-\s]?\d{2})", rec_text, re.IGNORECASE)
     if m:
         d["snils"] = m.group(1).strip()
+
+    # Паспорт: «Паспорт: серия 1111 № 111111» (серия — 4 цифры, номер — 6).
+    pm = re.search(r"Паспорт[^\d\n]{0,20}?(\d{2}\s?\d{2})\s*(?:№|N|номер)?\s*(\d{6})\b", rec_text, re.IGNORECASE)
+    if pm:
+        d["passportSeries"] = re.sub(r"\s", "", pm.group(1))
+        d["passportNumber"] = pm.group(2)
 
     inn_cands = [re.sub(r"\D", "", c) for c in re.findall(r"ИНН[:\s]*([0-9\s]{10,12})", rec_text, re.IGNORECASE)]
     inn_cands = [c for c in inn_cands if 10 <= len(c) <= 12]
@@ -275,6 +314,8 @@ def _parse_debtor_record(rec_text: str):
         # Обрезаем хвост, если в адрес попали последующие метки (телефон/почта/реквизиты).
         addr = re.split(
             r"\s*(?:Контактн\w*\s+тел\w*\.?|Телефон|Тел\.?|E-?mail|Эл\.?\s*почт\w*|"
+            # «Иной (известный) адрес проживания» — вторичный адрес, в основной не тянем.
+            r"Ин[оы]\w*\s+(?:известн\w+\s+)?адрес|"
             r"СНИЛС|ИНН|ОГРН\w*|Паспорт|Дата\s+рождения)[:\s.]",
             addr, maxsplit=1, flags=re.IGNORECASE,
         )[0]
@@ -302,7 +343,7 @@ def extract_debtors(text: str) -> list:
     nonempty_after = []
     for i, line in enumerate(lines):
         s = line.strip()
-        if not s or not _looks_like_fio(s):
+        if not s or not (_looks_like_fio(s) or _represented_minor_name(s)):
             continue
         # Смотрим следующие до двух непустых строк на маркер даты рождения.
         window = []
@@ -336,7 +377,13 @@ def extract_debtors(text: str) -> list:
     return debtors
 
 
-_ORG_PREFIX_RE = re.compile(r"^(?:ИП|ООО|АО|ПАО|ЗАО|ОАО|Общество|Публичное)\b", re.IGNORECASE)
+_ORG_PREFIX_RE = re.compile(
+    r"^(?:ИП|ООО|АО|ПАО|ЗАО|ОАО|Общество|Публичное|"
+    # Казённые/бюджетные учреждения (напр. ФГКУ «Росвоенипотека» — третье лицо
+    # по военной ипотеке): «Федеральное государственное казенное учреждение …».
+    r"ФГКУ|ФГБУ|ФГУП|ГКУ|МКУ|МБУ|Федеральн\w+|Государственн\w+|Учреждени\w+|Управлени\w+)\b",
+    re.IGNORECASE,
+)
 
 
 def _third_parties_block(text: str) -> str:
@@ -347,7 +394,11 @@ def _third_parties_block(text: str) -> str:
     rest = text[m.end():]
     stop = re.search(
         r"\n\s*(?:Финансов\w+\s+управляющ|Временн\w+\s+управляющ|Конкурсн\w+\s+управляющ|Дело\s*№|ПРОШУ|ПРОСИТ|"
-        r"Кредитор|Истец|Согласно|Публичное\s+акционерное\s+общество\s+«|$)",
+        r"Кредитор|Истец|Согласно|"
+        # Тело искового: «Публичное акционерное общество "Сбербанк России"» (кавычки
+        # прямые ИЛИ ёлочки), а также поля-бланка после блока третьих лиц.
+        r"Публичное\s+акционерное\s+общество\s+[\"«]|Цена\s+иска|Госпошлин|При\s+определени|"
+        r"ИСКОВОЕ|ЗАЯВЛЕНИЕ|$)",
         rest, re.IGNORECASE,
     )
     return rest[: stop.start()] if stop else rest[:800]
@@ -376,7 +427,8 @@ def _parse_party_record(rec_text: str):
     if m:
         d["snils"] = m.group(1).strip()
 
-    inn_cands = [re.sub(r"\D", "", c) for c in re.findall(r"ИНН[:\s]*([0-9\s]{10,12})", rec_text, re.IGNORECASE)]
+    # «ИНН 7704…» или совмещённая метка «ИНН/КПП 7704159488/771401001» (учреждения).
+    inn_cands = [re.sub(r"\D", "", c) for c in re.findall(r"ИНН(?:\s*/\s*КПП)?[:\s]*([0-9\s]{10,12})", rec_text, re.IGNORECASE)]
     inn_cands = [c for c in inn_cands if 10 <= len(c) <= 12]
     if inn_cands:
         from requisites_validation import is_valid_inn
@@ -415,14 +467,19 @@ def extract_third_parties(text: str) -> list:
     block = _third_parties_block(text)
     if not block:
         return []
-    lines = block.split("\n")
-    starts = [i for i, l in enumerate(lines) if _is_party_start(l)]
     out = []
-    for k, idx in enumerate(starts):
-        end = starts[k + 1] if k + 1 < len(starts) else len(lines)
-        parsed = _parse_party_record("\n".join(lines[idx:end]))
-        if parsed:
-            out.append(parsed)
+    # Каждая метка «Третье лицо:» начинает новое лицо. При нормализации переносов
+    # метка склеивается с наименованием на след. строке («Третье лицо: Управление…»),
+    # из-за чего второе лицо не опознаётся как старт — поэтому режем блок ПО метке,
+    # а внутри сегмента добираем несколько лиц под одной меткой «Третьи лица:».
+    for seg in re.split(r"Треть[еи]\s+лиц\w*\s*:", block):
+        lines = seg.split("\n")
+        starts = [i for i, l in enumerate(lines) if _is_party_start(l)]
+        for k, idx in enumerate(starts):
+            end = starts[k + 1] if k + 1 < len(starts) else len(lines)
+            parsed = _parse_party_record("\n".join(lines[idx:end]))
+            if parsed:
+                out.append(parsed)
     return out
 
 _HEIR_LABEL_RE = re.compile(

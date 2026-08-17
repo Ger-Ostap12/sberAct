@@ -107,7 +107,7 @@ class IpExtractionMixin:
                 inn_value = re.sub(r"\D", "", inn_match.group(1))
                 if inn_value and len(inn_value) >= 9 and len(inn_value) <= 12:
                     fields["inn"] = inn_value
-                    logger.info(f"[extract_ip_enforcement_fields] ✅ Extracted inn из блока должника/ответчика: {inn_value}")
+                    logger.info(f"[extract_ip_enforcement_fields] Extracted inn из блока должника/ответчика: {inn_value}")
 
             # Извлекаем ОГРН/ОГРНИП
             # Сначала ищем маркер [4.1] (ОГРНИП) - это самый специфичный маркер
@@ -132,9 +132,9 @@ class IpExtractionMixin:
                 ogrn_value = re.sub(r"\D", "", ogrn_match.group(1))
                 if ogrn_value and len(ogrn_value) >= 12 and len(ogrn_value) <= 15:
                     fields["ogrnip"] = ogrn_value
-                    logger.info(f"[extract_ip_enforcement_fields] ✅ Extracted ogrnip из блока должника/ответчика: {ogrn_value}")
+                    logger.info(f"[extract_ip_enforcement_fields] Extracted ogrnip из блока должника/ответчика: {ogrn_value}")
         else:
-            logger.warning(f"[extract_ip_enforcement_fields] ⚠️ Блоки 'Должник:' и 'Ответчик:' не найдены - ИНН и ОГРН не будут извлечены")
+            logger.warning(f"[extract_ip_enforcement_fields] Блоки 'Должник:' и 'Ответчик:' не найдены - ИНН и ОГРН не будут извлечены")
         self._set_field(fields, normalized_text, 
             "snils",
             [
@@ -504,13 +504,13 @@ class IpExtractionMixin:
                 # Формируем значение периода
                 value = f"с {date_start} по {date_end}"
                 fields["debtSnapshotDate"] = value
-                logger.info(f"✅ Extracted debtSnapshotDate from period: {value} (start: {date_start}, end: {date_end})")
+                logger.info(f" Extracted debtSnapshotDate from period: {value} (start: {date_start}, end: {date_end})")
                 debt_snapshot_date_found = True
                 break
 
         # Если период не найден, используем обычные паттерны
         if not debt_snapshot_date_found:
-            logger.info("🔍 Период не найден, ищем debtSnapshotDate по обычным паттернам...")
+            logger.info(" Период не найден, ищем debtSnapshotDate по обычным паттернам...")
             self._set_field(fields, normalized_text, 
                 "debtSnapshotDate",
                 [
@@ -523,7 +523,7 @@ class IpExtractionMixin:
                 ]
             )
         else:
-            logger.info(f"✅ debtSnapshotDate успешно извлечена из периода: {fields.get('debtSnapshotDate')}")
+            logger.info(f" debtSnapshotDate успешно извлечена из периода: {fields.get('debtSnapshotDate')}")
 
         # Дополнительные сведения
         def clean_court_name(value: str) -> str:
@@ -612,7 +612,7 @@ class IpExtractionMixin:
             fields["debtAmount"] = fields["totalDebt"]
         has_collateral_markers = bool(re.search(r"договор\w*\s+залога|ипотек|предмет\s+залога|\[1221\]", text, re.IGNORECASE))
         if has_collateral_markers and "mortgageCollateralDescription1221" not in fields:
-            logger.info(f"🔍 Ищем mortgageCollateralDescription1221 для ИП с залогом...")
+            logger.info(f" Ищем mortgageCollateralDescription1221 для ИП с залогом...")
             collateral_patterns = [
                 r"что\s+подтверждается\s+договором\s+залога\s+№\s*[А-ЯЁ0-9/-]+(?:\s+от|от)\s+\d{1,2}[.,]\d{1,2}[.,]\d{4}\s*:\s*([\s\S]+?)(?=Наличие\s+заложенного\s+имущества\s+подтверждается\s+выпиской\s+из\s+ЕГРН|Наличие\s+заложенного|\[1221\]|\.\s+[А-ЯЁ]|\n\s*\n|ПРОСИТ|По\s+состоянию|Сумма\s+к|В\s+результате|$)",
                 # Без "что", с учетом отсутствия пробела
@@ -629,15 +629,15 @@ class IpExtractionMixin:
             self._set_field(fields, normalized_text, "mortgageCollateralDescription1221", collateral_patterns)
             if "mortgageCollateralDescription1221" in fields:
                 extracted_value = fields['mortgageCollateralDescription1221']
-                logger.info(f"✅ Извлечено mortgageCollateralDescription1221 ({len(extracted_value)} символов): {extracted_value[:150]}...")
+                logger.info(f" Извлечено mortgageCollateralDescription1221 ({len(extracted_value)} символов): {extracted_value[:150]}...")
             else:
-                logger.warning(f"⚠️ mortgageCollateralDescription1221 НЕ найдено! Проверяю текст документа...")
+                logger.warning(f" mortgageCollateralDescription1221 НЕ найдено! Проверяю текст документа...")
                 # Попробуем найти фрагмент текста для отладки
                 if "подтверждается договором залога" in text.lower():
                     start_idx = text.lower().find("подтверждается договором залога")
                     if start_idx >= 0:
                         snippet = text[max(0, start_idx-50):start_idx+500]
-                        logger.info(f"🔍 Найден фрагмент текста: ...{snippet}...")
+                        logger.info(f" Найден фрагмент текста: ...{snippet}...")
 
     def _set_field(self, fields, normalized_text, key: str, patterns, postprocess=None, flags=re.IGNORECASE | re.MULTILINE):
         for pattern in patterns:

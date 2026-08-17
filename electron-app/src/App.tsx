@@ -1,14 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box, Container, Typography, AppBar, Toolbar, IconButton, Tooltip } from '@mui/material';
-import { LocalOffer as DocumentIcon, BugReport as DevToolsIcon } from '@mui/icons-material';
+import { LocalOffer as DocumentIcon, BugReport as DevToolsIcon, SystemUpdateAlt as UpdateIcon } from '@mui/icons-material';
 import DocumentUpload from './features/upload/DocumentUpload';
 import DocumentAnalysis from './features/analysis/DocumentAnalysis';
 import DocumentPreview from './features/preview/DocumentPreview';
 import ConvertScreen from './features/convert/ConvertScreen';
-import { DocumentData, TemplateType, ExtractedData, AnalysisResult } from './types';
+import CategorySelection from './features/category/CategorySelection';
+import CollectionStub from './features/category/CollectionStub';
+import { DocumentData, TemplateType, ExtractedData, AnalysisResult, DocumentCategory } from './types';
 import { pickTemplate } from './templates';
+import { getAppVersion, hasElectronAPI } from './services/electronApi';
 import { toggleDevTools } from './services/electronApi';
+import UpdateDialog from './features/update/UpdateDialog';
 
 const theme = createTheme({
   palette: {
@@ -49,19 +53,40 @@ const theme = createTheme({
 });
 
 function App() {
-  const [currentStep, setCurrentStep] = useState<'upload' | 'convert' | 'analysis' | 'preview'>('upload');
+  const [currentStep, setCurrentStep] = useState<'upload' | 'convert' | 'category' | 'collection-stub' | 'analysis' | 'preview'>('upload');
+  /** Режим экрана анализа: банкротство (полная форма) или ипотека (без банкротных
+   *  блоков, с созаёмщиком/поручителем/недвижимостью). Задаётся в меню категорий. */
+  const [analysisMode, setAnalysisMode] = useState<'bankruptcy' | 'mortgage'>('bankruptcy');
   const [documentData, setDocumentData] = useState<DocumentData | null>(null);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateType | null>(null);
   const [generatedDocument, setGeneratedDocument] = useState<string | null>(null);
   /** PDF, ожидающий OCR-конвертации (шаг convert). */
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [appVersion, setAppVersion] = useState<string>('');
+  const [updateOpen, setUpdateOpen] = useState(false);
+
+  useEffect(() => {
+    getAppVersion().then(setAppVersion).catch(() => setAppVersion(''));
+  }, []);
 
   const handleDocumentUploaded = (data: DocumentData, analysisResult?: AnalysisResult) => {
     setDocumentData(data);
     if (analysisResult?.data) {
       setExtractedData(analysisResult.data);
     }
+    // После анализа показываем меню выбора категории (до формы полей).
+    setCurrentStep('category');
+  };
+
+  // Выбор категории в меню: банкротство/ипотека → форма в нужном режиме,
+  // взыскание → заглушка «в разработке».
+  const handleCategorySelected = (category: DocumentCategory) => {
+    if (category === 'collection') {
+      setCurrentStep('collection-stub');
+      return;
+    }
+    setAnalysisMode(category === 'mortgage' ? 'mortgage' : 'bankruptcy');
     setCurrentStep('analysis');
   };
 
@@ -97,6 +122,7 @@ function App() {
 
   const resetToUpload = () => {
     setCurrentStep('upload');
+    setAnalysisMode('bankruptcy');
     setDocumentData(null);
     setExtractedData(null);
     setSelectedTemplate(null);
@@ -128,13 +154,24 @@ function App() {
             onBack={resetToUpload}
           />
         );
+      case 'category':
+        return (
+          <CategorySelection
+            extractedData={extractedData || undefined}
+            onSelect={handleCategorySelected}
+            onBack={resetToUpload}
+          />
+        );
+      case 'collection-stub':
+        return <CollectionStub onBack={() => setCurrentStep('category')} />;
       case 'analysis':
         return (
           <DocumentAnalysis
             documentData={documentData!}
             extractedData={extractedData || undefined}
+            mode={analysisMode}
             onAnalysisComplete={handleAnalysisComplete}
-            onBack={() => setCurrentStep('upload')}
+            onBack={() => setCurrentStep('category')}
           />
         );
       case 'preview':
@@ -164,9 +201,25 @@ function App() {
         <AppBar position="static" elevation={0} sx={{ backgroundColor: 'white', color: 'primary.main' }}>
           <Toolbar>
             <DocumentIcon sx={{ mr: 2, fontSize: 32 }} />
-            <Typography variant="h4" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
+            <Typography variant="h4" component="div" sx={{ fontWeight: 600 }}>
               SberAct Document Generator
             </Typography>
+            {appVersion && (
+              <Typography
+                variant="body2"
+                sx={{ ml: 1.5, color: 'text.secondary', fontWeight: 500 }}
+              >
+                v{appVersion}
+              </Typography>
+            )}
+            <Box sx={{ flexGrow: 1 }} />
+            {hasElectronAPI() && (
+              <Tooltip title="Проверить обновления с флешки">
+                <IconButton color="inherit" onClick={() => setUpdateOpen(true)} sx={{ ml: 1 }}>
+                  <UpdateIcon />
+                </IconButton>
+              </Tooltip>
+            )}
             <Tooltip title="Открыть консоль разработчика (F12)">
               <IconButton
                 color="inherit"
@@ -178,6 +231,12 @@ function App() {
             </Tooltip>
           </Toolbar>
         </AppBar>
+
+        <UpdateDialog
+          open={updateOpen}
+          onClose={() => setUpdateOpen(false)}
+          currentVersion={appVersion}
+        />
 
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
           {renderCurrentStep()}

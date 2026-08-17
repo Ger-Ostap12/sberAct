@@ -20,6 +20,7 @@ from generator_inflection_mixin import GeneratorInflectionMixin
 from docx_ops_mixin import DocxOpsMixin
 from obligations_render_mixin import ObligationsRenderMixin
 from formatting_mixin import FormattingMixin
+import paths
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -29,11 +30,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         """
         Инициализация генератора документов
         """
-        if getattr(sys, "frozen", False):
-            self.generated_dir = Path(sys.executable).parent / "generated"
-        else:
-            self.generated_dir = Path(__file__).resolve().parents[2] / "generated"
-        self.generated_dir.mkdir(exist_ok=True)
+        self.generated_dir = paths.generated_dir()
 
         self.documents = {}
 
@@ -108,7 +105,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
 
         allow_any_docx_fallback=False отключает последний шаг («любой .docx в папке»).
         Этот шаг подставляет ПРОИЗВОЛЬНЫЙ акт, когда нужного файла нет: «О введении
-        наблюдения» → «О введении конкурсное ликвидируемый», «Продление Б/Д» →
+        наблюдения» «О введении конкурсное ликвидируемый», «Продление Б/Д»
         «Реализация ВКЛ несколько договоров». Для актов, ЯВНО выбранных пользователем,
         это недопустимо (решение Андрея): лучше честно сообщить, что шаблона нет, чем
         выдать под видом выбранного акта другой. Для стандартного роутинга шаг оставлен.
@@ -196,7 +193,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         """Достаёт чистое короткое наименование организации из списка кандидатов.
 
         Приоритет — содержимое ёлочек «...» (канонический формат debtorName:
-        «ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «ОРГТЕХНИКА»» → ОРГТЕХНИКА).
+        «ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «ОРГТЕХНИКА»» ОРГТЕХНИКА).
         Ёлочки берём раньше остального, потому что legalShortName иногда приходит
         кривым ('ОРГТЕХНИКА" (ООО "ОРГТЕХНИКА")') и извлечение из прямых кавычек
         давало мусор «(ООО». Если ёлочек нет ни у одного кандидата — срезаем
@@ -282,12 +279,14 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 cleaned_data[key] = value
 
         logger.info(f"Очищенные данные: {cleaned_data}")
-        logger.info(f"📊 Ключевые поля в cleaned_data: creditorName={cleaned_data.get('creditorName')}, inn={cleaned_data.get('inn')}, creditorAddress={cleaned_data.get('creditorAddress')}")
+        logger.info(f" Ключевые поля в cleaned_data: creditorName={cleaned_data.get('creditorName')}, inn={cleaned_data.get('inn')}, creditorAddress={cleaned_data.get('creditorAddress')}")
 
         # Для ЮЛ используем короткое наименование в [2]/[2.1]/[2.2], чтобы не тянуть
         # артефакты вроде "ИП Общества..." и некорректные ФИО-падежи.
         if (cleaned_data.get("entityType") or "").strip().lower() == "legal":
-            
+            # Приоритет кандидатов: debtorName (канонический «…»-формат) впереди
+            # legalShortName, т.к. legalShortName иногда приходит кривым
+            # ('ОРГТЕХНИКА" (ООО "ОРГТЕХНИКА")') и ломает извлечение «(ооо».
             legal_name = self._extract_org_short_name([
                 cleaned_data.get("debtorName"),
                 cleaned_data.get("legalShortName"),
@@ -300,13 +299,16 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 cleaned_data["applicantNameInstrumental"] = legal_name
                 cleaned_data["applicantNameAccusative"] = legal_name
                 cleaned_data["legalShortName"] = legal_name
-                logger.info(f"🏢 Для ЮЛ нормализовано имя должника: {legal_name}")
+                logger.info(f" Для ЮЛ нормализовано имя должника: {legal_name}")
 
 
         creditor_name = str(cleaned_data.get("creditorName") or "").strip()
         if creditor_name:
             if creditor_name.upper().startswith("ФНС"):
-                
+                # ФНС: в шаблонах маркер [989] стоит ПОСЛЕ "ФНС России в лице", поэтому
+                # кладём в [989] только часть после "в лице" (иначе "ФНС России в лице
+                # ФНС России в лице …" — дублирование). Регистр НЕ нормализуем — там
+                # аббревиатуры ИФНС/УФНС, которые title-case ломает (ИФНС Ифнс).
                 cleaned_data["_fnsCreditor"] = True
                 m = re.match(r'^\s*ФНС\s+России\s+в\s+лице\s+(.+)$', creditor_name,
                              re.IGNORECASE | re.DOTALL)
@@ -405,7 +407,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                         ).strip()
                         if cleaned_field_value:
                             cleaned_data[field_name] = cleaned_field_value
-                            logger.info(f"🧹 Очищено {field_name} КФХ: '{field_value}' -> '{cleaned_field_value}'")
+                            logger.info(f" Очищено {field_name} КФХ: '{field_value}' -> '{cleaned_field_value}'")
 
         if entity_type == "legal" and not is_ip:
             ogrn_value = re.sub(r"\D", "", str(cleaned_data.get("ogrn") or ""))
@@ -423,7 +425,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
 
         # Для ИП сохраняем все поля, включая birthDate, snils, ipCollateralContractNumber
         if is_ip:
-            logger.info(f"🔍 Проверка полей для ИП: birthDate={cleaned_data.get('birthDate')}, snils={cleaned_data.get('snils')}, ipCollateralContractNumber={cleaned_data.get('ipCollateralContractNumber')}")
+            logger.info(f" Проверка полей для ИП: birthDate={cleaned_data.get('birthDate')}, snils={cleaned_data.get('snils')}, ipCollateralContractNumber={cleaned_data.get('ipCollateralContractNumber')}")
 
         # Проверяем наличие новых полей
         new_fields = ['principalDebt13', 'interest14', 'forfeit15', 'stateDuty16']
@@ -716,6 +718,18 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             # Они будут заменены из обязательств в replace_obligations_data
             field_mapping.pop("contractDate", None)
             field_mapping.pop("contractNumber", None)
+
+            # Родительный падеж названия суда для акта ([002.1]). Приоритет —
+            # значение из формы (mortgageCourtNameGenitive — «якорь» справочника,
+            # гарантированно верная форма); иначе склоняем название суда морфологией.
+            court_gen = (cleaned_data.get("mortgageCourtNameGenitive") or "").strip()
+            if not court_gen:
+                court_src = cleaned_data.get("mortgageCourtName002") or cleaned_data.get("courtName") or ""
+                court_gen = self._court_name_to_genitive(court_src)
+            if court_gen:
+                cleaned_data["mortgageCourtNameGenitive"] = court_gen
+                field_mapping["mortgageCourtNameGenitive"] = "002.1"
+                logger.info(f"Родительный падеж названия суда для [002.1]: {court_gen}")
             # Для ипотеки используем mortgageDebtorName или debtorName вместо applicantName для [2]
             def strip_ooo(name: str) -> str:
                 """Remove ООО/Общество с ограниченной ответственностью prefix to leave only the org name."""
@@ -844,6 +858,43 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 logger.warning(f"Не удалось найти правильное ФИО ответчика. mortgageDebtorName: {mortgage_debtor_name}, debtorName: {debtor_name[:100] if debtor_name else 'None'}, applicantName: {current_applicant_name[:100] if current_applicant_name else 'None'}")
         return field_mapping
 
+    def _court_name_to_case(self, name: str, grammeme: str) -> str:
+        """Название суда → заданный падеж (grammeme pymorphy: 'gent'/'datv'/'loct'/…).
+        Одно поле формы (именительный) → любой падеж для акта. Склоняем пословно
+        прилагательные и слово «суд» (до него включительно); хвост (город,
+        «г. Ростова-на-Дону») оставляем как есть — иначе морфология искажает топоним.
+        Fallback — исходное слово, если pymorphy не разобрал. Регистр первого
+        символа каждого слова сохраняем."""
+        if not name or not name.strip():
+            return name
+        try:
+            from pymorphy3 import MorphAnalyzer
+            morph = MorphAnalyzer()
+        except Exception as e:
+            logger.warning(f"pymorphy недоступен для склонения суда: {e}")
+            return name
+        words = name.split()
+        result: list = []
+        inflect_done = False
+        for word in words:
+            if inflect_done:
+                result.append(word)
+                continue
+            parsed = morph.parse(word)[0]
+            form = parsed.inflect({grammeme})
+            inflected = form.word if form else word
+            if word[:1].isupper():
+                inflected = inflected[:1].upper() + inflected[1:]
+            result.append(inflected)
+            # После слова с леммой «суд» склонение прекращаем (город — как есть).
+            if parsed.normal_form == "суд":
+                inflect_done = True
+        return " ".join(result)
+
+    def _court_name_to_genitive(self, name: str) -> str:
+        """Родительный падеж названия суда («…районного суда…»)."""
+        return self._court_name_to_case(name, "gent")
+
     def _base_field_mapping(self) -> Dict[str, str]:
         """Базовый маппинг полей данных на номера маркеров шаблона
         ([1], [2], [2.1], [13]…). Возвращает свежий словарь (вызывающий код
@@ -906,8 +957,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             "forfeit": "15",             # [15] - Неустойка (общее поле)
             "penalties": "15",           # [15] - Штрафные санкции (синоним неустойки)
             # ФНС (уполномоченный орган): суммы по очередям реестра требований кредиторов.
-            # Недоимка по очередям → [34.1]/[34.2]/[34.3]; штрафы 3-й очереди → [26];
-            # пени 3-й очереди → [27]; основной долг (ЮЛ/субсидиарка) → [13].
+            # Недоимка по очередям [34.1]/[34.2]/[34.3]; штрафы 3-й очереди [26];
+            # пени 3-й очереди [27]; основной долг (ЮЛ/субсидиарка) [13].
             # Эти поля есть только в ФНС-заявлениях, поэтому обычным актам не мешают.
             "fnsQ1Arrears": "34.1",      # [34.1] - Недоимка 1-й очереди
             "fnsQ2Arrears": "34.2",      # [34.2] - Недоимка 2-й очереди
@@ -976,7 +1027,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 for field, marker in (("Name25", "25"), ("BirthDate52", "52"), ("Address54", "54"))
             },
             # Ранее вынесенное решение другого суда (вставляется только в те акты,
-            # где эти маркеры физически есть в шаблоне → «не во все»).
+            # где эти маркеры физически есть в шаблоне «не во все»).
             "priorCourtName": "90",               # [90] - Суд ранее вынесенного решения
             "priorCaseNumber": "91",              # [91] - Номер дела ранее вынесенного решения
             "priorAmount": "92",                  # [92] - Взысканная сумма по ранее вынесенному решению
@@ -1149,14 +1200,15 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 if original_value.strip().upper() == "ИП":
                     continue
                 # ФНС-кредитор — не имя, а орг. название с аббревиатурами (ИФНС/УФНС),
-                # title-case их ломает (ИФНС→Ифнс). Оставляем регистр как есть.
+                # title-case их ломает (ИФНС Ифнс). Оставляем регистр как есть.
                 if field_name == "creditorName" and cleaned_data.get("_fnsCreditor"):
                     continue
                 normalized_value = self._normalize_name_case(original_value)
                 if normalized_value != original_value:
                     cleaned_data[field_name] = normalized_value
-                    logger.info(f"📝 Нормализован регистр {field_name}: '{original_value}' -> '{normalized_value}'")
+                    logger.info(f" Нормализован регистр {field_name}: '{original_value}' -> '{normalized_value}'")
 
+        # Заменяем данные в параграфах
         logger.info("Начинаем замену данных в документе...")
 
         # Нормализация номера дела: убираем лишний суффикс после года (А44-1233-4/2025-4 -> А44-1233-4/2025)
@@ -1179,7 +1231,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 year2 = match.group(4)
                 if year1 == year2 and suffix in prefix:
                     cleaned_data["caseNumber"] = f"{prefix}/{year1}"
-                    logger.info(f"📝 Исправлено дублирование номера дела: {case_number} -> {cleaned_data['caseNumber']}")
+                    logger.info(f" Исправлено дублирование номера дела: {case_number} -> {cleaned_data['caseNumber']}")
                     case_number = cleaned_data["caseNumber"]
 
         # Модифицируем номер дела, если есть номер обособленного спора (только если его ещё нет в номере)
@@ -1194,11 +1246,11 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     prefix = match.group(1)
                     year = match.group(2)
                     if prefix.endswith(f"-{separate_dispute_number}"):
-                        logger.info(f"📝 Номер дела уже содержит обособленный спор: {case_number}")
+                        logger.info(f" Номер дела уже содержит обособленный спор: {case_number}")
                     else:
                         modified_case_number = f"{prefix}-{separate_dispute_number}/{year}"
                         cleaned_data["caseNumber"] = modified_case_number
-                        logger.info(f"📝 Номер дела модифицирован с учетом обособленного спора: {case_number} -> {modified_case_number}")
+                        logger.info(f" Номер дела модифицирован с учетом обособленного спора: {case_number} -> {modified_case_number}")
                 else:
                     if '/' in case_number:
                         parts = case_number.rsplit('/', 1)
@@ -1475,7 +1527,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         из которых: [34.3] недоимка, [27] пени»), а в реструктуризации — ОБЩУЮ
         сумму долга. Здесь заполняем [12] подытогом 3-й очереди (fnsQ3Total) только
         в абзацах про третью очередь с оборотом «из которых». Остальные [12]
-        (общая сумма) заполнит обычный маппинг totalDebt→[12] позже. fnsQ3Total уже
+        (общая сумма) заполнит обычный маппинг totalDebt [12] позже. fnsQ3Total уже
         отформатирован как сумма в _prepare_replacement_data."""
         q3 = str(cleaned_data.get("fnsQ3Total") or "").strip()
         if not q3:
@@ -1512,7 +1564,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         def _fill(match):
             return match.group(1) + date_only
 
-        # «…конкурсное производство сроком до __.__.____» → «…сроком до 31.07.2026»
+        # «…конкурсное производство сроком до __.__.____» «…сроком до 31.07.2026»
         self._replace_regex_in_doc(
             doc,
             r"(конкурсн\w*\s+производств\w*\s+сроком\s+до\s+)_[_.]*_",
@@ -1562,7 +1614,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             cleaned_data: Данные с заполненными полями
             field_mapping: Маппинг полей на номера маркеров
         """
-        logger.info("🧹 Удаляем пустые маркеры из документа")
+        logger.info(" Удаляем пустые маркеры из документа")
 
         all_placeholders = self._collect_placeholders(doc)
 
@@ -1617,7 +1669,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 if not marker_value:
                     self._remove_placeholder_with_context(doc, placeholder)
                     removed_count += 1
-                    logger.info(f"🗑️ Удален пустой специальный маркер с контекстом: {placeholder}")
+                    logger.info(f" Удален пустой специальный маркер с контекстом: {placeholder}")
                 # Если значение есть, маркер уже был заменен в предыдущих шагах, пропускаем
                 continue
 
@@ -1632,7 +1684,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 if not has_value:
                     self._remove_placeholder_with_context(doc, placeholder)
                     removed_count += 1
-                    logger.info(f"🗑️ Удален пустой маркер с контекстом: {placeholder} (поля: {', '.join(marker_to_fields[placeholder])})")
+                    logger.info(f" Удален пустой маркер с контекстом: {placeholder} (поля: {', '.join(marker_to_fields[placeholder])})")
             else:
                 # Маркер не найден в маппинге - возможно, это неизвестный маркер
                 marker_num = placeholder.strip('[]')
@@ -1646,7 +1698,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 if not has_value_in_data:
                     self._remove_placeholder_with_context(doc, placeholder)
                     removed_count += 1
-                    logger.info(f"🗑️ Удален неизвестный маркер с контекстом: {placeholder}")
+                    logger.info(f" Удален неизвестный маркер с контекстом: {placeholder}")
 
         # После общей очистки отдельно обрабатываем госпошлины:
         # - если для [16] нет суммы — удаляем только её строку
@@ -1786,18 +1838,18 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         if normalized_template == "deceased" or source_document_type == "deceased" or (data.get('procedureType') or '').lower() == "deceased" or any(keyword in (data.get('procedureTypeRaw') or '').lower() for keyword in ["умер", "умерший", "смерть", "смерти"]):
             templates = self._get_templates_for_procedure("deceased")
             procedure_type = "deceased"
-            logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для процедуры: умерший")
+            logger.info(f" НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для процедуры: умерший")
         elif normalized_template == "physical_restructuring_collateral" or source_document_type_for_routing == "physical_restructuring_collateral":
             templates = self._get_physical_restructuring_collateral_templates()
             procedure_type = "physical_restructuring_collateral"
             logger.info(
-                f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для заявления ФЛ с залогом в реструктуризации"
+                f" НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для заявления ФЛ с залогом в реструктуризации"
             )
         elif normalized_template == "physical_realization_collateral" or source_document_type_for_routing == "physical_realization_collateral":
             templates = self._get_physical_collateral_templates()
             procedure_type = "physical_realization_collateral"
             logger.info(
-                f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для заявления ФЛ с залогом в реализации"
+                f" НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для заявления ФЛ с залогом в реализации"
             )
         elif normalized_template in ["kfh_observation", "kfh_observation_collateral"] or \
              (is_kfh and (normalized_template in ["observation", "observation_single", "observation_multiple"] or
@@ -1825,35 +1877,35 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             templates = self._get_kfh_observation_templates(has_collateral=has_collateral)
             procedure_type = "kfh_observation_collateral" if has_collateral else "kfh_observation"
             logger.info(
-                f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для КФХ "
+                f" НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для КФХ "
                 f"({'наблюдение с залогом' if has_collateral else 'наблюдение, без залога'})"
             )
         elif normalized_template == "ip_collection_collateral" or source_document_type_for_routing == "ip_collection_collateral":
             templates = self._get_ip_collection_collateral_templates()
             procedure_type = "ip_collection_collateral"
-            logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП с залогом")
+            logger.info(f" НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП с залогом")
         elif normalized_template == "ip_collection_collateral_auto" or source_document_type_for_routing == "ip_collection_collateral_auto":
             # [1221] — описание авто
             templates = self._get_ip_collection_collateral_auto_templates()
             procedure_type = "ip_collection_collateral_auto"
-            logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП залог авто")
+            logger.info(f" НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП залог авто")
         elif normalized_template == "legal_collection" or source_document_type_for_routing == "legal_collection":
             templates = self._get_legal_collection_templates()
             procedure_type = "legal_collection"
-            logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ")
+            logger.info(f" НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ")
         elif normalized_template == "legal_collection_collateral" or source_document_type_for_routing == "legal_collection_collateral":
             templates = self._get_legal_collection_collateral_templates()
             procedure_type = "legal_collection_collateral"
-            logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ с залогом")
+            logger.info(f" НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ с залогом")
         elif normalized_template == "legal_collection_collateral_auto" or source_document_type_for_routing == "legal_collection_collateral_auto":
             # [1221] — описание авто
             templates = self._get_legal_collection_collateral_auto_templates()
             procedure_type = "legal_collection_collateral_auto"
-            logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ залог авто")
+            logger.info(f" НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ЮЛ залог авто")
         elif normalized_template == "ip_collection" or source_document_type_for_routing == "ip_collection":
             templates = self._get_ip_collection_templates()
             procedure_type = "ip_collection"
-            logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП")
+            logger.info(f" НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для искового заявления о взыскании с ИП")
         elif normalized_template in ["ip_enforcement", "ip_enforcement_realization", "ip_enforcement_realization_collateral",
                                      "ip_enforcement_restructuring", "ip_enforcement_restructuring_collateral"] or \
              source_document_type_for_routing in ["ip_enforcement_statement", "ip_enforcement_statement_collateral",
@@ -1876,49 +1928,49 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             templates = self._get_ip_enforcement_templates(has_collateral_flag, ip_procedure_type)
             procedure_type = source_document_type_for_routing or normalized_template or "ip_enforcement"
             logger.info(
-                f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для заявления ИП "
+                f" НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для заявления ИП "
                 f"({ip_procedure_type}, залог: {'есть' if has_collateral_flag else 'нет'})"
             )
         elif normalized_template == "initiation_physical" or source_document_type_for_routing == "initiation_physical":
             templates = self._get_initiation_physical_templates()
             procedure_type = "initiation_physical"
             data["_skip_obligation_blocks"] = True
-            logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 3 ДОКУМЕНТОВ для инициирования банкротства физического лица")
+            logger.info(" НАЧИНАЕМ ГЕНЕРАЦИЮ 3 ДОКУМЕНТОВ для инициирования банкротства физического лица")
         elif normalized_template == "initiation_legal" or source_document_type_for_routing == "initiation_legal":
             templates = self._get_initiation_legal_templates()
             procedure_type = "initiation_legal"
-            logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 2 ДОКУМЕНТОВ для инициирования банкротства юридического лица")
+            logger.info(" НАЧИНАЕМ ГЕНЕРАЦИЮ 2 ДОКУМЕНТОВ для инициирования банкротства юридического лица")
         elif normalized_template == "initiation_legal_competition_absent":
             templates = self._get_initiation_legal_templates(contest_type="absent")
             procedure_type = "initiation_legal_competition_absent"
-            logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 2 ДОКУМЕНТОВ для инициирования ЮЛ (конкурсное, отсутствующий должник)")
+            logger.info(" НАЧИНАЕМ ГЕНЕРАЦИЮ 2 ДОКУМЕНТОВ для инициирования ЮЛ (конкурсное, отсутствующий должник)")
         elif normalized_template == "initiation_legal_competition_liquidation":
             templates = self._get_initiation_legal_templates(contest_type="liquidation")
             procedure_type = "initiation_legal_competition_liquidation"
-            logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 2 ДОКУМЕНТОВ для инициирования ЮЛ (конкурсное, ликвидируемый должник)")
+            logger.info(" НАЧИНАЕМ ГЕНЕРАЦИЮ 2 ДОКУМЕНТОВ для инициирования ЮЛ (конкурсное, ликвидируемый должник)")
         elif normalized_template == "mortgage" or source_document_type_for_routing == "mortgage_claim":
             templates = self._get_mortgage_templates()
             procedure_type = "mortgage"
             data["_skip_obligation_blocks"] = True
-            logger.info("🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ 1 ДОКУМЕНТА для ипотечного иска")
+            logger.info(" НАЧИНАЕМ ГЕНЕРАЦИЮ 1 ДОКУМЕНТА для ипотечного иска")
         elif normalized_template == "observation_collateral" or source_document_type_for_routing == "observation_collateral":
             if is_kfh:
                 templates = self._get_kfh_observation_templates(has_collateral=True)
                 procedure_type = "kfh_observation_collateral"
                 logger.info(
-                    f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для КФХ (наблюдение с залогом)"
+                    f" НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для КФХ (наблюдение с залогом)"
                 )
             else:
                 templates = self._get_templates_for_procedure("observation_collateral")
                 procedure_type = "observation_collateral"
                 logger.info(
-                    f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для наблюдения с залогом"
+                    f" НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для наблюдения с залогом"
                 )
         elif normalized_template == "competition_collateral" or source_document_type_for_routing == "competition_collateral":
             templates = self._get_templates_for_procedure("competition_collateral")
             procedure_type = "competition_collateral"
             logger.info(
-                f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для конкурсного производства с залогом"
+                f" НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для конкурсного производства с залогом"
             )
         else:
             procedure_type = (data.get('procedureType') or '').lower()
@@ -1929,7 +1981,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             if procedure_type == "deceased" or any(keyword in raw for keyword in ["умер", "умерший", "смерть", "смерти"]):
                 procedure_type = 'deceased'
                 templates = self._get_templates_for_procedure("deceased")
-                logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для процедуры: умерший")
+                logger.info(f" НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для процедуры: умерший")
             else:
                 if entity_type in {"legal", "юридическое лицо", "юрлицо"} or is_kfh:
                     # Для КФХ процедуры такие же, как у юрлица (наблюдение),
@@ -1950,12 +2002,12 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 if is_kfh and procedure_type == "observation":
                     templates = self._get_kfh_observation_templates(has_collateral=False)
                     logger.info(
-                        f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для КФХ (наблюдение, без залога)"
+                        f" НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для КФХ (наблюдение, без залога)"
                     )
                     procedure_type = "kfh_observation"
                 else:
                     templates = self._get_templates_for_procedure(procedure_type)
-                    logger.info(f"🚀 НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для процедуры: {procedure_type}")
+                    logger.info(f" НАЧИНАЕМ ГЕНЕРАЦИЮ {len(templates)} ДОКУМЕНТОВ для процедуры: {procedure_type}")
         return templates, procedure_type
 
     def generate(self, template_type: str, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -2013,8 +2065,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             # Если пользователь выбрал акты в интерфейсе (старый режим "выбор актов"),
             # и при этом нет явного template_type — используем их.
             if can_use_selected_acts:
-                logger.info(f"🎯 Используем выбранные пользователем акты: {selected_acts_ids}")
-                logger.info(f"📋 Тип лица: {selected_entity_type}, Залог: {selected_collateral_option}")
+                logger.info(f" Используем выбранные пользователем акты: {selected_acts_ids}")
+                logger.info(f" Тип лица: {selected_entity_type}, Залог: {selected_collateral_option}")
 
                 # Извлекаем дополнительные поля из selectedActsData (JSON строка)
                 if selected_acts_data_str:
@@ -2028,7 +2080,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
 
                             if act_id == "final_rtk_inclusion" and rtk_variant:
                                 data["final_rtk_inclusion_variant"] = rtk_variant
-                                logger.info(f"📝 Вариант для final_rtk_inclusion: {rtk_variant}")
+                                logger.info(f" Вариант для final_rtk_inclusion: {rtk_variant}")
 
                             if additional_fields:
                                 reason = additional_fields.get("reason", "")
@@ -2044,17 +2096,17 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                                     data["intermediate_postponement_reason"] = reason
                                     data["intermediate_postponement_forParties"] = for_parties
                                     data["intermediate_postponement_courtRequests"] = court_requests
-                                    logger.info(f"📝 Дополнительные поля для {act_id}: reason={reason[:50]}..., forParties={for_parties[:50]}..., courtRequests={court_requests[:50]}...")
+                                    logger.info(f" Дополнительные поля для {act_id}: reason={reason[:50]}..., forParties={for_parties[:50]}..., courtRequests={court_requests[:50]}...")
                                 elif act_id == "acceptance_definition":
                                     data["acceptance_definition_courtRequests"] = court_requests
-                                    logger.info(f"📝 Дополнительные поля для {act_id}: courtRequests={court_requests[:50]}...")
+                                    logger.info(f" Дополнительные поля для {act_id}: courtRequests={court_requests[:50]}...")
                                 elif act_id == "acceptance_after_no_motion":
                                     data["acceptance_after_no_motion_courtRequests"] = court_requests
-                                    logger.info(f"📝 Дополнительные поля для {act_id}: courtRequests={court_requests[:50]}...")
+                                    logger.info(f" Дополнительные поля для {act_id}: courtRequests={court_requests[:50]}...")
                                 else:
-                                    logger.info(f"📝 Дополнительные поля для {act_id}: reason={reason[:50]}..., forParties={for_parties[:50]}...")
+                                    logger.info(f" Дополнительные поля для {act_id}: reason={reason[:50]}..., forParties={for_parties[:50]}...")
                     except Exception as e:
-                        logger.warning(f"⚠️ Не удалось распарсить selectedActsData: {e}")
+                        logger.warning(f" Не удалось распарсить selectedActsData: {e}")
 
                 templates, unresolved_act_ids = self._map_selected_acts_to_templates(
                     selected_acts_ids,
@@ -2071,10 +2123,10 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                         "Не удалось подобрать шаблоны для выбранных актов: "
                         + ", ".join(unresolved_act_ids or [selected_acts_ids])
                     )
-                    logger.error(f"❌ {error_message}")
+                    logger.error(f" {error_message}")
                     return {"success": False, "error": error_message}
 
-                logger.info(f"✅ Найдено {len(templates)} шаблонов для выбранных актов")
+                logger.info(f" Найдено {len(templates)} шаблонов для выбранных актов")
                 procedure_type = "custom_selected_acts"
 
             use_standard_logic = not can_use_selected_acts
@@ -2086,14 +2138,14 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 )
             # Если templates не был установлен выше (стандартная логика), он должен быть установлен в блоке else
             if 'templates' not in locals() or templates is None:
-                logger.error("❌ Не удалось определить шаблоны для генерации")
+                logger.error(" Не удалось определить шаблоны для генерации")
                 return {
                     "success": False,
                     "error": "Не удалось определить шаблоны для генерации документов"
                 }
 
-            logger.info(f"📊 Полученные данные: {data}")
-            logger.info(f"📋 Будет сгенерировано {len(templates)} документов")
+            logger.info(f" Полученные данные: {data}")
+            logger.info(f" Будет сгенерировано {len(templates)} документов")
 
             generated_documents = {}
             document_ids = []
@@ -2105,7 +2157,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             ]
 
             for doc_type, template_info in templates.items():
-                logger.info(f"📄 Генерируем документ: {template_info['name']}")
+                logger.info(f" Генерируем документ: {template_info['name']}")
 
                 # Акт выбран пользователем — резолвим строго, без подмены произвольным .docx
                 template_path = self._resolve_template_path(
@@ -2151,9 +2203,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     "order": template_info['order']
                 }
 
-                logger.info(f"✅ Документ '{template_info['name']}' успешно сгенерирован: {file_path}")
+                logger.info(f" Документ '{template_info['name']}' успешно сгенерирован: {file_path}")
 
-            logger.info(f"🎉 Сгенерировано документов: {len(generated_documents)}")
+            logger.info(f" Сгенерировано документов: {len(generated_documents)}")
 
             if len(generated_documents) == 0:
                 missing_templates = []
@@ -2175,7 +2227,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 "count": len(generated_documents)
             }
             if warnings:
-                logger.warning("⚠️ Сгенерированы не все выбранные акты: " + "; ".join(warnings))
+                logger.warning(" Сгенерированы не все выбранные акты: " + "; ".join(warnings))
                 result["warnings"] = warnings
             return result
 

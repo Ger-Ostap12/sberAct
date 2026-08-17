@@ -133,9 +133,9 @@ class GeneratorInflectionMixin:
         cleaned_data["applicantNameDative"] = new_dative
 
         if current_gen != new_genitive:
-            logger.info(f"🔧 Исправлен родительный падеж (жен.): '{current_gen}' -> '{new_genitive}'")
+            logger.info(f" Исправлен родительный падеж (жен.):'{current_gen}' ->'{new_genitive}'")
         if current_dat != new_dative:
-            logger.info(f"🔧 Исправлен дательный падеж для женщины: '{current_dat}' -> '{new_dative}'")
+            logger.info(f" Исправлен дательный падеж для женщины:'{current_dat}' ->'{new_dative}'")
 
     def _normalize_name_case(self, name: str) -> str:
         """

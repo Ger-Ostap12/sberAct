@@ -1,6 +1,6 @@
 {
   "name": "sberact-document-generator",
-  "version": "1.0.0",
+  "version": "2.0.1",
   "description": "Генератор судебных актов на основе заявлений для Astra Linux",
   "main": "electron-app/main.js",
   "scripts": {
@@ -8,6 +8,13 @@
     "dev:react": "cross-env BROWSER=none npm --prefix electron-app start",
     "dev:electron": "wait-on http://localhost:3000 && electron .",
     "build": "cd electron-app && npm run build",
+    "pack:backend": "python-backend\\venv\\Scripts\\pyinstaller.exe --noconfirm SberAct.spec",
+    "pack:converter": "powershell -ExecutionPolicy Bypass -File scripts/assemble-converter.ps1",
+    "stage:converter": "powershell -ExecutionPolicy Bypass -File scripts/stage-usb.ps1",
+    "build:update": "powershell -ExecutionPolicy Bypass -File scripts/build-update.ps1",
+    "build:linux": "powershell -ExecutionPolicy Bypass -File scripts/build-linux.ps1",
+    "build:linux-converter": "powershell -ExecutionPolicy Bypass -File scripts/build-converter-linux.ps1",
+    "dist:win": "npm run build && npm run pack:backend && npm run pack:converter && electron-builder --win && npm run stage:converter",
     "dist:linux": "electron-builder --linux",
     "postinstall": "electron-builder install-app-deps"
   },
@@ -15,13 +22,21 @@
     "appId": "com.sberact.documentgenerator",
     "productName": "SberAct Document Generator",
     "directories": {
-      "output": "dist"
+      "output": "release"
     },
+    "compression": "normal",
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://sberact.local/updates/"
+      }
+    ],
     "files": [
       "electron-app/build/**/*",
       "electron-app/main.js",
+      "electron-app/updater.js",
       "electron-app/preload.js",
-      "python-backend/**/*",
+      "electron-app/assets/icon.png",
       "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
       "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
       "!**/node_modules/*.d.ts",
@@ -34,15 +49,35 @@
       "!**/{appveyor.yml,.travis.yml,circle.yml}",
       "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
     ],
-    "asarUnpack": [
-      "python-backend/**/*"
-    ],
     "extraResources": [
       {
-        "from": "python-backend",
-        "to": "python-backend"
+        "from": "dist/SberAct",
+        "to": "backend"
       }
     ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "electron-app/assets/icon.ico",
+      "artifactName": "SberAct-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SberAct",
+      "installerIcon": "electron-app/assets/icon.ico",
+      "uninstallerIcon": "electron-app/assets/icon.ico",
+      "include": "scripts/installer.nsh"
+    },
     "linux": {
       "target": [
         {
@@ -52,13 +87,15 @@
           ]
         }
       ],
+      "icon": "electron-app/assets/icon.png",
       "category": "Office",
       "synopsis": "Генератор судебных актов на основе заявлений",
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "artifactName": "SberAct-${version}-${arch}.${ext}"
     }
   },
   "dependencies": {
-    "electron-is-dev": "^2.0.0"
+    "electron-is-dev": "^2.0.0",
+    "electron-updater": "^6.3.9"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

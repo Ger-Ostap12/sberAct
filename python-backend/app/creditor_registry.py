@@ -13,7 +13,7 @@ from org_normalizer import base_org_name
 # (_match_creditor_registry: по нормализованному имени кредитора).
 CREDITOR_BANKS = [
     {
-        "display": "Сбербанк",
+        "display": "ПАО Сбербанк",
         "names": [
             "пао сбербанк", "сбербанк", "сбер банк", "сбер",
             "публичное акционерное общество сбербанк",
