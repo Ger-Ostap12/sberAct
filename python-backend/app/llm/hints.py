@@ -352,17 +352,12 @@ def run_hints(raw_text: str, regex_values: dict, on_block=None, should_cancel=No
 
     parties_window = extract_parties_window(raw_text)
 
-    # 2. Представитель истца — отдельным вызовом, см. _fetch_representative.
-    if cancelled():
-        return all_hints
-    rep_hints = []
-    rep_name = _fetch_representative(parties_window)
-    if rep_name:
-        rep_hints = _flat_hints(block_by_key("representative"),
-                                {"plaintiff": rep_name}, regex_values)
-    emit("representative", rep_hints)
-
-    # 3. Ответчики и третьи лица — общий вызов по шапке. Ни суда (он уже
+    # 2. Ответчики и третьи лица — ОДИН общий вызов по шапке, поэтому третьи
+    #    лица приходят раньше своего места на форме (там они ниже
+    #    представителя). Это не нарушение порядка, а бесплатный побочный
+    #    эффект: данные, полученные раньше нужного, никому не мешают, а
+    #    разделять их на два вызова значило бы платить вторым проходом по
+    #    тому же окну. Ни суда (он уже
     #    получен отдельным вызовом), ни финансов: финансовые поля на форме не
     #    показываются вовсе, подсказке негде появиться, а фрагмент текста с
     #    суммами кредита в это окно даже не попадает — просить их значило бы
@@ -379,6 +374,18 @@ def run_hints(raw_text: str, regex_values: dict, on_block=None, should_cancel=No
                                  parsed.get("debtors") or [], regex_values))
     emit("thirdParties", _array_hints(block_by_key("thirdParties"),
                                       parsed.get("thirdParties") or [], regex_values))
+
+    # 3. Представитель истца — отдельным вызовом (см. _fetch_representative).
+    #    Идёт ПОСЛЕ ответчиков, потому что на форме он ниже их: раньше стоял
+    #    вторым, и юрист ждал разбор блока, до которого ещё не дошёл.
+    if cancelled():
+        return all_hints
+    rep_hints = []
+    rep_name = _fetch_representative(parties_window)
+    if rep_name:
+        rep_hints = _flat_hints(block_by_key("representative"),
+                                {"plaintiff": rep_name}, regex_values)
+    emit("representative", rep_hints)
 
     # 4. Предмет ипотеки — данные живут в двух далёких местах документа (блок
     #    залога и блок оценки), поэтому два якорных вызова и слияние.

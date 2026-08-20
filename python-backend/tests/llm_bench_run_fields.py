@@ -9,6 +9,7 @@ entityType (individual/legal/ip/kfh), поэтому логика сверки �
       --model models/gemma-3-4b-it-Q4_K_M.gguf --prompt df_v1 --label gemma_df_v1
 """
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -581,6 +582,29 @@ def score_bankruptcy(results: list) -> tuple:
     return field_total, field_match
 
 
+def dump_fingerprint(docs: list) -> str:
+    """Отпечаток входных данных прогона: сколько файлов и хеш их содержимого.
+
+    Зачем: корпус живёт ВНЕ репозитория и меняется. Однажды в файл корпуса
+    вставили строку-мусор посреди серии замеров, и цифры двух прогонов стали
+    несравнимы — понять это удалось только на глаз. Отпечаток в шапке отчёта
+    показывает такое сразу, а не через полчаса.
+
+    Считаем по ОКНАМ, которые реально видит модель, а не по файлам на диске:
+    правка документа за пределами окна на результат не влияет, и объявлять
+    из-за неё замеры несравнимыми было бы ложной тревогой.
+    """
+    h = hashlib.sha256()
+    for doc in sorted(docs, key=lambda d: d.get("file", "")):
+        h.update(str(doc.get("file", "")).encode("utf-8"))
+        for key in ("header_window", "prayer_window",
+                    "collateral_block", "valuation_block"):
+            part = str(doc.get(key, "") or "")
+            h.update(("|%d|" % len(part)).encode("utf-8"))
+            h.update(part.encode("utf-8"))
+    return "%d файлов, %s" % (len(docs), h.hexdigest()[:12])
+
+
 def score_mortgage(results: list) -> tuple:
     """Чистый скоринг ипотечной схемы: results -> (field_total, field_match).
     Вынесен из _report_mortgage, чтобы llm_bench_rescore.py считал качество
@@ -655,6 +679,8 @@ def _report_mortgage(results: list, args, load_sec: float = 0.0) -> None:
     print(f"ИТОГ [{args.label}] (ипотека)")
     print("=" * 78)
     print(f"Модель: {os.path.basename(args.model)}  промпт={args.prompt}")
+    if getattr(args, "corpus_fingerprint", None):
+        print(f"Корпус: {args.corpus_fingerprint}")
     print(f"Файлов: {len(results)}  Время/файл: мин={min(times):.1f}с "
           f"макс={max(times):.1f}с среднее={sum(times)/len(times):.1f}с")
     print(f"Валидный JSON: {valid_json}/{len(results)} = {valid_json/len(results):.0%}")
@@ -798,6 +824,9 @@ def main() -> int:
 
     with open(args.dump, "r", encoding="utf-8") as f:
         docs = json.load(f)
+    # Отпечаток входа — до прогона, чтобы несравнимость была видна сразу.
+    args.corpus_fingerprint = dump_fingerprint(docs)
+    print(f"Корпус: {args.corpus_fingerprint}", flush=True)
     if is_mortgage:
         # Своя, отдельная от банкротной, роль-схема — гоняем ТОЛЬКО ипотечные
         # файлы (documentType == mortgage_claim), не смешиваем с df_v7/df_v8.
