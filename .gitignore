@@ -165,3 +165,11 @@ python-backend/models/paraphrase-multilingual-MiniLM-L12-v2/model.safetensors
 # Личные рабочие доки — не в репозиторий
 /CLAUDE.md
 /handoff.md
+
+# Данные бенчмарка LLM. Дампы окон и результаты прогонов содержат ФИО, ИНН и
+# даты рождения из РЕАЛЬНЫХ заявлений (проверено: в дампе 66 файлов — 13 ФИО,
+# 11 ИНН, 11 дат рождения). Сам корпус лежит ВНЕ репозитория намеренно —
+# затаскивать те же данные сюда через дампы нельзя, из истории git их потом
+# не вычистить. Дампы воспроизводятся: python tests/llm_bench_phase1_dump.py
+python-backend/tests/llm_bench_dump_*.json
+python-backend/tests/llm_bench_results_*.json
