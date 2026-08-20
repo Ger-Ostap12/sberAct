@@ -173,3 +173,6 @@ python-backend/models/paraphrase-multilingual-MiniLM-L12-v2/model.safetensors
 # не вычистить. Дампы воспроизводятся: python tests/llm_bench_phase1_dump.py
 python-backend/tests/llm_bench_dump_*.json
 python-backend/tests/llm_bench_results_*.json
+# Отчёт о расхождениях regex и LLM — там значения полей из тех же
+# заявлений (ИНН, адреса, номера ЕГРН). Генерируется по требованию.
+python-backend/tests/llm_mismatches.txt

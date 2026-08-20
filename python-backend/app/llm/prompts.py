@@ -54,7 +54,8 @@ _DF_V7_FORMAT_RULES = (
 #     тот же факт, здесь просто нет самой ветки).
 _DF_MORTGAGE_SCHEMA_HEAD = (
     '{"court": {"name": "", "address": ""}, '
-    '"debtors": [{"name": "", "address": "", "inn": "", "birthDate": ""}], '
+    '"debtors": [{"name": "", "address": "", "inn": "", "birthDate": "", '
+    '"birthPlace": "", "passportSeries": "", "passportNumber": ""}], '
     '"thirdParties": [{"name": "", "address": "", "inn": ""}], '
 )
 # Без суда: в проде суд идёт ОТДЕЛЬНЫМ крошечным вызовом (он первый на экране,
@@ -62,7 +63,8 @@ _DF_MORTGAGE_SCHEMA_HEAD = (
 # здесь — значит платить выходными токенами за уже полученный ответ, а декод
 # у нас самая дорогая статья.
 _DF_MORTGAGE_SCHEMA_HEAD_NOCOURT = (
-    '{"debtors": [{"name": "", "address": "", "inn": "", "birthDate": ""}], '
+    '{"debtors": [{"name": "", "address": "", "inn": "", "birthDate": "", '
+    '"birthPlace": "", "passportSeries": "", "passportNumber": ""}], '
     '"thirdParties": [{"name": "", "address": "", "inn": ""}], '
 )
 _DF_MORTGAGE_SCHEMA_REPS = '"representatives": {"plaintiff": "", "defendant": ""}, '
@@ -180,11 +182,17 @@ _DF_MORTGAGE_FEWSHOT_ANSWER = {
     "court": {"name": _DF_MORTGAGE_FAKE_COURT, "address": _DF_MORTGAGE_FAKE_COURT_ADDR},
     "debtors": [
         {"name": _DF_MORTGAGE_FAKE_DEBTOR1, "address": "г. Образецбург, ул. Первая, д. 1",
-         "inn": "000000000001", "birthDate": "01.01.1980"},
+         "inn": "000000000001", "birthDate": "01.01.1980",
+         "birthPlace": "г. Образецбург", "passportSeries": "0000",
+         "passportNumber": "000001"},
         {"name": _DF_MORTGAGE_FAKE_DEBTOR2, "address": "г. Образецбург, ул. Вторая, д. 2",
-         "inn": "000000000002", "birthDate": "02.02.1982"},
+         "inn": "000000000002", "birthDate": "02.02.1982",
+         "birthPlace": "с. Шаблонное", "passportSeries": "0000",
+         "passportNumber": "000002"},
         {"name": _DF_MORTGAGE_FAKE_MINOR, "address": "г. Образецбург, ул. Первая, д. 1",
-         "inn": "", "birthDate": "03.03.2015"},
+         "inn": "", "birthDate": "03.03.2015",
+         "birthPlace": "г. Образецбург", "passportSeries": "",
+         "passportNumber": ""},
     ],
     "thirdParties": [{"name": _DF_MORTGAGE_FAKE_TP, "address": "", "inn": _DF_MORTGAGE_FAKE_TP_INN}],
     "representatives": {"plaintiff": _DF_MORTGAGE_FAKE_REP_PLAINTIFF, "defendant": ""},
@@ -260,6 +268,14 @@ _MORTGAGE_COLLATERAL_SCHEMA = (
     '[{"description": "", "cadastralNumber": "", "address": "", '
     '"egrnRecord": "", "egrnRecordDate": ""}]'
 )
+# У долевого участия предмет залога — не объект, а права требования по ДДУ, и
+# на форме появляются два своих поля. Просим их ТОЛЬКО у ДДУ-документов:
+# у обычной ипотеки таких данных в тексте нет, и поле в схеме стало бы
+# приглашением их выдумать.
+_MORTGAGE_COLLATERAL_SCHEMA_DDU = (
+    '[{"description": "", "cadastralNumber": "", "address": "", '
+    '"egrnRecord": "", "egrnRecordDate": "", "dduContract": "", "dduDate": ""}]'
+)
 _MORTGAGE_COLLATERAL_SYSTEM = (
     "Ниже — фрагмент искового заявления об ипотеке: перечень заложенного "
     "имущества (может быть один или несколько объектов). Верни СТРОГО JSON "
@@ -313,10 +329,37 @@ _MORTGAGE_COLLATERAL_FEWSHOT_ASSISTANT = json.dumps([
 ], ensure_ascii=False)
 
 
-def build_df_mortgage_collateral_prompt() -> dict:
+_MORTGAGE_COLLATERAL_DDU_RULE = (
+    "\nДОПОЛНИТЕЛЬНО (документ о долевом строительстве): dduContract — номер "
+    "договора участия в долевом строительстве, dduDate — его дата в формате "
+    "ДД.ММ.ГГГГ. Если их в тексте нет — пустые строки."
+)
+
+
+def build_df_mortgage_collateral_prompt(with_ddu: bool = False) -> dict:
+    """У долевого участия предмет залога — права требования по ДДУ, и на форме
+    появляются два своих поля. Просим их ТОЛЬКО у ДДУ-документов: у обычной
+    ипотеки таких данных в тексте нет, и поле в схеме стало бы приглашением их
+    выдумать.
+
+    Пример правим вместе со схемой: если в схеме поле есть, а в примере его
+    нет, модель видит противоречие — этот разнобой уже давал утечки на
+    df_mortgage_v2."""
+    system = _MORTGAGE_COLLATERAL_SYSTEM
+    answer = _MORTGAGE_COLLATERAL_FEWSHOT_ASSISTANT
+    if with_ddu:
+        assert _MORTGAGE_COLLATERAL_SCHEMA in system, "схема залога разошлась с промптом"
+        system = system.replace(_MORTGAGE_COLLATERAL_SCHEMA,
+                                _MORTGAGE_COLLATERAL_SCHEMA_DDU)
+        system += _MORTGAGE_COLLATERAL_DDU_RULE
+        rows = json.loads(answer)
+        for row in rows:
+            row["dduContract"] = "ДДУ-000/00"
+            row["dduDate"] = "01.01.2020"
+        answer = json.dumps(rows, ensure_ascii=False)
     return {
-        "system": _MORTGAGE_COLLATERAL_SYSTEM, "grammar": False,
-        "fewshot": [(_MORTGAGE_COLLATERAL_FEWSHOT_USER, _MORTGAGE_COLLATERAL_FEWSHOT_ASSISTANT)],
+        "system": system, "grammar": False,
+        "fewshot": [(_MORTGAGE_COLLATERAL_FEWSHOT_USER, answer)],
     }
 
 
@@ -456,4 +499,86 @@ def build_field_sanity_prompt() -> dict:
         "system": FIELD_SANITY_SYSTEM,
         "grammar": False,
         "fewshot": [(_FIELD_SANITY_FEWSHOT_USER, _FIELD_SANITY_FEWSHOT_ANSWER)],
+    }
+
+
+# --- Обязательства (блок «Обязательства» на форме) ---------------------------
+# Окно НЕ новое: номер и дата кредитного договора лежат в том же фрагменте, что
+# и суммы кредита (проверено на корпусе — позиции 1200-2300, попадают в
+# extract_financial_block в 4 файлах из 5). Это то самое окно, которое было
+# написано, но в прод-пути не вызывалось.
+#
+# Период взыскания разбор не находит НИ В ОДНОМ файле корпуса. Просим его у
+# модели сознательно: сработает правило «у разбора пусто, модель нашла», и
+# юрист хотя бы увидит кандидата. Проверить правильность пока не на чем.
+_OBLIGATIONS_SCHEMA = (
+    '[{"obligationType": "", "contractNumber": "", "contractDate": "", '
+    '"collectionPeriodFrom": "", "collectionPeriodTo": ""}]'
+)
+
+_OBLIGATIONS_SYSTEM = (
+    "Ниже — фрагмент искового заявления о выдаче кредита. Верни СТРОГО JSON "
+    "МАССИВ (не объект, БЕЗ обёртки в фигурные скобки) без пояснений и "
+    "markdown-разметки, по схеме:\n" + _OBLIGATIONS_SCHEMA + "\n"
+    "Один элемент на каждый отдельный договор.\n"
+    "obligationType — вид договора своими словами из текста: «Кредитный "
+    "договор», «Договор поручительства», «Договор займа».\n"
+    "contractNumber — ТОЛЬКО номер, без слова «договор» и без знака «№».\n"
+    "contractDate — дата заключения договора в формате ДД.ММ.ГГГГ.\n"
+    "collectionPeriodFrom и collectionPeriodTo — период, за который взыскивают "
+    "задолженность (обычно «за период с ... по ...»). Если периода в тексте "
+    "нет — обе строки пустые. Это НЕ дата договора и НЕ дата расчёта."
+)
+
+_OBLIGATIONS_FEWSHOT_USER = (
+    "12.12.2012 между Банком и Заёмщиком заключён кредитный договор "
+    "№ 9999999, по которому Банк выдал кредит в сумме 1 000 000 руб. "
+    "Задолженность взыскивается за период с 01.02.2013 по 03.04.2014."
+)
+_OBLIGATIONS_FEWSHOT_ANSWER = (
+    '[{"obligationType": "Кредитный договор", "contractNumber": "9999999", '
+    '"contractDate": "12.12.2012", "collectionPeriodFrom": "01.02.2013", '
+    '"collectionPeriodTo": "03.04.2014"}]'
+)
+
+# Маркеры утечки примера — тот же предохранитель, что у ипотечной схемы.
+OBLIGATIONS_LEAK_MARKERS = {
+    "obligations.contractNumber": {"9999999"},
+    "obligations.contractDate": {"12.12.2012"},
+}
+
+
+def build_obligations_prompt() -> dict:
+    return {
+        "system": _OBLIGATIONS_SYSTEM,
+        "grammar": False,
+        "fewshot": [(_OBLIGATIONS_FEWSHOT_USER, _OBLIGATIONS_FEWSHOT_ANSWER)],
+    }
+
+
+# --- Только договор ДДУ: узкая задача вместо широкой ------------------------
+_DDU_SYSTEM = (
+    "Ниже — фрагмент искового заявления, где упоминается договор участия в "
+    "долевом строительстве. Верни СТРОГО JSON без пояснений:\n"
+    '{"dduContract": "", "dduDate": ""}\n'
+    "dduContract — НОМЕР этого договора как он написан в тексте, без слова "
+    "«договор» и без знака «№». Номер может содержать буквы, цифры, пробелы и "
+    "дефисы.\n"
+    "dduDate — дата заключения договора в формате ДД.ММ.ГГГГ.\n"
+    "Если чего-то из этого в тексте нет — пустая строка. НЕ путай с номером и "
+    "датой КРЕДИТНОГО договора: нужен именно договор участия в строительстве."
+)
+_DDU_FEWSHOT_USER = (
+    "сведения о почтовом адресе объекта долевого строительства (квартиры) по "
+    "ДОГОВОРУ УЧАСТИЯ в СТРОИТЕЛЬСТВЕ № ОБР-00 ЛП0-000-Х УЧАСТИЯ В ДОЛЕВОМ "
+    "СТРОИТЕЛЬСТВЕ от 02.02.2002 г."
+)
+_DDU_FEWSHOT_ANSWER = '{"dduContract": "ОБР-00 ЛП0-000-Х", "dduDate": "02.02.2002"}'
+
+
+def build_ddu_prompt() -> dict:
+    return {
+        "system": _DDU_SYSTEM,
+        "grammar": False,
+        "fewshot": [(_DDU_FEWSHOT_USER, _DDU_FEWSHOT_ANSWER)],
     }

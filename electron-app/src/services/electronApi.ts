@@ -195,7 +195,8 @@ export interface ElectronAPI {
   /** Прогреть модель заранее; «лучшее усилие», ошибки проглатываются. */
   llmWarmup?: () => Promise<void>;
   /** Поставить задачу проверки. Сайдкар поднимает backend сам. */
-  llmHintsStart?: (rawText: string, regex: Record<string, string>) => Promise<{ job_id: string }>;
+  llmHintsStart?: (rawText: string, regex: Record<string, string>,
+    mortgageKind?: string) => Promise<{ job_id: string }>;
   /** Состояние задачи; `hints` растёт по мере готовности блоков. */
   llmHintsStatus?: (jobId: string) => Promise<LlmHintsStatus>;
   /** Отменить задачу — она занимает почти все ядра, бросать её нельзя. */
@@ -362,7 +363,8 @@ export const llmWarmup = (): Promise<void> => webApi.llmWarmup!();
 export const llmHintsStart = (
   rawText: string,
   regex: Record<string, string>,
-): Promise<{ job_id: string }> => webApi.llmHintsStart!(rawText, regex);
+  mortgageKind?: string,
+): Promise<{ job_id: string }> => webApi.llmHintsStart!(rawText, regex, mortgageKind);
 
 export const llmHintsStatus = (jobId: string): Promise<LlmHintsStatus> =>
   webApi.llmHintsStatus!(jobId);

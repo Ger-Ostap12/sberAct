@@ -280,11 +280,12 @@ export const webApi: ElectronAPI = {
   llmHintsStart: async (
     rawText: string,
     regex: Record<string, string>,
+    mortgageKind?: string,
   ): Promise<{ job_id: string }> => {
     const res = await fetchBackend('/llm/hints', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rawText, regex }),
+      body: JSON.stringify({ rawText, regex, mortgageKind }),
     });
     return (await res.json()) as { job_id: string };
   },

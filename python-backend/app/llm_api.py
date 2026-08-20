@@ -99,7 +99,8 @@ def _run(job_id: str, payload: HintsRequest) -> None:
 
     try:
         llm_hints.run_hints(payload.rawText, payload.regex or {},
-                            on_block=on_block, should_cancel=should_cancel)
+                            on_block=on_block, should_cancel=should_cancel,
+                            mortgage_kind=payload.mortgageKind)
         _set(job_id, status="cancelled" if should_cancel() else "done")
     except Exception as exc:  # noqa: BLE001
         logger.exception("llm-hints: задача %s упала", job_id)

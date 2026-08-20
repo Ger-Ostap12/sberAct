@@ -597,6 +597,9 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
       out[`debtors[${i}].address`] = d.address || '';
       out[`debtors[${i}].inn`] = d.inn || '';
       out[`debtors[${i}].birthDate`] = d.birthDate || '';
+      out[`debtors[${i}].birthPlace`] = d.birthPlace || '';
+      out[`debtors[${i}].passportSeries`] = d.passportSeries || '';
+      out[`debtors[${i}].passportNumber`] = d.passportNumber || '';
     });
     (analysisResult?.thirdParties || []).forEach((t, i) => {
       out[`thirdParties[${i}].name`] = t.name || '';
@@ -612,6 +615,15 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
       out[`mortgageProperties[${i}].npcStrategy`] = p.npcStrategy || '';
       out[`mortgageProperties[${i}].appraisalReport`] = p.appraisalReport || '';
       out[`mortgageProperties[${i}].egrnRecord`] = p.egrnRecord || '';
+      out[`mortgageProperties[${i}].dduContract`] = p.dduContract || '';
+      out[`mortgageProperties[${i}].dduDate`] = p.dduDate || '';
+    });
+    (analysisResult?.obligations || []).forEach((o, i) => {
+      out[`obligations[${i}].obligationType`] = o.obligationType || '';
+      out[`obligations[${i}].contractNumber`] = o.contractNumber || '';
+      out[`obligations[${i}].contractDate`] = o.contractDate || '';
+      out[`obligations[${i}].collectionPeriodFrom`] = o.collectionPeriodFrom || '';
+      out[`obligations[${i}].collectionPeriodTo`] = o.collectionPeriodTo || '';
     });
     return out;
   }, [editedFields, analysisResult]);
@@ -1158,6 +1170,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 rawText={analysisResult?.rawText}
                 regexValues={llmRegexValues}
                 enabled={isMortgage}
+                mortgageKind={mortgageKind}
               >
               <LlmHintsProgress />
 

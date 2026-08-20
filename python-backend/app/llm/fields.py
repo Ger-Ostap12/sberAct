@@ -41,12 +41,18 @@ BLOCKS: tuple = (
             "address": "address",
             "inn": "inn",
             "birthDate": "birthDate",
+            "birthPlace": "birthPlace",
+            "passportSeries": "passportSeries",
+            "passportNumber": "passportNumber",
         },
         "labels": {
             "name": "ФИО",
             "address": "Адрес ответчика",
             "inn": "ИНН",
             "birthDate": "Дата рождения",
+            "birthPlace": "Город/место рождения",
+            "passportSeries": "Паспорт (серия)",
+            "passportNumber": "Паспорт (номер)",
         },
     },
     {
@@ -85,6 +91,8 @@ BLOCKS: tuple = (
             "npcStrategy": "npcStrategy",
             "appraisalReport": "appraisalReport",
             "egrnRecord": "egrnRecord",
+            "dduContract": "dduContract",
+            "dduDate": "dduDate",
         },
         "labels": {
             "description": "Описание объекта",
@@ -95,6 +103,33 @@ BLOCKS: tuple = (
             "npcStrategy": "Стратегия определения НПЦ",
             "appraisalReport": "Отчёт об оценке",
             "egrnRecord": "Запись в ЕГРН",
+            "dduContract": "Договор долевого участия",
+            "dduDate": "Дата ДДУ",
+        },
+    },
+    {
+        "key": "obligations",
+        "title": "Обязательства",
+        "kind": "array",
+        "source": "obligations",
+        "prefix": "obligations",
+        # Строки этого блока сопоставляются по НОМЕРУ ДОГОВОРА:
+        # ни name, ни description у обязательства нет, а тип
+        # («Кредитный договор») одинаков у всех и различать не может.
+        "pair_by": "contractNumber",
+        "map": {
+            "obligationType": "obligationType",
+            "contractNumber": "contractNumber",
+            "contractDate": "contractDate",
+            "collectionPeriodFrom": "collectionPeriodFrom",
+            "collectionPeriodTo": "collectionPeriodTo",
+        },
+        "labels": {
+            "obligationType": "Тип обязательства",
+            "contractNumber": "Номер договора",
+            "contractDate": "Дата договора",
+            "collectionPeriodFrom": "Период взыскания с",
+            "collectionPeriodTo": "Период взыскания по",
         },
     },
 )

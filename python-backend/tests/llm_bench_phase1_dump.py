@@ -84,6 +84,9 @@ def _mortgage_regex(result: dict) -> dict:
             "address": fields.get("mortgageCourtAddress001", "") or "",
         },
         "debtors": result.get("debtors") or [],
+        # Эталон для блока «Обязательства»: без него новые поля
+        # (тип/номер/дата договора) нечем было бы сверять.
+        "obligations": result.get("obligations") or [],
         "thirdParties": result.get("thirdParties") or [],
         "representatives": {
             "plaintiff": fields.get("mortgageRepresentative22", "") or "",

@@ -29,15 +29,20 @@ from .matching import core_name, fuzzy_match, norm
 from .parsing import check_leak, sanitize_mortgage
 from .prompts import (
     DF_MORTGAGE_LEAK_MARKERS,
+    OBLIGATIONS_LEAK_MARKERS,
     build_df_mortgage_collateral_prompt,
     build_df_mortgage_court_prompt,
     build_df_mortgage_prompt,
+    build_ddu_prompt,
     build_df_mortgage_valuation_prompt,
     build_field_sanity_prompt,
+    build_obligations_prompt,
 )
 from .windows import (
     extract_collateral_block,
+    extract_ddu_block,
     extract_court_window,
+    extract_financial_block,
     extract_parties_window,
     extract_valuation_block,
 )
@@ -123,6 +128,20 @@ def _pair_rows(regex_rows: list, llm_rows: list, name_field: str) -> list:
             continue
         used.add(best)
         pairs.append((i, llm_rows[best]))
+
+    # Единственная оставшаяся пара сопоставляется БЕЗ совпадения по ключу.
+    # Причина из корпуса: документ противоречит сам себе — в описательной части
+    # «кредитный договор № 69303243», в просительной «расторгнуть договор
+    # № 69303105». Разбор взял один номер, модель другой, ключ не совпал, пары
+    # не возникло — и слой молчал ровно там, где обязан был сказать. Когда с
+    # каждой стороны осталось по одной несопоставленной записи, гадать не о
+    # чем: это они и есть.
+    free_reg = [i for i in range(len(regex_rows)) if i not in {p[0] for p in pairs}]
+    free_llm = [j for j in range(len(llm_rows))
+                if j not in used and isinstance(llm_rows[j], dict)]
+    if len(free_reg) == 1 and len(free_llm) == 1:
+        pairs.append((free_reg[0], llm_rows[free_llm[0]]))
+        pairs.sort(key=lambda x: x[0])
     return pairs
 
 
@@ -146,7 +165,9 @@ def _array_hints(block: dict, rows: list, regex_values: dict) -> list:
     ordered = _regex_rows(block, regex_values)
     if not ordered:
         return []
-    name_field = "name" if "name" in block["map"] else "description"
+    # Поле для сопоставления строк объявляет сам блок: у обязательств нет ни
+    # name, ни description, а тип договора одинаков у всех и различать не может.
+    name_field = block.get("pair_by") or ("name" if "name" in block["map"] else "description")
 
     hints = []
     for i, llm_row in _pair_rows(ordered, rows or [], name_field):
@@ -254,21 +275,57 @@ def _mp_type_keyword(s: str) -> str:
     return ""
 
 
-def _fetch_properties(raw_text: str) -> list:
+def _fetch_ddu(raw_text: str) -> dict:
+    """Только номер и дата договора участия в долевом строительстве.
+
+    Отдельным вызовом, а не полем в общей схеме: на широкой задаче модель по
+    этому окну выдумывает всё подряд, а на вопросе из двух полей ей просто
+    негде развернуться. Тот же приём, что дал представителю истца 8 из 8."""
+    window = extract_ddu_block(raw_text)
+    if not window:
+        return {}
+    parsed = client.chat(build_ddu_prompt(), window, 120)
+    if not isinstance(parsed, dict):
+        return {}
+    return {"dduContract": str(parsed.get("dduContract", "") or "").strip(),
+            "dduDate": str(parsed.get("dduDate", "") or "").strip()}
+
+
+def _fetch_properties(raw_text: str, mortgage_kind: str | None = None) -> list:
     """Два якорных вызова и слияние ПО ТИПУ ОБЪЕКТА: сумма из разбивки «в том
     числе дом — …» относится к конкретному объекту, а не размазывается по всем.
     Данные предмета ипотеки лежат в двух местах документа, разнесённых на
     тысячи символов, — отсюда и два вызова."""
+    # Окно ДДУ сюда НЕ подставляем, хотя соблазн был: замер показал, что на
+    # просительной части (единственном месте, где ДДУ описан целиком) модель
+    # заполняет схему выдумкой — кадастровый номер из воздуха, «Жилой дом»
+    # вместо прав требования. Пустой блок честнее: он даёт ноль подсказок, а
+    # выдумка дала бы шесть неверных. Договор и дату ДДУ берём отдельным узким
+    # вызовом — тот же приём, что спас представителя истца.
     collateral_block = extract_collateral_block(raw_text)
     valuation_block = extract_valuation_block(raw_text)
 
     items = []
     if collateral_block:
-        parsed = client.chat(build_df_mortgage_collateral_prompt(),
-                             collateral_block, 500, expect="array")
+        parsed = client.chat(
+            build_df_mortgage_collateral_prompt(with_ddu=(mortgage_kind == "ddu")),
+            collateral_block, 500, expect="array")
         if isinstance(parsed, list):
             items = [x for x in parsed if isinstance(x, dict)]
+
+    ddu = _fetch_ddu(raw_text) if mortgage_kind == "ddu" else {}
+
     if not items:
+        # У долевого документа перечня объектов нет вовсе, но договор и дата
+        # ДДУ есть. Отдаём ОДНУ запись, где заполнены только они: остальные
+        # поля пустые, а пустое поле подсказок не даёт — значит покажем ровно
+        # то, что действительно нашли, и ничего сверх.
+        if ddu.get("dduContract") or ddu.get("dduDate"):
+            return [{"description": "", "cadastralNumber": "", "address": "",
+                     "egrnRecord": "", "value": "", "startingPrice": "",
+                     "npcStrategy": "", "appraisalReport": "",
+                     "dduContract": ddu.get("dduContract", ""),
+                     "dduDate": ddu.get("dduDate", "")}]
         return []
 
     breakdown, npc, report = [], "", ""
@@ -301,8 +358,31 @@ def _fetch_properties(raw_text: str) -> list:
             "startingPrice": (vb or {}).get("startingPrice", "") or "",
             "npcStrategy": npc,
             "appraisalReport": report,
+            # Поля ДДУ приходят из блока залога и есть только у долевых
+            # документов; у остальных остаются пустыми и подсказок не дают.
+            "dduContract": item.get("dduContract", "") or "",
+            "dduDate": item.get("dduDate", "") or "",
         })
+    if ddu:
+        # Договор один на всё заявление, поэтому проставляем его каждому
+        # объекту: на форме поля живут внутри объекта.
+        for row in merged:
+            for key in ("dduContract", "dduDate"):
+                if ddu.get(key) and not row.get(key):
+                    row[key] = ddu[key]
     return merged
+
+
+def _fetch_obligations(raw_text: str, regex_values: dict) -> list:
+    """Обязательства по окну финансов. Пустое окно — молчим: заставлять модель
+    рассуждать о тексте, которого ей не показали, значит просить выдумку."""
+    window = extract_financial_block(raw_text)
+    if not window:
+        return []
+    parsed = client.chat(build_obligations_prompt(), window, 400, expect="array")
+    rows = [x for x in (parsed or []) if isinstance(x, dict)]
+    check_leak({"obligations": rows}, OBLIGATIONS_LEAK_MARKERS)
+    return _array_hints(block_by_key("obligations"), rows, regex_values)
 
 
 def warmup() -> dict:
@@ -312,7 +392,8 @@ def warmup() -> dict:
     return server.start()
 
 
-def run_hints(raw_text: str, regex_values: dict, on_block=None, should_cancel=None) -> list:
+def run_hints(raw_text: str, regex_values: dict, on_block=None, should_cancel=None,
+              mortgage_kind: str | None = None) -> list:
     """Прогоняет блоки ПО ПОРЯДКУ ЭКРАНА и отдаёт подсказки по мере готовности
     через on_block(block_key, hints). Юрист читает форму сверху вниз — то, что
     он увидит первым, должно быть проверено первым.
@@ -392,7 +473,15 @@ def run_hints(raw_text: str, regex_values: dict, on_block=None, should_cancel=No
     if cancelled():
         return all_hints
     emit("properties", _array_hints(block_by_key("properties"),
-                                    _fetch_properties(raw_text), regex_values))
+                                    _fetch_properties(raw_text, mortgage_kind),
+                                    regex_values))
+
+    # 5. Обязательства — по окну финансов (номер и дата кредитного договора
+    #    лежат рядом с суммой кредита). Окно было написано давно и в прод-пути
+    #    не вызывалось ни разу.
+    if cancelled():
+        return all_hints
+    emit("obligations", _fetch_obligations(raw_text, regex_values))
 
     _ = PROGRESS_KEYS  # порядок задан там, здесь он воспроизведён явно
     return all_hints

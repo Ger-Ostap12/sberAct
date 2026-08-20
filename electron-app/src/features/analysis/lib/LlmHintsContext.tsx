@@ -51,11 +51,18 @@ interface ProviderProps {
   regexValues: Record<string, string>;
   /** Ипотека — единственный поддерживаемый вид на этой итерации. */
   enabled: boolean;
+  /**
+   * Вид ипотеки: от него зависит состав проверяемых полей (у ДДУ добавляются
+   * договор долевого участия и его дата). Смена вида ПЕРЕЗАПУСКАЕТ проверку —
+   * иначе юрист, поправивший вид на «ДДУ», не получил бы проверку новых полей
+   * и не понял бы, почему.
+   */
+  mortgageKind?: string;
   children: React.ReactNode;
 }
 
 export const LlmHintsProvider: React.FC<ProviderProps> = ({
-  rawText, regexValues, enabled, children,
+  rawText, regexValues, enabled, mortgageKind, children,
 }) => {
   const [hints, setHints] = useState<LlmHint[]>([]);
   const [doneBlocks, setDoneBlocks] = useState<string[]>([]);
@@ -85,7 +92,7 @@ export const LlmHintsProvider: React.FC<ProviderProps> = ({
     let cancelled = false;
     setRunning(true);
 
-    llmHintsStart(rawText, valuesRef.current)
+    llmHintsStart(rawText, valuesRef.current, mortgageKind)
       .then(({ job_id }) => {
         if (cancelled) {
           llmHintsCancel(job_id);
@@ -130,7 +137,7 @@ export const LlmHintsProvider: React.FC<ProviderProps> = ({
         jobId.current = null;
       }
     };
-  }, [enabled, rawText, stop]);
+  }, [enabled, rawText, mortgageKind, stop]);
 
   const dismiss = useCallback((field: string) => {
     setDismissed((prev) => {
