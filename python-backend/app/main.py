@@ -22,6 +22,7 @@ from document_generator import DocumentGenerator
 from template_manager import TemplateManager
 from creditor_registry import list_banks
 import paths as app_paths
+from llm_api import router as llm_router
 
 logger = logging.getLogger(__name__)
 
@@ -350,6 +351,10 @@ _CONVERT_HOP_HEADERS = {"host", "content-length", "connection", "transfer-encodi
 
 @app.api_route("/convert/{conv_path:path}", methods=["GET", "POST"])
 async def convert_proxy(conv_path: str, request: Request):
+    return await _proxy_to_converter(f"{CONVERTER_API_URL}/{conv_path}", request)
+
+
+async def _proxy_to_converter(url: str, request: Request):
     """
     Прозрачный проброс запроса к конвертеру: тело и content-type передаются
     как есть (multipart с boundary в заголовке проходит без пересборки),
@@ -358,7 +363,8 @@ async def convert_proxy(conv_path: str, request: Request):
     import httpx
 
     _converter_touch()  # любой проброс = конвертером пользуются, сторож не трогает
-    url = f"{CONVERTER_API_URL}/{conv_path}"
+    # URL приходит собранным: у /convert и /llm разные базы — CONVERTER_API_URL
+    # уже включает суффикс /convert, и добавлять его второй раз нельзя.
     headers = {
         k: v for k, v in request.headers.items()
         if k.lower() not in _CONVERT_HOP_HEADERS
@@ -595,6 +601,12 @@ async def converter_status():
     return {"running": running, "healthy": await _converter_healthy()}
 
 
+# Теневые LLM-подсказки. Раньше их проксировали в конвертер (там жили
+# llama-cpp-python и файл модели); с переездом на llama-server бэкенд
+# обслуживает их сам, и docling ради подсказок больше не поднимается.
+app.include_router(llm_router)
+
+
 @app.on_event("startup")
 async def _start_converter_watchdog() -> None:
     # Сторож простоя: UI больше не гасит конвертер после каждого файла, память
@@ -604,8 +616,14 @@ async def _start_converter_watchdog() -> None:
 
 @app.on_event("shutdown")
 def _shutdown_converter() -> None:
-    # Конвертер не должен переживать бэкенд (осиротевший процесс держит гигабайты)
+    # Ни конвертер, ни llama-server не должны переживать бэкенд:
+    # осиротевший процесс держит гигабайты и порт.
     _kill_converter()
+    try:
+        from llm import server as _llm_server
+        _llm_server.stop()
+    except Exception:
+        logger.warning("не удалось остановить llama-server", exc_info=True)
 
 @app.get("/templates")
 async def get_templates():

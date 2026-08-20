@@ -59,6 +59,40 @@ export interface ConvertScanFlags {
   ocr_preprocess?: boolean;
 }
 
+
+/** Одна подсказка теневого LLM-слоя. Ничего не подставляет — только сигнал. */
+export interface LlmHint {
+  /** Ключ поля формы: `courtName`, `debtors[0].inn`, `mortgageProperties[1].address`. */
+  field: string;
+  /** Человекочитаемое имя поля для текста подсказки. */
+  label: string;
+  /** Блок формы, к которому поле относится. */
+  block: string;
+  /** Что дал обычный разбор. */
+  regexValue: string;
+  /** Что нашла LLM. Пусто у замечаний о правдоподобии: там сравнивать не с чем. */
+  llmValue: string;
+  agrees: boolean;
+  /**
+   * Короткое объяснение, почему значение выглядит неправдоподобным.
+   * Есть только у замечаний блока `sanity` — там модель не предлагает
+   * альтернативу, а говорит, что значение не похоже на своё поле.
+   */
+  reason?: string;
+}
+
+/** Состояние задачи LLM-проверки (GET /llm/hints/{job_id}). */
+export interface LlmHintsStatus {
+  job_id: string;
+  status: 'queued' | 'running' | 'done' | 'error' | 'cancelled';
+  blocksDone: number;
+  blocksTotal: number;
+  lastBlock?: string | null;
+  /** Растёт по мере готовности блоков, а не приходит целиком в конце. */
+  hints: LlmHint[];
+  error?: string | null;
+}
+
 /** Статус задачи конвертации (GET /convert/status/{job_id}). */
 export interface ConvertJobStatus {
   job_id: string;
@@ -157,6 +191,16 @@ export interface ElectronAPI {
   updatePickSource?: () => Promise<{ ok: boolean; path?: string }>;
   /** Автопоиск папки обновления на съёмных дисках. */
   updateAutoDetect?: () => Promise<{ ok: boolean; path: string | null }>;
+  // ── Теневые LLM-подсказки по полям (ипотека) ──
+  /** Прогреть модель заранее; «лучшее усилие», ошибки проглатываются. */
+  llmWarmup?: () => Promise<void>;
+  /** Поставить задачу проверки. Сайдкар поднимает backend сам. */
+  llmHintsStart?: (rawText: string, regex: Record<string, string>) => Promise<{ job_id: string }>;
+  /** Состояние задачи; `hints` растёт по мере готовности блоков. */
+  llmHintsStatus?: (jobId: string) => Promise<LlmHintsStatus>;
+  /** Отменить задачу — она занимает почти все ядра, бросать её нельзя. */
+  llmHintsCancel?: (jobId: string) => Promise<void>;
+
   /** Проверить оба канала обновления (app+backend и converter). */
   updateCheck?: (chosenPath?: string) => Promise<UpdateCheckResult>;
   /** Скачать app-обновление в staging electron-updater. */
@@ -309,6 +353,21 @@ export const converterStart = (): Promise<ConverterStartResult> => webApi.conver
 export const converterStop = (): Promise<{ ok: boolean }> => webApi.converterStop();
 
 export const converterStatus = (): Promise<ConverterProcessStatus> => webApi.converterStatus();
+
+// ── Теневые LLM-подсказки ──
+// Тоже всегда через webApi, по той же причине, что и конвертер: жизненным
+// циклом сайдкара владеет backend, а не интерфейс.
+export const llmWarmup = (): Promise<void> => webApi.llmWarmup!();
+
+export const llmHintsStart = (
+  rawText: string,
+  regex: Record<string, string>,
+): Promise<{ job_id: string }> => webApi.llmHintsStart!(rawText, regex);
+
+export const llmHintsStatus = (jobId: string): Promise<LlmHintsStatus> =>
+  webApi.llmHintsStatus!(jobId);
+
+export const llmHintsCancel = (jobId: string): Promise<void> => webApi.llmHintsCancel!(jobId);
 
 /** Версия приложения (десктоп — из main-процесса; браузер — REACT_APP_VERSION). */
 export const getAppVersion = (): Promise<string> => getApi().getAppVersion();

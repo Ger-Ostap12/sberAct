@@ -4,6 +4,7 @@ import { Add as AddIcon, Close as CloseIcon } from '@mui/icons-material';
 import { ThirdParty } from '../../../types';
 import { toInputDate, fromInputDate } from '../../../shared/lib/dates';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';
+import LlmFieldHint, { LlmHintPending } from '../../../shared/components/LlmFieldHint';
 
 interface ThirdPartiesSectionProps {
   thirdParties: ThirdParty[];
@@ -44,7 +45,7 @@ const ThirdPartiesSection: React.FC<ThirdPartiesSectionProps> = ({
         <Grid container spacing={2}>
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
-              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО/наименование :</Typography>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО/наименование :<LlmHintPending field={`thirdParties[${index}].name`} block="thirdParties" /></Typography>
               <TextField
                 fullWidth
                 value={thirdParty.name || ''}
@@ -53,6 +54,7 @@ const ThirdPartiesSection: React.FC<ThirdPartiesSectionProps> = ({
                 margin="dense"
               />
             </Box>
+            <LlmFieldHint field={`thirdParties[${index}].name`} block="thirdParties" />
           </Grid>
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
@@ -72,7 +74,7 @@ const ThirdPartiesSection: React.FC<ThirdPartiesSectionProps> = ({
           </Grid>
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
-              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес:</Typography>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес:<LlmHintPending field={`thirdParties[${index}].address`} block="thirdParties" /></Typography>
               <TextField
                 fullWidth
                 value={thirdParty.address || ''}
@@ -82,10 +84,11 @@ const ThirdPartiesSection: React.FC<ThirdPartiesSectionProps> = ({
                 margin="dense"
               />
             </Box>
+            <LlmFieldHint field={`thirdParties[${index}].address`} block="thirdParties" />
           </Grid>
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
-              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ИНН:</Typography>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ИНН:<LlmHintPending field={`thirdParties[${index}].inn`} block="thirdParties" /></Typography>
               <TextField
                 fullWidth
                 value={thirdParty.inn || ''}
@@ -94,6 +97,7 @@ const ThirdPartiesSection: React.FC<ThirdPartiesSectionProps> = ({
                 margin="dense"
               />
             </Box>
+            <LlmFieldHint field={`thirdParties[${index}].inn`} block="thirdParties" />
           </Grid>
           {mode === 'mortgage' && (
           <Grid item xs={12}>

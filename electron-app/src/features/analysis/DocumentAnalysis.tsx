@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Card,
@@ -21,6 +21,8 @@ import ObligationsSection from './sections/ObligationsSection';
 import CollateralSection from './sections/CollateralSection';
 import CourtSection from './sections/CourtSection';
 import FieldIssuesPanel from './sections/FieldIssuesPanel';
+import { LlmHintsProvider } from './lib/LlmHintsContext';
+import LlmHintsProgress from './sections/LlmHintsProgress';
 import DocumentTypeWarning from './sections/DocumentTypeWarning';
 import DebtorNameWarning from './sections/DebtorNameWarning';
 import EntityTypeWarning from './sections/EntityTypeWarning';
@@ -581,6 +583,39 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     }
   }, [documentData, propExtractedData, isMortgage]);
 
+  // Плоская карта «ключ поля формы → текущее значение» для теневой LLM-проверки.
+  // Формат ключей массивов (`debtors[0].inn`) — тот же, что у fieldQuality:
+  // подсказка должна лечь на конкретную строку, а не на блок целиком.
+  const llmRegexValues = useMemo(() => {
+    const out: Record<string, string> = {
+      courtName: editedFields.courtName || '',
+      courtAddress: editedFields.courtAddress || '',
+      representativeName: editedFields.representativeName || '',
+    };
+    (analysisResult?.debtors || []).forEach((d, i) => {
+      out[`debtors[${i}].name`] = d.name || '';
+      out[`debtors[${i}].address`] = d.address || '';
+      out[`debtors[${i}].inn`] = d.inn || '';
+      out[`debtors[${i}].birthDate`] = d.birthDate || '';
+    });
+    (analysisResult?.thirdParties || []).forEach((t, i) => {
+      out[`thirdParties[${i}].name`] = t.name || '';
+      out[`thirdParties[${i}].address`] = t.address || '';
+      out[`thirdParties[${i}].inn`] = t.inn || '';
+    });
+    (analysisResult?.mortgageProperties || []).forEach((p, i) => {
+      out[`mortgageProperties[${i}].description`] = p.description || '';
+      out[`mortgageProperties[${i}].cadastralNumber`] = p.cadastralNumber || '';
+      out[`mortgageProperties[${i}].address`] = p.address || '';
+      out[`mortgageProperties[${i}].value`] = p.value || '';
+      out[`mortgageProperties[${i}].startingPrice`] = p.startingPrice || '';
+      out[`mortgageProperties[${i}].npcStrategy`] = p.npcStrategy || '';
+      out[`mortgageProperties[${i}].appraisalReport`] = p.appraisalReport || '';
+      out[`mortgageProperties[${i}].egrnRecord`] = p.egrnRecord || '';
+    });
+    return out;
+  }, [editedFields, analysisResult]);
+
   const handleFieldChange = (fieldName: string, value: string) => {
     setEditedFields(prev => ({
       ...prev,
@@ -1119,6 +1154,13 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                   это то, что юрист смотрит раньше остальной формы. */}
               <FieldIssuesPanel issues={analysisResult?.fieldIssues} />
 
+              <LlmHintsProvider
+                rawText={analysisResult?.rawText}
+                regexValues={llmRegexValues}
+                enabled={isMortgage}
+              >
+              <LlmHintsProgress />
+
               <Grid container spacing={2} sx={{ width: '100%' }}>
                 {/* Вид ипотеки (гражданская/военная) — только в ипотеке, во всю ширину. */}
                 {isMortgage && (
@@ -1354,6 +1396,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 </Grid>
                 )}
               </Grid>
+              </LlmHintsProvider>
             </CardContent>
           </Card>
         </Grid>

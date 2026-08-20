@@ -1,0 +1,150 @@
+# -*- coding: utf-8 -*-
+"""Нарезка прицельных окон из сырого текста заявления — чистые функции БЕЗ
+зависимостей. Это принципиально: модуль должны одинаково видеть оба venv —
+python-backend (DocumentAnalyzer со spacy/natasha) и converter/.venv, где есть
+llama-cpp и больше ничего. Не добавлять сюда импортов из app/.
+
+Зачем окна вообще. Замер этапа 1: prefill — 63% времени прогона (128.7с из
+204.9с), из них 94.9с приходится на ОДИН основной вызов с окном ~3800
+токенов. Приём уже трижды окупился в этом проекте (representatives 12%→100%,
+collateral/valuation — properties 8-15%→69-92%): модель не надо УЧИТЬ
+игнорировать шум, ей надо физически не давать шум.
+
+Форма «якорь + ограничитель» повторяет уже принятую в проекте —
+`_extract_debtor_window` в app/semantic_classifier.py (`_DEBTOR_WINDOW_HEAD_CAP`)
+и `_extract_valuation_block` здесь же рядом.
+"""
+import re
+
+# Шапка заявления заканчивается заголовком «ИСКОВОЕ ЗАЯВЛЕНИЕ». Всё, что
+# нужно основному вызову по сторонам (суд, ответчики с ИНН/датой/адресом,
+# третьи лица, представитель истца), лежит ДО него — проверено на всех 8
+# файлах корпуса, якорь стоит на позициях 985-2042.
+#
+# Порядок альтернатив значим: «Цена иска» в части файлов встречается РАНЬШЕ
+# заголовка, и если бы она выиграла, третьи лица (позиции 1115/1352 при
+# якоре 1759 в ДДУ-файле — самый узкий зазор корпуса) оказались бы отрезаны.
+# Поэтому сначала ищем заголовок и только при его отсутствии — запасные.
+_PARTIES_END_PRIMARY = re.compile(
+    r"ИСКОВОЕ\s+ЗАЯВЛЕНИЕ", re.IGNORECASE)
+_PARTIES_END_FALLBACK = re.compile(
+    r"ЗАЯВЛЕНИЕ\s+о\s+вынесении|Цена\s+иска", re.IGNORECASE)
+
+PARTIES_HEAD_CAP = 3000
+# Хвост после якоря: подзаголовок вида «о расторжении, взыскании … и
+# обращении взыскания на предмет залога» — подсказка модели, что документ
+# ипотечный. Без него сужение заодно отнимает у неё тип документа.
+_PARTIES_TAIL_CHARS = 300
+
+
+def extract_parties_window(raw_text: str) -> str:
+    """Шапка со сторонами: от начала документа до заголовка иска включительно
+    (плюс подзаголовок). При промахе якоря — простое усечение по CAP, то есть
+    поведение не хуже прежнего head-слайса, только короче."""
+    if not raw_text:
+        return ""
+    m = _PARTIES_END_PRIMARY.search(raw_text) or _PARTIES_END_FALLBACK.search(raw_text)
+    end = min(m.end() + _PARTIES_TAIL_CHARS, PARTIES_HEAD_CAP) if m else PARTIES_HEAD_CAP
+    return raw_text[:end].strip()
+
+
+# Финансы живут ЗА пределами шапки: фраза о выдаче кредита — сразу после
+# заголовка (~1450), фраза о неустойке — глубоко в тексте (~3200-4100).
+# Якоря взяты по тем же приметам, что и regex-путь (patterns.py,
+# mortgageCreditAmount111/mortgagePenaltyRate114) — LLM должна видеть те же
+# улики, что и regex, иначе расхождение будет не про качество модели, а про
+# то, что ей показали другой текст.
+_CREDIT_RE = re.compile(r"кредит[^\n]{0,200}?в\s+сумме", re.IGNORECASE)
+_PENALTY_RE = re.compile(r"неустойк[ауи]\s+в\s+размере", re.IGNORECASE)
+
+_FRAGMENT_SEP = "\n[...]\n"
+
+
+def extract_financial_block(raw_text: str) -> str:
+    """Два коротких фрагмента (кредит и неустойка), склеенных разделителем.
+    Пустая строка, если ни один якорь не сработал — вызывающий код тогда
+    просто не добавляет фрагмент, а не падает."""
+    if not raw_text:
+        return ""
+    parts = []
+    for rx, before, after in ((_CREDIT_RE, 100, 400), (_PENALTY_RE, 150, 250)):
+        m = rx.search(raw_text)
+        if m:
+            frag = raw_text[max(0, m.start() - before): m.start() + after].strip()
+            if frag:
+                parts.append(frag)
+    return _FRAGMENT_SEP.join(parts)
+
+
+def missing_from_window(window: str, expected_names: list) -> list:
+    """Проверка покрытия: какие из известных regex-у имён НЕ попали в окно.
+    Дешёвый способ поймать плохой якорь ДО получасового прогона LLM —
+    сравниваем по первому слову (фамилия/первое слово названия), потому что
+    падежи и кавычки в тексте и в regex-эталоне различаются."""
+    low = (window or "").lower()
+    missing = []
+    for name in expected_names:
+        head = (name or "").strip().split()
+        if not head:
+            continue
+        if head[0].lower().strip('«»"') not in low:
+            missing.append(name)
+    return missing
+
+
+# Суд стоит в самой шапке, до сторон. Ограничитель — метка истца: всё, что
+# после неё, для этого вызова только шум (и лишние адреса, которые модель
+# может перепутать с адресом суда).
+_COURT_END_RE = re.compile(r"Истец\s*:|Заявител[ья]\s*:|ИСКОВОЕ\s+ЗАЯВЛЕНИЕ",
+                           re.IGNORECASE)
+COURT_HEAD_CAP = 700
+
+
+def extract_court_window(raw_text: str) -> str:
+    """Шапка до метки истца. При промахе якоря — усечение по CAP: поведение
+    не хуже простого head-слайса, только короче."""
+    if not raw_text:
+        return ""
+    m = _COURT_END_RE.search(raw_text)
+    end = min(m.start(), COURT_HEAD_CAP) if m else COURT_HEAD_CAP
+    return raw_text[:end].strip()
+
+
+
+# Предмет(ы) ипотеки (mortgageProperties, план "LLM для ипотеки" §5) — данные
+# ЖИВУТ В ДВУХ РАЗНЫХ местах документа, проверено эмпирически (АГЕЕВ: блок
+# залога ~char 2000, блок оценки ~char 8000 из 18000, у более длинных
+# документов оценка может выпасть даже за 9000). Тот же класс проблемы, что
+# уже решали для СРО/manager (prayer_window) и representatives (изолированный
+# вызов) — сужаем ДВУМЯ прицельными якорями, не одним бланкет-окном.
+_MP_COLLATERAL_RE = re.compile(
+    r"а\s+именно\s*:?\s*(.+?)(?:В\s+силу\s+(?:п\.?\s*1\s+)?ст\.?\s*77|В\s+силу\s+ст\.|"
+    r"Банк\s+исполнил|Право\s+собственности\s+на\s+вышеуказанн|\n\s*\n|$)",
+    re.IGNORECASE | re.DOTALL,
+)
+_MP_VALUATION_ANCHOR_RE = re.compile(
+    r"залогов\w+\s+стоимост\w+|оценка\s+по\s+определению\s+рыночной\s+стоимости|"
+    r"провед\w+\s+оценк\w+\s+рыночной\s+стоимости|"
+    r"заключени\w+\s+о\s+стоимости\s+имуществ\w*",
+    re.IGNORECASE,
+)
+
+
+def extract_collateral_block(text: str) -> str:
+    """Блок залога: «…залог… а именно: <объекты>» до законной оговорки —
+    компактный, один абзац на объект (description/cadastralNumber/address/
+    egrnRecord), см. _mp_collateral_chunks в document_analyzer.py (тот же
+    якорь, здесь без пообъектной разбивки — её делает сам LLM)."""
+    m = _MP_COLLATERAL_RE.search(text)
+    return m.group(1).strip()[:1500] if m else ""
+
+
+def extract_valuation_block(text: str) -> str:
+    """Блок оценки: стоимость/НПЦ/отчёт об оценке — ДАЛЕКО от блока залога
+    (после длинных абзацев с цитатами закона). Якорь «залоговая стоимость»/
+    «оценка по определению рыночной стоимости» (тот же, что _mp_npc_strategy/
+    _mp_amounts используют для точечного regex-извлечения), окно вперёд —
+    весь абзац с разбивкой «в том числе <тип> — <сумма>» умещается в ~900
+    символов (замерено на реальных файлах)."""
+    m = _MP_VALUATION_ANCHOR_RE.search(text)
+    return text[m.start(): m.start() + 900].strip() if m else ""

@@ -14,16 +14,35 @@ import { useDropzone } from 'react-dropzone';
 import { DocumentData, AnalysisResult } from '../../types';
 import {
   analyzeDocument,
+  llmWarmup,
   selectFile,
   hasElectronAPI,
   getElectronAPI,
 } from '../../services/electronApi';
+import { isLlmHintsEnabled } from '../settings/settingsStore';
 
 interface DocumentUploadProps {
   onDocumentUploaded: (data: DocumentData, analysisResult?: AnalysisResult) => void;
   /** PDF идёт на convert-шаг (OCR + предпросмотр), а не сразу в анализ. */
   onPdfSelected?: (file: File) => void;
 }
+
+/**
+ * Прогрев LLM «на упреждение», в момент, когда файл принят.
+ *
+ * Замер: первый документ после запуска платит ~80 секунд только за подъём
+ * весов модели с диска. Ставить эту цену перед первой подсказкой незачем —
+ * юрист в это время всё равно ждёт разбор (DOCX) или конвертацию (PDF), и
+ * прогрев успевает пройти незаметно.
+ *
+ * Намеренно НЕ ждём ответа и не показываем ошибок: это оптимизация, а не
+ * условие работы. Выключенная в настройках проверка не греет ничего — иначе
+ * выключатель врал бы про нагрузку.
+ */
+const warmLlmAhead = (): void => {
+  if (!isLlmHintsEnabled()) return;
+  void llmWarmup();
+};
 
 const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded, onPdfSelected }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -41,6 +60,8 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded, onP
       setError('Поддерживаются только файлы формата .docx и .pdf');
       return;
     }
+
+    warmLlmAhead();
 
     // PDF — через OCR-конвертер (convert-шаг). Прогрев sidecar убран намеренно:
     // ConvertScreen монтируется сразу за onPdfSelected и сам зовёт converterStart,
@@ -102,6 +123,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded, onP
       // Electron: системный диалог по пути через мост preload.
       const filePath = await selectFile();
       if (filePath) {
+        warmLlmAhead();
         // PDF — на convert-шаг: читаем байты через мост и отдаём как File
         if (filePath.toLowerCase().endsWith('.pdf') && onPdfSelected) {
           const fileName = filePath.split(/[\\/]/).pop() || 'document.pdf';

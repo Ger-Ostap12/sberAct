@@ -5,6 +5,7 @@ import { Box, Typography, Grid, TextField } from '@mui/material';
 import { toInputDate, fromInputDate } from '../../../shared/lib/dates';
 import { isValidFio } from '../../../shared/lib/validators';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';
+import LlmFieldHint, { LlmHintPending } from '../../../shared/components/LlmFieldHint';
 
 interface RepresentativeSectionProps {
   editedFields: Record<string, string>;
@@ -22,7 +23,7 @@ const RepresentativeSection: React.FC<RepresentativeSectionProps> = ({
     <Grid container spacing={2}>
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
-          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО:</Typography>
+          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО:<LlmHintPending field="representativeName" block="representative" /></Typography>
           <TextField
             fullWidth
             value={editedFields.representativeName || ''}
@@ -33,6 +34,7 @@ const RepresentativeSection: React.FC<RepresentativeSectionProps> = ({
             helperText={!isValidFio(editedFields.representativeName) ? 'ФИО: Фамилия Имя Отчество или Фамилия И.О.' : undefined}
           />
         </Box>
+            <LlmFieldHint field="representativeName" block="representative" />
       </Grid>
       <Grid item xs={6}>
         <Box sx={LABEL_OVERLAP_BOX}>

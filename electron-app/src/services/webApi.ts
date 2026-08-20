@@ -11,6 +11,7 @@ import {
   ConverterStartResult,
   ConverterProcessStatus,
   DocxTextResult,
+  LlmHintsStatus,
 } from './electronApi';
 
 // Веб-реализация того же контракта, что и мост Electron (preload). Позволяет
@@ -259,6 +260,47 @@ export const webApi: ElectronAPI = {
       return (await res.json()) as ConverterProcessStatus;
     } catch {
       return { running: false, healthy: false };
+    }
+  },
+
+  // --- Теневые LLM-подсказки. Всегда через бэкенд (он владеет жизненным
+  //     циклом сайдкара и поднимает его сам), никогда напрямую в конвертер.
+  // Прогрев модели «на упреждение». Ответ приходит сразу, работа идёт в
+  // фоне сайдкара; результат нас не интересует — важно лишь, что к моменту
+  // первой подсказки веса уже в памяти.
+  llmWarmup: async (): Promise<void> => {
+    try {
+      await fetchBackend('/llm/warmup', { method: 'POST' });
+    } catch {
+      // Прогрев — оптимизация. Не поднялся сайдкар или нет модели — работаем
+      // как раньше, просто медленнее. Тревожить юриста здесь нечем.
+    }
+  },
+
+  llmHintsStart: async (
+    rawText: string,
+    regex: Record<string, string>,
+  ): Promise<{ job_id: string }> => {
+    const res = await fetchBackend('/llm/hints', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rawText, regex }),
+    });
+    return (await res.json()) as { job_id: string };
+  },
+
+  llmHintsStatus: async (jobId: string): Promise<LlmHintsStatus> => {
+    const res = await fetchBackend(`/llm/hints/${encodeURIComponent(jobId)}`);
+    return (await res.json()) as LlmHintsStatus;
+  },
+
+  llmHintsCancel: async (jobId: string): Promise<void> => {
+    // Отмена — «лучшее усилие»: если не дошла, сторож простоя всё равно
+    // выгрузит сайдкар. Ронять из-за неё интерфейс незачем.
+    try {
+      await fetchBackend(`/llm/hints/${encodeURIComponent(jobId)}`, { method: 'DELETE' });
+    } catch {
+      /* игнорируем */
     }
   },
 

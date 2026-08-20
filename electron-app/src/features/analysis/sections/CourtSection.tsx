@@ -21,6 +21,7 @@ import {
   LABEL_OVERLAP_SX,
   BLOCK_BOX_SX,
 } from '../../../shared/styles/formStyles';
+import LlmFieldHint, { LlmHintPending } from '../../../shared/components/LlmFieldHint';
 
 interface CourtSectionProps {
   editedFields: Record<string, string>;
@@ -42,7 +43,9 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
               <Grid container spacing={2}>
                 <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
-                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Название суда:</Typography>
+                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>
+                        Название суда:<LlmHintPending field="courtName" block="court" />
+                      </Typography>
                   <TextField
                     fullWidth
                         value={editedFields.courtName || ''}
@@ -52,6 +55,7 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                         placeholder="Арбитражный суд Ростовской области"
                   />
                     </Box>
+                    <LlmFieldHint field="courtName" block="court" />
                 </Grid>
 
                 <Grid item xs={12}>
@@ -122,7 +126,9 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                   {isMortgage && (
                   <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
-                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес суда:</Typography>
+                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>
+                        Адрес суда:<LlmHintPending field="courtAddress" block="court" />
+                      </Typography>
                       <TextField
                         fullWidth
                         multiline
@@ -132,6 +138,7 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                         margin="dense"
                       />
                     </Box>
+                    <LlmFieldHint field="courtAddress" block="court" />
                   </Grid>
                   )}
 

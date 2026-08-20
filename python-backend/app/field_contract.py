@@ -104,6 +104,13 @@ FIELD_TYPES: Dict[str, str] = {
     "managerAddress": ADDRESS,
     "thirdPartyAddress": ADDRESS,
     "address": ADDRESS,
+    # Адрес суда до сих пор не был объявлен адресным, и контракт к нему не
+    # применялся вовсе: в заявление между названием суда и адресом можно было
+    # вставить произвольную строку, и она проходила насквозь. Ключ разбора —
+    # mortgageCourtAddress001 (patterns.py), courtAddress — тот же адрес под
+    # именем, которое шлёт форма.
+    "mortgageCourtAddress001": ADDRESS,
+    "courtAddress": ADDRESS,
     # организации и суд
     "creditorName": ORG,
     "sroName": ORG,

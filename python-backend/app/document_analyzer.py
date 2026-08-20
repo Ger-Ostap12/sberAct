@@ -658,6 +658,17 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # а НЕ жадный блоб со всей правовой «водой» секции залога (ст.334 ГК, чужие
             # ФИО из шаблонного текста заявления). Блоб уже отработал на разбиении
             # collaterals выше, дальше в акт должно идти короткое описание объекта.
+            # Адреса предметов ипотеки контракт до сих пор не смотрел вовсе:
+            # check_entries звался только для debtors/thirdParties/heirs, а
+            # mortgageProperties строятся ПОЗЖЕ этого цикла. В итоге в адрес
+            # объекта могла доехать любая строка. Правило то же самое, что и
+            # для остальных адресов, — отдельного изобретать не нужно.
+            if mortgage_properties:
+                field_issues += [
+                    i.as_dict() for i in field_contract.check_entries(
+                        mortgage_properties, "mortgageProperties")
+                ]
+
             if document_type == "mortgage_claim" and mortgage_properties:
                 _descs = [str(p.get("description") or "").strip() for p in mortgage_properties]
                 _descs = [d for d in _descs if d]

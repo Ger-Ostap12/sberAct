@@ -6,6 +6,7 @@ import { toInputDate, fromInputDate } from '../../../shared/lib/dates';
 import { isValidPassportSeries, isValidPassportNumber, digitsOnly } from '../../../shared/lib/validators';
 import FieldQualityMark from '../../../shared/components/FieldQualityMark';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';
+import LlmFieldHint, { LlmHintPending } from '../../../shared/components/LlmFieldHint';
 
 interface DebtorsSectionProps {
   debtors: Debtor[];
@@ -62,7 +63,10 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
         <Grid container spacing={2}>
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
-              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{isMortgage ? 'ФИО:' : 'ФИО/наименование:'}</Typography>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>
+                {isMortgage ? 'ФИО:' : 'ФИО/наименование:'}
+                <LlmHintPending field={`debtors[${index}].name`} block="debtors" />
+              </Typography>
               <TextField
                 fullWidth
                 value={debtor.name || ''}
@@ -71,10 +75,14 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
                 margin="dense"
               />
             </Box>
+            <LlmFieldHint field={`debtors[${index}].name`} block="debtors" />
           </Grid>
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
-              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{isMortgage ? 'Адрес ответчика:' : 'Адрес должника:'}</Typography>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>
+                {isMortgage ? 'Адрес ответчика:' : 'Адрес должника:'}
+                <LlmHintPending field={`debtors[${index}].address`} block="debtors" />
+              </Typography>
               <FieldQualityMark quality={fieldQuality?.[`debtors[${index}].address`]}>
                 <TextField
                   fullWidth
@@ -86,10 +94,13 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
                 />
               </FieldQualityMark>
             </Box>
+            <LlmFieldHint field={`debtors[${index}].address`} block="debtors" />
           </Grid>
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
-              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ИНН:</Typography>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>
+                ИНН:<LlmHintPending field={`debtors[${index}].inn`} block="debtors" />
+              </Typography>
               <FieldQualityMark quality={fieldQuality?.[`debtors[${index}].inn`]}>
                 <TextField
                   fullWidth
@@ -100,6 +111,7 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
                 />
               </FieldQualityMark>
             </Box>
+            <LlmFieldHint field={`debtors[${index}].inn`} block="debtors" />
           </Grid>
           {/* Реквизит должника по типу лица: ФЛ — нет ОГРН/ОГРНИП;
               ИП — ОГРНИП; ЮЛ/КФХ (и неопределённый тип) — ОГРН. */}
@@ -144,7 +156,7 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
           {entityType !== 'legal' && (
             <Grid item xs={12}>
               <Box sx={LABEL_OVERLAP_BOX}>
-                <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата рождения:</Typography>
+                <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата рождения:<LlmHintPending field={`debtors[${index}].birthDate`} block="debtors" /></Typography>
                 <TextField
                   fullWidth
                   type="date"
@@ -155,6 +167,7 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
                   InputLabelProps={{ shrink: true }}
                 />
               </Box>
+            <LlmFieldHint field={`debtors[${index}].birthDate`} block="debtors" />
             </Grid>
           )}
           {/* Паспорт — только в ипотеке (роль «Ответчик»). Серия 4 / номер 6 цифр. */}

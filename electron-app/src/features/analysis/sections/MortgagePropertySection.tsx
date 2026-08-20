@@ -15,6 +15,7 @@ import {
   LABEL_OVERLAP_SX,
   BLOCK_BOX_SX,
 } from '../../../shared/styles/formStyles';
+import LlmFieldHint, { LlmHintPending } from '../../../shared/components/LlmFieldHint';
 
 interface MortgagePropertySectionProps {
   mortgageProperties: MortgageProperty[];
@@ -54,7 +55,7 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
         <Grid container spacing={2}>
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
-              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Описание объекта:</Typography>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Описание объекта:<LlmHintPending field={`mortgageProperties[${index}].description`} block="properties" /></Typography>
               <TextField
                 fullWidth
                 multiline
@@ -64,11 +65,12 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
                 margin="dense"
               />
             </Box>
+            <LlmFieldHint field={`mortgageProperties[${index}].description`} block="properties" />
           </Grid>
 
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
-              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Кадастровый номер:</Typography>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Кадастровый номер:<LlmHintPending field={`mortgageProperties[${index}].cadastralNumber`} block="properties" /></Typography>
               <TextField
                 fullWidth
                 value={property.cadastralNumber || ''}
@@ -79,11 +81,12 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
                 margin="dense"
               />
             </Box>
+            <LlmFieldHint field={`mortgageProperties[${index}].cadastralNumber`} block="properties" />
           </Grid>
 
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
-              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес объекта:</Typography>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес объекта:<LlmHintPending field={`mortgageProperties[${index}].address`} block="properties" /></Typography>
               <TextField
                 fullWidth
                 multiline
@@ -93,11 +96,12 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
                 margin="dense"
               />
             </Box>
+            <LlmFieldHint field={`mortgageProperties[${index}].address`} block="properties" />
           </Grid>
 
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
-              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Стоимость (оценка):</Typography>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Стоимость (оценка):<LlmHintPending field={`mortgageProperties[${index}].value`} block="properties" /></Typography>
               <TextField
                 fullWidth
                 value={property.value || ''}
@@ -108,11 +112,12 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
                 margin="dense"
               />
             </Box>
+            <LlmFieldHint field={`mortgageProperties[${index}].value`} block="properties" />
           </Grid>
 
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
-              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Начальная продажная цена:</Typography>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Начальная продажная цена:<LlmHintPending field={`mortgageProperties[${index}].startingPrice`} block="properties" /></Typography>
               <TextField
                 fullWidth
                 value={property.startingPrice || ''}
@@ -123,11 +128,12 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
                 margin="dense"
               />
             </Box>
+            <LlmFieldHint field={`mortgageProperties[${index}].startingPrice`} block="properties" />
           </Grid>
 
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
-              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Стратегия определения НПЦ:</Typography>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Стратегия определения НПЦ:<LlmHintPending field={`mortgageProperties[${index}].npcStrategy`} block="properties" /></Typography>
               <TextField
                 fullWidth
                 multiline
@@ -137,11 +143,12 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
                 margin="dense"
               />
             </Box>
+            <LlmFieldHint field={`mortgageProperties[${index}].npcStrategy`} block="properties" />
           </Grid>
 
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
-              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Запись в ЕГРН:</Typography>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Запись в ЕГРН:<LlmHintPending field={`mortgageProperties[${index}].egrnRecord`} block="properties" /></Typography>
               <TextField
                 fullWidth
                 value={property.egrnRecord || ''}
@@ -152,6 +159,7 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
                 margin="dense"
               />
             </Box>
+            <LlmFieldHint field={`mortgageProperties[${index}].egrnRecord`} block="properties" />
           </Grid>
 
           <Grid item xs={12}>
@@ -171,7 +179,7 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
 
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
-              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Отчёт об оценке:</Typography>
+              <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Отчёт об оценке:<LlmHintPending field={`mortgageProperties[${index}].appraisalReport`} block="properties" /></Typography>
               <TextField
                 fullWidth
                 value={property.appraisalReport || ''}
@@ -180,6 +188,7 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
                 margin="dense"
               />
             </Box>
+            <LlmFieldHint field={`mortgageProperties[${index}].appraisalReport`} block="properties" />
           </Grid>
 
           {/* ДДУ (вид ипотеки 'ddu'): договор долевого участия и его дата. */}
