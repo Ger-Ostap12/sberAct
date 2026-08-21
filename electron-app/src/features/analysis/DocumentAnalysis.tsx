@@ -11,7 +11,8 @@ import {
   CircularProgress,
   Divider
 } from '@mui/material';
-import { ArrowBack as BackIcon, CheckCircle as CheckIcon } from '@mui/icons-material';
+import BackIcon from '@mui/icons-material/ArrowBack';
+import CheckIcon from '@mui/icons-material/CheckCircle';
 import { DocumentData, ExtractedData, Obligation, Collateral, CollateralType, EntityType, CollateralOption, DebtorStatus, ApplicationKind, SelectedAct, ThirdParty, Debtor, Heir, PartyLite, MortgageKind, MortgageProperty } from '../../types';
 import { useBanks } from './hooks/useBanks';
 import { extractCollateralData } from '../../shared/lib/collateral';

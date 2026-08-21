@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Box, Typography, IconButton } from '@mui/material';
-import { Close as CloseIcon } from '@mui/icons-material';
+import CloseIcon from '@mui/icons-material/Close';
 import {
   CARD_SX,
   CARD_HEADER_SX,

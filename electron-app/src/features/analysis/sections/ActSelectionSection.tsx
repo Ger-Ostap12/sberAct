@@ -18,7 +18,7 @@ import {
   Select,
   MenuItem,
 } from '@mui/material';
-import { ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { EntityType, CollateralOption, ApplicationKind, DebtorStatus, SelectedAct } from '../../../types';
 

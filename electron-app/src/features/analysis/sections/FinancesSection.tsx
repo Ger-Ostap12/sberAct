@@ -9,7 +9,7 @@ import {
   AccordionSummary,
   AccordionDetails,
 } from '@mui/material';
-import { ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { toInputDate, fromInputDate } from '../../../shared/lib/dates';
 import { isFnsCreditor } from '../../../shared/lib/banks';
 import AmountField from '../../../shared/components/AmountField';

@@ -9,7 +9,8 @@ import {
   CircularProgress,
   Paper
 } from '@mui/material';
-import { CloudUpload as UploadIcon, Description as FileIcon } from '@mui/icons-material';
+import UploadIcon from '@mui/icons-material/CloudUpload';
+import FileIcon from '@mui/icons-material/Description';
 import { useDropzone } from 'react-dropzone';
 import { DocumentData, AnalysisResult } from '../../types';
 import {

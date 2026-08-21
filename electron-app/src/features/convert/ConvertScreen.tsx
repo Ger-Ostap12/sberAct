@@ -16,12 +16,10 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import {
-  AutoFixHigh as ConvertIcon,
-  Download as DownloadIcon,
-  NavigateNext as NextIcon,
-  SkipNext as SkipIcon,
-} from '@mui/icons-material';
+import ConvertIcon from '@mui/icons-material/AutoFixHigh';
+import DownloadIcon from '@mui/icons-material/Download';
+import NextIcon from '@mui/icons-material/NavigateNext';
+import SkipIcon from '@mui/icons-material/SkipNext';
 import { AnalysisResult } from '../../types';
 import {
   analyzeDocument,

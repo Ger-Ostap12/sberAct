@@ -16,13 +16,11 @@ import {
   ListItemText,
   ListItemIcon
 } from '@mui/material';
-import {
-  ArrowBack as BackIcon,
-  CheckCircle as CheckIcon,
-  Download as DownloadIcon,
-  Add as AddIcon,
-  Description as DocumentIcon
-} from '@mui/icons-material';
+import BackIcon from '@mui/icons-material/ArrowBack';
+import CheckIcon from '@mui/icons-material/CheckCircle';
+import DownloadIcon from '@mui/icons-material/Download';
+import AddIcon from '@mui/icons-material/Add';
+import DocumentIcon from '@mui/icons-material/Description';
 import { ExtractedData, SelectedAct, TemplateType } from '../../types';
 import { useGenerateDocument } from './hooks/useGenerateDocument';
 import { useDownloadDocument } from './hooks/useDownloadDocument';

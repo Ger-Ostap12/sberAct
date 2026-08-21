@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Typography, Card, IconButton, Grid, TextField, Button } from '@mui/material';
-import { Add as AddIcon, Close as CloseIcon } from '@mui/icons-material';
+import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
 import { PartyLite } from '../../../types';
 import { isValidFio } from '../../../shared/lib/validators';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';

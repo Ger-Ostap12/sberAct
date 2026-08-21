@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Typography, Button, Card, CardContent } from '@mui/material';
-import { ArrowBack as BackIcon, Construction as ConstructionIcon } from '@mui/icons-material';
+import BackIcon from '@mui/icons-material/ArrowBack';
+import ConstructionIcon from '@mui/icons-material/Construction';
 
 interface CollectionStubProps {
   onBack: () => void;

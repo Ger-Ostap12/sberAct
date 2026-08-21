@@ -10,7 +10,9 @@ import {
   TextField,
   Button,
 } from '@mui/material';
-import { Add as AddIcon, Close as CloseIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
+import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Obligation } from '../../../types';
 import { toInputDate, fromInputDate } from '../../../shared/lib/dates';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';

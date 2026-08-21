@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box, Container, Typography, AppBar, Toolbar, IconButton, Tooltip } from '@mui/material';
-import { LocalOffer as DocumentIcon, BugReport as DevToolsIcon, SystemUpdateAlt as UpdateIcon, Settings as SettingsIcon } from '@mui/icons-material';
+import DocumentIcon from '@mui/icons-material/LocalOffer';
+import DevToolsIcon from '@mui/icons-material/BugReport';
+import UpdateIcon from '@mui/icons-material/SystemUpdateAlt';
+import SettingsIcon from '@mui/icons-material/Settings';
 import DocumentUpload from './features/upload/DocumentUpload';
 import DocumentAnalysis from './features/analysis/DocumentAnalysis';
 import DocumentPreview from './features/preview/DocumentPreview';

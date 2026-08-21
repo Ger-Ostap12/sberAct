@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Typography, Card, IconButton, Grid, TextField, Button } from '@mui/material';
-import { Add as AddIcon, Close as CloseIcon } from '@mui/icons-material';
+import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
 import { Debtor, EntityType, FieldQuality } from '../../../types';
 import { toInputDate, fromInputDate } from '../../../shared/lib/dates';
 import { isValidPassportSeries, isValidPassportNumber, digitsOnly } from '../../../shared/lib/validators';

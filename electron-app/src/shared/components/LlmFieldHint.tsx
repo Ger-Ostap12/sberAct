@@ -1,6 +1,6 @@
 import React from 'react';
 import { Alert, AlertTitle, Box, Tooltip } from '@mui/material';
-import { HourglassEmpty as PendingIcon } from '@mui/icons-material';
+import PendingIcon from '@mui/icons-material/HourglassEmpty';
 import { useLlmHints } from '../../features/analysis/lib/LlmHintsContext';
 
 /**
