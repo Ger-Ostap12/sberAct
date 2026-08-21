@@ -162,7 +162,7 @@ describe('DocumentAnalysis — самобанкротство', () => {
     expect(screen.getByRole('button', { name: 'Ликвидируемый' })).toHaveAttribute('aria-pressed', 'false');
   });
 
-  it('выбор «Самобанкрот» скрывает «Информация о кредиторе», но НЕ «Финансовые данные»', () => {
+  it('выбор «Самобанкрот» скрывает «Информация о кредиторе» и «Финансовые данные»', () => {
     renderSelf();
     fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));
     expect(screen.getByText('Информация о кредиторе')).toBeInTheDocument();
@@ -170,9 +170,9 @@ describe('DocumentAnalysis — самобанкротство', () => {
 
     fireEvent.click(screen.getByRole('radio', { name: 'Самобанкрот' }));
     expect(screen.queryByText('Информация о кредиторе')).not.toBeInTheDocument();
-    // Общий долг самобанкрота уезжает в акты — блок сумм обязан остаться
-    // редактируемым (иначе исправить разбор нечем).
-    expect(screen.getByText('Финансовые данные')).toBeInTheDocument();
+    // Шаблоны Templates/самобанкротство/ не содержат финансовых маркеров
+    // ([12]-[17]) — суммы в акт не попадают, выверять их юристу незачем.
+    expect(screen.queryByText('Финансовые данные')).not.toBeInTheDocument();
 
     // Радио взаимоисключающее — возврат через выбор «Инициирование».
     fireEvent.click(screen.getByRole('radio', { name: 'Инициирование' }));

@@ -1363,11 +1363,12 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 )}
 
                 {/* Финансовые данные (не-ФНС; у ФНС — в колонке выше). У самобанкрота
-                    блок ОСТАЁТСЯ: суммы там разложены по кредиторам, но общий долг в
-                    заявлении назван («общий объём задолженности составляет …») и уходит
-                    в акты — пряча блок, мы лишали юриста единственного способа его
-                    выправить. Скрывается только кредитор-заявитель, которого нет. */}
-                {!isFnsCreditor(editedFields.creditorName) && (
+                    блок скрыт: ни один шаблон Templates/самобанкротство/ не содержит
+                    финансовых маркеров ([12]-[17]), то есть суммы туда не попадают ни
+                    при каком раскладе. Показывать их — значит просить юриста выверять
+                    числа, которые никуда не уедут (а разложены они по кредиторам и в
+                    общий долг не складываются, так что выглядят как ошибка анализа). */}
+                {!isSelf && !isFnsCreditor(editedFields.creditorName) && (
                 <Grid item xs={12} md={isMortgage && mortgageKind === 'military' ? 12 : 6} sx={{ display: 'flex', minWidth: 0 }}>
               <FinancesSection editedFields={editedFields} onFieldChange={handleFieldChange} financeBreakdown={analysisResult?.financeBreakdown} mode={mode} mortgageKind={mortgageKind} />
                 </Grid>
