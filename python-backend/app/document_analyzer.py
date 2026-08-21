@@ -128,7 +128,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         ("ссудная задолженность", "loanDebt"),
         ("проценты за кредит", "interest"),
         ("задолженность по неустойке", "forfeit"),
-        ("госпошлина", "stateDuty"),
+        # Госпошлина ВНУТРИ таблицы расчёта — ссудная ([17]), а не банкротная
+        # ([16]): она входит в ИТОГО требований (что и проверяет сверка сумм
+        # ниже). Банкротная платится отдельно за подачу заявления и в состав
+        # требований не входит, её берёт разбор просительной части.
+        ("госпошлина", "loanStateDuty17"),
     )
 
     # Денежная ячейка целиком: «2 438 262,70» (в т.ч. с неразрывным пробелом,
@@ -177,7 +181,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 return 0.0
 
         total = _num("totalDebt")
-        parts = _num("loanDebt") + _num("interest") + _num("forfeit") + _num("stateDuty")
+        parts = _num("loanDebt") + _num("interest") + _num("forfeit") + _num("loanStateDuty17")
         if total <= 0 or abs(total - parts) > 0.05:
             logger.info(
                 "Таблица расчёта: ИТОГО %.2f не сходится с суммой строк %.2f — суммы из "
@@ -199,6 +203,18 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         for key, value in found.items():
             if value:
                 fields[key] = value
+
+        # Ту же строку «Госпошлина …» общий слой регулярок уже записал в
+        # stateDuty ([16], банкротная). Раз таблица опознала её как ссудную,
+        # это один и тот же рубль в двух маркерах — снимаем дубль. Иное
+        # значение в stateDuty не трогаем: там настоящая банкротная пошлина
+        # из просительной части.
+        loan_duty = found.get("loanStateDuty17")
+        if loan_duty:
+            for key in ("stateDuty", "stateDuty16"):
+                if fields.get(key) == loan_duty:
+                    fields.pop(key, None)
+
         logger.info("Суммы взяты из %s: %s", source, found)
 
     def _debt_rows_from_text(self, text: str) -> List[Tuple[str, str]]:

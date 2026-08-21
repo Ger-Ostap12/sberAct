@@ -81,7 +81,11 @@ def test_amounts_taken_from_table(analyzer, tmp_path):
     assert fields["loanDebt"] == "2 438 262,70"
     assert fields["interest"] == "0,00"
     assert fields["forfeit"] == "407 123,69"
-    assert fields["stateDuty"] == "22 568,82"
+    # Госпошлина из таблицы расчёта — ССУДНАЯ ([17]): она входит в ИТОГО
+    # требований. В stateDuty ([16]) стоит банкротная, платится отдельно за
+    # подачу заявления, и одним и тем же рублём эти маркеры быть не могут.
+    assert fields["loanStateDuty17"] == "22 568,82"
+    assert "stateDuty" not in fields
     assert fields["totalDebt"] == "2 867 955,21"
 
 
@@ -222,7 +226,8 @@ def test_flat_text_amounts_taken_from_table(analyzer):
     assert fields["loanDebt"] == "2 438 262,70"
     assert fields["interest"] == "0,00"
     assert fields["forfeit"] == "407 123,69"
-    assert fields["stateDuty"] == "22 568,82"
+    assert fields["loanStateDuty17"] == "22 568,82"
+    assert "stateDuty" not in fields
     assert fields["totalDebt"] == "2 867 955,21"
     assert fields["principalDebt"] == "2 438 262,70"
     assert fields["debtAmount"] == "2 867 955,21"
