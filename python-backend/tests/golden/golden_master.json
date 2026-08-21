@@ -155,7 +155,7 @@
    "contractNumber": "69303105",
    "courtName": "Приморский районный суд г. Новороссийска",
    "creditInterestRate": "5,7",
-   "creditPenaltyRate": "5.70",
+   "creditPenaltyRate": "15",
    "creditTermMonths": "360",
    "creditorAddress": "117312, г. Москва, ул. Вавилова, д.16",
    "creditorInn": "7707510143",
@@ -179,7 +179,7 @@
    "mortgageDebtorName": null,
    "mortgageInterestAmount12": "211032,76",
    "mortgageInterestRate113": "5.70",
-   "mortgagePenaltyRate114": "5.70",
+   "mortgagePenaltyRate114": "15",
    "mortgagePeriodAmount10": "5825199,47",
    "mortgagePeriodEnd121": "17.05.2026",
    "mortgagePeriodStart120": "15.10.2025",
@@ -777,7 +777,7 @@
    "contractNumber": "461063",
    "courtName": "Шалинский городской суд",
    "creditInterestRate": "15,2",
-   "creditPenaltyRate": "15.20",
+   "creditPenaltyRate": "14",
    "creditTermMonths": "360",
    "creditorAddress": "117312, г. Москва, ул. Вавилова, д.26",
    "creditorInn": "7707820593",
@@ -801,7 +801,7 @@
    "mortgageDebtorName": null,
    "mortgageInterestAmount12": "144547,24",
    "mortgageInterestRate113": "15.20",
-   "mortgagePenaltyRate114": "15.20",
+   "mortgagePenaltyRate114": "14",
    "mortgagePeriodAmount10": "1734694,06",
    "mortgagePeriodEnd121": "17.05.2026",
    "mortgagePeriodStart120": "13.08.2025",
@@ -1035,7 +1035,7 @@
    "contractNumber": "91711111",
    "courtName": "Шалинский городской суд",
    "creditInterestRate": "19,7",
-   "creditPenaltyRate": "19.7",
+   "creditPenaltyRate": "18",
    "creditTermMonths": "291",
    "creditorAddress": "117312, г. Москва, ул. Вавилова, д.34",
    "creditorInn": "7707666616",
@@ -1060,7 +1060,7 @@
    "mortgageDebtorNameDative": "Жевнину Магомеду Тимуровичу",
    "mortgageInterestAmount12": "166 506,03",
    "mortgageInterestRate113": "19.7",
-   "mortgagePenaltyRate114": "19.7",
+   "mortgagePenaltyRate114": "18",
    "mortgagePeriodAmount10": "1 844 383,84",
    "mortgagePeriodEnd121": "01.11.2025",
    "mortgagePeriodStart120": "10.06.1025",
@@ -1193,7 +1193,7 @@
    "contractNumber": "467654",
    "courtName": "Октябрьский районный суд г. Краснодара",
    "creditInterestRate": "5,7",
-   "creditPenaltyRate": "5.7",
+   "creditPenaltyRate": "8",
    "creditTermMonths": "360",
    "creditorAddress": "117997, г. Москва, ул. Вавилова, д. 19",
    "creditorInn": "7707083893",
@@ -1218,7 +1218,7 @@
    "mortgageDebtorNameDative": "Фонареву Инне Викторовне",
    "mortgageInterestAmount12": "156 502.76",
    "mortgageInterestRate113": "5.7",
-   "mortgagePenaltyRate114": "5.7",
+   "mortgagePenaltyRate114": "8",
    "mortgagePeriodAmount10": "5 199 989.94",
    "mortgagePeriodEnd121": "23.05.2025",
    "mortgagePeriodStart120": "05.12.2024",
@@ -1238,7 +1238,6 @@
    "principalDebt": "5 040 063,34",
    "principalDebt13": "5 040 063,34",
    "registrationDate": "20.06.1991",
-   "requirementsSum": "5 199 989,94",
    "sourceDocumentType": "mortgage_claim",
    "stateDuty": "80 400,00",
    "stateDuty16": "80 400,00",
@@ -1259,7 +1258,7 @@
    }
   ],
   "rawTextLen": 18353,
-  "rawTextSha": "58707006c18ed8b2788c351c4f9a2fdea3e2e56044f21465aeefcc1dbcde4ca9",
+  "rawTextSha": "98475978c716788b700200d2690d4e07cdeab301b1ce708fabb298274f13a707",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "individual",
@@ -1272,7 +1271,7 @@
    {
     "address": "350028, Краснодарский край. Краснодар г. Восточно- Кругликовская ул., дом 42/3, корпус 2, помещение 255",
     "inn": "2311111111",
-    "name": "ООО \"СПЕЦИАЛИЗИРОВАННЫЙ ЗАСТРОЙШИК «Не гарантирую качество»"
+    "name": "ООО \"СПЕЦИАЛИЗИРОВАННЫЙ ЗАСТРОЙЩИК «Не гарантирую качество»"
    },
    {
     "address": "350063 г. Краснодар ул. Ленина, д. 28",
@@ -3455,6 +3454,7 @@
    "contractNumber": "052/5221/20199-199102/2",
    "courtName": "Арбитражный суд Ростовской области",
    "creditInterestRate": "17,5",
+   "creditTermMonths": "36",
    "creditorAddress": "117312, Москва, ул. Вавилова, д. 19",
    "creditorInn": "7707083893",
    "creditorName": "ПАО Сбербанк",
@@ -3549,6 +3549,7 @@
    "contractNumber": "6123013561-23-1",
    "courtName": "Арбитражный суд Ростовской области",
    "creditInterestRate": "19,5",
+   "creditTermMonths": "36",
    "creditorAddress": "117312, Москва, ул. Вавилова, д. 19",
    "creditorInn": "7707083893",
    "creditorName": "ПАО Сбербанк",
@@ -4865,14 +4866,6 @@
    "interest14": "518 326 017,27",
    "legalShortName": "имеет неисполненные денежные",
    "loanDebt": "5 032 544 855,59",
-   "mortgageCollateralDescription1221": "Земельный участок площадью 1940 +/- 15 (одна тысяча девятьсот сорок плюс/минус пятнадцать) кв. м, с; Земельный участок площадью 2 164+/- 16 (Две тысячи сто шестьдесят четыре плюс/минус шестнадцать) кв. м с",
-   "mortgageCourtAddress001": "12198/2026 по заявлению Акционерного общества «ББР Банк» ОГРН 1027700074775, ИНН",
-   "mortgageCourtName002": "В производстве Арбитражного суда Ростовской области находится дело № А53-",
-   "mortgageDebtorName": "Имеет Неисполненные Денежные",
-   "mortgageDebtorNameDative": "Имеющему Неисполненным Денежным",
-   "mortgageInterestAmount12": "4 841 794,49",
-   "mortgagePenaltyRate114": "0,05",
-   "mortgagePrincipalAmount11": "7 978 449,85",
    "obligations": [
     {
      "contractDate": "07.03.2023",
@@ -5025,7 +5018,7 @@
     "cadastralNumber": "34:34:080139:441",
     "collateralType": "real_estate",
     "collateralValue": "1547000,00",
-    "description": "1) Земельный участок площадью 699 +/- 9 кв. м. с кадастровым номером 34:34:080139:441, находящийся по адресу Волгоградская обл., г. Волгоград, ул. 40 лет ВЛКСМ, 78 Г, стоимостью 1 547 000,00 руб",
+    "description": "Земельный участок площадью 699 +/- 9 кв. м. с кадастровым номером 34:34:080139:441, находящийся по адресу Волгоградская обл., г. Волгоград, ул. 40 лет ВЛКСМ, 78 Г, стоимостью 1 547 000,00 руб",
     "id": "collateral-0",
     "objectName": "Земельный участок",
     "otherDescription": "",
@@ -5037,7 +5030,7 @@
     "cadastralNumber": "34:34:080139:484",
     "collateralType": "real_estate",
     "collateralValue": "10056000,00",
-    "description": "2) Земельный участок площадью 4544 +/- 24 кв. м. с кадастровым номером 34:34:080139:484, находящийся по адресу Волгоградская обл., г. Волгоград, ул. 40 лет ВЛКСМ, з/у 80 в, стоимостью 10 056 000,00 руб",
+    "description": "Земельный участок площадью 4544 +/- 24 кв. м. с кадастровым номером 34:34:080139:484, находящийся по адресу Волгоградская обл., г. Волгоград, ул. 40 лет ВЛКСМ, з/у 80 в, стоимостью 10 056 000,00 руб",
     "id": "collateral-1",
     "objectName": "Земельный участок",
     "otherDescription": "",
@@ -5111,12 +5104,6 @@
    "interest14": "518 326 017,27",
    "legalShortName": "ООО «Форте Пром Стил ГмбХ»",
    "loanDebt": "5 032 544 855,59",
-   "mortgageCollateralDescription1221": "1) Земельный участок площадью 699 +/- 9 кв. м. с; 2) Земельный участок площадью 4544 +/- 24 кв. м. с; 3); 4)",
-   "mortgageDebtorName": "Форте Пром Стил Гмбх",
-   "mortgageDebtorNameDative": "Форту Прому Стившему Гмбхам",
-   "mortgageInterestAmount12": "753 325,51",
-   "mortgagePenaltyRate114": "0,05",
-   "mortgagePrincipalAmount11": "6 243 169,90",
    "obligations": [
     {
      "contractDate": "21.06.2024",
@@ -6978,7 +6965,7 @@
  },
  "НОвая конвертация/ФНС/Заявление РТК Бузнякова Е В.docx": {
   "collaterals": [],
-  "confidence": 1.0,
+  "confidence": 0.85,
   "debtors": [
    {
     "address": "пер Рязанова, 31, х Елкин, Багаевский р-н, ,346621",
@@ -7300,7 +7287,7 @@
  },
  "НОвая конвертация/ФНС/Заявление о включении в ртк  Артемов И.Г..docx": {
   "collaterals": [],
-  "confidence": 1.0,
+  "confidence": 0.95,
   "debtors": [
    {
     "address": "346406, РОССИЯ, Ростовская обл, ‚ горно-черкасск, , ул Речная, 43",
@@ -7339,7 +7326,6 @@
    "managerAddress": "350075, г.Краснодар, а/я 4426",
    "managerName": "Колос Екатерина Александровна",
    "messageDate": "04.03.2026",
-   "requirementsSum": "5 319 752 026,00",
    "sourceDocumentType": "rtk_application",
    "totalDebt": "855,35"
   },
@@ -7364,7 +7350,7 @@
  },
  "НОвая конвертация/ФНС/Заявление о включении в ртк  Геворгян К.В..docx": {
   "collaterals": [],
-  "confidence": 0.95,
+  "confidence": 0.7,
   "debtors": [
    {
     "address": "346611,РОССИЯ,Ростовская обл,„,Багаевская ст-ца, Фрунзе ул,67",
