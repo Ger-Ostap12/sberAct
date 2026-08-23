@@ -3,7 +3,7 @@ import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 import field_contract
-from patterns import FNS_CAT_LABELS, FNS_QUEUE_ORDINAL_WORDS
+from patterns import FNS_CAT_LABELS, FNS_QUEUE_ORDINAL_WORDS, MONEY_NUM
 
 logger = logging.getLogger(__name__)
 
@@ -1499,6 +1499,11 @@ class AmountsMixin:
             "stateDuty16",
             "loanStateDuty17",
             "principalDebt",
+            # Ссудная задолженность — такое же денежное поле ([13]), но в списке
+            # его не было: значение уходило в акт как захвачено, без приведения
+            # к «X XXX,YY». Пока копейки терялись на захвате, это не бросалось в
+            # глаза; с их восстановлением в поле поехала точка — «10 138.00».
+            "loanDebt",
             "interest",
             "forfeit",
             "stateDuty",
@@ -1540,3 +1545,60 @@ class AmountsMixin:
             except Exception as e:
                 logger.debug(f"Ошибка при коррекции totalDebt для rtk_application: {e}")
 
+        # Последним словом — разделение пошлины на ссудную и банкротную: правило
+        # опирается на прямой оборот в тексте и потому точнее слоёв выше.
+        self._apply_claim_state_duty(extracted_fields, text)
+
+    # Госпошлина, названная СЛАГАЕМЫМ заявленного требования. Два оборота, оба
+    # реальные: «…в сумме 47999.98 руб., в том числе расходы по оплате госпошлины
+    # в размере 2000.00 руб.» и «…в размере 53476.48, из которых: … 2000.00 руб. -
+    # госпошлина». Такая пошлина — ССУДНАЯ ([17]): она входит в требования.
+    # Банкротная ([16]) платится отдельно за подачу заявления и в состав
+    # требований не входит — по заявлению о включении в РТК её вовсе нет
+    # («уплата госпошлины не предусмотрена НК РФ» прямо в шапке).
+    _CLAIM_DUTY_RES = (
+        re.compile(
+            r"(?:в\s+сумме|в\s+размере)\s*(?P<total>" + MONEY_NUM + r")\s*руб\w*[\s.,]*"
+            r"в\s+том\s+числе[\s\S]{0,80}?пошлин\w*[^\d]{0,30}(?P<duty>" + MONEY_NUM + r")",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"(?:в\s+сумме|в\s+размере)\s*(?P<total>" + MONEY_NUM + r")\s*(?:руб\w*)?[\s.,]*"
+            r"из\s+котор\w+[\s\S]{0,200}?(?P<duty>" + MONEY_NUM + r")\s*руб\w*[\s.]*[-–—]\s*"
+            r"(?:гос)?пошлин\w*",
+            re.IGNORECASE,
+        ),
+    )
+
+    def _apply_claim_state_duty(self, fields: Dict[str, Any], text: str) -> None:
+        """Разводит ссудную пошлину из состава требования и банкротную."""
+        if not text:
+            return
+        for rx in self._CLAIM_DUTY_RES:
+            match = rx.search(text)
+            if not match:
+                continue
+            duty = self._fin_amount(self.money_token_from_capture(match.group("duty")))
+            total = self._fin_amount(self.money_token_from_capture(match.group("total")))
+            if duty <= 0 or total <= 0 or duty >= total:
+                continue
+
+            fields["loanStateDuty17"] = self._fin_fmt(duty)
+            # Заявленная сумма — это ИТОГО с пошлиной внутри; частями её не
+            # пересобираем, иначе потеряем ровно эту пошлину.
+            fields["totalDebt"] = self._fin_fmt(total)
+            fields["debtAmount"] = fields["totalDebt"]
+
+            # [16] снимаем, только когда там тот же рубль или весь итог —
+            # признак, что банкротной пошлины в документе нет и слой ошибся.
+            # Иную сумму не трогаем: это настоящая банкротная пошлина.
+            for key in ("stateDuty", "stateDuty16"):
+                existing = self._fin_amount(fields.get(key))
+                if existing and (abs(existing - duty) < 0.01 or abs(existing - total) < 0.01):
+                    fields.pop(key, None)
+
+            logger.info(
+                "Пошлина в составе требования: ссудная [17]=%s, итого=%s",
+                fields["loanStateDuty17"], fields["totalDebt"],
+            )
+            return

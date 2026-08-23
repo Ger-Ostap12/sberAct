@@ -3596,7 +3596,15 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                         # «15%», срок кредита «4» месяца. Такой захват выбрасывался,
                         # и в поле оставалось протухшее значение предыдущего — так в
                         # ставку неустойки [114] уезжала ставка по кредиту.
-                        _short_number = bool(re.fullmatch(r"\d{1,2}(?:[.,]\d+)?", value or ""))
+                        #
+                        # На ДЕНЬГИ послабление не распространяется: сумма из одной-двух
+                        # цифр без копеек — это почти всегда номер пункта, а не рубли
+                        # («предъявляет следующие требования: 1. Задолженность по …»
+                        # давало сумму требований 1,00).
+                        _short_number = (
+                            pattern_info.get("type") != "amount"
+                            and bool(re.fullmatch(r"\d{1,2}(?:[.,]\d+)?", value or ""))
+                        )
                         if value.strip() and (len(value) > 2 or _short_number):  # Фильтруем текстовый мусор и пустые строки
                             cleaned_value = self.clean_extracted_value(value)
 

@@ -36,6 +36,34 @@ FNS_QUEUE_FIELD_ORDER = [
 ]
 
 
+# Денежная сумма в тексте заявления. Разряды разделены пробелом (обычным или
+# неразрывным — так их печатает конвертер), копейки — запятой ИЛИ ТОЧКОЙ:
+# часть банков (Совкомбанк, ТБанк, ВТБ) пишет «53476.48», и класс [0-9\s,]+
+# обрывал сумму на точке, теряя копейки прямо в общей сумме долга.
+#
+# Левая граница (?<![\d.,]) обязательна: без неё захват цепляется за хвост
+# соседней даты — из «…по состоянию на 01.01.2026 126 000,00 руб» получалось
+# «026 126 000,00». Ограничение «не более двух знаков после разделителя» не
+# даёт залезть в дату целиком и отсекает статьи закона («ст. 213.24»).
+MONEY_NUM = r"(?<![\d.,])(?:\d{1,3}(?:[\s  ]\d{3})+|\d+)(?:[.,]\d{1,2})?"
+
+# Класс, которым денежные суммы захватывались раньше. Заменяется на MONEY_NUM
+# централизованно в build_patterns — иначе правку пришлось бы вносить в 172
+# места вручную, и любое новое правило снова писалось бы со старым классом.
+_LEGACY_MONEY_CLASS = r"[0-9\s,]+"
+
+
+def _upgrade_money_captures(patterns):
+    """Подменяет устаревший денежный класс на MONEY_NUM во всех паттернах."""
+    for field_list in patterns.values():
+        for info in field_list:
+            info["patterns"] = [
+                pat.replace(_LEGACY_MONEY_CLASS, MONEY_NUM)
+                for pat in info.get("patterns", [])
+            ]
+    return patterns
+
+
 def build_patterns() -> Dict[str, List[Dict[str, Any]]]:
     """Собрать и вернуть словарь паттернов по типам документов."""
     patterns = {
@@ -1282,5 +1310,5 @@ def build_patterns() -> Dict[str, List[Dict[str, Any]]]:
     patterns["initiation_physical"] = list(rtk_patterns)
     patterns["initiation_legal"] = list(rtk_patterns)
     patterns["mortgage_claim"] = list(rtk_patterns) + mortgage_specific_patterns
-    return patterns
+    return _upgrade_money_captures(patterns)
 
