@@ -1,11 +1,14 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 import asyncio
+import contextlib
 import os
 import sys
+import threading
 import time
 import subprocess
 import tempfile
@@ -99,6 +102,19 @@ app.add_middleware(
 document_analyzer = DocumentAnalyzer()
 document_generator = DocumentGenerator()
 template_manager = TemplateManager()
+
+# Разбор и генерация уезжают в тредпул, чтобы не блокировать цикл событий.
+# Замер (сервер отдельным процессом, /health пингуется параллельно анализу):
+# до — пик 1293 мс и 21 ответ за окно, после — пик 127 мс и 43 ответа.
+# Медиана в обоих случаях 2 мс: блокировка была одним долгим провалом, а не
+# общим замедлением — её видно по пику и по числу ответов, не по медиане.
+#
+# Но параллелизма здесь быть НЕ должно: анализатор и генератор держат общее
+# изменяемое состояние (`self.morph` с ленивой инициализацией, `documents`,
+# объект spaCy, потокобезопасность которого не гарантирована). Раньше их
+# защищал сам факт исполнения в одном цикле событий; теперь защищает лок.
+_ANALYSIS_LOCK = threading.Lock()
+_GENERATION_LOCK = threading.Lock()
 
 @app.get("/")
 async def root():
@@ -219,7 +235,11 @@ async def analyze_document(document: UploadFile = File(...)):
             tmp_path = tmp_file.name
 
         try:
-            analysis_result = document_analyzer.analyze(tmp_path)
+            def _run():
+                with _ANALYSIS_LOCK:
+                    return document_analyzer.analyze(tmp_path)
+
+            analysis_result = await run_in_threadpool(_run)
             return {
                 "success": True,
                 "data": analysis_result
@@ -252,9 +272,13 @@ async def analyze_text(request: AnalyzeTextRequest):
     """
     print(" API: Получен запрос на анализ текста")
     try:
-        analysis_result = document_analyzer.analyze_from_text(
-            request.text, page_count=request.page_count
-        )
+        def _run():
+            with _ANALYSIS_LOCK:
+                return document_analyzer.analyze_from_text(
+                    request.text, page_count=request.page_count
+                )
+
+        analysis_result = await run_in_threadpool(_run)
         return {
             "success": True,
             "data": analysis_result
@@ -281,10 +305,15 @@ async def docx_text(document: UploadFile = File(...)):
             tmp_file.write(content)
             tmp_path = tmp_file.name
         try:
-            text = document_analyzer.extract_text(tmp_path)
-            # Секции — представление ТОГО ЖЕ текста для посекционного редактора;
-            # анализ и «Скачать с правками» работают с плоским text (не меняются).
-            sections = document_analyzer.extract_sections(tmp_path)
+            def _run():
+                with _ANALYSIS_LOCK:
+                    text = document_analyzer.extract_text(tmp_path)
+                    # Секции — представление ТОГО ЖЕ текста для посекционного
+                    # редактора; анализ и «Скачать с правками» работают с плоским
+                    # text (не меняются).
+                    return text, document_analyzer.extract_sections(tmp_path)
+
+            text, sections = await run_in_threadpool(_run)
             return {"success": True, "text": text, "sections": sections}
         finally:
             os.unlink(tmp_path)
@@ -313,11 +342,15 @@ async def docx_apply_edits(
         with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp_file:
             tmp_file.write(content)
             tmp_path = tmp_file.name
+        out_path = tmp_path + ".edited.docx"
         try:
-            original_text = document_analyzer.extract_text(tmp_path)
-            doc = apply_text_edits(tmp_path, edited_text, original_text)
-            out_path = tmp_path + ".edited.docx"
-            doc.save(out_path)
+            def _run():
+                with _ANALYSIS_LOCK:
+                    original_text = document_analyzer.extract_text(tmp_path)
+                    doc = apply_text_edits(tmp_path, edited_text, original_text)
+                    doc.save(out_path)
+
+            await run_in_threadpool(_run)
         finally:
             os.unlink(tmp_path)
 
@@ -354,6 +387,22 @@ async def convert_proxy(conv_path: str, request: Request):
     return await _proxy_to_converter(f"{CONVERTER_API_URL}/{conv_path}", request)
 
 
+_converter_client: Optional["httpx.AsyncClient"] = None  # noqa: F821
+
+
+def _get_converter_client() -> "httpx.AsyncClient":  # noqa: F821
+    """Один клиент на приложение: соединения переиспользуются, а не открываются
+    заново на каждый тик поллинга. Закрывается в lifespan."""
+    global _converter_client
+    import httpx
+
+    if _converter_client is None:
+        # Upload скана и синхронный analyze могут длиться десятки секунд;
+        # connect короткий — «конвертер не запущен» должен падать быстро.
+        _converter_client = httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=3.0))
+    return _converter_client
+
+
 async def _proxy_to_converter(url: str, request: Request):
     """
     Прозрачный проброс запроса к конвертеру: тело и content-type передаются
@@ -370,11 +419,7 @@ async def _proxy_to_converter(url: str, request: Request):
         if k.lower() not in _CONVERT_HOP_HEADERS
     }
     body = await request.body()
-    # Upload скана + синхронный analyze могут длиться десятки секунд;
-    # connect короткий — «конвертер не запущен» должен падать быстро.
-    timeout = httpx.Timeout(120.0, connect=3.0)
-
-    client = httpx.AsyncClient(timeout=timeout)
+    client = _get_converter_client()
     try:
         upstream = await client.send(
             client.build_request(
@@ -386,22 +431,25 @@ async def _proxy_to_converter(url: str, request: Request):
             stream=True,
         )
     except httpx.ConnectError:
-        await client.aclose()
         raise HTTPException(
             status_code=502,
             detail="Конвертер не запущен. Запустите конвертацию заново или пропустите её."
         )
     except httpx.TimeoutException:
-        await client.aclose()
         raise HTTPException(status_code=504, detail="Конвертер не отвечает (таймаут)")
+    except httpx.HTTPError as exc:
+        # Обрыв протокола, сброс соединения, ошибка чтения: раньше эти ветки
+        # уносили с собой незакрытый AsyncClient (ловились только ConnectError
+        # и TimeoutException). Клиент теперь общий и живёт до shutdown, но
+        # ответ всё равно нужен внятный, а не 500 с трейсбеком.
+        raise HTTPException(status_code=502, detail=f"Сбой связи с конвертером: {exc}")
 
     async def _stream_and_close():
         try:
             async for chunk in upstream.aiter_bytes():
                 yield chunk
         finally:
-            await upstream.aclose()
-            await client.aclose()
+            await upstream.aclose()  # клиент общий — его закрывает lifespan
 
     passthrough = {
         k: v for k, v in upstream.headers.items()
@@ -607,23 +655,45 @@ async def converter_status():
 app.include_router(llm_router)
 
 
-@app.on_event("startup")
-async def _start_converter_watchdog() -> None:
+@contextlib.asynccontextmanager
+async def _lifespan(_app: FastAPI):
     # Сторож простоя: UI больше не гасит конвертер после каждого файла, память
     # возвращает этот таймер. Задача-демон, живёт столько же, сколько приложение.
-    asyncio.create_task(_converter_idle_watchdog())
-
-
-@app.on_event("shutdown")
-def _shutdown_converter() -> None:
-    # Ни конвертер, ни llama-server не должны переживать бэкенд:
-    # осиротевший процесс держит гигабайты и порт.
-    _kill_converter()
+    watchdog = asyncio.create_task(_converter_idle_watchdog())
     try:
-        from llm import server as _llm_server
-        _llm_server.stop()
-    except Exception:
-        logger.warning("не удалось остановить llama-server", exc_info=True)
+        yield
+    finally:
+        watchdog.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await watchdog
+
+        # Ни конвертер, ни llama-server не должны переживать бэкенд:
+        # осиротевший процесс держит гигабайты и порт.
+        _kill_converter()
+        try:
+            from llm import server as _llm_server
+            _llm_server.stop()
+        except Exception:
+            logger.warning("не удалось остановить llama-server", exc_info=True)
+
+        # Незавершённая подсказка держала выход интерпретатора (замер: 3226 мс
+        # на трёхсекундной задаче) — Electron успевал убить бэкенд жёстко, мимо
+        # этого самого хука.
+        try:
+            from llm_api import shutdown_executor
+            shutdown_executor()
+        except Exception:
+            logger.warning("не удалось остановить пул LLM-подсказок", exc_info=True)
+
+        global _converter_client
+        if _converter_client is not None:
+            with contextlib.suppress(Exception):
+                await _converter_client.aclose()
+            _converter_client = None
+
+
+app.router.lifespan_context = _lifespan
+
 
 @app.get("/templates")
 async def get_templates():
@@ -662,8 +732,13 @@ async def generate_document(request_data: Dict[str, Any]):
         if not template_type or not extracted_data:
             raise HTTPException(status_code=400, detail="Отсутствуют обязательные поля: template_type или data")
 
-        # Генерируем документ
-        result = document_generator.generate(template_type, extracted_data)
+        # Генерируем документ. Тредпул + лок: генерация пишет в общий
+        # `document_generator.documents` и открывает шаблоны с диска.
+        def _run():
+            with _GENERATION_LOCK:
+                return document_generator.generate(template_type, extracted_data)
+
+        result = await run_in_threadpool(_run)
 
         if result["success"]:
             # Проверяем, генерируется ли один документ или несколько
@@ -742,25 +817,32 @@ async def download_zip_get(ids: str = ""):
     try:
         import zipfile
         import tempfile
-        generated_dir = document_generator.generated_dir
-        temp_zip = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
-        zip_path = Path(temp_zip.name)
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-            for doc_id in doc_ids:
-                file_path = generated_dir / f"{doc_id}.docx"
-                if file_path.exists():
-                    doc_info = document_generator.documents.get(doc_id, {})
-                    doc_name = doc_info.get("document_name", f"document_{doc_id}")
-                    zipf.write(file_path, f"{doc_name}.docx")
-        # ВАЖНО: Используем правильные заголовки для скачивания файла
-        zip_data = zip_path.read_bytes()
-        logger.info(f"Created ZIP file with {len(doc_ids)} documents, size: {len(zip_data)} bytes")
 
-        # Удаляем временный файл после чтения
-        try:
-            zip_path.unlink()
-        except Exception as e:
-            logger.warning(f"Could not delete temp file {zip_path}: {e}")
+        def _build_zip() -> bytes:
+            generated_dir = document_generator.generated_dir
+            # Дескриптор закрываем сразу: zipfile открывает файл заново по пути,
+            # а незакрытый handle течёт и на Windows держит файл заблокированным.
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as temp_zip:
+                zip_path = Path(temp_zip.name)
+            try:
+                with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+                    for doc_id in doc_ids:
+                        file_path = generated_dir / f"{doc_id}.docx"
+                        if file_path.exists():
+                            doc_info = document_generator.documents.get(doc_id, {})
+                            doc_name = doc_info.get("document_name", f"document_{doc_id}")
+                            zipf.write(file_path, f"{doc_name}.docx")
+                return zip_path.read_bytes()
+            finally:
+                try:
+                    zip_path.unlink()
+                except OSError as exc:
+                    logger.warning(f"Could not delete temp file {zip_path}: {exc}")
+
+        # Сжатие и чтение архива целиком в память — блокирующая работа,
+        # в цикле событий ей не место.
+        zip_data = await run_in_threadpool(_build_zip)
+        logger.info(f"Created ZIP file with {len(doc_ids)} documents, size: {len(zip_data)} bytes")
 
         # ВАЖНО: Используем правильные заголовки для скачивания файла
         # Content-Disposition с attachment заставляет браузер скачать файл

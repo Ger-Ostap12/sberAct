@@ -93,6 +93,7 @@ async function ensureFeed(dir) {
   // Пересоздаём сервер, если сменился источник.
   if (feedServer && sourceDir === dir) return;
   if (feedServer) {
+    try { feedServer.closeAllConnections(); } catch (_e) { /* Node < 18.2 */ }
     try { feedServer.close(); } catch (_e) { /* уже закрыт */ }
     feedServer = null;
   }
@@ -394,6 +395,10 @@ function initUpdater(dependencies) {
 
 function shutdownUpdater() {
   if (feedServer) {
+    // close() перестаёт принимать новые соединения, но ЖДЁТ закрытия открытых,
+    // а electron-updater держит keep-alive — сервер бы не освободился, и выход
+    // упёрся бы в трёхсекундный бюджет before-quit. Рвём соединения явно.
+    try { feedServer.closeAllConnections(); } catch (_e) { /* Node < 18.2 */ }
     try { feedServer.close(); } catch (_e) { /* игнор */ }
     feedServer = null;
   }

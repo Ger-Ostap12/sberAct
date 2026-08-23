@@ -61,6 +61,18 @@ class HintsRequest(BaseModel):
     mortgageKind: str | None = None
 
 
+def shutdown_executor() -> None:
+    """Погасить пул при остановке приложения.
+
+    Потоки пула не daemon, и `concurrent.futures` join'ит их на выходе
+    интерпретатора: незавершённая подсказка задерживала выход (замер: 3226 мс
+    на трёхсекундной задаче, а реальная подсказка идёт около минуты). Electron
+    ждёт три секунды и убивает бэкенд жёстко — то есть мимо хука, который
+    гасит llama-server и конвертер, и те остаются сиротами с гигабайтами.
+    """
+    _EXECUTOR.shutdown(wait=False, cancel_futures=True)
+
+
 def _set(job_id: str, **changes) -> None:
     with _JOBS_LOCK:
         if job_id in _JOBS:
