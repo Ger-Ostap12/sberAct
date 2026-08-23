@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ConvertScreen from '../ConvertScreen';
 
@@ -52,6 +52,12 @@ beforeEach(() => {
   mockStart.mockResolvedValue({ ok: true });
   mockStop.mockResolvedValue({ ok: true });
 });
+
+// Слив микрозадач. Цепочка промисов внутри эффекта разрешается вне реакции
+// React, и без act её setState не применятся. Правило testing-library видит
+// «пустой act» и ругается, но пустота здесь и есть смысл вызова.
+// eslint-disable-next-line testing-library/no-unnecessary-act
+const flush = () => act(async () => {});
 
 afterEach(() => {
   // Возврат настоящих таймеров ОБЯЗАН быть здесь, а не в конце теста: упавший
@@ -157,13 +163,13 @@ describe('ConvertScreen', () => {
     // только потом двигать время. Наоборот — первый сдвиг уходит вхолостую.
     for (let attempt = 0; attempt < 5; attempt++) {
       // eslint-disable-next-line no-await-in-loop
-      await act(async () => {});
+      await flush();
       // eslint-disable-next-line no-await-in-loop
       await act(async () => {
         jest.advanceTimersByTime(3000);
       });
     }
-    await act(async () => {});
+    await flush();
 
     expect(screen.getByText('Конвертер не установлен')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Пропустить конвертацию/ })).toBeInTheDocument();
@@ -171,6 +177,84 @@ describe('ConvertScreen', () => {
     // Пять попыток — ровно столько, сколько заложено в экране: меньше значит
     // ретрай сломан, больше — пользователь ждёт ошибку дольше нужного.
     expect(mockStart).toHaveBeenCalledTimes(5);
+  });
+
+  // Поллинг: подставные таймеры + ручное разрешение промиса статуса. Настоящими
+  // таймерами эти сценарии не воспроизвести — нужен статус, который «думает»
+  // дольше интервала опроса.
+  const bootToReady = async () => {
+    // boot(): converterStart → convertAnalyze → phase 'ready'. Цепочка промисов,
+    // поэтому сливаем микрозадачи дважды.
+    await flush();
+    await flush();
+  };
+
+  it('медленный статус: тик поллинга не наслаивается на предыдущий', async () => {
+    // Регрессия: setInterval не ждёт предыдущий async-колбэк. Под OCR-нагрузкой
+    // /convert/status отвечает дольше 1.5 с, и два тика видели done — документ
+    // скачивался и разбирался дважды.
+    jest.useFakeTimers();
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    mockScan.mockResolvedValue({ job_id: 'j9' });
+    let releaseStatus: (v: unknown) => void = () => {};
+    mockStatus.mockImplementation(
+      () => new Promise((resolve) => { releaseStatus = resolve; })
+    );
+    mockDownload.mockResolvedValue(new Blob([new Uint8Array([80, 75])]));
+    mockDocxText.mockResolvedValue({ success: true, text: 'Распознанный текст' });
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await bootToReady();
+    fireEvent.click(screen.getByRole('button', { name: 'Конвертировать' }));
+    await flush(); // convertScan → setInterval
+
+    await act(async () => { jest.advanceTimersByTime(1500); }); // тик 1 ушёл
+    await act(async () => { jest.advanceTimersByTime(3000); }); // ещё два интервала
+    // Ответа на первый опрос ещё нет — новых опросов быть не должно.
+    expect(mockStatus).toHaveBeenCalledTimes(1);
+
+    await act(async () => { releaseStatus({ job_id: 'j9', status: 'done', progress: 1 }); });
+    await flush();
+    expect(mockDownload).toHaveBeenCalledTimes(1);
+    expect(mockDocxText).toHaveBeenCalledTimes(1);
+  });
+
+  it('смена файла гасит поллинг: чужой текст в предпросмотр не попадает', async () => {
+    // Регрессия: cleanup висел только на размонтировании. Юрист возвращался на
+    // загрузку и приносил другой PDF, а таймер первой задачи дописывал в
+    // состояние текст ПРЕДЫДУЩЕГО документа.
+    jest.useFakeTimers();
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    mockScan.mockResolvedValue({ job_id: 'старый' });
+    let releaseStatus: (v: unknown) => void = () => {};
+    mockStatus.mockImplementation(
+      () => new Promise((resolve) => { releaseStatus = resolve; })
+    );
+    mockDownload.mockResolvedValue(new Blob([new Uint8Array([80, 75])]));
+    mockDocxText.mockResolvedValue({ success: true, text: 'ТЕКСТ ЧУЖОГО ДОКУМЕНТА' });
+
+    const { rerender } = render(
+      <ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />
+    );
+    await bootToReady();
+    fireEvent.click(screen.getByRole('button', { name: 'Конвертировать' }));
+    await flush();
+    await act(async () => { jest.advanceTimersByTime(1500); });
+    expect(mockStatus).toHaveBeenCalledTimes(1);
+
+    const otherPdf = new File([new Uint8Array([9])], 'другой.pdf', { type: 'application/pdf' });
+    rerender(<ConvertScreen file={otherPdf} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await bootToReady();
+
+    // Старая задача досчиталась уже ПОСЛЕ смены файла
+    await act(async () => { releaseStatus({ job_id: 'старый', status: 'done', progress: 1 }); });
+    await flush();
+
+    expect(mockDownload).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('text-editor')).not.toBeInTheDocument();
+    // И таймер мёртв: старую задачу больше не опрашиваем
+    await act(async () => { jest.advanceTimersByTime(6000); });
+    expect(mockStatus).toHaveBeenCalledTimes(1);
   });
 
   it('«Назад» НЕ останавливает конвертер — им распоряжается сторож простоя', async () => {

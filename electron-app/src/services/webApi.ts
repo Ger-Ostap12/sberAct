@@ -24,9 +24,43 @@ const BASE_URLS = ['http://127.0.0.1:8000', 'http://localhost:8000', 'http://wsl
 /** Хост, ответивший первым: дальше ходим сразу в него, без перебора. */
 let liveBase: string | null = null;
 
+/**
+ * POST-пути, которые безопасно повторить: повторный вызов даёт ровно то же
+ * состояние, что и один. Это переключатели жизненного цикла сайдкаров, а не
+ * создание работы. Всё остальное (конвертация, анализ, генерация) от повтора
+ * удваивает работу: сетевой сбой ПОСЛЕ того, как сервер принял запрос,
+ * неотличим от сбоя до, а вторая попытка породит вторую задачу.
+ */
+const IDEMPOTENT_POST_PATHS = new Set(['/converter/start', '/converter/stop', '/llm/warmup']);
+
+/** Простой, после которого сокет в пуле браузера может быть уже закрыт сервером. */
+const STALE_SOCKET_AFTER_MS = 5000;
+
+/** Время последнего успешного ответа; 0 — соединения ещё не было. */
+let lastContactAt = 0;
+
 /** Сброс запомненного хоста — для тестов. */
 export function resetLiveBase(): void {
   liveBase = null;
+  lastContactAt = 0;
+}
+
+/**
+ * Прогрев соединения перед неповторяемым запросом.
+ *
+ * После простоя браузер переиспользует keep-alive сокет, который uvicorn уже
+ * закрыл (timeout_keep_alive), и первый запрос падает без ответа — в консоли
+ * это выглядит как «CORS policy: No Access-Control-Allow-Origin», хотя CORS
+ * исправен и backend жив. Раньше это лечила вторая попытка на тот же хост, но
+ * повторять создание задачи нельзя. Поэтому удар о протухший сокет принимает
+ * на себя дешёвый GET, который повторить можно.
+ */
+async function warmConnection(): Promise<void> {
+  try {
+    await fetchBackend('/health');
+  } catch {
+    // Не достучались — пусть об этом сообщит основной запрос, а не прогрев.
+  }
 }
 
 /**
@@ -37,24 +71,38 @@ export function resetLiveBase(): void {
  * дальше, наружу летела ошибка от последней базы (wsl.localhost), а настоящая
  * причина терялась — в консоли это выглядело как три разных сбоя вместо одного.
  *
- * Повтор с тем же options безопасен: FormData/Blob — не потоки, fetch
- * сериализует тело заново на каждую попытку.
+ * Повтор с тем же options технически безопасен (FormData/Blob — не потоки,
+ * fetch сериализует тело заново), но семантически — нет: см.
+ * `IDEMPOTENT_POST_PATHS`.
  */
 async function fetchBackend(pathname: string, options?: RequestInit): Promise<Response> {
+  const method = (options?.method ?? 'GET').toUpperCase();
+  // GET/HEAD/DELETE идемпотентны по семантике HTTP; из POST — только явный список.
+  const retriable =
+    method === 'GET' ||
+    method === 'HEAD' ||
+    method === 'DELETE' ||
+    IDEMPOTENT_POST_PATHS.has(pathname);
+
+  // Первый запрос после простоя рискует попасть на протухший сокет. Для
+  // повторяемых это лечит вторая попытка, для остальных — прогрев.
+  if (!retriable && lastContactAt && Date.now() - lastContactAt > STALE_SOCKET_AFTER_MS) {
+    await warmConnection();
+  }
+
   // Живой хост — первым, но остальные держим в запасе: он мог отвалиться.
+  // Неповторяемый запрос запаса не получает: BASE_URLS — псевдонимы ОДНОГО
+  // бэкенда, и уход на соседний даёт тот же дубль, что и вторая попытка.
   const ordered = liveBase
-    ? [liveBase, ...BASE_URLS.filter((b) => b !== liveBase)]
+    ? retriable
+      ? [liveBase, ...BASE_URLS.filter((b) => b !== liveBase)]
+      : [liveBase]
     : [...BASE_URLS];
+  const attemptsPerHost = retriable ? 2 : 1;
   let lastError: unknown;
 
   for (const base of ordered) {
-    // ДВЕ попытки на хост. После простоя браузер переиспользует keep-alive
-    // соединение, которое uvicorn уже закрыл (timeout_keep_alive), и запрос падает
-    // без ответа — в консоли это выглядит как «CORS policy: No
-    // Access-Control-Allow-Origin», хотя CORS исправен и backend жив. Сам браузер
-    // повторяет только идемпотентные запросы, а /converter/start — POST, поэтому
-    // повтор нужен здесь. Вторая попытка открывает свежий сокет.
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < attemptsPerHost; attempt++) {
       let res: Response;
       try {
         res = await fetch(`${base}${pathname}`, options);
@@ -63,13 +111,14 @@ async function fetchBackend(pathname: string, options?: RequestInit): Promise<Re
         continue;
       }
       liveBase = base;
+      lastContactAt = Date.now();
       if (!res.ok) {
         const text = await res.text().catch(() => '');
         throw new Error(`HTTP ${res.status}: ${text}`);
       }
       return res;
     }
-    if (base === liveBase) liveBase = null; // хост молчит дважды — ищем заново
+    if (base === liveBase) liveBase = null; // хост молчит — ищем заново
   }
 
   throw lastError instanceof Error ? lastError : new Error('Backend недоступен');

@@ -165,3 +165,79 @@ describe('fetchBackend — выбор хоста', () => {
     expect(fetchMock).toHaveBeenCalledTimes(6); // 3 базы × 2 попытки
   });
 });
+
+describe('fetchBackend — что можно повторять', () => {
+  const FIRST = 'http://127.0.0.1:8000';
+  const netFail = () => Promise.reject(new TypeError('Failed to fetch'));
+  const pdf = () => new File(['x'], 'скан.pdf', { type: 'application/pdf' });
+
+  it('неидемпотентный POST не повторяется: одна попытка на хост', async () => {
+    // Сетевой сбой ПОСЛЕ того, как сервер принял /convert/scan, неотличим от
+    // сбоя до — повтор породил бы вторую OCR-задачу на том же документе.
+    const fetchMock = jest.fn(netFail);
+    (global as any).fetch = fetchMock;
+
+    await expect(webApi.convertScan(pdf())).rejects.toThrow(/Failed to fetch/);
+    expect(fetchMock).toHaveBeenCalledTimes(3); // 3 базы × 1 попытка, а не 6
+  });
+
+  it('идемпотентный POST (/converter/start) вторую попытку сохраняет', async () => {
+    // Ради него ретрай и вводился: после простоя первый запрос уходит в
+    // протухший keep-alive сокет. Повторный запуск уже запущенного конвертера
+    // ничего не ломает.
+    const fetchMock = jest
+      .fn()
+      .mockImplementationOnce(netFail)
+      .mockImplementationOnce(async () => okJson({ ok: true }));
+    (global as any).fetch = fetchMock;
+
+    await expect(webApi.converterStart()).resolves.toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[1][0])).toContain(FIRST);
+  });
+
+  it('при известном живом хосте неидемпотентный POST не уходит на его псевдонимы', async () => {
+    // 127.0.0.1 и localhost — ОДИН backend: уход на соседа это тот же дубль.
+    const fetchMock = jest
+      .fn()
+      .mockImplementationOnce(async () => okJson([])) // GET /banks — хост найден
+      .mockImplementation(netFail);
+    (global as any).fetch = fetchMock;
+
+    await webApi.getBanks();
+    await expect(webApi.convertNative(pdf())).rejects.toThrow(/Failed to fetch/);
+    expect(fetchMock).toHaveBeenCalledTimes(2); // GET + ровно один POST
+  });
+
+  it('после простоя перед неповторяемым POST идёт прогрев GET /health', async () => {
+    // Прогрев принимает на себя удар о протухший сокет вместо самого POST —
+    // так неповторяемый запрос сохраняет устойчивость, не рискуя дублем.
+    const fetchMock = jest
+      .fn()
+      .mockImplementationOnce(async () => okJson([])) // GET /banks — контакт есть
+      .mockImplementationOnce(netFail) // прогрев напоролся на протухший сокет
+      .mockImplementationOnce(async () => okJson({ status: 'ok' })) // и повторился
+      .mockImplementationOnce(async () => okJson({ job_id: 'j1' })); // сам POST
+    (global as any).fetch = fetchMock;
+
+    await webApi.getBanks();
+    jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 60_000); // прошла минута
+    await expect(webApi.convertNative(pdf())).resolves.toEqual({ job_id: 'j1' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(String(fetchMock.mock.calls[1][0])).toContain('/health');
+    expect(String(fetchMock.mock.calls[3][0])).toContain('/convert/native');
+  });
+
+  it('без простоя прогрева нет — лишнего запроса не появляется', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockImplementationOnce(async () => okJson([]))
+      .mockImplementationOnce(async () => okJson({ job_id: 'j1' }));
+    (global as any).fetch = fetchMock;
+
+    await webApi.getBanks();
+    await expect(webApi.convertNative(pdf())).resolves.toEqual({ job_id: 'j1' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});

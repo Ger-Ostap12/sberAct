@@ -131,15 +131,32 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
   const [sections, setSections] = useState<DocxSection[]>([]);
   const [scanFlags, setScanFlags] = useState<ConvertScanFlags>(SCAN_DEFAULT_FLAGS);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Тик поллинга ещё в полёте. setInterval предыдущий колбэк не ждёт, а под
+  // OCR-нагрузкой /convert/status отвечает дольше интервала — без флага два
+  // тика увидели бы done и оба скачали документ.
+  const pollBusy = useRef(false);
+  // Задача, чей результат нам ещё нужен. Тик, начатый до смены файла или ухода
+  // с шага, ничего не пишет в состояние — иначе в предпросмотр попадал текст
+  // чужого документа.
+  const activeJob = useRef<string | null>(null);
 
   const stopPolling = useCallback(() => {
     if (pollTimer.current) {
       clearInterval(pollTimer.current);
       pollTimer.current = null;
     }
+    pollBusy.current = false;
   }, []);
 
-  useEffect(() => stopPolling, [stopPolling]);
+  // Гасим и при размонтировании, и при СМЕНЕ ФАЙЛА: пользователь может вернуться
+  // на загрузку и принести другой PDF, пока конвертация первого ещё идёт.
+  useEffect(
+    () => () => {
+      activeJob.current = null;
+      stopPolling();
+    },
+    [file, stopPolling]
+  );
 
   // Подъём конвертера + классификация PDF (авто, при входе на шаг)
   useEffect(() => {
@@ -203,9 +220,13 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
         mode === 'native'
           ? await convertNative(file)
           : await convertScan(file, scanFlags);
+      activeJob.current = jobId;
       pollTimer.current = setInterval(async () => {
+        if (pollBusy.current) return; // предыдущий тик ещё не ответил
+        pollBusy.current = true;
         try {
           const status = await convertStatus(jobId);
+          if (activeJob.current !== jobId) return;
           setProgress(status.progress ?? 0);
           setStage(status.stage || '');
           if (status.status === 'done') {
@@ -213,6 +234,7 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
             const blob = await convertDownload(jobId);
             // Текст для правки — с бэкенда, тем же экстрактором, что анализ
             const extracted = await docxText(blob);
+            if (activeJob.current !== jobId) return;
             setDocxBlob(blob);
             setEditedText(extracted.text || '');
             setSections(extracted.sections || []);
@@ -221,7 +243,10 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
             failWith(status.error || 'Ошибка конвертации');
           }
         } catch (e) {
+          if (activeJob.current !== jobId) return;
           failWith(e instanceof Error ? e.message : 'Потеряна связь с конвертером');
+        } finally {
+          pollBusy.current = false;
         }
       }, POLL_INTERVAL_MS);
     } catch (e) {
@@ -289,6 +314,7 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
   // (CONVERTER_IDLE_TIMEOUT_S). Иначе каждый следующий PDF платил холодным
   // стартом с загрузкой LLM.
   const handleBack = useCallback(() => {
+    activeJob.current = null;
     stopPolling();
     onBack();
   }, [onBack, stopPolling]);

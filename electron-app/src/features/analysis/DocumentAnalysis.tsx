@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Box,
   Card,
@@ -129,13 +129,25 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   // перестраивает блок «Финансовые данные».
   const [mortgageKind, setMortgageKind] = useState<MortgageKind>('civil');
 
+  // Статус, для которого рекомендация финала уже применена. Нужен, чтобы
+  // рекомендация срабатывала на СМЕНУ статуса, а не на каждый прогон эффекта:
+  // раньше юрист выбирал финальный акт руками, переключал вид заявления — и
+  // выбор молча возвращался к автоматическому.
+  const finalAppliedFor = useRef<DebtorStatus | null>(null);
+
   // Статус лица влияет на рекомендацию финального СА:
   // отсутствующий/ликвидируемый ЮЛ → «Решение конкурсное»; умерший ФЛ → «Решение реализация».
   useEffect(() => {
-    if (!debtorStatus) return;
+    if (!debtorStatus) {
+      finalAppliedFor.current = null;
+      return;
+    }
     // Статус подразумевает тип лица: отсутствующий/ликвидируемый — ЮЛ, умерший — ФЛ.
     setEntityType(debtorStatus === 'deceased' ? 'individual' : 'legal');
-    // При ВКЛ в РТК финал уже занят (final_rtk_inclusion) — процедурный не навязываем.
+    if (finalAppliedFor.current === debtorStatus) return;
+    finalAppliedFor.current = debtorStatus;
+    // При ВКЛ в РТК финал уже занят (final_rtk_inclusion) — процедурный не
+    // навязываем; при уходе из РТК его вернёт handleApplicationKindChange.
     if (applicationKind === 'rtk') return;
     const finalByStatus: Partial<Record<DebtorStatus, string>> = {
       absent: 'final_competition',
@@ -937,6 +949,10 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         a.category === 'final' ? { ...a, selected: a.id === 'final_rtk_inclusion' } : a));
       return;
     }
+    // Финалы трогаем ТОЛЬКО при уходе из РТК. Переход между остальными видами
+    // (инициирование ↔ самобанкрот) финала не касается: он выбран рекомендацией
+    // или руками, и вид заявления его не определяет.
+    if (applicationKind !== 'rtk') return;
     const procFinal = debtorStatus === 'deceased' ? 'final_realization'
       : (debtorStatus === 'absent' || debtorStatus === 'liquidation') ? 'final_competition'
       : null;

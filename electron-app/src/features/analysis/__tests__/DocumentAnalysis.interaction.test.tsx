@@ -199,6 +199,42 @@ describe('DocumentAnalysis — самобанкротство', () => {
   });
 });
 
+describe('DocumentAnalysis — ручной выбор финального акта', () => {
+  const finalCheckbox = (name: string) => screen.getByRole('checkbox', { name });
+
+  it('статус лица подставляет свой финал, но только при СМЕНЕ статуса', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('radio', { name: 'Юр.лицо' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ликвидируемый' }));
+    expect(finalCheckbox('Решение конкурсное')).toBeChecked();
+
+    // Юрист правит финал руками…
+    fireEvent.click(finalCheckbox('Решение конкурсное'));
+    fireEvent.click(finalCheckbox('Определение Наблюдение'));
+    // …и переключает НЕЗАВИСИМЫЙ блок «Вид заявления».
+    fireEvent.click(screen.getByRole('radio', { name: 'Самобанкрот' }));
+
+    // Регрессия: эффект висел на [debtorStatus, applicationKind] и перезаписывал
+    // финал по статусу, а handleApplicationKindChange делал то же самое —
+    // ручной выбор молча возвращался к автоматическому.
+    expect(finalCheckbox('Определение Наблюдение')).toBeChecked();
+    expect(finalCheckbox('Решение конкурсное')).not.toBeChecked();
+  });
+
+  it('уход из «ВКЛ в РТК» по-прежнему возвращает процедурный финал статуса', () => {
+    // Обратная сторона: сузив правку финала, нельзя потерять то, ради чего она есть.
+    renderForm();
+    fireEvent.click(screen.getByRole('radio', { name: 'Юр.лицо' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ликвидируемый' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Включение в РТК' }));
+    expect(finalCheckbox('Определение ВКЛ в РТК')).toBeChecked();
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Инициирование' }));
+    expect(finalCheckbox('Решение конкурсное')).toBeChecked();
+    expect(finalCheckbox('Определение ВКЛ в РТК')).not.toBeChecked();
+  });
+});
+
 describe('DocumentAnalysis — поле СРО у управляющего', () => {
   const renderWithSro = () => {
     const data = makeData();
