@@ -13,7 +13,13 @@ from typing import Any, Callable, Dict, List, Optional, Set, Union
 from docx.document import Document
 from docx.oxml.shared import qn
 
+from patterns import compiled as compiled_ci
+
 logger = logging.getLogger(__name__)
+
+# Карта «номер маркера -> паттерны контекста». Заполняется лениво при первом
+# обращении (см. _get_context_patterns_for_marker) и живёт до конца процесса.
+_CONTEXT_PATTERNS_MAP: Optional[Dict[str, List[str]]] = None
 
 
 class _ParagraphView:
@@ -285,8 +291,14 @@ class DocxOpsMixin:
 
         marker_number = match.group(1)
 
-        # Паттерны контекста для разных маркеров
-        context_patterns_map = {
+        # Паттерны контекста для разных маркеров. Собираются ОДИН раз за процесс:
+        # словарь на три сотни строк раньше пересоздавался при каждом вызове, а
+        # зовут этот метод дважды на каждый пустой маркер документа.
+        global _CONTEXT_PATTERNS_MAP
+        if _CONTEXT_PATTERNS_MAP is None:
+            # Всё, что между { и }, — продолжение выражения: отступы внутри
+            # скобок Python не учитывает, поэтому тело словаря не сдвигаем.
+            _CONTEXT_PATTERNS_MAP = {
             # [1] - Номер дела (широкий паттерн убирает контекст до маркера)
             "1": [
                 r"(?:(?:Дело|дело|номер\s+дела|по\s+делу)[^\[\],.;()]{0,40})?{MARKER}",
@@ -603,7 +615,7 @@ class DocxOpsMixin:
         }
 
         # Получаем паттерны для данного маркера
-        patterns = context_patterns_map.get(marker_number, [])
+        patterns = _CONTEXT_PATTERNS_MAP.get(marker_number, [])
 
         # Если паттернов нет, возвращаем только маркер
         if not patterns:
@@ -806,7 +818,10 @@ class DocxOpsMixin:
         Заменяет текст по регулярному выражению во всём документе, включая колонтитулы.
         """
         replaced = False
-        regex = re.compile(pattern, re.IGNORECASE)
+        # Кеш компиляции общий с разбором: на один пустой маркер приходится до
+        # восьми контекстных паттернов, и те же выражения повторяются от маркера
+        # к маркеру — компилировать их заново на каждый вызов незачем.
+        regex = compiled_ci(pattern)
 
         def replace_in_paragraphs(paragraphs):
             nonlocal replaced

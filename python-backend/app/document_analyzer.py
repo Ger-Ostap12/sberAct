@@ -36,6 +36,9 @@ from obligations_mixin import ObligationsMixin
 from inflection_mixin import InflectionMixin
 from prior_collection_mixin import PriorCollectionMixin
 from patterns import build_patterns
+# Исполнение паттернов идёт через модуль: он компилирует их один раз и отсеивает
+# заведомо непопадающие по обязательным литералам (см. patterns.required_literals).
+import patterns as pattern_exec
 from creditor_registry import _match_creditor_registry
 import nlp_natasha as _nlp
 import fns_registry as _fns_reg
@@ -48,6 +51,11 @@ import json
 # Настройка логирования (должно быть до использования logger)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Абзацев на страницу — грубая оценка для metadata.pageCount: настоящего числа
+# страниц в .docx нет, Word считает его при вёрстке. Значение зафиксировано в
+# golden, менять его — осознанное изменение поведения, а не правка «на глаз».
+_DOCX_PARAGRAPHS_PER_PAGE = 20
 
 
 try:
@@ -111,12 +119,27 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         try:
             logger.info(f"Начинаем анализ документа: {file_path}")
 
-            text = self.extract_text(file_path)
-            result = self.analyze_from_text(text, page_count=self.get_page_count(file_path))
+            # DOCX открываем ОДИН раз на весь анализ и передаём дальше: раньше
+            # его разбирали трижды (текст, число страниц, таблица расчёта) —
+            # три полных прохода lxml по одному и тому же файлу.
+            is_docx = str(file_path).lower().endswith(".docx")
+            doc = None
+            if is_docx:
+                try:
+                    doc = Document(file_path)
+                except Exception as exc:
+                    # Битый/нестандартный файл — пусть каждый шаг сам решает,
+                    # как с ним быть (поведение как до кеширования).
+                    logger.debug(f"Не удалось открыть DOCX заранее: {exc}")
+
+            text = self.extract_text(file_path, doc=doc)
+            result = self.analyze_from_text(
+                text, page_count=self.get_page_count(file_path, doc=doc)
+            )
             # Таблица расчёта задолженности разбирается точнее, чем плоский текст:
             # см. _apply_table_amounts.
-            if str(file_path).lower().endswith(".docx"):
-                self._apply_table_amounts(file_path, result)
+            if is_docx:
+                self._apply_table_amounts(file_path, result, doc=doc)
             return result
         except Exception as e:
             logger.error(f"Ошибка при анализе документа: {str(e)}")
@@ -263,18 +286,19 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if found:
             self._write_debt_amounts(fields, found, "таблицы расчёта в тексте")
 
-    def _apply_table_amounts(self, file_path: str, result: Dict[str, Any]) -> None:
+    def _apply_table_amounts(self, file_path: str, result: Dict[str, Any], doc=None) -> None:
         """Суммы из НАСТОЯЩЕЙ таблицы DOCX — источник надёжнее плоского текста.
 
         Пары «метка → значение» здесь заданы разметкой, а не соседством строк,
         поэтому при наличии файла берём их отсюда, поверх текстового разбора.
         """
-        try:
-            from docx import Document as _Docx
-            doc = _Docx(file_path)
-        except Exception as exc:
-            logger.debug(f"Таблицы DOCX недоступны: {exc}")
-            return
+        if doc is None:
+            try:
+                from docx import Document as _Docx
+                doc = _Docx(file_path)
+            except Exception as exc:
+                logger.debug(f"Таблицы DOCX недоступны: {exc}")
+                return
 
         rows: List[Tuple[str, str]] = []
         for table in doc.tables:
@@ -781,9 +805,12 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
 
 
-    def extract_text(self, file_path: str) -> str:
+    def extract_text(self, file_path: str, doc=None) -> str:
         """
         Извлекает текст из документа. Поддерживаются форматы: .docx (Word), .pdf.
+
+        `doc` — уже открытый python-docx Document (см. analyze): позволяет не
+        разбирать один и тот же файл повторно. None — откроем сами.
         """
         path = Path(file_path)
         suffix = path.suffix.lower()
@@ -791,7 +818,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if suffix == ".pdf":
             return self._extract_text_from_pdf(file_path)
         if suffix in (".docx", ".doc"):
-            return self._extract_text_from_docx(file_path)
+            return self._extract_text_from_docx(file_path, doc=doc)
         raise ValueError(f"Неподдерживаемый формат файла: {suffix}. Используйте .docx или .pdf")
 
     def _extract_text_from_pdf(self, file_path: str) -> str:
@@ -813,7 +840,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             logger.error(f"Ошибка при извлечении текста из PDF: {str(e)}")
             raise ValueError("Не удалось извлечь текст из PDF (возможно, файл поврежден или скан без OCR)") from e
 
-    def _extract_text_from_docx(self, file_path: str) -> str:
+    def _extract_text_from_docx(self, file_path: str, doc=None) -> str:
         """Извлекает ВЕСЬ текст из Word документа (.docx).
 
         Тонкая обёртка над :meth:`_docx_text_parts` — тот же обход, только
@@ -821,7 +848,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         истины для анализа, предпросмотра и baseline «Скачать с правками».
         """
         try:
-            parts = self._docx_text_parts(file_path)
+            parts = self._docx_text_parts(file_path, doc=doc)
             if not parts:
                 raise ValueError("Документ пуст или не содержит извлекаемого текста")
             return "\n".join(text for text, _origin in parts)
@@ -831,7 +858,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             logger.error(f"Ошибка при извлечении текста из Word: {str(e)}")
             raise ValueError("Не удалось извлечь текст из документа (возможно, файл поврежден или пустой)") from e
 
-    def _docx_text_parts(self, file_path: str) -> List[Tuple[str, str]]:
+    def _docx_text_parts(self, file_path: str, doc=None) -> List[Tuple[str, str]]:
         """Части текста DOCX с указанием происхождения (провенанс) каждой части.
 
         Возвращает список ``(text, origin)`` В ТОМ ЖЕ ПОРЯДКЕ, что и старый
@@ -844,7 +871,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         Провенанс нужен посекционному предпросмотру (`extract_sections`), плоский
         текст его игнорирует.
         """
-        doc = Document(file_path)
+        if doc is None:
+            doc = Document(file_path)
         parts: List[Tuple[str, str]] = []
 
         # 1. Тело документа: параграфы, затем таблицы
@@ -3538,16 +3566,19 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                     logger.info(f"Пропускаем общие паттерны для {field_name}, так как уже обработали в специальной логике")
                     continue
 
+                # Срез шапки считаем ОДИН раз на поле, а не на каждый паттерн:
+                # иначе каждая итерация плодила новую строку на 2500 символов.
+                text_header = text[:2500] if field_name == "courtName" else None
+
                 for i, pattern in enumerate(field_patterns):
                     logger.info(f"  Паттерн {i+1} для {field_name}: {pattern}")
 
                     # Специальная обработка для courtName: приоритетно ищем в шапке (первые 2500 символов),
                     # чтобы не подхватить фрагмент из тела документа (юрлицо/ФЛ)
                     if field_name == "courtName":
-                        text_header = text[:2500]
-                        matches = re.findall(pattern, text_header, re.IGNORECASE)
+                        matches = pattern_exec.findall(pattern, text_header)
                         if not matches:
-                            matches = re.findall(pattern, text, re.IGNORECASE)
+                            matches = pattern_exec.findall(pattern, text)
                         for match in matches:
                             if isinstance(match, tuple):
                                 match_value = next((part for part in match if part), "")
@@ -3577,7 +3608,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                         if field_name in extracted_fields:
                             break
                         continue
-                    match = re.search(pattern, text, re.IGNORECASE)
+                    match = pattern_exec.search(pattern, text)
                     if match:
                         if match.groups():
                             value = match.group(1).strip()
@@ -4413,7 +4444,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         """Поля с множественными значениями (contractNumber/contractDate/obligationType): сбор всех вхождений по паттернам, защита C (закон != договор), фильтры мусора, дедуп с сохранением порядка. Вынесено из pattern-цикла."""
         found_values = []
         for pattern in field_patterns:
-            matches = re.findall(pattern, text, re.IGNORECASE)
+            matches = pattern_exec.findall(pattern, text)
             for match in matches:
                 value = match.strip()
                 if value and len(value) > 2:
@@ -6199,9 +6230,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
         return round(total_confidence, 2)
 
-    def get_page_count(self, file_path: str) -> int:
+    def get_page_count(self, file_path: str, doc=None) -> int:
         """
         Получает количество страниц в документе (.docx или .pdf).
+
+        Для DOCX это ГРУБАЯ оценка «абзацев на страницу», а не настоящее число
+        страниц (в самом файле его нет — Word проставляет при вёрстке). Значение
+        зафиксировано в golden как metadata.pageCount, поэтому формулу здесь не
+        трогаем; ушёл только лишний разбор файла — `doc` приходит от analyze.
         """
         try:
             suffix = Path(file_path).suffix.lower()
@@ -6209,8 +6245,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 from pypdf import PdfReader
                 reader = PdfReader(file_path)
                 return max(1, len(reader.pages))
-            doc = Document(file_path)
-            return max(1, len(doc.paragraphs) // 20)
+            if doc is None:
+                doc = Document(file_path)
+            return max(1, len(doc.paragraphs) // _DOCX_PARAGRAPHS_PER_PAGE)
         except Exception:
             return 1
 

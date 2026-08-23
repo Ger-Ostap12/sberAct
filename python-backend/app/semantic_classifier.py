@@ -18,7 +18,7 @@ import logging
 import os
 import re
 import sys
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 if TYPE_CHECKING:
     import numpy as np
@@ -32,6 +32,8 @@ _MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "models", _MODEL_NAME
 _MODEL = None
 # Эталонные эмбеддинги считаются один раз за процесс (не на каждый вызов).
 _REFERENCE_EMBEDDINGS = None  # dict[label -> ndarray (n_phrases, dim)]
+# То же для негативных эталонов процедуры (см. _ensure_negative_embeddings).
+_NEGATIVE_EMBEDDINGS = None  # ndarray (n_negative_phrases, dim)
 
 # Простой сплиттер предложений: точка/!/?/перенос строки. НЕ тянем Natasha/razdel
 # ради этой задачи — это независимый гибрид-слой (см. docstring выше).
@@ -204,11 +206,32 @@ def _ensure_reference_embeddings(model, candidates: dict[str, list[str]]):
     return _REFERENCE_EMBEDDINGS
 
 
+def _ensure_negative_embeddings(model):
+    """Эмбеддинги «ложных друзей» (`PROCEDURE_NEGATIVE_CLAUSES`) — один раз за
+    процесс. Это фиксированный реестр, а не текст документа, и пересчитывать его
+    на каждом заявлении было чистой потерей: модель считает на CPU."""
+    global _NEGATIVE_EMBEDDINGS
+    if _NEGATIVE_EMBEDDINGS is None:
+        from semantic_reference_phrases import PROCEDURE_NEGATIVE_CLAUSES
+
+        _NEGATIVE_EMBEDDINGS = model.encode(
+            PROCEDURE_NEGATIVE_CLAUSES, convert_to_numpy=True,
+            normalize_embeddings=True, show_progress_bar=False,
+        )
+    return _NEGATIVE_EMBEDDINGS
+
+
 def _per_label_max_similarity(
     model, sentences: list[str], candidates: dict[str, list[str]]
-) -> Optional[dict]:
+) -> tuple[Optional[dict], Any]:
     """Для каждого `label` в `candidates` — (score, sentence_idx) максимума
-    сходства среди `sentences`. None при сбое модели/энкодинга."""
+    сходства среди `sentences`.
+
+    Возвращает пару (результат, эмбеддинги предложений). Эмбеддинги отдаём
+    наружу не для красоты: `detect_procedure_clauses` сравнивает те же самые
+    предложения с негативными эталонами и раньше кодировал их ВТОРОЙ раз —
+    вычисление модели на CPU повторялось целиком (замер: 4 вызова encode на
+    документ вместо двух, 0.52 с из 2.80 с). При сбое — (None, None)."""
     try:
         import numpy as np
 
@@ -228,10 +251,10 @@ def _per_label_max_similarity(
             local_idx = int(np.argmax(label_sims))
             sent_idx, _phrase_idx = divmod(local_idx, label_sims.shape[1])
             result[label] = (float(label_sims[sent_idx, _phrase_idx]), sent_idx)
-        return result
+        return result, sent_embeddings
     except Exception as exc:
         logger.warning(f"Сбой семантического классификатора: {exc}")
-        return None
+        return None, None
 
 
 def classify_semantic(
@@ -257,7 +280,7 @@ def classify_semantic(
     if not sentences:
         return None, 0.0, ""
 
-    per_label = _per_label_max_similarity(model, sentences, candidates)
+    per_label, _sent_embeddings = _per_label_max_similarity(model, sentences, candidates)
     if per_label is None:
         return None, 0.0, ""
 
@@ -313,19 +336,15 @@ def detect_procedure_clauses(
 
     masked_sentences = [_mask_debtor_name(_mask_requisites(s), debtor_name) for s in sentences]
 
-    per_label = _per_label_max_similarity(model, masked_sentences, clause_phrases)
+    per_label, sent_embeddings = _per_label_max_similarity(model, masked_sentences, clause_phrases)
     if per_label is None:
         return {}
 
-    from semantic_reference_phrases import PROCEDURE_NEGATIVE_CLAUSES
-
     try:
-        import numpy as np
-
-        neg_embeddings = cast("np.ndarray", model.encode(PROCEDURE_NEGATIVE_CLAUSES, convert_to_numpy=True,
-                                       normalize_embeddings=True, show_progress_bar=False))
-        sent_embeddings = cast("np.ndarray", model.encode(masked_sentences, convert_to_numpy=True,
-                                        normalize_embeddings=True, show_progress_bar=False))
+        # Негативные эталоны — константа реестра, а не данные документа:
+        # считаем их эмбеддинги один раз на процесс, как и позитивные.
+        # Предложения уже закодированы выше — второй прогон модели не нужен.
+        neg_embeddings = _ensure_negative_embeddings(model)
         # Максимум сходства с «ложными друзьями» ДЛЯ КАЖДОГО предложения —
         # сравнивается с положительным score того же предложения ниже.
         neg_score_per_sentence = (sent_embeddings @ neg_embeddings.T).max(axis=1)

@@ -3,6 +3,7 @@ import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 import field_contract
+import patterns as patterns_mod
 from patterns import FNS_CAT_LABELS, FNS_QUEUE_ORDINAL_WORDS, MONEY_NUM
 
 logger = logging.getLogger(__name__)
@@ -429,7 +430,7 @@ class AmountsMixin:
 
         for i, pattern in enumerate(field_patterns):
             logger.info(f"  Паттерн {i+1} для {field_name}: {pattern}")
-            matches = re.findall(pattern, text, re.IGNORECASE)
+            matches = patterns_mod.findall(pattern, text)
             logger.info(f"  Найдено совпадений: {len(matches)}")
             pattern_values = []
             for match in matches:

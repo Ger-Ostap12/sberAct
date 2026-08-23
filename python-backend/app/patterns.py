@@ -4,7 +4,21 @@
 Вынесено из DocumentAnalyzer.load_patterns без изменений — единый источник
 регулярных выражений и маркеров по типам документов.
 """
+import re
+from functools import lru_cache
 from typing import Any, Dict, List
+
+# Разбор регулярки в дерево нужен, чтобы вытащить ОБЯЗАТЕЛЬНЫЕ литералы (см.
+# required_literals). Модуль приватный и в разных версиях Python лежит в разных
+# местах, поэтому импорт защищённый: не нашли — отсев просто выключается, и
+# паттерны исполняются как раньше.
+try:  # CPython 3.11+
+    from re import _parser as _sre  # type: ignore[attr-defined]
+except ImportError:  # pragma: no cover - более старые версии
+    try:
+        import sre_parse as _sre  # type: ignore[no-redef]
+    except ImportError:  # pragma: no cover - парсер недоступен вовсе
+        _sre = None  # type: ignore[assignment]
 
 # --- ФНС: реестр требований по ОЧЕРЕДЯМ (парсер финансов ФНС-заявлений) ------------
 # Задолженность уполномоченного органа структурирована по очередям реестра (1/2/3),
@@ -62,6 +76,128 @@ def _upgrade_money_captures(patterns):
                 for pat in info.get("patterns", [])
             ]
     return patterns
+
+
+# --- Исполнение паттернов: компиляция и отсев заведомо непопадающих ----------
+#
+# Паттерны здесь — строки, и раньше каждый исполнялся через re.search(строка, …).
+# Кеш модуля re вмещает 512 записей, а проект использует ~1400 выражений: кеш
+# всегда полон, и одни и те же паттерны компилировались заново по кругу.
+#
+# Второй источник холостой работы — маркерные паттерны («…\[002\]»). Документ
+# без такого маркера совпасть не может, но регулярка всё равно проходила по
+# всему тексту, и ленивый квантификатор давал квадратичный откат: худший
+# одиночный паттерн стоил 90 мс на документ.
+#
+# Замер на всех 66 документах корпуса: 80.1 с -> 56.3 с (-30%) от одного этого
+# приёма, вывод analyze() побайтово прежний. Из 559 уникальных паттернов до
+# компиляции доходят 395 — остальные отсеиваются, не дойдя до движка регулярок.
+
+
+@lru_cache(maxsize=None)
+def compiled(pattern: str) -> "re.Pattern[str]":
+    """Скомпилированный паттерн. Кеш свой, потому что кеша re не хватает."""
+    return re.compile(pattern, re.IGNORECASE)
+
+
+def _collect_required(seq) -> set:
+    """Литералы, встречающиеся на ВСЕХ путях сопоставления разобранного узла.
+
+    Консервативно: при любой неопределённости возвращаем МЕНЬШЕ, никогда больше.
+    Отсюда и корректность отсева — если литерал обязателен, его отсутствие в
+    тексте означает, что совпадения быть не может.
+    """
+    out: set = set()
+    buf: List[str] = []
+
+    def flush() -> None:
+        # Короткие куски бесполезны как фильтр (найдутся в любом тексте) и
+        # только замедляют проверку.
+        if len(buf) >= 3:
+            out.add("".join(buf).lower())
+        buf.clear()
+
+    for op, av in seq:
+        if op is _sre.LITERAL:
+            buf.append(chr(av))
+        elif op is _sre.SUBPATTERN:
+            flush()
+            # av = (номер группы, add_flags, del_flags, подвыражение).
+            # Встроенные флаги вида (?i:…) могут поменять регистр — такие
+            # группы пропускаем, литералы из них ненадёжны.
+            if not av[1] and not av[2]:
+                out |= _collect_required(av[3])
+        elif op in (_sre.MAX_REPEAT, _sre.MIN_REPEAT):
+            flush()
+            min_count, _max_count, sub = av
+            if min_count >= 1:  # повтор обязателен -> обязательны и его литералы
+                out |= _collect_required(sub)
+        elif op is _sre.BRANCH:
+            flush()
+            branches = [_collect_required(b) for b in av[1]]
+            if branches:
+                out |= set.intersection(*branches)  # только общее для ВСЕХ веток
+        else:
+            # Классы символов, якоря, обратные ссылки, просмотры вперёд/назад —
+            # ничего не обещают, литерал через них не тянем.
+            flush()
+    flush()
+    return out
+
+
+@lru_cache(maxsize=None)
+def required_literals(pattern: str) -> tuple:
+    """Обязательные подстроки паттерна (в нижнем регистре) для дешёвого отсева.
+
+    Пустой кортеж — отсева нет, паттерн исполняется всегда.
+    """
+    if _sre is None:
+        return ()  # разбор AST недоступен: работаем без отсева, как раньше
+    try:
+        return tuple(_collect_required(_sre.parse(pattern, re.IGNORECASE)))
+    except Exception:  # незнакомая конструкция — молча отказываемся от отсева
+        return ()
+
+
+# Приведение текста к нижнему регистру — само по себе проход по всему документу.
+# Против одного текста прогоняются тысячи паттернов, поэтому держим ОДИН
+# последний результат. Ключ — тождество объекта строки: значение отдаём только
+# если оно посчитано ровно из него, поэтому гонка потоков может стоить лишнего
+# пересчёта, но не может дать чужой ответ (присваивание кортежа атомарно).
+_lower_cache: tuple = (None, None)
+
+
+def _lowered(text: str) -> str:
+    global _lower_cache
+    cached_text, cached_low = _lower_cache
+    if cached_text is text:
+        return cached_low
+    low = text.lower()
+    _lower_cache = (text, low)
+    return low
+
+
+def _can_match(pattern: str, text: str) -> bool:
+    """False — совпадения заведомо нет, полный проход не нужен."""
+    literals = required_literals(pattern)
+    if not literals:
+        return True
+    lowered = _lowered(text)
+    return any(lit in lowered for lit in literals)
+
+
+def search(pattern: str, text: str):
+    """re.search(pattern, text, re.IGNORECASE) с компиляцией и отсевом."""
+    if not _can_match(pattern, text):
+        return None
+    return compiled(pattern).search(text)
+
+
+def findall(pattern: str, text: str) -> list:
+    """re.findall(pattern, text, re.IGNORECASE) с компиляцией и отсевом."""
+    if not _can_match(pattern, text):
+        return []
+    return compiled(pattern).findall(text)
 
 
 def build_patterns() -> Dict[str, List[Dict[str, Any]]]:
