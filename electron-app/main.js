@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, globalShortcut, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 
 // Отключаем аппаратное ускорение: на некоторых Windows-конфигурациях
 // GPU-процесс падает ("GPU process isn't usable. Goodbye.") и окно не открывается.
@@ -32,6 +32,12 @@ let pythonProcess;
 // это TerminateProcess ТОЛЬКО родителя: конвертер осиротеет, продолжит держать
 // файлы resources\converter (из-за чего uninstall не может их снести) и память.
 // taskkill /T гасит всё дерево; на *nix шлём сигнал группе процессов.
+//
+// ВАЖНО: сигнал группе работает ТОЛЬКО если ребёнок запущен своей группой —
+// см. SPAWN_DETACHED ниже. Без него ребёнок сидит в группе Electron, kill(-pid)
+// даёт ESRCH, и всё сваливается в одиночный proc.kill() — то есть ровно в то
+// поведение, ради обхода которого функция и написана. На Astra Linux (целевая
+// платформа) это означало осиротевший конвертер.
 function killTree(proc) {
   if (!proc || proc.killed || proc.pid == null) return;
   if (process.platform === 'win32') {
@@ -44,6 +50,32 @@ function killTree(proc) {
     try { process.kill(-proc.pid, 'SIGTERM'); } catch { try { proc.kill(); } catch { /* уже мёртв */ } }
   }
 }
+
+// Общие опции spawn для наших сервисов: на *nix ребёнок получает СВОЮ группу
+// процессов, чтобы killTree мог погасить его вместе с внуками. На Windows
+// detached открыл бы отдельное консольное окно поверх интерфейса юриста —
+// там дерево гасит taskkill /T, отдельная группа не нужна.
+const SPAWN_DETACHED = process.platform !== 'win32';
+
+// Переключение DevTools. Обработчик IPC регистрируется ОДИН раз на уровне
+// модуля: внутри createWindow он падал с «Attempted to register a second
+// handler», как только окно создавалось повторно (app.on('activate')).
+function toggleDevTools() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (mainWindow.webContents.isDevToolsOpened()) {
+    mainWindow.webContents.closeDevTools();
+  } else {
+    mainWindow.webContents.openDevTools();
+  }
+}
+
+ipcMain.handle('toggle-devtools', () => {
+  toggleDevTools();
+  return {
+    opened: Boolean(mainWindow && !mainWindow.isDestroyed()
+      && mainWindow.webContents.isDevToolsOpened())
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Менеджер локального сервиса-процесса (используется для OCR-конвертера).
@@ -103,7 +135,8 @@ class ManagedService {
     this.external = false;
     this.process = spawn(cmd.command, cmd.args || [], {
       cwd: cmd.cwd,
-      env: { ...process.env, ...(cmd.env || {}) }
+      env: { ...process.env, ...(cmd.env || {}) },
+      detached: SPAWN_DETACHED
     });
     this.process.stdout.on('data', (d) => console.log(`[${this.name}] ${d}`));
     this.process.stderr.on('data', (d) => console.error(`[${this.name}] ${d}`));
@@ -259,8 +292,16 @@ async function startPythonBackend() {
 
     console.log(`Starting Python backend with: ${backend.command} ${backend.args.join(' ')}`);
 
+    // app.getPath('home') как последний рубеж: если HOME и USERPROFILE обе
+    // пусты, path.join(undefined, …) бросает TypeError — ДО spawn. Бросок
+    // съедался внешним catch, окно открывалось, каждый запрос падал, и в
+    // интерфейсе не было ни намёка на причину.
+    const homeDir = process.env.HOME || process.env.USERPROFILE || app.getPath('home');
+    const pathSep = process.platform === 'win32' ? ';' : ':';
+
     pythonProcess = spawn(backend.command, backend.args, {
       cwd: backend.cwd,
+      detached: SPAWN_DETACHED,
       env: {
         ...process.env,
         ...backend.env,
@@ -269,7 +310,7 @@ async function startPythonBackend() {
         // Бэкенд владеет конвертером: в проде его дефолтный путь (от __file__) неверен
         // во frozen — явно указываем resources/converter (куда его кладёт установщик).
         ...(isDev ? {} : { CONVERTER_DIR: path.join(process.resourcesPath, 'converter'), CONVERTER_PORT }),
-        PATH: process.env.PATH + (process.platform === 'win32' ? ';' : ':') + path.join(process.env.HOME || process.env.USERPROFILE, '.local/bin')
+        PATH: (process.env.PATH || '') + pathSep + path.join(homeDir, '.local/bin')
       }
     });
 
@@ -323,53 +364,34 @@ function createWindow() {
     }
   }
 
-  // Добавляем горячие клавиши для открытия DevTools
-  // Используем несколько методов для надежности
-
-  // Функция для переключения DevTools
-  const toggleDevTools = () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      if (mainWindow.webContents.isDevToolsOpened()) {
-        mainWindow.webContents.closeDevTools();
-      } else {
-        mainWindow.webContents.openDevTools();
-      }
-    }
-  };
-
-  // Метод 1: Обработчик событий клавиатуры в окне (основной метод)
+  // Горячие клавиши DevTools: F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+D.
+  // Все — на уровне ОКНА. Раньше Ctrl+Shift+D висел на globalShortcut: тот
+  // перехватывает клавишу во всей системе (даже когда окно не в фокусе),
+  // регистрировался по setTimeout и слетал на закрытии первого окна.
+  // preventDefault на F12 подавляет акселератор меню — иначе переключение
+  // сработало бы дважды и визуально ничего бы не произошло.
   mainWindow.webContents.on('before-input-event', (event, input) => {
-    // F12 для открытия/закрытия DevTools
+    const key = (input.key || '').toLowerCase();
+    // F12 и Ctrl+Shift+D переключают, Ctrl+Shift+I/J только открывают —
+    // поведение сохранено ровно как было, менять его тут не место.
     if (input.key === 'F12' || input.code === 'F12') {
       event.preventDefault();
       toggleDevTools();
       return;
     }
-    // Ctrl+Shift+I для открытия DevTools
-    if (input.control && input.shift && (input.key === 'I' || input.key === 'i')) {
+    if (input.control && input.shift && key === 'd') {
+      event.preventDefault();
+      toggleDevTools();
+      return;
+    }
+    if (input.control && input.shift && (key === 'i' || key === 'j')) {
       event.preventDefault();
       if (!mainWindow.webContents.isDevToolsOpened()) {
         mainWindow.webContents.openDevTools();
       }
-      return;
-    }
-    // Ctrl+Shift+J для открытия DevTools (альтернатива)
-    if (input.control && input.shift && (input.key === 'J' || input.key === 'j')) {
-      event.preventDefault();
-      if (!mainWindow.webContents.isDevToolsOpened()) {
-        mainWindow.webContents.openDevTools();
-      }
-      return;
     }
   });
 
-  // Метод 2: IPC обработчик для открытия DevTools из рендерера
-  ipcMain.handle('toggle-devtools', () => {
-    toggleDevTools();
-    return { opened: mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents.isDevToolsOpened() };
-  });
-
-  // Метод 3: Создаем меню с опцией открытия DevTools
   const template = [
     {
       label: 'Вид',
@@ -405,15 +427,7 @@ function createWindow() {
   const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);
 
-  // Метод 4: Добавляем обработчик на уровне приложения (для отладки)
-  console.log('[main] DevTools shortcuts registered: F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+D');
-  console.log('[main] DevTools menu added: View -> Open DevTools');
-  mainWindow.on('closed', () => {
-    // Отменяем регистрацию глобальных шорткатов при закрытии окна
-    globalShortcut.unregisterAll();
-    // Не обнуляем mainWindow сразу, чтобы диалоги могли работать
-    // mainWindow = null;
-  });
+  console.log('[main] DevTools: F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+D, меню «Вид»');
 }
 
 app.whenReady().then(() => {
@@ -429,34 +443,9 @@ app.whenReady().then(() => {
     backendPort: 8000
   });
 
-  // Регистрируем глобальные шорткаты после создания окна
-  // Используем альтернативные комбинации (F12 не работает как глобальный шорткат)
-  const registerGlobalShortcuts = () => {
-    const windows = BrowserWindow.getAllWindows();
-    if (windows.length === 0) return;
-    const win = windows[0];
-
-    // Ctrl+Shift+D для переключения DevTools
-    globalShortcut.register('CommandOrControl+Shift+D', () => {
-      if (win && !win.isDestroyed()) {
-        if (win.webContents.isDevToolsOpened()) {
-          win.webContents.closeDevTools();
-        } else {
-          win.webContents.openDevTools();
-        }
-      }
-    });
-
-    console.log('[main] Global shortcuts registered: Ctrl+Shift+D');
-  };
-
-  // Регистрируем после небольшой задержки, чтобы окно точно было создано
-  setTimeout(registerGlobalShortcuts, 500);
-
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
-      setTimeout(registerGlobalShortcuts, 500);
     }
   });
 });

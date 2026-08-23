@@ -14,7 +14,7 @@
     "build:update": "powershell -ExecutionPolicy Bypass -File scripts/build-update.ps1",
     "build:linux": "powershell -ExecutionPolicy Bypass -File scripts/build-linux.ps1",
     "build:linux-converter": "powershell -ExecutionPolicy Bypass -File scripts/build-converter-linux.ps1",
-    "test:updater": "node scripts/tests/converter-sync.test.js",
+    "test:updater": "node scripts/tests/converter-sync.test.js && node scripts/tests/feed-server.test.js",
     "dist:win": "npm run build && npm run pack:backend && npm run pack:converter && electron-builder --win && npm run stage:converter -- -Zip",
     "dist:linux": "powershell -ExecutionPolicy Bypass -File scripts/build-dist-linux.ps1",
     "postinstall": "electron-builder install-app-deps"

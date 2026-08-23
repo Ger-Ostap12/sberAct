@@ -41,8 +41,11 @@ function startFeedServer(rootDir) {
       try {
         const urlPath = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
         const filePath = path.join(root, urlPath);
-        // Защита от выхода за пределы корня (path traversal).
-        if (!filePath.startsWith(root)) {
+        // Защита от выхода за пределы корня (path traversal). Сравнение по
+        // относительному пути, а не startsWith: при корне C:\upd префиксная
+        // проверка пропускала C:\update\... — сосед по имени считался «внутри».
+        const rel = path.relative(root, filePath);
+        if (rel.startsWith('..') || path.isAbsolute(rel)) {
           res.writeHead(403);
           res.end();
           return;
@@ -54,6 +57,7 @@ function startFeedServer(rootDir) {
             return;
           }
           const range = req.headers.range;
+          let stream;
           if (range) {
             const m = /bytes=(\d*)-(\d*)/.exec(range);
             let start = m && m[1] ? parseInt(m[1], 10) : 0;
@@ -66,15 +70,27 @@ function startFeedServer(rootDir) {
               'Content-Length': end - start + 1,
               'Content-Type': 'application/octet-stream'
             });
-            fs.createReadStream(filePath, { start, end }).pipe(res);
+            stream = fs.createReadStream(filePath, { start, end });
           } else {
             res.writeHead(200, {
               'Content-Length': st.size,
               'Accept-Ranges': 'bytes',
               'Content-Type': 'application/octet-stream'
             });
-            fs.createReadStream(filePath).pipe(res);
+            stream = fs.createReadStream(filePath);
           }
+          // Источник обновления — СЪЁМНЫЙ носитель: чтение может оборваться на
+          // любом байте (флешку выдернули, износ). Неперехваченный 'error' на
+          // стриме — это uncaughtException, то есть падение main-процесса без
+          // окна и без сообщения. Ровно тот сценарий, ради которого фича есть.
+          stream.on('error', (streamErr) => {
+            console.error('[updater] сбой чтения', filePath, streamErr);
+            res.destroy();
+          });
+          // Клиент ушёл (отменил загрузку, закрылось окно) — иначе дескриптор
+          // остаётся открытым и носитель не даёт себя безопасно извлечь.
+          res.on('close', () => stream.destroy());
+          stream.pipe(res);
         });
       } catch (_e) {
         res.writeHead(500);
@@ -404,6 +420,7 @@ function shutdownUpdater() {
   }
 }
 
-// planConverterSync экспортируется ради тестов (scripts/tests/converter-sync.test.js):
+// planConverterSync и startFeedServer экспортируются ради тестов
+// (scripts/tests/converter-sync.test.js, scripts/tests/feed-server.test.js):
 // CRA-jest видит только electron-app/src, до main-процесса он не достаёт.
-module.exports = { initUpdater, shutdownUpdater, planConverterSync };
+module.exports = { initUpdater, shutdownUpdater, planConverterSync, startFeedServer };
