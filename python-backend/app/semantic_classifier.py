@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
 """Shadow-слой семантической классификации типа документа (эмбеддинги).
 
-Роль модуля — ДИАГНОСТИЧЕСКАЯ, не рабочая. По плану (`new_asnaliz`, фаза 1):
-слой считает свой ответ ПАРАЛЛЕЛЬНО с `classify_mixin.classify_document` и
-ни на что не влияет, пока явно не включён `SBERACT_SEMANTIC_SHADOW` — эталонные
-фразы см. `semantic_reference_phrases.py`, точка вызова — `document_analyzer.
-analyze_from_text` рядом с `classify_document`.
+Роль модуля — ДИАГНОСТИЧЕСКАЯ, не рабочая: слой считает свой ответ ПАРАЛЛЕЛЬНО
+с `classify_mixin.classify_document` и на извлечённые поля не влияет — его
+результат уходит только в предупреждения (`documentTypeWarning`,
+`debtorNameWarning`). Эталонные фразы см. `semantic_reference_phrases.py`,
+точка вызова — `document_analyzer.analyze_from_text` рядом с `classify_document`.
+
+Слой работает ВСЕГДА, когда доступна модель. Переменной-выключателя нет:
+в плане `new_asnaliz` (фаза 1) значился `SBERACT_SEMANTIC_SHADOW`, но в код он
+так и не попал — докстринг обещал несуществующий гейт, и это сбивало с толку
+при разборе, почему на каждом документе считаются эмбеддинги.
 
 Инициализация ленивая и graceful, по образцу `nlp_natasha.py`: нет пакета/
 модели — работаем как раньше, `classify_semantic` возвращает `(None, 0.0, "")`.

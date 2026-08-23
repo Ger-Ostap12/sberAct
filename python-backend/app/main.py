@@ -215,7 +215,7 @@ async def analyze_document(document: UploadFile = File(...)):
     Анализирует загруженный документ и извлекает данные.
     Поддерживаются форматы: .docx (Word), .pdf. Генерация актов по-прежнему только в .docx.
     """
-    print(" API: Получен запрос на анализ документа")
+    logger.info("Запрос на анализ документа")
     try:
         filename_lower = (document.filename or "").lower()
         if not (filename_lower.endswith(".docx") or filename_lower.endswith(".pdf")):
@@ -270,7 +270,7 @@ async def analyze_text(request: AnalyzeTextRequest):
     именно текст — файла-источника на этом пути нет.
     Формат ответа и ошибок идентичен /analyze-document.
     """
-    print(" API: Получен запрос на анализ текста")
+    logger.info("Запрос на анализ текста")
     try:
         def _run():
             with _ANALYSIS_LOCK:
@@ -750,8 +750,11 @@ async def generate_document(request_data: Dict[str, Any]):
     """
     Генерирует документ на основе выбранного шаблона и данных
     """
-    print(" API: Получен запрос на генерацию документа")
-    print(f" API: Данные запроса: {request_data}")
+    # Раньше здесь печатался ВЕСЬ request_data в stdout: это десятки килобайт
+    # персональных данных из заявления в консоли на каждую генерацию.
+    logger.info("Запрос на генерацию документа: тип %s, полей %d",
+                request_data.get("template_type"),
+                len(request_data.get("data") or {}))
     try:
         # Извлекаем данные из запроса
         template_type = request_data.get("template_type")

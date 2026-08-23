@@ -266,7 +266,7 @@ class DocxOpsMixin:
                         clear_in_paragraphs(cell.paragraphs)
 
     def _get_context_patterns_for_marker(self, placeholder: str) -> List[str]:
-        """
+        r"""
         Возвращает список паттернов контекста для указанного маркера.
 
         Args:

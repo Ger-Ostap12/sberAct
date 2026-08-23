@@ -409,6 +409,20 @@ const hasFilledCollaterals = (extractedData: ExtractedData): boolean => {
  * Определяет id рекомендуемого шаблона по результатам анализа.
  * Логика перенесена 1:1 из бывшего компонента TemplateSelection (loadTemplates).
  */
+/**
+ * Процедура по умершему должнику (ст. 223.1).
+ *
+ * Проверка по «умер» покрывает и «умерший» — раньше эти два условия стояли
+ * рядом, и второе было недостижимо. Осталось два независимых корня: «умер»
+ * и «смерть».
+ */
+const isDeceasedProcedure = (extractedData: ExtractedData): boolean => {
+  const fields = extractedData.fields as Record<string, unknown> | undefined;
+  if (fields?.procedureType === 'deceased') return true;
+  const raw = String(fields?.procedureTypeRaw ?? '').toLowerCase();
+  return raw.includes('умер') || raw.includes('смерть');
+};
+
 const pickTemplateId = (extractedData: ExtractedData, category?: DocumentCategory): string => {
   // Выбор «Ипотека» в первом окне — авторитетный: генерим ипотечный пакет
   // независимо от авто-классификации анализатора (пограничный документ мог
@@ -470,12 +484,9 @@ const pickTemplateId = (extractedData: ExtractedData, category?: DocumentCategor
     return 'initiation_physical';
   } else if (sourceDocumentType === 'initiation_legal') {
     return 'initiation_legal_competition_absent';
-  } else if ((extractedData.fields as any)?.procedureType === 'deceased' ||
-             (extractedData.fields as any)?.procedureTypeRaw?.toLowerCase().includes('умер') ||
-             (extractedData.fields as any)?.procedureTypeRaw?.toLowerCase().includes('умерший') ||
-             (extractedData.fields as any)?.procedureTypeRaw?.toLowerCase().includes('смерть')) {
+  } else if (isDeceasedProcedure(extractedData)) {
     return 'deceased';
-  } else if (extractedData.fields?.isKfh || (extractedData.fields as any)?.isKfh) {
+  } else if (extractedData.fields?.isKfh) {
     const hasCollateral = extractedData.fields?.ipCollateralContractNumber ||
                           extractedData.fields?.mortgageCollateralDescription1221 ||
                           sourceDocumentType === 'observation_collateral' ||

@@ -927,7 +927,9 @@ class TemplatesResolverMixin:
                         if any(sub.glob("*.docx")):
                             return sub
             except Exception:
-                pass
+                # Тот же случай, что и в document_generator: сбой обхода
+                # каталога молча превращался в «подходящей папки нет».
+                logger.debug("Не удалось обойти каталог шаблонов", exc_info=True)
             return default
 
         def _rtk_inclusion_path(variant: str, for_entity: str, collateral: bool):

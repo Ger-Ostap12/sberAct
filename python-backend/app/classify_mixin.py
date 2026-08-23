@@ -4,6 +4,25 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
+# Процедуры банкротства опознаём по ОСНОВЕ слова: она покрывает все словоформы
+# («реализац» есть и в «реализации», и в «реализации имущества»). Раньше в
+# четырёх местах лежали списки вида ["реализац", "реализации", "реализации
+# имущества"] — второй и третий элементы были недостижимы, потому что первый
+# уже подстрока обоих.
+_PROC_REALIZATION = "реализац"
+_PROC_RESTRUCTURING = "реструктуризац"
+_PROC_OBSERVATION = "наблюден"
+
+# Формулировка залога из шаблона ОДНОГО банка. В оригинале она с ошибкой
+# («обязательств кредитному договору», без «по») — скопирована дословно из
+# реального заявления, поэтому переписывать её нельзя, совпадение перестанет
+# находиться. Держим одной константой: раньше та же строка лежала десятью
+# копиями по коду, и любая правка требовала найти их все.
+_PLEDGE_PHRASE = (
+    r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+"
+    r"кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку"
+)
+
 # Детектор САМОБАНКРОТСТВА. Паттерны через \s* между словами: в PDF-конвертации
 # слова бывают склеены без пробелов («ЗАЯВЛЕНИЕФИЗИЧЕСКОГОЛИЦА…»).
 
@@ -352,9 +371,9 @@ class ClassifyMixin:
             ]
             has_legal_entity = any(indicator in text_lower for indicator in legal_entity_indicators)
 
-            is_realization = any(keyword in text_lower for keyword in ["реализац", "реализации", "реализации имущества"])
-            is_restructuring = any(keyword in text_lower for keyword in ["реструктуризац", "реструктуризации", "реструктуризации долгов"])
-            is_observation = any(keyword in text_lower for keyword in ["наблюден", "наблюдения"])
+            is_realization = _PROC_REALIZATION in text_lower
+            is_restructuring = _PROC_RESTRUCTURING in text_lower
+            is_observation = _PROC_OBSERVATION in text_lower
 
             if is_collection and has_legal_entity and not is_realization and not is_restructuring and not is_observation:
                 # Залоговым документ считается ТОЛЬКО при явной формулировке "обеспеченное залогом"
@@ -364,7 +383,7 @@ class ClassifyMixin:
                     r"обеспечен\s+залогом",
                     r"обеспечена\s+залогом",
                     r"обеспечены\s+залогом",
-                    r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку",
+                    _PLEDGE_PHRASE,
                     r"обязательство.*обеспечен.*залогом",
                     r"обязательства.*обеспечен.*залогом"
                 ]
@@ -374,7 +393,7 @@ class ClassifyMixin:
                 if has_required_collateral_phrase:
                     obligation_blocks = re.findall(r'Обязательство\s*№\s*(\d+)[:\s]*(.*?)(?=Обязательство\s*№\s*\d+[:\s]*|$)', text, re.DOTALL | re.IGNORECASE)
                     for obligation_num, block_text in obligation_blocks:
-                        collateral_phrase = r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку"
+                        collateral_phrase = _PLEDGE_PHRASE
                         if re.search(collateral_phrase, block_text, re.IGNORECASE | re.DOTALL):
                             has_legal_collateral = True
                             logger.info(f"Найден залог для ЮЛ в обязательстве №{obligation_num}")
@@ -382,8 +401,8 @@ class ClassifyMixin:
 
                     if not has_legal_collateral:
                         legal_collateral_patterns = [
-                            r"обязательство\s+№[^.]{0,1000}?В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку",
-                            r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку[^.]{0,500}?обязательство\s+№",
+                            r"обязательство\s+№[^.]{0,1000}?" + _PLEDGE_PHRASE,
+                            _PLEDGE_PHRASE + r"[^.]{0,500}?обязательство\s+№",
                             r"обязательство\s+№[^.]*?предоставил\s+в\s+залог\s+Банку",
                             r"В\s+качестве\s+обеспечения[^.]*?предоставил\s+в\s+залог\s+Банку"
                         ]
@@ -409,7 +428,7 @@ class ClassifyMixin:
             r"обеспечен\s+залогом",
             r"обеспечена\s+залогом",
             r"обеспечены\s+залогом",
-            r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку",
+            _PLEDGE_PHRASE,
             r"обязательство.*обеспечен.*залогом",
             r"обязательства.*обеспечен.*залогом"
         ]
@@ -419,7 +438,7 @@ class ClassifyMixin:
         if has_ip_name and has_required_collateral_phrase:
             obligation_blocks = re.findall(r'Обязательство\s*№\s*(\d+)[:\s]*(.*?)(?=Обязательство\s*№\s*\d+[:\s]*|$)', text, re.DOTALL | re.IGNORECASE)
             for obligation_num, block_text in obligation_blocks:
-                collateral_phrase = r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку"
+                collateral_phrase = _PLEDGE_PHRASE
                 if re.search(collateral_phrase, block_text, re.IGNORECASE | re.DOTALL):
                     has_ip_collateral = True
                     logger.info(f"Найден залог для ИП в обязательстве №{obligation_num}")
@@ -427,8 +446,8 @@ class ClassifyMixin:
 
             if not has_ip_collateral:
                 ip_collateral_patterns = [
-                    r"обязательство\s+№[^.]{0,1000}?В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку",
-                    r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку[^.]{0,500}?обязательство\s+№",
+                    r"обязательство\s+№[^.]{0,1000}?" + _PLEDGE_PHRASE,
+                    _PLEDGE_PHRASE + r"[^.]{0,500}?обязательство\s+№",
                     r"обязательство\s+№[^.]*?предоставил\s+в\s+залог\s+Банку",
                     r"В\s+качестве\s+обеспечения[^.]*?предоставил\s+в\s+залог\s+Банку"
                 ]
@@ -442,8 +461,8 @@ class ClassifyMixin:
                 "взыскания ип"
             ])
 
-            is_realization = any(keyword in text_lower for keyword in ["реализац", "реализации", "реализации имущества"])
-            is_restructuring = any(keyword in text_lower for keyword in ["реструктуризац", "реструктуризации", "реструктуризации долгов"])
+            is_realization = _PROC_REALIZATION in text_lower
+            is_restructuring = _PROC_RESTRUCTURING in text_lower
 
             if is_collection and not is_realization and not is_restructuring:
                 if has_ip_collateral:
@@ -502,7 +521,7 @@ class ClassifyMixin:
                 r"обеспечен\s+залогом",
                 r"обеспечена\s+залогом",
                 r"обеспечены\s+залогом",
-                r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку",
+                _PLEDGE_PHRASE,
                 r"обязательство.*обеспечен.*залогом",
                 r"обязательства.*обеспечен.*залогом"
             ]
@@ -511,7 +530,7 @@ class ClassifyMixin:
             has_physical_collateral = False
             if has_required_collateral_phrase:
                 collateral_phrases = [
-                    r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку",
+                    _PLEDGE_PHRASE,
                     r"что\s+подтверждается\s+договором\s+залога",
                     r"договор\s+залога\s+№",
                     r"предоставил\s+в\s+залог\s+Банку\s+объект\s+недвижимости"
@@ -519,9 +538,9 @@ class ClassifyMixin:
                 has_physical_collateral = any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in collateral_phrases)
 
             if has_physical_collateral and not has_ip_name:
-                is_restructuring = any(keyword in text_lower for keyword in ["реструктуризац", "реструктуризации", "реструктуризации долгов"])
-                is_realization = any(keyword in text_lower for keyword in ["реализац", "реализации", "реализации имущества"])
-                is_observation = any(keyword in text_lower for keyword in ["наблюден", "наблюдения", "процедура наблюдения"])
+                is_restructuring = _PROC_RESTRUCTURING in text_lower
+                is_realization = _PROC_REALIZATION in text_lower
+                is_observation = _PROC_OBSERVATION in text_lower
                 is_competition = any(keyword in text_lower for keyword in ["конкурсн", "конкурсное производство", "конкурсного производства"])
 
                 if is_competition:

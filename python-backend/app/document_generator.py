@@ -161,7 +161,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     logger.info(f"Используем шаблон из папки {search_dir.name}: {f.name}")
                     return f
             except Exception:
-                pass
+                # Без лога сбой обхода каталога неотличим от «шаблонов нет»,
+                # а наружу уезжает одинаковое «не найдены шаблоны документов».
+                logger.debug(f"Не удалось прочитать каталог шаблонов {search_dir}", exc_info=True)
 
         return path
 

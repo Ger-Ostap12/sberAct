@@ -3550,21 +3550,18 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 self._extract_multiple_field(extracted_fields, text, field_name, field_patterns)
             else:
 
+                # Реквизиты стороны берём из блока «Должник:»/«Ответчик:», общие
+                # паттерны для них не применяем — отсюда безусловный continue.
+                # (Ниже когда-то стояла ВТОРАЯ такая же проверка «на всякий
+                # случай»; управление до неё не доходило никогда.)
                 if field_name in ["inn", "ogrn", "ogrnip", "companyInn"]:
-                    # ИНН/ОГРН/ОГРНИП должника из блока «Должник:»/«Ответчик:»
                     self._extract_party_inn_ogrn(extracted_fields, text, field_name)
                     continue
-
 
                 if field_name == "applicantAddress":
                     # Адрес должника из блока «Должник:»/«Ответчик:»
                     if self._extract_party_address(extracted_fields, text, field_name):
                         continue
-
-                # ВАЖНО: Для ИНН, ОГРН, ОГРНИП и companyInn мы уже обработали выше, пропускаем общие паттерны
-                if field_name in ["inn", "ogrn", "ogrnip", "companyInn"]:
-                    logger.info(f"Пропускаем общие паттерны для {field_name}, так как уже обработали в специальной логике")
-                    continue
 
                 # Срез шапки считаем ОДИН раз на поле, а не на каждый паттерн:
                 # иначе каждая итерация плодила новую строку на 2500 символов.
@@ -3980,7 +3977,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                         formatted_total = f"{total_calc:,.2f}".replace(",", " ").replace(".", ",")
                         extracted_fields["totalDebt"] = formatted_total
                     except Exception:
-                        pass
+                        # Молчание тут стоило поля с ИТОГО: сумма просто не
+                        # проставлялась, и понять почему было невозможно.
+                        logger.debug("Не удалось сложить итог с госпошлиной", exc_info=True)
                 logger.info(
                     f"Разобрана сложная формулировка сумм: principal={principal_b}, interest={interest_b}, "
                     f"overdue={overdue_b}, duty={duty_b}, total={extracted_fields.get('totalDebt')}"

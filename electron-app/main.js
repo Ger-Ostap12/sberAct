@@ -347,7 +347,14 @@ function createWindow() {
       contextIsolation: true,
       sandbox: false,
       preload: preloadPath,
-      webSecurity: false  // Отключаем web security для локальной разработки
+      // ВНИМАНИЕ: выключено и в ПРОДЕ, а не только в разработке (как обещал
+      // прежний комментарий). В десктопе запросы идут через preload/IPC, но
+      // браузерный фолбэк (services/webApi.ts) ходит fetch'ем с file://-origin
+      // на 127.0.0.1:8000 — это межисточниковый запрос, и включение флага
+      // упрётся в CORS. Побочный вред: настоящие ошибки CORS в рендере не
+      // видны, на чём уже терялось время (память false-cors-stale-keepalive).
+      // Включать только вместе с проверкой на СОБРАННОМ установщике — см. §S.3.
+      webSecurity: false
     },
     icon: resolveIcon(),
     title: 'SberAct Document Generator'
