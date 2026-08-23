@@ -52,6 +52,9 @@ NGL = os.environ.get("SBERACT_LLM_NGL", "99")
 
 _process = None
 _lock = threading.Lock()
+# Отдельный лок на сборку .gguf из кусков: её вызывают из-под `_lock`, а тот
+# не реентрантный. Стережёт файл, а не процесс.
+_model_lock = threading.Lock()
 _job = None  # дескриптор job-объекта Windows, см. _bind_to_parent_life
 
 
@@ -149,35 +152,64 @@ def _binary():
     return path if os.path.isfile(path) else None
 
 
+def _model_present() -> bool:
+    """Есть ли модель — собранная или в кусках. ТОЛЬКО проверка, без записи."""
+    return os.path.isfile(_MODEL) or bool(glob.glob(_MODEL + ".part*"))
+
+
 def _resolve_model():
-    """Путь к .gguf. Модель режут на куски `.partNNN` ради лимита GitHub —
-    если собранного файла нет, склеиваем один раз."""
+    """Путь к .gguf, при необходимости собрав его из кусков `.partNNN`.
+
+    Куски нужны ради лимита GitHub на размер файла. Сборка — тяжёлая операция
+    на гигабайты, поэтому:
+      * идёт ПОД ЛОКОМ. Раньше её запускал `available()`, который лока не брал:
+        два параллельных запроса открывали один и тот же файл на запись и
+        оставляли побитую модель;
+      * пишет во временный файл и публикует через os.replace. Под целевым
+        именем никогда не лежит половинчатый файл — даже если процесс убьют
+        посреди склейки;
+      * вызывается только из `start()`, то есть из рабочего потока. Предикат
+        `available()` её больше не дёргает и в цикле событий не блокирует.
+    """
     if os.path.isfile(_MODEL):
         return _MODEL
-    parts = sorted(glob.glob(_MODEL + ".part*"))
-    if not parts:
-        return None
-    try:
-        logger.info("LLM: собираю модель из %d кусков", len(parts))
-        with open(_MODEL, "wb") as out:
-            for part in parts:
-                with open(part, "rb") as f:
-                    shutil.copyfileobj(f, out, 1024 * 1024)
-        return _MODEL
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("LLM: не удалось собрать модель: %s", exc)
+    # СВОЙ лок, не `_lock`: тот уже удерживается вызывающим start(), а
+    # threading.Lock не реентрантный — повторный захват намертво повесил бы
+    # бэкенд. И защищают они разное: `_lock` — процесс, этот — файл модели.
+    with _model_lock:
+        if os.path.isfile(_MODEL):  # пока ждали лок, собрал конкурент
+            return _MODEL
+        parts = sorted(glob.glob(_MODEL + ".part*"))
+        if not parts:
+            return None
+        tmp = _MODEL + ".partial"
         try:
-            if os.path.isfile(_MODEL):
-                os.remove(_MODEL)  # половинчатый файл хуже отсутствующего
-        except OSError:
-            pass
-        return None
+            logger.info("LLM: собираю модель из %d кусков", len(parts))
+            with open(tmp, "wb") as out:
+                for part in parts:
+                    with open(part, "rb") as f:
+                        shutil.copyfileobj(f, out, 1024 * 1024)
+            os.replace(tmp, _MODEL)  # атомарная публикация
+            return _MODEL
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("LLM: не удалось собрать модель: %s", exc)
+            try:
+                if os.path.isfile(tmp):
+                    os.remove(tmp)
+            except OSError:
+                pass
+            return None
 
 
 def available() -> bool:
     """Есть ли чем считать. Отсутствие модели или бинарника — штатная
-    ситуация: слой опционален, и правильная реакция на неё молчание."""
-    return _binary() is not None and _resolve_model() is not None
+    ситуация: слой опционален, и правильная реакция на неё молчание.
+
+    ПРЕДИКАТ, а не действие: ручки зовут его на каждый запрос, в том числе из
+    цикла событий. Ничего не собирает и на диск не пишет — этим занят
+    `_resolve_model` под локом.
+    """
+    return _binary() is not None and _model_present()
 
 
 def base_url() -> str:

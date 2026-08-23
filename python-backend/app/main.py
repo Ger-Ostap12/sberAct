@@ -655,17 +655,45 @@ async def converter_status():
 app.include_router(llm_router)
 
 
+GENERATED_MAX_AGE_H = int(os.environ.get("SBERACT_GENERATED_MAX_AGE_H", "24"))
+GENERATED_CLEANUP_EVERY_S = 3600
+# Первый проход — вскоре после старта, а не через час: основной мусор это
+# наследство ПРОШЛЫХ запусков, а сессия юриста часто короче часа. Небольшая
+# задержка нужна, чтобы уборка не соревновалась за диск с подъёмом приложения.
+GENERATED_CLEANUP_FIRST_S = 60
+
+
+async def _generated_cleanup_loop() -> None:
+    """Периодически сносит акты старше суток. Задача-демон, как сторож простоя."""
+    delay = GENERATED_CLEANUP_FIRST_S
+    while True:
+        await asyncio.sleep(delay)
+        delay = GENERATED_CLEANUP_EVERY_S
+        try:
+            # В тредпул: уборка ходит по диску, цикл событий держать нельзя.
+            await run_in_threadpool(
+                document_generator.cleanup_old_documents, GENERATED_MAX_AGE_H
+            )
+        except Exception:  # уборщик не имеет права уронить приложение
+            logger.exception("Сбой уборки сгенерированных документов")
+
+
 @contextlib.asynccontextmanager
 async def _lifespan(_app: FastAPI):
     # Сторож простоя: UI больше не гасит конвертер после каждого файла, память
     # возвращает этот таймер. Задача-демон, живёт столько же, сколько приложение.
     watchdog = asyncio.create_task(_converter_idle_watchdog())
+    # Уборка сгенерированных актов: без неё папка росла бесконечно (в дереве
+    # разработки успело накопиться 376 файлов на 13 МБ), а реестр в памяти
+    # держал полный набор полей каждого документа до конца жизни процесса.
+    housekeeper = asyncio.create_task(_generated_cleanup_loop())
     try:
         yield
     finally:
-        watchdog.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await watchdog
+        for task in (watchdog, housekeeper):
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
 
         # Ни конвертер, ни llama-server не должны переживать бэкенд:
         # осиротевший процесс держит гигабайты и порт.

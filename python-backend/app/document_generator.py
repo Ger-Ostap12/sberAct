@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import uuid
 import logging
 import re
@@ -2621,10 +2622,20 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             logger.error(f"Ошибка при удалении документа {document_id}: {str(e)}")
             return False
 
-    def cleanup_old_documents(self, max_age_hours: int = 24):
+    def cleanup_old_documents(self, max_age_hours: int = 24) -> int:
         """
-        Удаляет старые документы
+        Удаляет сгенерированные акты старше `max_age_hours` и возвращает их число.
+
+        Акты — расходник: юрист скачал и ушёл. Раньше этот метод не вызывался
+        ниоткуда, и папка росла бесконечно (в дереве разработки накопилось 376
+        файлов на 13 МБ), а `self.documents` держал в памяти полный набор полей
+        каждого документа за всё время жизни процесса.
+
+        ОСТОРОЖНО. Метод удаляет файлы пользователя, поэтому границы жёсткие:
+        только каталог `generated_dir` без рекурсии, только `*.docx` (и `*.zip`
+        в подпапке `zips`), только по возрасту. Никаких «снести каталог».
         """
+        removed = 0
         try:
             current_time = datetime.now()
             documents_to_delete = []
@@ -2637,9 +2648,42 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     documents_to_delete.append(doc_id)
 
             for doc_id in documents_to_delete:
-                self.delete_document(doc_id)
+                if self.delete_document(doc_id):
+                    removed += 1
 
-            logger.info(f"Удалено {len(documents_to_delete)} старых документов")
+            removed += self._sweep_orphaned_files(max_age_hours)
+            if removed:
+                logger.info(f"Уборка: удалено {removed} устаревших файлов")
 
         except Exception as e:
             logger.error(f"Ошибка при очистке старых документов: {str(e)}")
+        return removed
+
+    def _sweep_orphaned_files(self, max_age_hours: int) -> int:
+        """Подметает файлы, которых нет в `self.documents`.
+
+        Реестр живёт только в памяти, поэтому после перезапуска бэкенда все
+        прошлые акты становятся «ничьими» и обычная уборка их не видит. Ориентир
+        для них — время модификации файла.
+        """
+        removed = 0
+        cutoff = time.time() - max_age_hours * 3600
+        known = {f"{doc_id}.docx" for doc_id in self.documents}
+
+        # glob без рекурсии: подкаталоги (кроме zips ниже) не наши.
+        targets = list(self.generated_dir.glob("*.docx"))
+        zips_dir = self.generated_dir / "zips"
+        if zips_dir.is_dir():
+            targets += list(zips_dir.glob("*.zip"))
+
+        for path in targets:
+            if path.name in known:
+                continue  # актуальный документ этого запуска — не трогаем
+            try:
+                if not path.is_file() or path.stat().st_mtime > cutoff:
+                    continue
+                path.unlink()
+                removed += 1
+            except OSError as exc:
+                logger.debug(f"Не удалось удалить {path}: {exc}")
+        return removed
