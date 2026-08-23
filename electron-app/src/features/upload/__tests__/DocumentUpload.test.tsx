@@ -9,6 +9,10 @@ jest.mock('../../../services/electronApi', () => ({
   selectFile: jest.fn(),
   hasElectronAPI: () => false,
   getElectronAPI: jest.fn(),
+  // Прогрев LLM экран зовёт при выборе файла. В моке метода не было, и вызов
+  // падал с «llmWarmup is not a function» ещё до маршрутизации PDF — тест
+  // проверял не то, что заявлено в названии.
+  llmWarmup: jest.fn(),
 }));
 
 // Кнопка «Выбрать файл»: в браузере нет моста Electron (selectFile всегда null),

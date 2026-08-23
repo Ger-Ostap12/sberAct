@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ConvertScreen from '../ConvertScreen';
 
@@ -51,6 +51,13 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockStart.mockResolvedValue({ ok: true });
   mockStop.mockResolvedValue({ ok: true });
+});
+
+afterEach(() => {
+  // Возврат настоящих таймеров ОБЯЗАН быть здесь, а не в конце теста: упавший
+  // тест до своей последней строки не доходит, и подставные таймеры утекают
+  // в следующий — тот виснет на реальном ожидании и падает следом.
+  jest.useRealTimers();
 });
 
 describe('ConvertScreen', () => {
@@ -135,13 +142,35 @@ describe('ConvertScreen', () => {
   }, 15000);
 
   it('конвертер не поднялся → ошибка со скип-фолбэком', async () => {
+    // Экран НЕ показывает ошибку с первой неудачи: холодный старт конвертера
+    // занимает до минуты, поэтому запуск тихо повторяется 5 раз с паузой 3 с,
+    // и сообщение появляется только через ~15 секунд. Настоящими таймерами тест
+    // столько бы и висел — прокручиваем их подставными.
+    jest.useFakeTimers();
     mockStart.mockResolvedValue({ ok: false, error: 'Конвертер не установлен' });
 
     render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
 
-    expect(await screen.findByText('Конвертер не установлен')).toBeInTheDocument();
+    // Jest 27 (CRA 5) не умеет advanceTimersByTimeAsync, поэтому крутим паузы
+    // вручную. Порядок важен: сперва слить микрозадачи, чтобы промис
+    // converterStart разрешился и пауза успела встать в очередь таймеров, и
+    // только потом двигать время. Наоборот — первый сдвиг уходит вхолостую.
+    for (let attempt = 0; attempt < 5; attempt++) {
+      // eslint-disable-next-line no-await-in-loop
+      await act(async () => {});
+      // eslint-disable-next-line no-await-in-loop
+      await act(async () => {
+        jest.advanceTimersByTime(3000);
+      });
+    }
+    await act(async () => {});
+
+    expect(screen.getByText('Конвертер не установлен')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Пропустить конвертацию/ })).toBeInTheDocument();
     expect(mockAnalyze).not.toHaveBeenCalled();
+    // Пять попыток — ровно столько, сколько заложено в экране: меньше значит
+    // ретрай сломан, больше — пользователь ждёт ошибку дольше нужного.
+    expect(mockStart).toHaveBeenCalledTimes(5);
   });
 
   it('«Назад» НЕ останавливает конвертер — им распоряжается сторож простоя', async () => {
