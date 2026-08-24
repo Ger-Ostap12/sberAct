@@ -21,7 +21,7 @@ from org_normalizer import (
     date_in_law_context,
 )
 from morph_utils import detect_gender, inflect_surname
-from label_synonyms import all_labels, labels_alternation
+from label_synonyms import all_labels, canonical_label_map, labels_alternation
 from semantic_classifier import classify_procedure_family, classify_debtor_name, debtor_names_match
 from classify_mixin import (
     ClassifyMixin,
@@ -343,6 +343,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             raw_text = text
             text = self._mask_attachment_list_amounts(text)
             text = self._normalize_whitespace_for_matching(text)
+            # Канонизация метки — ДО подъёма значения на строку метки: тот работает
+            # по реестру и должен видеть уже приведённое написание.
+            text = self._normalize_labels_for_matching(text)
             text = self._normalize_label_wrap_for_matching(text)
 
             text_lower = text.lower()
@@ -1026,6 +1029,39 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
     _LABEL_STARTS_LINE_RE = re.compile(
         r"^[ \t]*(?:" + labels_alternation(all_labels()) + r")[ \t]*:"
     )
+
+    # Карта канонизации метки. Ключи — в нижнем регистре, длинные раньше коротких:
+    # иначе «Должник» съел бы «Должник (ответчик)» и хвост метки остался бы в
+    # значении (та же грабля, что в `all_labels`).
+    _CANON_LABELS = canonical_label_map()
+    _CANON_LABEL_RE = re.compile(
+        r"(?<![А-Яа-яЁё])(" + "|".join(
+            re.escape(lbl) for lbl in sorted(_CANON_LABELS, key=len, reverse=True)
+        ) + r")(\s*:)",
+        re.IGNORECASE,
+    )
+
+    def _normalize_labels_for_matching(self, text: str) -> str:
+        """Привести написание метки к тому, на котором разбор доказанно работает.
+
+        «Заёмщик:» -> «Должник:», «Кредитор (заявитель):» -> «Кредитор:». Реестр
+        `label_synonyms` объявляет эти написания равнозначными, но паттерны держат
+        метку в себе и о реестре не знают — замер показывал, что подмена метки на
+        её же синоним ломает разбор у 42 документов из 47.
+
+        В карту входят ТОЛЬКО написания, которых в корпусе нет ни разу, поэтому на
+        корпусе преобразование тождественное и эталон не двигает. Работает оно на
+        заявлениях, которых в корпусе нет, — ради них реестр и заводился.
+
+        Двоеточие обязательно: без него «Размер и состав требования» (заголовок
+        раздела в реальных заявлениях) канонизировался бы в «Сумма требований» и
+        поехал бы разбор сумм.
+        """
+        if not text:
+            return text
+        return self._CANON_LABEL_RE.sub(
+            lambda m: self._CANON_LABELS[m.group(1).lower()] + m.group(2), text
+        )
 
     def _normalize_label_wrap_for_matching(self, text: str) -> str:
         """Поднять значение на строку его метки: «Должник:\\nИванов» «Должник: Иванов».
