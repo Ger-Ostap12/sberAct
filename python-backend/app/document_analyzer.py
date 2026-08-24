@@ -21,7 +21,13 @@ from org_normalizer import (
     date_in_law_context,
 )
 from morph_utils import detect_gender, inflect_surname
-from label_synonyms import all_labels, canonical_label_map, labels_alternation
+from label_synonyms import (
+    all_labels,
+    canonical_label_map,
+    field_labels,
+    header_labels,
+    labels_alternation,
+)
 from semantic_classifier import classify_procedure_family, classify_debtor_name, debtor_names_match
 from classify_mixin import (
     ClassifyMixin,
@@ -1041,6 +1047,32 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         re.IGNORECASE,
     )
 
+    # Разделитель метки и значения: тире вместо двоеточия. В корпусе таких строк
+    # НЕТ ни одной (проверено), а замер показывал, что подмена разделителя ломает
+    # разбор у 61 документа из 63 — то есть заявление банка, оформляющего шапку
+    # через тире, разберётся мусором.
+    #
+    # ГАРД: значение должно начинаться с заглавной буквы, цифры или кавычки.
+    # Без него канонизация превращала бы прозу «Должник — лицо, признанное…» в
+    # метку «Должник:» и выдавала бы определение из закона за имя должника.
+    # Метка БЛОКА: гард на заглавную/цифру/кавычку обязателен — значением здесь
+    # выступает имя стороны, а со строчной начинается проза («Должник — лицо,
+    # признанное…»), и без гарда определение из закона уехало бы в имя должника.
+    # Значение бывает и на следующей строке («Должник —\nООО …»): тире тогда стоит
+    # в конце строки. Оба случая обязаны канонизироваться, иначе `Должник —` без
+    # значения остаётся неразобранным и поле подхватывает мусор из тела документа.
+    _VALUE_AHEAD = r"(?=[А-ЯЁA-Z0-9«\"]|[ \t]*\r?\n[ \t]*[А-ЯЁA-Z0-9«\"])"
+    _HEADER_DASH_RE = re.compile(
+        r"(?<![А-Яа-яЁё])(" + labels_alternation(header_labels())
+        + r")[ \t]*[—–][ \t]*" + _VALUE_AHEAD
+    )
+    # Подпись ПОЛЯ: гард на заглавную неприменим — «Адрес — г. Ростов-на-Дону»
+    # начинается со строчной. Прозой такие строки не бывают, хватает непробельного.
+    _FIELD_DASH_RE = re.compile(
+        r"(?<![А-Яа-яЁё])(" + labels_alternation(field_labels())
+        + r")[ \t]*[—–][ \t]*(?=\S|[ \t]*\r?\n[ \t]*\S)"
+    )
+
     def _normalize_labels_for_matching(self, text: str) -> str:
         """Привести написание метки к тому, на котором разбор доказанно работает.
 
@@ -1059,6 +1091,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         """
         if not text:
             return text
+        text = self._HEADER_DASH_RE.sub(r"\1: ", text)
+        text = self._FIELD_DASH_RE.sub(r"\1: ", text)
         return self._CANON_LABEL_RE.sub(
             lambda m: self._CANON_LABELS[m.group(1).lower()] + m.group(2), text
         )
