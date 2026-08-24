@@ -1040,9 +1040,17 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
     # иначе «Должник» съел бы «Должник (ответчик)» и хвост метки остался бы в
     # значении (та же грабля, что в `all_labels`).
     _CANON_LABELS = canonical_label_map()
+    # В альтернативу входят НЕ ТОЛЬКО ключи карты, но и все метки реестра, причём
+    # длинные раньше коротких. Иначе короткий ключ откусывал бы кусок длинной
+    # рабочей метки: «Местонахождение» -> «Место нахождения» превращало бы
+    # «Адрес местонахождения:» в «Адрес Место нахождения:» и ломало разбор
+    # адреса там, где он работал. Совпавшую метку переписываем, только если она
+    # ЕСТЬ в карте; иначе возвращаем как было.
     _CANON_LABEL_RE = re.compile(
         r"(?<![А-Яа-яЁё])(" + "|".join(
-            re.escape(lbl) for lbl in sorted(_CANON_LABELS, key=len, reverse=True)
+            re.escape(lbl)
+            for lbl in sorted(set(_CANON_LABELS) | {x.lower() for x in all_labels()},
+                              key=len, reverse=True)
         ) + r")(\s*:)",
         re.IGNORECASE,
     )
@@ -1094,7 +1102,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         text = self._HEADER_DASH_RE.sub(r"\1: ", text)
         text = self._FIELD_DASH_RE.sub(r"\1: ", text)
         return self._CANON_LABEL_RE.sub(
-            lambda m: self._CANON_LABELS[m.group(1).lower()] + m.group(2), text
+            lambda m: self._CANON_LABELS.get(m.group(1).lower(), m.group(1)) + m.group(2),
+            text,
         )
 
     def _normalize_label_wrap_for_matching(self, text: str) -> str:
@@ -1482,6 +1491,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             r"Заявитель\s*\(кредитор\)\s*:?\s*",
             r"Истец\s*:\s*",
             r"Кредитор\s*:\s*",
+            # «Взыскатель:» реестр объявляет наравне с «Кредитор:», но якоря его не
+            # знали: на заявлении с такой шапкой блок кредитора не находился вовсе,
+            # и адрес/ИНН/ОГРН кредитора терялись целиком.
+            r"Взыскатель\s*:\s*",
             # «Заявитель Акционерное общество …» — без «(кредитор)» и двоеточия.
             r"Заявитель\s+(?=(?:Акционерн|Публичн|Общество|ООО|АО|ПАО|ЗАО|ОАО|ИП|ФНС|«))",
             # «Заявитель: <имя>» с двоеточием и именем без ОПФ-префикса («ББР Банк»,
