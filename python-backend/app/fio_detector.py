@@ -204,6 +204,31 @@ def _clean_birthplace(value: str) -> str:
     return place.strip().rstrip(",;)").strip()
 
 
+# Паспорт пишут ДЕСЯТКОМ способов, и каждый — в своём заявлении корпуса.
+# Прежний паттерн понимал 8 написаний из 12 и спотыкался на четырёх:
+#   «Паспорт: серия 60 24, №940297»   — запятая между серией и номером;
+#   «паспорт: серия: 60 14 номер: 691850» — двоеточие после «серия»;
+#   «паспорт: серия 60 23.№278902»    — точка вместо пробела;
+#   «Паспорт: серия 60 05 № 561 928»  — пробел ВНУТРИ номера.
+# Главной потерей была, однако, не форма записи, а ПРОВОДКА: разбор паспорта
+# жил только в одной ветке, в `fields` и в карточку должника не попадал вовсе.
+# `(?<!\d)`/`(?!\d)` не дают откусить кусок более длинного числа: без них
+# «ИНН 612504512780» разобрался бы как серия 6125 номер 045127.
+_PASSPORT_RE = re.compile(
+    r"паспорт\w*(?:\s+данн\w+)?\s*:?\s*(?:серия\s*:?\s*)?"
+    r"(?<!\d)(\d{2}\s?\d{2})\s*[.,;]?\s*(?:№|N|номер\s*:?)?\s*(\d{3}\s?\d{3})(?!\d)",
+    re.IGNORECASE,
+)
+
+
+def find_passport(text: str):
+    """Серия и номер паспорта из записи должника или None."""
+    m = _PASSPORT_RE.search(text or "")
+    if not m:
+        return None
+    return re.sub(r"\s", "", m.group(1)), re.sub(r"\s", "", m.group(2))
+
+
 def _find_birthdate(block: str):
     """Ищет дату рождения в двух форматах и возвращает 'ДД.ММ.ГГГГ' или None.
 
@@ -260,6 +285,10 @@ def extract_debtor_details(text: str) -> dict:
     m = re.search(r"СНИЛС[:\s]*(\d{3}[-\s]?\d{3}[-\s]?\d{3}[-\s]?\d{2})", block, re.IGNORECASE)
     if m:
         details["snils"] = m.group(1).strip()
+
+    pp = find_passport(block)
+    if pp:
+        details["passportSeries"], details["passportNumber"] = pp
 
     # ИНН должника — строго из его записи (иначе жадный поиск берёт ИНН банка-истца).
     inn_cands = [re.sub(r"\D", "", c) for c in re.findall(r"ИНН[:\s]*([0-9\s]{10,12})", block, re.IGNORECASE)]
@@ -339,11 +368,9 @@ def _parse_debtor_record(rec_text: str):
     if m:
         d["snils"] = m.group(1).strip()
 
-    # Паспорт: «Паспорт: серия 1111 № 111111» (серия — 4 цифры, номер — 6).
-    pm = re.search(r"Паспорт[^\d\n]{0,20}?(\d{2}\s?\d{2})\s*(?:№|N|номер)?\s*(\d{6})\b", rec_text, re.IGNORECASE)
-    if pm:
-        d["passportSeries"] = re.sub(r"\s", "", pm.group(1))
-        d["passportNumber"] = pm.group(2)
+    pp = find_passport(rec_text)
+    if pp:
+        d["passportSeries"], d["passportNumber"] = pp
 
     inn_cands = [re.sub(r"\D", "", c) for c in re.findall(r"ИНН[:\s]*([0-9\s]{10,12})", rec_text, re.IGNORECASE)]
     inn_cands = [c for c in inn_cands if 10 <= len(c) <= 12]

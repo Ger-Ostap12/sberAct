@@ -13,6 +13,7 @@ from fio_detector import (
     extract_debtors,
     extract_third_parties,
     extract_heirs,
+    find_passport,
 )
 from org_normalizer import (
     base_org_name,
@@ -2575,6 +2576,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         elif fields.get("birthPlace"):
             fields.pop("birthPlace", None)
 
+        pp = find_passport(blk)
+        if pp:
+            fields["passportSeries"], fields["passportNumber"] = pp
+
         snils = re.search(r"снилс[:\s]*([\d][\d\-\s]{9,15}\d)", blk, re.IGNORECASE)
         if snils:
             fields["snils"] = re.sub(r"\s+", " ", snils.group(1)).strip()
@@ -2874,6 +2879,17 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                     fields[case_key] = conv(base) or debt_name
                 except Exception:
                     fields[case_key] = debt_name
+        # Паспорт должника ФНС печатает НЕ в шапке, а в теле — внутри описания
+        # должника («…место рождения: …, зарегистрирован по адресу: …; паспортные
+        # данные: серия 60 25 номер 029979»). Разбор записи должника работает по
+        # шапке и такого паспорта не видел вовсе. Берём по всему тексту: в
+        # ФНС-заявлении упоминается ровно один паспорт — должника, и только
+        # когда должник действительно физлицо.
+        if not fields.get("passportSeries") and is_person_name(debt_name):
+            _pp = find_passport(text)
+            if _pp:
+                fields["passportSeries"], fields["passportNumber"] = _pp
+
         # Адреса ФНС-заявления. У заявителя-ФНС нет метки «Адрес:», поэтому общий
         # парсер кладёт в applicantAddress адрес ДОЛЖНИКА (или суда) — разводим их:
         #   • debtorAddress «Должник … Адрес: …», иначе — из applicantAddress (общий
@@ -3163,7 +3179,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
             m = re.search(
                 r"(?:финансов\w+|временн\w+|конкурсн\w+|арбитражн\w+)\s+управляющ\w+"
-                r"[:\s]*[\s\S]{0,120}?(?:^|\n)\s*адрес[^:\n]*:\s*([0-9]{6}[\s\S]{0,160}?)"
+                r"[:\s]*[\s\S]{0,120}?(?:^|\n)\s*адрес[^:\n]*:\s*"
+                # `$` здесь — конец СТРОКИ (флаг MULTILINE), поэтому адрес обрывался
+                # на первом же переносе. Узкая шапка рвёт его посреди улицы
+                # («…Мясницкая \n улица д. 26А…»), и в поле уезжал огрызок. Строку,
+                # оборванную ПРОБЕЛОМ, дочитываем: это мягкий перенос, а не конец
+                # значения. Строка-метка («ИНН:», «Дело№») переносом не считается.
+                r"([0-9]{6}(?:[^\n]*[ \t]\n(?![ \t]*[А-ЯЁA-Z][^\n:]{1,30}:)){0,3}[\s\S]{0,160}?)"
                 r"(?=\n\s*(?:Дело|Тел|Исх|ЗАЯВЛЕНИЕ|ИНН|ОГРН|СНИЛС|№|Размер|Государственн)|\n\s*\n|$)",
                 text, re.IGNORECASE | re.MULTILINE,
             )
@@ -3437,7 +3459,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
     _MGR_CAND_RE = re.compile(
         r"([А-ЯЁ][А-ЯЁа-яё]+(?:-[А-ЯЁ][А-ЯЁа-яё]+)?(?:\s+[А-ЯЁ][А-ЯЁа-яё]+){2})"
-        r"\s*\(\s*ИНН\s*\d{12}\b",
+        # Скобка НЕОБЯЗАТЕЛЬНА: заявления ФНС пишут «арбитражным управляющим
+        # Теплова Алексея Сергеевича ИНН 582704406654» — без скобок и с ИНН
+        # через пробел. Требование скобки оставляло у них управляющего пустым.
+        r"\s*[(,]?\s*ИНН[:\s]*\d{12}\b",
         re.IGNORECASE,
     )
 

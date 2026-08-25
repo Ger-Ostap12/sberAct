@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 import field_contract
 from creditor_registry import _match_creditor_registry
 from fio_detector import (
+    _find_birthdate,
     extract_debtor_details,
     extract_debtor_name,
     extract_debtors,
@@ -550,6 +551,42 @@ class PartiesMixin:
         addr = re.sub(r"\s*,\s*", ", ", addr).strip(" ,;:\t")
         return addr or None
 
+    # Окно после имени должника, в котором ещё уместно искать его дату рождения.
+    _BIRTH_NEAR_NAME_WINDOW = 140
+    # Метка ДРУГОЙ стороны обрывает окно: за ней идёт чужая дата рождения
+    # («Должник: … ИНН … / Финансовый управляющий: … 05.03.1975 года рождения»),
+    # и одного ограничения по длине окна против неё не хватает.
+    _BIRTH_WINDOW_STOP_RE = re.compile(
+        r"(?:финансов|временн|конкурсн|арбитражн)\w*\s+управляющ|Кредитор|Заявител|"
+        r"Взыскател|Треть[еи]\s+лиц|Наследник|Поручител|Представител|Ответчик",
+        re.IGNORECASE,
+    )
+
+    def _birthdate_near_debtor_name(self, extracted_fields, text) -> bool:
+        """Дата рождения из ТЕЛА заявления, рядом с именем должника.
+
+        Шапка печатает не всё: у части заявлений в записи должника есть ИНН,
+        СНИЛС и адрес, а дата рождения стоит только в теле —
+        «…дело о несостоятельности гражданина ЕПИФАНОВА ЛЮДМИЛА НИКОЛАЕВНА
+        (27.11.1961 года рождения, адрес регистрации …)».
+
+        Якорь — ИМЯ должника, а не «дата рождения» вообще: в теле хватает чужих
+        дат (управляющего, поручителя, наследника), и без привязки к имени поле
+        начало бы врать. Окно короткое по той же причине.
+        """
+        name = (extracted_fields.get("debtorName")
+                or extracted_fields.get("applicantName") or "").strip()
+        if not name or not text or len(name) < 8:
+            return False
+        for m in re.finditer(re.escape(name), text, re.IGNORECASE):
+            window = text[m.end():m.end() + self._BIRTH_NEAR_NAME_WINDOW]
+            window = self._BIRTH_WINDOW_STOP_RE.split(window, maxsplit=1)[0]
+            found = _find_birthdate(window)
+            if found:
+                extracted_fields["birthDate"] = found
+                return True
+        return False
+
     def _finalize_debtor_person_requisites(self, extracted_fields, text):
         """Авторитетные реквизиты должника-физлица из его записи (дата/место 
            рождения, ИНН, ОГРН/ОГРНИП, СНИЛС). Возвращает details для последующего 
@@ -559,10 +596,17 @@ class PartiesMixin:
         # очищаем мусор существующего фолбэка (невозможные/фабрикованные даты).
         if details.get("birthDate"):
             extracted_fields["birthDate"] = details["birthDate"]
+        elif self._birthdate_near_debtor_name(extracted_fields, text):
+            pass  # дата нашлась в теле рядом с именем должника
         else:
             extracted_fields.pop("birthDate", None)
         if details.get("birthPlace"):
             extracted_fields["birthPlace"] = details["birthPlace"]
+        # Паспорт нужен на фронте (карточка должника) и в ипотечных актах.
+        # Кладём ТОЛЬКО найденное: пустые ключи в снимке — лишний шум.
+        if details.get("passportSeries") and details.get("passportNumber"):
+            extracted_fields["passportSeries"] = details["passportSeries"]
+            extracted_fields["passportNumber"] = details["passportNumber"]
         # ИНН должника — авторитетно из его записи (исправляет подстановку ИНН банка).
         if details.get("inn"):
             extracted_fields["inn"] = details["inn"]
@@ -1194,7 +1238,7 @@ class PartiesMixin:
         else:
             name = appl or debt
             address = fields.get("applicantAddress") or ""
-        return {
+        entry = {
             "name": name,
             "address": address,
             "inn": fields.get("inn") or fields.get("companyInn") or "",
@@ -1204,6 +1248,13 @@ class PartiesMixin:
             "birthPlace": fields.get("birthPlace") or "",
             "snils": fields.get("snils") or "",
         }
+        # Паспортные поля добавляем ТОЛЬКО когда они есть: форма на фронте
+        # читает их через `|| ''`, а пустые ключи у полусотни документов
+        # раздули бы снимок эталона без единого нового факта.
+        if fields.get("passportSeries") and fields.get("passportNumber"):
+            entry["passportSeries"] = fields["passportSeries"]
+            entry["passportNumber"] = fields["passportNumber"]
+        return entry
 
     def _dedup_cross_block_ids(self, fields: Dict[str, Any], debtor_details: Dict[str, Any],
                                third_parties: List[Dict[str, Any]]) -> None:

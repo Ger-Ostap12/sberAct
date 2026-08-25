@@ -1234,6 +1234,8 @@
      "obligationType": "Кредитный договор"
     }
    ],
+   "passportNumber": "111111",
+   "passportSeries": "1111",
    "penalties": "0,00",
    "principalDebt": "5 040 063,34",
    "principalDebt13": "5 040 063,34",
@@ -2620,6 +2622,7 @@
    "ipCollateralClaimAmount": "3 859 760,52",
    "loanDebt": "4 536 273,95",
    "managerAddress": "410004, обл. Саратовская, г Саратов, ул. им Чернышев-ского Н.Г., д 50А, оф. 506",
+   "managerInn": "645100186818",
    "managerName": "Рябинина Екатерина Сергеевна",
    "messageDate": "29.04.2026",
    "messageNumber": "22677177",
@@ -2744,7 +2747,7 @@
   "debtors": [
    {
     "address": "346311 РОССИЯ, РОСТОВСКАЯ ОБЛ., Г.ЗВЕРЕВО, УЛ. ОСТАШЕНКО, Д.7, КВ.30",
-    "birthDate": "",
+    "birthDate": "27.11.1961",
     "birthPlace": "",
     "inn": "614600107524",
     "name": "Епифанова Людмила Николаевна",
@@ -2762,6 +2765,7 @@
    "applicantNameGenitive": "Епифановой Людмилы Николаевны",
    "applicantNameInstrumental": "Епифановой Людмилой Николаевной",
    "applicationDate": "16.05.2026",
+   "birthDate": "27.11.1961",
    "caseNumber": "А53-11012/2026",
    "companyInn": "614600107524",
    "contractDate": "07.02.2024",
@@ -3691,6 +3695,8 @@
      "penalty0071Value": 0.0
     }
    ],
+   "passportNumber": "011629",
+   "passportSeries": "6012",
    "penalties": "0,00",
    "principalDebt": "6 545 133,36",
    "principalDebt13": "6 545 133,36",
@@ -3810,6 +3816,8 @@
      "obligationType": "Договор поручительства"
     }
    ],
+   "passportNumber": "114178",
+   "passportSeries": "6023",
    "penalties": "0,00",
    "principalDebt": "20 865 698,85",
    "principalDebt13": "20 865 698,85",
@@ -4067,6 +4075,8 @@
     }
    ],
    "ogrnip": "320619600092709",
+   "passportNumber": "529316",
+   "passportSeries": "6019",
    "penalties": "0,00",
    "principalDebt": "7 157 894,72",
    "principalDebt13": "7 157 894,72",
@@ -4136,6 +4146,8 @@
     "name": "Песня Сергей Николаевич",
     "ogrn": "",
     "ogrnip": "",
+    "passportNumber": "940297",
+    "passportSeries": "6024",
     "snils": ""
    }
   ],
@@ -4357,6 +4369,8 @@
      "penalty0071Value": 0.31
     }
    ],
+   "passportNumber": "940297",
+   "passportSeries": "6024",
    "penalties": "0,00",
    "penalty0071": "0,31",
    "ppDepositDate80": "12.05.2026",
@@ -6161,6 +6175,8 @@
     "name": "Тарасенко (Матвеенко) Ольга Анатольевна",
     "ogrn": "",
     "ogrnip": "",
+    "passportNumber": "067255",
+    "passportSeries": "6017",
     "snils": "057-128-010 38"
    }
   ],
@@ -6185,6 +6201,8 @@
    "entityType": "individual",
    "inn": "612102429513",
    "loanDebt": "279 733,06",
+   "passportNumber": "067255",
+   "passportSeries": "6017",
    "snils": "057-128-010 38",
    "sourceDocumentType": "initiation_legal",
    "sroName": "Ассоциация Евросибирская саморегулируемая организация арбитражных управляющих",
@@ -6221,6 +6239,8 @@
     "name": "Каплунов Виталий Геннадиевич",
     "ogrn": "",
     "ogrnip": "",
+    "passportNumber": "465076",
+    "passportSeries": "6002",
     "snils": "049-543-767-96"
    }
   ],
@@ -6244,6 +6264,8 @@
    "entityType": "individual",
    "inn": "615007959197",
    "loanDebt": "116 000,00",
+   "passportNumber": "465076",
+   "passportSeries": "6002",
    "snils": "049-543-767-96",
    "sourceDocumentType": "rtk_application",
    "sroName": "Саморегулируемая межрегиональная общественная организация «Ассоциация антикризисных управляющих»",
@@ -6289,6 +6311,8 @@
     "name": "Слабунов Сергей Сергеевич",
     "ogrn": "",
     "ogrnip": "",
+    "passportNumber": "114409",
+    "passportSeries": "6021",
     "snils": "129-592-432 90"
    }
   ],
@@ -6310,6 +6334,8 @@
    "debtorName": "Слабунов Сергей Сергеевич",
    "entityType": "individual",
    "inn": "612704321215",
+   "passportNumber": "114409",
+   "passportSeries": "6021",
    "snils": "129-592-432 90",
    "sourceDocumentType": "rtk_application",
    "sroName": "Саморегулируемая межрегиональная общественная организация «Ассоциация антикризисных управляющих»"
@@ -6350,6 +6376,8 @@
     "name": "Бакалов Дмитрий Александрович",
     "ogrn": "",
     "ogrnip": "",
+    "passportNumber": "691850",
+    "passportSeries": "6014",
     "snils": "143-252-167 28"
    }
   ],
@@ -6375,6 +6403,8 @@
    "entityType": "individual",
    "inn": "615109700605",
    "loanDebt": "301,79",
+   "passportNumber": "691850",
+   "passportSeries": "6014",
    "snils": "143-252-167 28",
    "sourceDocumentType": "rtk_application",
    "sroName": "саморегулируемой организации арбитражных управляющих Союз АУ «Созидание»",
@@ -6412,6 +6442,8 @@
     "name": "Медведев Максим Юрьевич",
     "ogrn": "",
     "ogrnip": "",
+    "passportNumber": "561928",
+    "passportSeries": "6005",
     "snils": "063-128-006 22"
    }
   ],
@@ -6436,6 +6468,8 @@
    "inn": "614208901558",
    "legalShortName": "Медведев Максим Юрьевич",
    "obligationType": "Кредитный договор",
+   "passportNumber": "561928",
+   "passportSeries": "6005",
    "procedureType": "observation",
    "procedureTypeRaw": "наблюдение",
    "snils": "063-128-006 22",
@@ -6473,6 +6507,8 @@
     "name": "Мирский Алексей Степанович",
     "ogrn": "",
     "ogrnip": "",
+    "passportNumber": "278902",
+    "passportSeries": "6023",
     "snils": ""
    }
   ],
@@ -6496,6 +6532,8 @@
    "forfeit15": "0,00",
    "interest14": "0,00",
    "legalShortName": "не имеет возможности",
+   "passportNumber": "278902",
+   "passportSeries": "6023",
    "principalDebt13": "158 434,00",
    "procedureType": "observation",
    "procedureTypeRaw": "наблюдение",
@@ -6536,6 +6574,8 @@
     "name": "Федоренко Алексей Алексеевич",
     "ogrn": "",
     "ogrnip": "",
+    "passportNumber": "513897",
+    "passportSeries": "6019",
     "snils": "157-887-524-35"
    }
   ],
@@ -6560,6 +6600,8 @@
    "inn": "616118814199",
    "legalShortName": "владеет недвижимым имуществом",
    "loanDebt": "25 000,00",
+   "passportNumber": "513897",
+   "passportSeries": "6019",
    "procedureType": "observation",
    "procedureTypeRaw": "наблюдение",
    "snils": "157-887-524-35",
@@ -6599,6 +6641,8 @@
     "name": "Корсунов Вячеслав Валерьевич",
     "ogrn": "",
     "ogrnip": "",
+    "passportNumber": "737042",
+    "passportSeries": "6014",
     "snils": "155-161-603 44"
    }
   ],
@@ -6624,6 +6668,8 @@
    "loanDebt": "3 000,00",
    "managerAddress": "121069, город Москва, Поварская ул, д. 10 стр. 1",
    "obligationType": "кредитный договор",
+   "passportNumber": "737042",
+   "passportSeries": "6014",
    "snils": "155-161-603 44",
    "sourceDocumentType": "rtk_application",
    "sroName": "Ассоциация \"Региональная саморегулируемая организация профессиональных арбитражных управляющих\"",
@@ -6670,6 +6716,8 @@
     "name": "Галета (Карпух) Ольга Николаевна",
     "ogrn": "",
     "ogrnip": "",
+    "passportNumber": "402670",
+    "passportSeries": "6018",
     "snils": "049-288-075 97"
    }
   ],
@@ -6695,6 +6743,8 @@
    "inn": "615398867985",
    "loanDebt": "19 405,00",
    "obligationType": "Договор займа",
+   "passportNumber": "402670",
+   "passportSeries": "6018",
    "snils": "049-288-075 97",
    "sourceDocumentType": "rtk_application",
    "sroName": "Союз \"Межрегиональный центр арбитражных управляющих\"",
@@ -7261,6 +7311,8 @@
    "fnsQ3Total": "1 503 756,77",
    "fnsTotalComputed": "1",
    "inn": "615308542625",
+   "managerInn": "614588911581",
+   "managerName": "Ткаченко Павел Сергеевич",
    "sourceDocumentType": "unknown",
    "sroName": "Ассоциация \"Московская саморегулируемая организация профессиональных арбитражных управляющих\"",
    "totalDebt": "1 712 229,07"
@@ -7422,6 +7474,8 @@
     "name": "Базов Георгий Николаевич",
     "ogrn": "",
     "ogrnip": "",
+    "passportNumber": "029979",
+    "passportSeries": "6025",
     "snils": "045-968-519 07"
    }
   ],
@@ -7454,6 +7508,10 @@
    "fnsQ3Penalties": "3 986 365,00",
    "fnsQ3Total": "71 040 279,92",
    "inn": "616506698400",
+   "managerInn": "582704406654",
+   "managerName": "Теплов Алексей Сергеевич",
+   "passportNumber": "029979",
+   "passportSeries": "6025",
    "snils": "045-968-519 07",
    "sourceDocumentType": "initiation_physical",
    "sroName": "Союз арбитражных управляющих \"Саморегулируемая организация \"ДЕЛО\"",
@@ -7490,6 +7548,8 @@
     "name": "Бирюкова Елена Андреевна",
     "ogrn": "",
     "ogrnip": "",
+    "passportNumber": "286525",
+    "passportSeries": "6005",
     "snils": "063-843-816 80"
    }
   ],
@@ -7521,6 +7581,10 @@
    "fnsQ3Penalties": "23 478,88",
    "fnsQ3Total": "5 151 863,38",
    "inn": "615014390786",
+   "managerInn": "362600914260",
+   "managerName": "Колесников Сергей Владимирович",
+   "passportNumber": "286525",
+   "passportSeries": "6005",
    "snils": "063-843-816 80",
    "sourceDocumentType": "initiation_physical",
    "totalDebt": "5 631 934,26"
@@ -7650,6 +7714,10 @@
    "entityType": "individual",
    "loanDebt": "45 999,98",
    "loanStateDuty17": "2 000,00",
+   "managerAddress": "101000,г. Москва, Мясницкая улица д. 26А стр 1 а\\я, 564",
+   "managerName": "Эфендиева Амина Агаевна",
+   "passportNumber": "561928",
+   "passportSeries": "6005",
    "priorAmount": "47 999,98",
    "priorCaseNumber": "2-3-2444/2025",
    "priorDecisionDate": "19.12.2025",
@@ -7718,6 +7786,7 @@
    "fnsTotalComputed": "1",
    "inn": "4028073775",
    "legalShortName": "СМТ 40",
+   "managerInn": "632127553358",
    "managerName": "Белов Иван Алексеевич",
    "ogrn": "1234000001256",
    "sourceDocumentType": "initiation_legal",
