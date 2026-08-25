@@ -15,25 +15,32 @@ sys.path.insert(0, os.path.abspath(os.path.join(_THIS, "..", "tools")))
 sys.path.insert(0, os.path.abspath(os.path.join(_THIS, "..", "app")))
 sys.path.insert(0, os.path.abspath(os.path.join(_THIS, "golden")))
 
-from field_coverage import _is_empty, summarize  # noqa: E402
+from field_coverage import (  # noqa: E402
+    _is_empty,
+    field_consumers,
+    probe_evidence,
+    summarize,
+)
 
 
-def _raw(docs, declared=None, hits=None, all_patterns=None):
+def _raw(docs, declared=None, hits=None, all_patterns=None, consumers=None):
     return {
         "docs": docs,
         "declaredByType": declared or {},
         "patternHits": hits or {},
         "allPatterns": all_patterns or {},
+        "consumers": consumers or {},
     }
 
 
-def _doc(name, doc_type, fields, issues=None, quality=None):
+def _doc(name, doc_type, fields, issues=None, quality=None, evidence=None):
     return {
         "file": name,
         "documentType": doc_type,
         "fields": fields,
         "fieldIssues": issues or [],
         "fieldQuality": quality or {},
+        "evidence": evidence or {},
     }
 
 
@@ -170,3 +177,112 @@ class TestНеразобравшиесяДокументы:
         assert s["totalDocs"] == 1  # в статистику идут только разобранные
         assert len(s["brokenDocs"]) == 1
         assert s["brokenDocs"][0]["file"] == "битый.docx"
+
+
+class TestУлики:
+    """Зонд «данные есть» обязан отличать СВОЙ реквизит от чужого.
+
+    Разбор корпуса дал цену ошибки: из 82 срабатываний широких зондов
+    настоящими потерями оказались 28. Проверки ниже — ровно про те три
+    подмены, которые давали больше всего шума.
+    """
+
+    def test_боилерплейт_про_управляющего_не_улика(self):
+        """«финансовый управляющий» без ФИО есть в КАЖДОМ заявлении."""
+        assert probe_evidence(
+            "В силу закона финансовый управляющий утверждается судом", "managerName") is None
+        assert probe_evidence(
+            "Вознаграждение финансового управляющего составляет 25000 руб.", "managerName") is None
+
+    def test_имя_сро_не_принимается_за_фио_управляющего(self):
+        """«из числа членов Ассоциации Гарант» выглядит как ФИО ничуть не хуже."""
+        assert probe_evidence(
+            "финансового управляющего из числа членов Ассоциации Гарант", "managerName") is None
+
+    def test_фио_управляющего_в_любой_форме_улика(self):
+        for text in (
+            "Финансовый управляющий: Бубнова Светлана Васильевна",
+            "арбитражным управляющим утвердить Теплова Алексея Сергеевича",
+            "Финансовым управляющим должника утвержден(-а) Рябинина Екатерина Сергеевна",
+        ):
+            assert probe_evidence(text, "managerName"), text
+
+    def test_инн_сро_не_улика_для_инн_управляющего(self):
+        """Управляющий — физлицо, его ИНН всегда 12 знаков.
+
+        Десятизначный рядом со словом «управляющий» принадлежит СРО или
+        должнику-ЮЛ: на корпусе это 16 ложных срабатываний из 21.
+        """
+        assert probe_evidence(
+            "финансового управляющего из числа членов Ассоциации (ИНН 0274107073)",
+            "managerInn") is None
+        assert probe_evidence(
+            "арбитражным управляющим Теплова Алексея Сергеевича ИНН 582704406654",
+            "managerInn")
+
+    def test_реквизит_чужой_стороны_не_улика(self):
+        """ИНН кредитора — не улика того, что потерян ИНН должника."""
+        text = "Кредитор: ООО ПКО Юнона ИНН: 7806253521"
+        assert probe_evidence(text, "creditorInn")
+        assert probe_evidence(text, "inn") is None
+
+    def test_улики_собираются_только_по_пустым_полям(self):
+        s = summarize(_raw([
+            _doc("a.docx", "rtk", {"snils": ""}, evidence={"snils": "СНИЛС 136-024-294 28"}),
+            _doc("b.docx", "rtk", {"snils": "063-843-816 80"}),
+        ]))
+        assert list(s["evidenceGaps"]) == ["snils"]
+        assert s["evidenceGaps"]["snils"] == [
+            {"file": "a.docx", "text": "СНИЛС 136-024-294 28"}
+        ]
+
+
+class TestНечитаемыеПоля:
+    """Поле, которое никто не читает, даёт в отчёте ЛОЖНЫЙ НОЛЬ.
+
+    Так вышло с «паспортом»: имя `passport` живёт только в реестре меток
+    `label_synonyms.FIELD_LABELS`, извлекателя у него нет вовсе и не читает его
+    никто — а настоящие данные лежат в `passportSeries` / `passportNumber`.
+    Поле выглядело безнадёжно сломанным, чинить в нём было нечего.
+    """
+
+    def test_поле_без_потребителей_помечено(self):
+        s = summarize(_raw(
+            [_doc("a.docx", "rtk", {"passport": "", "inn": "7707083893"})],
+            consumers={"passport": [], "inn": ["генератор", "фронт"]},
+        ))
+        assert s["unreadFields"] == ["passport"]
+
+    def test_поле_вне_списка_потребителей_не_объявляется_мёртвым(self):
+        """Молчание — не приговор: о поле, которого нет в разборе потребителей,
+        отчёт не имеет права утверждать, что его никто не читает."""
+        s = summarize(_raw(
+            [_doc("a.docx", "rtk", {"неизвестное": ""})],
+            consumers={},
+        ))
+        assert s["unreadFields"] == []
+
+
+class TestПотребителиПоля:
+    def _fake_root(self, tmp_path):
+        app = tmp_path / "app"
+        app.mkdir(parents=True, exist_ok=True)
+        (app / "document_generator.py").write_text(
+            'MARKERS = {"creditorAddress": "988"}', encoding="utf-8")
+        front = tmp_path.parent / "electron-app" / "src"
+        front.mkdir(parents=True, exist_ok=True)
+        (front / "types.ts").write_text(
+            "export interface F { managerSnils?: string }", encoding="utf-8")
+        return str(tmp_path)
+
+    def test_находит_генератор_и_фронт(self, tmp_path):
+        root = self._fake_root(tmp_path / "backend")
+        got = field_consumers(["creditorAddress", "managerSnils", "passport"], root)
+        assert got["creditorAddress"] == ["генератор"]
+        assert got["managerSnils"] == ["фронт"]
+        assert got["passport"] == []
+
+    def test_совпадение_только_по_целому_слову(self, tmp_path):
+        """`inn` не должен «находиться» внутри `creditorInn`."""
+        root = self._fake_root(tmp_path / "backend")
+        assert field_consumers(["Address"], root)["Address"] == []

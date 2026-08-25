@@ -12,8 +12,27 @@
   1. Своднaя таблица по типам документов.
   2. Поля, не извлечённые НИ РАЗУ — мёртвое объявление или сломанный разбор.
   3. Классы пробелов — поле извлекается не везде; вот где именно пусто.
-  4. Качество — распределение уровней доверия и топ претензий контракта.
-  5. Паттерны, ни разу не совпавшие на корпусе, — кандидаты на удаление.
+  4. ДАННЫЕ ЕСТЬ, ПОЛЕ ПУСТО — улики того, что теряется не документ, а класс.
+  5. Качество — распределение уровней доверия и топ претензий контракта.
+  6. Паттерны, ни разу не совпавшие на корпусе, — кандидаты на удаление.
+
+Два урока, оплаченных разбором 82 «потерь» (из них настоящих оказалось 28):
+
+* **Улика — это КАНДИДАТ, а не находка.** Зонды ниже нарочно широкие, и на
+  корпусе две трети их срабатываний оказались чужими реквизитами: ИНН
+  саморегулируемой организации рядом со словом «управляющий», СНИЛС
+  представителя истца, адрес суда в самобанкротном заявлении. Список из этого
+  раздела разбирают ГЛАЗАМИ, а не «чинят».
+* **Прежде чем мерить поле, узнай, читает ли его кто-нибудь.** «Паспорт»
+  выглядел безнадёжно сломанным: заполнено 0 документов. На деле имени
+  `passport` НЕТ извлекателя вовсе — оно живёт только в реестре меток
+  `label_synonyms.FIELD_LABELS`, и его никто не читает. Настоящие поля —
+  `passportSeries` / `passportNumber`, и потерь по ним было 17.
+  Мёртвое поле даёт ЛОЖНЫЙ НОЛЬ, живое рядом — ложную тишину.
+
+Известное ограничение: отчёт сводит только плоский `fields`. Реквизиты внутри
+`debtors[]` / `thirdParties[]` он не видит — если поле живёт там, смотреть надо
+глазами (или расширять отчёт).
 
 Использование:
     venv/Scripts/python.exe tools/field_coverage.py
@@ -28,6 +47,7 @@ import io
 import json
 import logging
 import os
+import re
 import sys
 import time
 from collections import Counter, defaultdict
@@ -43,6 +63,154 @@ from _snapshot import CORPUS_DIR, corpus_files  # noqa: E402
 # Сколько документов перечислять поимённо в классе пробелов, прежде чем свернуть
 # в «…и ещё N». Класс важен целиком, но читать отчёт должно быть возможно.
 _NAMES_SHOWN = 12
+
+# Длина куска текста-улики в отчёте: достаточно, чтобы понять чей это реквизит.
+_EVIDENCE_CHARS = 90
+
+
+# --- Улики «данные в документе ЕСТЬ» -----------------------------------------
+#
+# Зонд отвечает на ОДИН вопрос: «в тексте вообще встречается то, из чего это поле
+# должно было бы взяться?». Он НАРОЧНО широкий и НЕ проверяет принадлежность —
+# именно поэтому его выдачу нельзя чинить не глядя (см. докстринг модуля).
+#
+# Держим зонды ДАННЫМИ: поддержка нового поля — строка сюда, без правки логики.
+# Реквизит без ЯКОРЯ РОЛИ бесполезен как улика: ИНН/ОГРН/КПП есть в каждом
+# заявлении у кого-нибудь, и незакреплённый зонд выдаёт весь корпус подряд.
+# Поэтому зонды сторон якорим на метку роли и берём окно после неё.
+_DEBTOR_ANCHOR = r"(?:Должник|Ответчик|Заёмщик|Заемщик)\w*\s*:"
+_CREDITOR_ANCHOR = r"(?:Кредитор|Взыскател|Истец|Заявител)\w*\s*[:(]"
+_MANAGER_ANCHOR = r"(?:финансов|арбитражн|конкурсн|временн)\w*\s+управляющ\w*"
+_NEAR = r"[\s\S]{0,300}?"
+# ФИО — только с ЗАГЛАВНОЙ: `(?-i:…)` потому, что зонды гоняются с IGNORECASE.
+_FIO = r"(?-i:[А-ЯЁ][А-ЯЁа-яё-]+(?:\s+[А-ЯЁ][А-ЯЁа-яё-]+){1,2})"
+
+FIELD_PROBES: Dict[str, str] = {
+    # Реквизиты ДОЛЖНИКА — только из его блока.
+    "inn": _DEBTOR_ANCHOR + _NEAR + r"\bИНН\b[:\s]*\d{10,12}",
+    "companyInn": _DEBTOR_ANCHOR + _NEAR + r"\bИНН\b[:\s]*\d{10,12}",
+    "ogrn": _DEBTOR_ANCHOR + _NEAR + r"\bОГРН\b[:\s]*\d{13}",
+    "ogrnip": _DEBTOR_ANCHOR + _NEAR + r"\bОГРНИП\b[:\s]*\d{15}",
+    "kpp": _DEBTOR_ANCHOR + _NEAR + r"\bКПП\b[:\s]*\d{9}",
+    "snils": _DEBTOR_ANCHOR + _NEAR + r"\bСНИЛС\b[:\s]*[\d\-\s]{11,16}",
+    "applicantAddress": _DEBTOR_ANCHOR + _NEAR + r"адрес\w*\s+(?:регистрации|проживания|места\s+жительства)",
+    "debtorAddress": _DEBTOR_ANCHOR + _NEAR + r"адрес\w*\s+(?:регистрации|проживания|места\s+жительства)",
+    # Реквизиты КРЕДИТОРА — только из его блока.
+    "creditorInn": _CREDITOR_ANCHOR + _NEAR + r"\bИНН\b[:\s]*\d{10,12}",
+    "creditorOgrn": _CREDITOR_ANCHOR + _NEAR + r"\bОГРН\b[:\s]*\d{13}",
+    "creditorAddress": _CREDITOR_ANCHOR + _NEAR + r"(?:юридическ\w+\s+адрес|место\s+нахождения)",
+    # Управляющий. ИНН у него ВСЕГДА 12 знаков — он физлицо; десятизначный рядом
+    # принадлежит СРО или должнику-ЮЛ (на корпусе 16 ложных срабатываний из 21).
+    # У имени тот же смысл: без ФИО «финансовый управляющий» — это боилерплейт
+    # из мотивировочной части, который есть в КАЖДОМ заявлении.
+    "managerInn": r"управляющ\w*" + _NEAR + r"\bИНН\b[:\s]*\d{12}",
+    # Между ролью и ФИО бывает глагол утверждения в любой форме
+    # («утверждён», «утвердить», «назначить») и слово «должника», а бывает
+    # ничего. Список закрытый НАМЕРЕННО: разрешить сюда любые слова значит
+    # впустить «управляющего из числа членов Ассоциации Гарант» — имя СРО
+    # выглядит как ФИО ничуть не хуже настоящего.
+    # `[\w()\-.]*` — потому что в корпусе пишут «утвержден(-а)».
+    "managerName": (_MANAGER_ANCHOR + r"[:\s]{1,3}"
+                    r"(?:(?:утвер|назнач|должник)[\w()\-.]*\s+){0,3}" + _FIO),
+    "managerAddress": _MANAGER_ANCHOR + r"[\s\S]{0,160}?адрес",
+    # Самоидентифицирующиеся значения — якорь роли не нужен.
+    "passportSeries": r"паспорт\w*[^\n]{0,60}?\d{2}\s?\d{2}",
+    "passportNumber": r"паспорт\w*[^\n]{0,60}?\d{2}\s?\d{2}",
+    "birthDate": r"\d{1,2}[.,]\d{1,2}[.,]\d{4}\s*(?:г\s*[./]?\s*р\b|года?\s+рожд)",
+    "birthPlace": r"(?:место\s+рождения|урожен(?:ец|ка))",
+    "sroName": r"саморегулируем\w+\s+организаци",
+    "stateDuty": r"пошлин\w*[^\n]{0,60}?\d",
+    "caseNumber": r"\bА\d{2}\s*-\s*\d+\s*/\s*\d{4}",
+}
+
+
+def probe_evidence(text: str, field: str) -> Optional[str]:
+    """Кусок текста-улика или None. Чистая функция: один вход — один результат."""
+    pattern = FIELD_PROBES.get(field)
+    if not pattern or not text:
+        return None
+    m = re.search(pattern, text, re.IGNORECASE)
+    if not m:
+        return None
+    return re.sub(r"\s+", " ", m.group(0))[:_EVIDENCE_CHARS]
+
+
+# --- Кто вообще читает поле --------------------------------------------------
+#
+# Поле, объявленное в паттернах и не читаемое НИКЕМ, даёт в отчёте ложный ноль:
+# выглядит сломанным, а на деле его просто некому спросить. Пометка снимает этот
+# вопрос до того, как кто-то потратит день на «починку». Проверять стоит и
+# обратное: у имени может не быть извлекателя вовсе — так вышло с `passport`,
+# который есть только в реестре меток.
+#
+# Признак ТЕКСТОВЫЙ: ищем имя поля как слово в коде-потребителе. Фронт умеет
+# читать поля и обобщённо (`fields[key]`), поэтому «никем не читается» — СИГНАЛ
+# ПОСМОТРЕТЬ, а не приговор.
+CONSUMER_GROUPS = (
+    ("генератор", (
+        "app/document_generator.py",
+        "app/obligations_render_mixin.py",
+        "app/docx_ops_mixin.py",
+        "app/templates_resolver_mixin.py",
+    )),
+    ("фронт", ("../electron-app/src",)),
+)
+_FRONT_SUFFIXES = (".ts", ".tsx")
+
+
+def _consumer_sources(root: str) -> Dict[str, str]:
+    """Тексты файлов-потребителей по группам: {группа: склеенный текст}."""
+    out: Dict[str, str] = {}
+    for group, paths in CONSUMER_GROUPS:
+        chunks: List[str] = []
+        for rel in paths:
+            target = os.path.normpath(os.path.join(root, rel))
+            if os.path.isfile(target):
+                chunks.append(_read_text(target))
+            elif os.path.isdir(target):
+                for dirpath, _dirs, files in os.walk(target):
+                    for name in files:
+                        if name.endswith(_FRONT_SUFFIXES):
+                            chunks.append(_read_text(os.path.join(dirpath, name)))
+        out[group] = "\n".join(chunks)
+    return out
+
+
+def _read_text(path: str) -> str:
+    try:
+        with io.open(path, encoding="utf-8", errors="replace") as f:
+            return f.read()
+    except OSError:
+        return ""
+
+
+# Имя поля с номером внутри код часто собирает ШАБЛОНОМ: во фронте очереди ФНС
+# читаются как `fnsQ${n}${suffix}`, и поиска целого слова `fnsQ2Forfeit` там нет
+# НИКОГДА. Без этой поблажки отчёт объявил бы мёртвыми шесть живых полей.
+_TEMPLATE_KEY_RE = re.compile(r"^(\D+)(\d+)(\D*)$")
+_MIN_TEMPLATE_PART = 4
+
+
+def _mentions(text: str, name: str) -> bool:
+    """Имя поля упомянуто прямо или собирается шаблоном из частей."""
+    if re.search(r"\b" + re.escape(name) + r"\b", text):
+        return True
+    m = _TEMPLATE_KEY_RE.match(name)
+    if not m:
+        return False
+    prefix, _digits, suffix = m.groups()
+    if len(prefix) < _MIN_TEMPLATE_PART:
+        return False
+    if not re.search(r"\b" + re.escape(prefix), text):
+        return False
+    return not suffix or bool(re.search(re.escape(suffix) + r"\b", text))
+
+
+def field_consumers(names, root: str) -> Dict[str, List[str]]:
+    """Для каждого поля — список групп, где его имя встречается в коде."""
+    sources = _consumer_sources(root)
+    return {name: [g for g, text in sources.items() if _mentions(text, name)]
+            for name in names}
 
 
 def _is_empty(value: Any) -> bool:
@@ -108,12 +276,24 @@ def collect(limit: Optional[int] = None, progress=None) -> Dict[str, Any]:
 
         doc_type = result.get("documentType") or "?"
         fields = result.get("fields") or {}
+        raw_text = result.get("rawText") or ""
+        # Улики ищем по СЫРОМУ тексту: вопрос «есть ли данные В ДОКУМЕНТЕ»,
+        # а не «видит ли их нормализатор». Только для полей, которые пусты, —
+        # у заполненных вопрос не стоит.
+        evidence = {}
+        for name in FIELD_PROBES:
+            if not _is_empty(fields.get(name)):
+                continue
+            found = probe_evidence(raw_text, name)
+            if found:
+                evidence[name] = found
         docs.append({
             "file": rel,
             "documentType": doc_type,
             "fields": {k: v for k, v in fields.items()},
             "fieldIssues": result.get("fieldIssues") or [],
             "fieldQuality": result.get("fieldQuality") or {},
+            "evidence": evidence,
         })
 
         # Какие паттерны в принципе способны совпасть на этом документе.
@@ -127,11 +307,16 @@ def collect(limit: Optional[int] = None, progress=None) -> Dict[str, Any]:
                 if pattern_exec.search(pat, text):
                     pattern_hits[key] += 1
 
+    names = {info["name"] for infos in analyzer.patterns.values() for info in infos}
+    for d in docs:
+        names.update(d.get("fields") or {})
+
     return {
         "docs": docs,
         "patternHits": dict(pattern_hits),
         "allPatterns": applied,
         "declaredByType": declared_by_type,
+        "consumers": field_consumers(sorted(names), _BACKEND),
     }
 
 
@@ -200,6 +385,18 @@ def summarize(raw: Dict[str, Any]) -> Dict[str, Any]:
             reasons[reason] += 1
             reason_files[reason].append(d["file"])
 
+    # Улики по полям: где поле пусто, а в документе есть из чего его взять.
+    evidence: Dict[str, List[Dict[str, str]]] = defaultdict(list)
+    for d in docs:
+        for name, frag in (d.get("evidence") or {}).items():
+            evidence[name].append({"file": d["file"], "text": frag})
+
+    # Считаем по ВСЕМ известным полям, включая объявленные и ни разу не
+    # заполненные: именно там и живёт ложный ноль — поле числится сломанным,
+    # хотя спрашивать его некому.
+    consumers = raw.get("consumers") or {}
+    unread = sorted(n for n, groups in consumers.items() if not groups)
+
     hits = raw["patternHits"]
     dead = sorted(k for k in raw["allPatterns"] if hits.get(k, 0) == 0)
     dead_by_field: Dict[str, int] = Counter(raw["allPatterns"][k] for k in dead)
@@ -219,6 +416,9 @@ def summarize(raw: Dict[str, Any]) -> Dict[str, Any]:
         "levelByField": {k: dict(v) for k, v in level_by_field.items()},
         "reasons": reasons.most_common(),
         "reasonFiles": {k: v for k, v in reason_files.items()},
+        "evidenceGaps": {k: v for k, v in sorted(evidence.items())},
+        "consumers": consumers,
+        "unreadFields": unread,
         "deadPatterns": dead,
         "deadByField": dict(dead_by_field),
         "patternsByField": dict(patterns_by_field),
@@ -233,6 +433,7 @@ def render(s: Dict[str, Any], out, field: Optional[str] = None) -> None:
     if field:
         w(f"ПОЛЕ {field}")
         w("=" * 72)
+        w("читают: " + (", ".join(s["consumers"].get(field) or []) or "НИКТО"))
         lvl = s["levelByField"].get(field)
         if lvl:
             w("уровни доверия: " + ", ".join(f"{k}={v}" for k, v in sorted(lvl.items())))
@@ -290,6 +491,9 @@ def render(s: Dict[str, Any], out, field: Optional[str] = None) -> None:
                     note = f"  (совпало, отброшено: {total_pat - dead} из {total_pat} паттернов совпадали)"
                 else:
                     note = "  (поле вычисляемое, паттернов нет)"
+                # Мёртвое поле — ложный ноль: чинить нечего, спрашивать некому.
+                if n in s.get("unreadFields", ()):
+                    note += "  [НИКЕМ НЕ ЧИТАЕТСЯ]"
                 w(f"      {n}{note}")
 
         if partial:
@@ -303,6 +507,40 @@ def render(s: Dict[str, Any], out, field: Optional[str] = None) -> None:
                     w(f"           [{mark}] {f}")
                 if len(st["gaps"]) > _NAMES_SHOWN:
                     w(f"           …и ещё {len(st['gaps']) - _NAMES_SHOWN}")
+
+    w()
+    w("=" * 72)
+    w("ДАННЫЕ ЕСТЬ, ПОЛЕ ПУСТО — кандидаты, а НЕ находки")
+    w("   Зонд отвечает только на «встречается ли в тексте то, из чего поле")
+    w("   должно было бы взяться». Принадлежность он НЕ проверяет: на этом")
+    w("   корпусе две трети срабатываний оказались ЧУЖИМИ реквизитами — ИНН")
+    w("   саморегулируемой организации рядом со словом «управляющий», СНИЛС")
+    w("   представителя истца, адрес суда в самобанкротном заявлении.")
+    w("   Разбирать ГЛАЗАМИ, каждую строку.")
+    gaps = s.get("evidenceGaps") or {}
+    if not gaps:
+        w("   улик нет")
+    for name, rows in sorted(gaps.items(), key=lambda x: (-len(x[1]), x[0])):
+        mark = "  [НИКЕМ НЕ ЧИТАЕТСЯ]" if name in s.get("unreadFields", ()) else ""
+        w()
+        w(f"   {name}: пусто с уликой в {len(rows)} документах{mark}")
+        for row in rows[:_NAMES_SHOWN]:
+            w(f"      {row['file']}")
+            w(f"          {row['text']}")
+        if len(rows) > _NAMES_SHOWN:
+            w(f"      …и ещё {len(rows) - _NAMES_SHOWN}")
+
+    unread = s.get("unreadFields") or []
+    if unread:
+        w()
+        w("=" * 72)
+        w(f"ПОЛЯ, КОТОРЫЕ НИКТО НЕ ЧИТАЕТ — {len(unread)}")
+        w("   Имя поля не встречается ни в коде генерации, ни во фронте. Такое")
+        w("   поле даёт ЛОЖНЫЙ НОЛЬ в разделах выше: выглядит сломанным, а")
+        w("   спрашивать его некому. Признак текстовый, поэтому это повод")
+        w("   ПОСМОТРЕТЬ (фронт умеет читать поля и обобщённо), а не приговор.")
+        for n in unread:
+            w(f"   {n}")
 
     w()
     w("=" * 72)
