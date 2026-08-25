@@ -1571,6 +1571,51 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 addr = self._clean_creditor_address(self.clean_extracted_value(" ".join(parts)))
                 if addr and 10 <= len(addr) <= 200:
                     return addr
+
+        return self._creditor_address_without_index(block)
+
+    # Строка адреса ОБОРВАНА и продолжается следующей, если кончилась пробелом
+    # (мягкий перенос узкой колонки), запятой или сокращением, после которого
+    # обязано что-то стоять («… вн. тер. г.»).
+    _ADDR_CONTINUES_RE = re.compile(
+        r"(?:[ \t]|,|\b(?:г|ул|д|к|корп|стр|обл|пер|наб|пр|просп|кв|оф|ком|тер|вн"
+        r"|лит|литера|мкр|пос|р-н|пом|зд)\.)$"
+    )
+    # Строка-метка («Паспорт:», «ИНН:») — жёсткая граница: адрес туда не течёт.
+    _ADDR_STOP_LINE_RE = re.compile(r"^[ \t]*[А-ЯЁA-Z][^\n:]{1,30}:")
+    _ADDR_FLAT_LABEL_RE = re.compile(r"^[ \t]*адрес[ \t]*:[ \t]*(.+)$", re.IGNORECASE)
+    # Значение должно НАЧИНАТЬСЯ с географии, иначе «Адрес: см. приложение».
+    _ADDR_GEO_HEAD_RE = re.compile(r"[ \t]*(?:\d{6}|г\.|город|обл\.|респ)", re.IGNORECASE)
+    _ADDR_NOT_LEGAL_RE = re.compile(r"почтов|фактическ|а/я|абонентск|корреспонденц", re.IGNORECASE)
+
+    def _creditor_address_without_index(self, block: str) -> Optional[str]:
+        """Последний слой: плоская метка «Адрес:» БЕЗ почтового индекса.
+
+        Все слои выше требуют индекс (`[0-9]{6}`), а часть взыскателей пишет адрес
+        прямо от города («Адрес: г. Санкт-Петербург, вн. тер. г. …») — у таких
+        документов поле оставалось пустым. Метка обязательна: без неё строка,
+        начинающаяся с «г. …», может оказаться чем угодно (адресом суда, например).
+        """
+        raw_lines = block.split("\n")
+        for i, raw in enumerate(raw_lines):
+            flat = self._ADDR_FLAT_LABEL_RE.match(raw)
+            if not flat or self._ADDR_NOT_LEGAL_RE.search(raw):
+                continue
+            head = flat.group(1)
+            if not self._ADDR_GEO_HEAD_RE.match(head):
+                continue
+            parts, cur = [head], head
+            for nxt in raw_lines[i + 1:i + 5]:
+                if not self._ADDR_CONTINUES_RE.search(cur):
+                    break
+                if not nxt.strip() or self._ADDR_STOP_LINE_RE.match(nxt):
+                    break
+                parts.append(nxt)
+                cur = nxt
+            joined = re.sub(r"\s+", " ", " ".join(parts)).strip()
+            addr = self._clean_creditor_address(self.clean_extracted_value(joined))
+            if addr and 10 <= len(addr) <= 200:
+                return addr
         return None
 
     def _extend_address_from_text(self, text: str, address: Optional[str]) -> Optional[str]:
@@ -3191,9 +3236,16 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
     _ADDR_COMPONENT_RES = (
         ("index", re.compile(r"\b(\d{6})\b")),
         ("region", re.compile(r"\bобл(?:асть|асти|\.)?(?=[\s,])", re.IGNORECASE)),
-        ("city", re.compile(r"(?<!тер\.)\b(?:г|гор|город)\b\.?\s?(?=[А-ЯЁ])", re.IGNORECASE)),
+        # «вн. тер. г. Муниципальный округ …» — ОДИН адрес в формате ФИАС, а не два
+        # склеенных. Отрицательный просмотр назад нужен в обоих написаниях:
+        # «тер.г.» и «тер. г.» (просмотр назад в `re` фиксированной длины).
+        ("city", re.compile(r"(?<!тер\.)(?<!тер\. )\b(?:г|гор|город)\b\.?\s?(?=[А-ЯЁ])",
+                            re.IGNORECASE)),
         ("street", re.compile(r"\b(?:ул|улица)\b\.?", re.IGNORECASE)),
-        ("house", re.compile(r"\b(?:д|дом)\.?\s*№?\s*(\d[\w/-]*)", re.IGNORECASE)),
+        # Разделитель после «д»/«дом» ОБЯЗАТЕЛЕН («д.23», «д 15», «дом № 5»). Без
+        # него под «дом» попадала литера офиса («оф. Д13»), выражение видело
+        # второй «дом» и резало адрес на «…, оф.».
+        ("house", re.compile(r"\b(?:д|дом)(?:\.\s*|\s+)№?\s*(\d[\w/-]*)", re.IGNORECASE)),
     )
 
     @staticmethod

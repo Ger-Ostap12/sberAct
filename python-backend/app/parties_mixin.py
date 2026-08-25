@@ -33,6 +33,7 @@ class PartiesMixin:
         def extract_legal_entity_short_name(self, text: Optional[str]) -> Optional[str]: ...
         def _extract_creditor_block(self, text: str) -> Optional[str]: ...
         def _extract_creditor_address(self, text: str) -> Optional[str]: ...
+        def _clean_creditor_address(self, addr: str) -> str: ...
         def _clean_court_line(self, s: str) -> Optional[str]: ...
         def _convert_name_to_genitive(self, full_name: str) -> Optional[str]: ...
         def _convert_name_to_dative(self, full_name: str) -> Optional[str]: ...
@@ -1288,6 +1289,38 @@ class PartiesMixin:
                 except Exception as exc:
                     logger.warning(f"Не удалось пересчитать {key}: {exc}")
 
+    # Блок платёжных реквизитов в конце заявления. «Депозит» исключаем явно:
+    # реквизиты депозитного счёта суда — не реквизиты кредитора.
+    _PAY_BLOCK_RE = re.compile(
+        r"(?:платёжн\w+|платежн\w+|банковск\w+)\s+реквизит\w*"
+        r"|реквизит\w*\s+для\s+(?:перечислен\w+|оплаты|погашени\w+|зачислени\w+)",
+        re.IGNORECASE,
+    )
+    _PAY_BLOCK_WINDOW = 800
+
+    def _extract_payment_requisites(self, text: str) -> Dict[str, str]:
+        """ИНН / ОГРН / юр-адрес из блока платёжных реквизитов в конце заявления."""
+        m = self._PAY_BLOCK_RE.search(text or "")
+        if not m:
+            return {}
+        block = text[m.end():m.end() + self._PAY_BLOCK_WINDOW]
+        if re.search(r"депозит", block, re.IGNORECASE):
+            return {}
+        out: Dict[str, str] = {}
+        inn_m = re.search(r"ИНН[:\s]*([0-9]{10,12})(?!\d)", block, re.IGNORECASE)
+        if inn_m and len(inn_m.group(1)) in (10, 12):
+            out["inn"] = inn_m.group(1)
+        ogrn_m = re.search(r"ОГРН(?:ИП)?[:\s]*([0-9]{13,15})(?!\d)", block, re.IGNORECASE)
+        if ogrn_m and len(ogrn_m.group(1)) in (13, 15):
+            out["ogrn"] = ogrn_m.group(1)
+        addr_m = re.search(r"(?:юридическ\w+\s+адрес|место\s+нахождения)[:\s]*([^\n]+)",
+                           block, re.IGNORECASE)
+        if addr_m:
+            addr = self._clean_creditor_address(self.clean_extracted_value(addr_m.group(1).strip()))
+            if addr and 10 <= len(addr) <= 200:
+                out["address"] = addr
+        return out
+
     def _fill_creditor_requisites(self, fields: Dict[str, Any], text: str) -> None:
         """
         Заполняет creditorInn, creditorOgrn, creditorAddress.
@@ -1329,7 +1362,20 @@ class PartiesMixin:
                     doc_inn = pay.group(1)
                 if not doc_ogrn and len(pay.group(2)) in (13, 15):
                     doc_ogrn = pay.group(2)
-        doc_addr = self._extract_creditor_address(text)
+        # Фолбэк: реквизиты кредитора продублированы отдельным блоком в КОНЦЕ
+        # заявления («…предоставляем платежные реквизиты: … ОГРН …, ИНН …»). Блок
+        # кредитора в шапке ограничен окном в 1200 символов, поэтому ОГРН и
+        # юр-адрес там просто отсутствовали, хотя в документе есть.
+        pay_req = self._extract_payment_requisites(text)
+        pay_addr = None
+        # Условие принадлежности: ИНН в платёжном блоке совпал с уже найденным
+        # (или своего ИНН у нас ещё нет). Иначе блок описывает ДРУГОЕ лицо, и
+        # брать оттуда ОГРН/адрес значит приписать кредитору чужие реквизиты.
+        if pay_req and (not doc_inn or pay_req.get("inn") == doc_inn):
+            doc_inn = doc_inn or pay_req.get("inn")
+            doc_ogrn = doc_ogrn or pay_req.get("ogrn")
+            pay_addr = pay_req.get("address")
+        doc_addr = self._extract_creditor_address(text) or pay_addr
 
         inn = doc_inn or (matched["inn"] if matched else None)
         ogrn = doc_ogrn or (matched["ogrn"] if matched else None)
