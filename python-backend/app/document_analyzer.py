@@ -2,6 +2,7 @@ import re
 import sys
 import spacy
 from docx import Document
+from doc_structure import DocPart, docx_parts, flat_pairs
 import field_contract
 from requisites_validation import is_valid_inn
 from fio_detector import (
@@ -868,6 +869,18 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             logger.error(f"Ошибка при извлечении текста из Word: {str(e)}")
             raise ValueError("Не удалось извлечь текст из документа (возможно, файл поврежден или пустой)") from e
 
+    def _docx_structure(self, file_path: str, doc=None) -> List["DocPart"]:
+        """Части DOCX вместе с их местом в разметке (таблица/строка/колонка/абзац).
+
+        Единственный обход файла: плоский текст (`_docx_text_parts`) строится из
+        этого же списка, поэтому расхождения между «что видит структурный слой» и
+        «что видит разбор по тексту» быть не может по построению.
+        """
+        if doc is None:
+            doc = Document(file_path)
+        return docx_parts(file_path, doc=doc,
+                          raw_chunks=self._extract_docx_raw_xml_text(file_path))
+
     def _docx_text_parts(self, file_path: str, doc=None) -> List[Tuple[str, str]]:
         """Части текста DOCX с указанием происхождения (провенанс) каждой части.
 
@@ -880,56 +893,12 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
           3. надписи (w:txbxContent) и сноски/концевые сноски (``raw``).
         Провенанс нужен посекционному предпросмотру (`extract_sections`), плоский
         текст его игнорирует.
+
+        Обход живёт в `doc_structure`; здесь координаты частей отбрасываются, а
+        объединённые ячейки разворачиваются обратно в повторы — плоский текст
+        обязан остаться прежним до символа (см. `doc_structure.flat_pairs`).
         """
-        if doc is None:
-            doc = Document(file_path)
-        parts: List[Tuple[str, str]] = []
-
-        # 1. Тело документа: параграфы, затем таблицы
-        for paragraph in doc.paragraphs:
-            if paragraph.text.strip():
-                parts.append((paragraph.text.strip(), "body"))
-
-        for table in doc.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    if cell.text.strip():
-                        parts.append((cell.text.strip(), "table"))
-
-        # 2. Колонтитулы всех секций: header/footer + first_page + even_page.
-        # Секции часто ссылаются на один и тот же колонтитул — дедуплицируем.
-        seen_headers = set()
-        for section in doc.sections:
-            for container in (
-                section.header, section.footer,
-                section.first_page_header, section.first_page_footer,
-                section.even_page_header, section.even_page_footer,
-            ):
-                if container is None:
-                    continue
-                try:
-                    chunk_parts = []
-                    for paragraph in container.paragraphs:
-                        if paragraph.text.strip():
-                            chunk_parts.append(paragraph.text.strip())
-                    for table in container.tables:
-                        for row in table.rows:
-                            for cell in row.cells:
-                                if cell.text.strip():
-                                    chunk_parts.append(cell.text.strip())
-                    chunk = "\n".join(chunk_parts)
-                    if chunk and chunk not in seen_headers:
-                        seen_headers.add(chunk)
-                        parts.append((chunk, "colophon"))
-                except Exception as exc:
-                    logger.warning(f"Не удалось обработать колонтитул: {exc}")
-
-        # 3 + 4. Надписи (w:txbxContent) и сноски/концевые сноски —
-        # части DOCX, недоступные через объектную модель python-docx.
-        for chunk in self._extract_docx_raw_xml_text(file_path):
-            parts.append((chunk, "raw"))
-
-        return parts
+        return flat_pairs(self._docx_structure(file_path, doc=doc))
 
     def _extract_docx_raw_xml_text(self, file_path: str) -> List[str]:
         """Собирает текст из частей DOCX, не покрытых моделью python-docx.
