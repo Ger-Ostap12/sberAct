@@ -2178,6 +2178,7 @@
    "managerAddress": "386151, РЕСП ИНГУШЕТИЯ, СЕЛО ЭКАЖЕВО, НАЗРАНОВСКИЙ Р-Н, УЛ МУТАЛИЕВА, 120",
    "managerInn": "060203933434",
    "managerName": "Аушев Дауд Мухамедович",
+   "managerSnils": "14986438627",
    "messageDate": "27.02.2024",
    "messageNumber": "13758787",
    "obligationType": "кредитный договор",
@@ -2661,6 +2662,7 @@
    "managerAddress": "410004, обл. Саратовская, г Саратов, ул. им Чернышев-ского Н.Г., д 50А, оф. 506",
    "managerInn": "645100186818",
    "managerName": "Рябинина Екатерина Сергеевна",
+   "managerSnils": "13726672779",
    "messageDate": "29.04.2026",
    "messageNumber": "22677177",
    "mortgageCollateralDescription1221": "А53-11228/2026 СУЗАНСКАЯ ЛИДИЯ АЛЕКСЕЕВНА",
@@ -2919,6 +2921,7 @@
    "managerAddress": "344019, Ростовская обл., г. Ростов-на-Дону, пр-кт Шолохова, д. 34А, оф.З.2",
    "managerInn": "615519848330",
    "managerName": "Удодов Сергей Александрович",
+   "managerSnils": "118-781-995 07",
    "messageDate": "30.05.2026",
    "messageNumber": "77240708355",
    "obligationType": "кредитный договор",
@@ -3214,6 +3217,7 @@
    "managerAddress": "350012, Краснодарский край, Краснодар, Красных Партизан, 77, а/я 4701",
    "managerInn": "632107827106",
    "managerName": "Ефимович Евгения Николаевна",
+   "managerSnils": "07725793102",
    "obligations": [
     {
      "contractDate": "13.06.2024",
@@ -3316,6 +3320,7 @@
    "managerAddress": "454092, г. Челябинск, а/я 9317",
    "managerInn": "745111378257",
    "managerName": "Данилова Аделя Ринатовна",
+   "managerSnils": "13517430235",
    "obligations": [
     {
      "contractDate": "17.12.2025",
@@ -3409,6 +3414,7 @@
    "managerAddress": "344029, обл Ростовская, г. Ростов-на-Дону, ул. 1-й Конной Армии, д. 23/10, офис 31",
    "managerInn": "616602539072",
    "managerName": "Тимченко Павел Иванович",
+   "managerSnils": "112-979-523 77",
    "messageDate": "28.04.2026",
    "messageNumber": "22660261",
    "obligationType": "кредитный договор",
@@ -5535,6 +5541,7 @@
    "loanDebt": "1 000 000 000,00",
    "managerInn": "644923704326",
    "managerName": "Панин Александр Владимирович",
+   "managerSnils": "143-211-094 04",
    "messageDate": "02.03.2026",
    "messageNumber": "34277008",
    "obligationType": "кредитный договор",

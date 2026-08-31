@@ -34,12 +34,13 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from label_synonyms import FIELD_LABELS, all_labels, labels_alternation
-from requisites_validation import is_valid_inn, is_valid_ogrn, is_valid_ogrnip
+from requisites_validation import is_valid_inn, is_valid_ogrn, is_valid_ogrnip, is_valid_snils
 
 MONEY = "money"
 INN = "inn"
 OGRN = "ogrn"
 OGRNIP = "ogrnip"
+SNILS = "snils"
 ADDRESS = "address"
 ORG = "org"
 COURT = "court"
@@ -97,6 +98,9 @@ FIELD_TYPES: Dict[str, str] = {
     "ogrn": OGRN,
     "creditorOgrn": OGRN,
     "ogrnip": OGRNIP,
+    "snils": SNILS,
+    "managerSnils": SNILS,
+    "thirdPartySnils": SNILS,
     # адреса
     "applicantAddress": ADDRESS,
     "creditorAddress": ADDRESS,
@@ -145,7 +149,11 @@ _FOREIGN_LABELS_IN_ADDRESS = sorted(
 _FOREIGN_LABEL_RE = re.compile(rf"\b(?:{labels_alternation(_FOREIGN_LABELS_IN_ADDRESS)})\b", re.IGNORECASE)
 FOREIGN_LABEL_REASON = "в адресе присутствует подпись другого поля"
 
-_FLAG_ONLY_TYPES = (INN, OGRN, OGRNIP)
+_FLAG_ONLY_TYPES = (INN, OGRN, OGRNIP, SNILS)
+
+# Претензию читает юрист, поэтому имя реквизита в ней — русское. Через
+# `ftype.upper()` СНИЛС выглядел как «SNILS».
+_REQUISITE_LABELS = {INN: "ИНН", OGRN: "ОГРН", OGRNIP: "ОГРНИП", SNILS: "СНИЛС"}
 
 _INCOMPATIBLE: Tuple[Tuple[str, str], ...] = (
     (MONEY, COURT),
@@ -200,13 +208,14 @@ def check_value(field: str, value: Any) -> Optional[str]:
             return "значение не похоже на денежную сумму"
         return None
 
-    if ftype in (INN, OGRN, OGRNIP):
-        validator = {INN: is_valid_inn, OGRN: is_valid_ogrn, OGRNIP: is_valid_ogrnip}[ftype]
+    if ftype in (INN, OGRN, OGRNIP, SNILS):
+        validator = {INN: is_valid_inn, OGRN: is_valid_ogrn,
+                     OGRNIP: is_valid_ogrnip, SNILS: is_valid_snils}[ftype]
         parts = _parts(text)
         # Чистим, только если НИ ОДНО значение не проходит контрольную сумму:
         # при частичном совпадении вероятнее многозначное поле, чем мусор.
         if parts and not any(validator(p) for p in parts):
-            return f"{ftype.upper()} не проходит контрольную сумму"
+            return f"{_REQUISITE_LABELS[ftype]} не проходит контрольную сумму"
         return None
 
     if ftype == ADDRESS:
@@ -352,11 +361,12 @@ def assess_quality(
         if source == SOURCE_REGISTRY:
             entry["level"] = HIGH
             entry["reasons"].append("значение из справочника, а не из разбора текста")
-        elif FIELD_TYPES.get(field) in (INN, OGRN, OGRNIP):
+        elif FIELD_TYPES.get(field) in (INN, OGRN, OGRNIP, SNILS):
             # Контрольная сумма — независимое подтверждение: совпасть случайно
             # десять цифр не могут. Претензии к реквизиту уже обработаны выше.
+            # СНИЛС считает ПФР, остальные — ФНС, поэтому ведомство не называем.
             entry["level"] = HIGH
-            entry["reasons"].append("реквизит проходит контрольную сумму ФНС")
+            entry["reasons"].append("реквизит проходит контрольную сумму")
         quality[field] = entry
 
     return quality
