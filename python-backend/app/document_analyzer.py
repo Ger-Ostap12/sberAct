@@ -4,7 +4,7 @@ from difflib import SequenceMatcher
 
 import spacy
 from docx import Document
-from doc_structure import DocPart, docx_parts, flat_pairs
+from doc_structure import DocPart, docx_parts, flat_pairs, stacked_label_pairs
 import field_contract
 from requisites_validation import is_valid_inn
 from fio_detector import (
@@ -26,6 +26,11 @@ from org_normalizer import (
 )
 from morph_utils import detect_gender, inflect_surname
 from label_synonyms import (
+    CREDITOR_HEADER_LABELS,
+    DEBTOR_HEADER_LABELS,
+    FIELD_LABELS,
+    MANAGER_HEADER_LABELS,
+    THIRD_PARTY_HEADER_LABELS,
     all_labels,
     canonical_label_map,
     field_labels,
@@ -45,14 +50,15 @@ from ip_mixin import IpExtractionMixin
 from obligations_mixin import ObligationsMixin
 from inflection_mixin import InflectionMixin
 from prior_collection_mixin import PriorCollectionMixin
-from patterns import SNILS_VALUE, build_patterns
+from patterns import MANAGER_ADDRESS_AFTER_NAME, SNILS_VALUE, build_patterns
 # Исполнение паттернов идёт через модуль: он компилирует их один раз и отсеивает
 # заведомо непопадающие по обязательным литералам (см. patterns.required_literals).
 import patterns as pattern_exec
 from creditor_registry import _match_creditor_registry
 import nlp_natasha as _nlp
 import fns_registry as _fns_reg
-from typing import Dict, Any, List, Tuple, Optional, Union
+from functools import lru_cache
+from typing import Dict, Any, List, Pattern, Tuple, Optional, Union
 import logging
 import os
 from pathlib import Path
@@ -150,10 +156,144 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # см. _apply_table_amounts.
             if is_docx:
                 self._apply_table_amounts(file_path, result, doc=doc)
+                # Шапка «метки стопкой» различима только по разметке: в плоском
+                # тексте метка и ЧУЖОЕ значение оказываются на одной строке.
+                self._apply_stacked_header(result, file_path, doc=doc)
             return result
         except Exception as e:
             logger.error(f"Ошибка при анализе документа: {str(e)}")
             raise
+
+    # Куда класть значение из шапки «метки стопкой»: (роль, вид) -> имя поля.
+    # Отображение явное, а не вычисляемое: у должника исторически безпрефиксные
+    # имена (`inn`, `snils`), а адрес зовётся `applicantAddress`.
+    _STACKED_ROLE_FIELDS = {
+        ("debtor", "address"): "applicantAddress",
+        ("debtor", "inn"): "inn",
+        ("debtor", "snils"): "snils",
+        ("debtor", "birthDate"): "birthDate",
+        ("creditor", "address"): "creditorAddress",
+        ("creditor", "inn"): "creditorInn",
+        ("creditor", "ogrn"): "creditorOgrn",
+        ("manager", "address"): "managerAddress",
+        ("manager", "inn"): "managerInn",
+        ("manager", "snils"): "managerSnils",
+        ("thirdParty", "address"): "thirdPartyAddress",
+        ("thirdParty", "inn"): "thirdPartyInn",
+        ("thirdParty", "snils"): "thirdPartySnils",
+    }
+
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def _stacked_role_patterns() -> Tuple[Tuple[str, Pattern[str]], ...]:
+        """Метка блока -> роль. Написания — из реестра, а не из документа."""
+        return tuple(
+            (role, re.compile(r"^\s*(?:" + labels_alternation(labels) + r")", re.IGNORECASE))
+            for role, labels in (
+                ("debtor", DEBTOR_HEADER_LABELS),
+                ("creditor", CREDITOR_HEADER_LABELS),
+                ("manager", MANAGER_HEADER_LABELS),
+                ("thirdParty", THIRD_PARTY_HEADER_LABELS),
+            )
+        )
+
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def _stacked_field_patterns() -> Tuple[Tuple[str, Pattern[str]], ...]:
+        """Подпись поля -> вид значения (address/inn/…). Тоже из реестра."""
+        return tuple(
+            (kind, re.compile(r"^\s*(?:" + labels_alternation(
+                sorted(labels, key=len, reverse=True)) + r")", re.IGNORECASE))
+            for kind, labels in FIELD_LABELS.items()
+        )
+
+    def _apply_stacked_header(self, result: Dict[str, Any], file_path: str, doc=None) -> None:
+        """Шапка «метки стопкой»: подряд метки, следом значения в том же порядке.
+
+        Двухколоночная шапка при конвертации разъезжается, и в плоском тексте
+        подпись одного поля стоит перед значением ДРУГОГО:
+        «Адрес регистрации: Петросян Генрих Суренович (ИНН …)». Построчный
+        разбор здесь бессилен — колонки восстанавливаются только по разметке.
+
+        Заполняет ТОЛЬКО пустые поля. Отсюда свойство: слой не может ничего
+        испортить, а разбор ВТБ (у него свой обработчик стопки) не сдвигается.
+
+        Роль запоминается по метке блока и держится до следующей: подпись поля
+        принадлежит той стороне, чья метка стоит выше в той же стопке.
+        """
+        fields = result.get("fields")
+        if not isinstance(fields, dict):
+            return
+        try:
+            pairs = stacked_label_pairs(self._docx_structure(file_path, doc=doc))
+        except Exception as exc:  # разметка не читается — это не повод падать
+            logger.debug(f"Стопка меток не разобрана: {exc}")
+            return
+        role = None
+        for label, value in pairs:
+            # Уточнение в СКОБКАХ важнее общего названия блока: «Заинтересованное
+            # лицо (должник):» — это должник, хотя реестр относит
+            # «заинтересованное лицо» к третьим лицам.
+            qualifier = re.search(r"\(([^)]{3,40})\)", label)
+            matched_role = None
+            if qualifier:
+                matched_role = next(
+                    (r for r, rx in self._stacked_role_patterns()
+                     if rx.match(qualifier.group(1))), None)
+            if matched_role is None:
+                matched_role = next(
+                    (r for r, rx in self._stacked_role_patterns() if rx.match(label)), None)
+            if matched_role:
+                role = matched_role
+                continue
+            if not role:
+                continue
+            kind = next(
+                (k for k, rx in self._stacked_field_patterns() if rx.match(label)), None)
+            name = self._STACKED_ROLE_FIELDS.get((role, kind)) if kind else None
+            if not name or (fields.get(name) or "").strip():
+                continue
+            clean = value.strip()
+            # Значение проходит тот же контракт, что и все остальные: слой не
+            # имеет права занести в поле то, что контракт бы вычистил.
+            if field_contract.check_value(name, clean):
+                continue
+            fields[name] = clean
+            self._drop_stale_issue(result, name)
+            logger.info(f"Шапка стопкой: {name} = {clean[:60]}")
+            # Карточка должника строится РАНЬШЕ этого шага и своим путём
+            # (`extract_debtors`), поэтому её адрес надо досинхронизировать.
+            # Только когда должник ОДИН: при нескольких неизвестно, чей это
+            # адрес, и угадывать нельзя.
+            if name == "applicantAddress":
+                debtors = result.get("debtors") or []
+                if len(debtors) == 1 and not (debtors[0].get("address") or "").strip():
+                    debtors[0]["address"] = clean
+                    self._drop_stale_issue(result, "debtors[0].address")
+
+    @staticmethod
+    def _drop_stale_issue(result: Dict[str, Any], field: str) -> None:
+        """Снимает претензию и пометку качества с поля, которое ЗАПОЛНЕНО заново.
+
+        Контракт поля отрабатывает на этапе разбора и вычищает мусор («Петросян
+        Генрих Суренович (» в адресе), оставляя претензию «поле очищено». Слои,
+        которые работают ПОСЛЕ и подставляют верное значение, обязаны эту
+        претензию снять — иначе юрист видит заполненное поле с предупреждением
+        «введите верное значение».
+
+        Снимаются только претензии с `cleared=True`: именно они и опустошили
+        поле. Претензия-пометка (`cleared=False`) поле не трогала, и её причина
+        могла остаться в силе.
+        """
+        issues = result.get("fieldIssues")
+        if isinstance(issues, list):
+            result["fieldIssues"] = [
+                i for i in issues
+                if not (isinstance(i, dict) and i.get("field") == field and i.get("cleared"))
+            ]
+        quality = result.get("fieldQuality")
+        if isinstance(quality, dict) and quality.get(field, {}).get("cleared"):
+            quality.pop(field, None)
 
     # Метки таблицы расчёта задолженности (формат Сбербанка) → поля.
     _DEBT_TABLE_LABELS = (
@@ -1516,7 +1656,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         return addr
 
     def _extract_creditor_address(self, text: str) -> Optional[str]:
-        """Извлекает ТОЛЬКО юридический адрес кредитора (без почтового и мусора)."""
+        """Извлекает ТОЛЬКО юридический адрес кредитора (без почтового и мусора).
+
+        ПРИОРИТЕТ (решение Андрея, 01.09.2026): юридический адрес — ВСЕГДА
+        первый. Запасные виды (фактический, почтовый, для корреспонденции) ищет
+        `_creditor_address_non_legal`, и вызывается он НИЖЕ справочника банков
+        (`_fill_creditor_requisites`): если кредитор в справочнике есть, его
+        юридический адрес главнее непрофильного адреса из документа.
+        """
         block = self._extract_creditor_block(text)
         if not block:
             return None
@@ -1554,7 +1701,108 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 if addr and 10 <= len(addr) <= 200:
                     return addr
 
-        return self._creditor_address_without_index(block)
+        without_index = self._creditor_address_without_index(block)
+        if without_index:
+            return without_index
+        return self._creditor_address_glued_to_requisites(block)
+
+    # Запасные виды адреса, в порядке предпочтения. Юридический сюда не входит:
+    # его ищут слои выше, и он всегда главнее.
+    _CREDITOR_FALLBACK_ADDRESS_LABELS = (
+        r"фактическ\w*\s+адрес",
+        r"почтов\w*\s+адрес(?:\s+для\s+корреспонденц\w+)?",
+        r"адрес\s+для\s+(?:направлен\w+\s+|отправк\w+\s+)?(?:почтов\w+\s+)?корреспонденц\w+",
+    )
+
+    # Строка адреса ОБОРВАНА и продолжается следующей. К признакам
+    # `_ADDR_CONTINUES_RE` добавлен ДЕФИС: узкая колонка рвёт по нему название
+    # города («…г. Санкт-\nПетербург, пр. Большой Сампсониевский, д. \n28, …»).
+    _NON_LEGAL_CONTINUES_RE = re.compile(
+        r"(?:[ \t]|,|-|\b(?:г|ул|д|к|корп|стр|обл|пер|наб|пр|просп|кв|оф|ком|тер"
+        r"|вн|лит|литера|мкр|пос|р-н|пом|зд)\.)$"
+    )
+    # Хвост, который в адрес не входит: почта и повтор названия организации
+    # («…оф. 642, ООО "ПКО "АСВ"»).
+    _NON_LEGAL_TAIL_RE = re.compile(
+        r"\s*(?:[\w.\-]+@[\w.\-]+|,\s*(?:ООО|АО|ПАО|ЗАО|НАО|ИП)\b.*)$",
+        re.IGNORECASE,
+    )
+
+    def _creditor_address_non_legal(self, block: str) -> Optional[str]:
+        """Фактический адрес / адрес для корреспонденции — когда юр-адреса нет.
+
+        Решение Андрея (01.09.2026): пустое поле хуже, чем непрофильный, но
+        верный адрес кредитора. Порядок предпочтения задан списком меток:
+        фактический → почтовый → для корреспонденции.
+
+        Метка обязательна. Без неё правило брало бы любую строку с индексом, а в
+        блоке кредитора это может быть адрес суда или представителя.
+        """
+        block = block or ""
+        lines = block.split("\n")
+        for label in self._CREDITOR_FALLBACK_ADDRESS_LABELS:
+            label_re = re.compile(label + r"\s*:?\s*", re.IGNORECASE)
+            for i, line in enumerate(lines):
+                m = label_re.search(line)
+                if not m:
+                    continue
+                parts, cur = [line[m.end():]], line[m.end():]
+                # Дочитываем строки, оборванные мягким переносом узкой колонки.
+                for nxt in lines[i + 1:i + 5]:
+                    if not self._NON_LEGAL_CONTINUES_RE.search(cur.rstrip("\r")):
+                        break
+                    if not nxt.strip() or self._ADDR_STOP_LINE_RE.match(nxt):
+                        break
+                    parts.append(nxt)
+                    cur = nxt
+                raw = re.sub(r"\s+", " ", " ".join(parts)).strip()
+                raw = self._NON_LEGAL_TAIL_RE.sub("", raw)
+                addr = self._clean_creditor_address(self.clean_extracted_value(raw))
+                if addr and 10 <= len(addr) <= 200 and re.search(
+                    r"\d{6}|город|\bг\.|ул\.|улиц|пр-?кт|проспект", addr, re.IGNORECASE
+                ):
+                    return addr
+        return None
+
+    # Адрес, ВКЛЕЕННЫЙ в строку с реквизитами и без своей метки:
+    # «…Банк ГПБ (АО) ОГРН 1027700167110, ИНН 7744001497 Дата регистрации
+    #  13.11.2001 ул. Наметкина, д. 16, кори. 1, г. Москва, 117420».
+    # Слои выше опираются либо на метку, либо на индекс В НАЧАЛЕ строки — здесь
+    # нет ни того, ни другого: метки нет, а индекс стоит в КОНЦЕ.
+    #
+    # Опора — уличный признак слева и почтовый индекс справа.
+    #
+    # Гард «не перепрыгивать через ИНН/ОГРН» здесь ПРОБОВАЛИ и СНЯЛИ: хвост с
+    # реквизитами всё равно срезает `_clean_creditor_address`, и мутационная
+    # проверка показала, что гард не меняет ни одного исхода ни на корпусе, ни
+    # на свежих. Второе правило для того же случая только выглядело бы рабочим.
+    _CREDITOR_ADDR_SEGMENT_RE = re.compile(
+        r"((?:\bул\.|\bулиц\w*|\bпр-?кт\b|\bпроспект\b|\bпер\.|\bнаб\.|\bшоссе\b)"
+        r"[^\n]{0,120}?"
+        r"(?<!\d)\d{6}(?!\d))",
+        re.IGNORECASE,
+    )
+
+    def _creditor_address_glued_to_requisites(self, block: str) -> Optional[str]:
+        """Последний слой: адрес без метки, вклеенный в строку с реквизитами.
+
+        Стоит НИЖЕ всех остальных, поэтому может только заполнить пустое поле.
+        Замер на 101 документе: заполняет 1 заявление, ни одного расхождения.
+        """
+        block = block or ""
+        for m in self._CREDITOR_ADDR_SEGMENT_RE.finditer(block):
+            seg = re.sub(r"\s+", " ", m.group(1)).strip(" ,;")
+            # Тот же продуктовый фильтр, что и у слоёв выше: адрес кредитора —
+            # ЮРИДИЧЕСКИЙ, почтовый и «для корреспонденции» сюда не годятся.
+            # Смотреть надо на ВСЮ СТРОКУ: сегмент начинается с «ул.», а метка
+            # («почтовый адрес:») стоит перед ним и в сам сегмент не входит.
+            line_start = block.rfind("\n", 0, m.start()) + 1
+            if self._ADDR_NOT_LEGAL_RE.search(block[line_start:m.end()]) or len(seg) < 15:
+                continue
+            addr = self._clean_creditor_address(self.clean_extracted_value(seg))
+            if addr and 10 <= len(addr) <= 200:
+                return addr
+        return None
 
     # Строка адреса ОБОРВАНА и продолжается следующей, если кончилась пробелом
     # (мягкий перенос узкой колонки), запятой или сокращением, после которого
@@ -3171,6 +3419,20 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 text, re.IGNORECASE | re.MULTILINE,
             )
         if not m:
+            # Последняя попытка: адрес идёт СРАЗУ ЗА ФИО управляющего, метки может
+            # не быть вовсе. Две формы, на которых молчат все слои выше:
+            #   «Финансовым управляющим утвержден(а) Семенов Сергей Станиславович,
+            #    адрес для направления корреспонденции: 117418 г. Москва, …»
+            #     — метка есть, но её написания нет ни в одном паттерне;
+            #   «Конкурсный управляющий ООО «УО «Владимирская» Каплиёв Михаил
+            #    Васильевич\n344011, г. Ростов-на-Дону, …»
+            #     — метки нет вовсе, а перед индексом стоит перенос строки.
+            #
+            # Стоит ЗДЕСЬ, а не в списке паттернов: оттуда слой срабатывал раньше
+            # многострочных попыток выше и на «АТАМУРАТОВ» подменял полный адрес
+            # огрызком до переноса строки.
+            m = re.search(MANAGER_ADDRESS_AFTER_NAME, text, re.IGNORECASE)
+        if not m:
             return
         addr = re.sub(r"\s+", " ", m.group(1)).strip()
         addr = re.split(r"\b(?:ИНН|ОГРН|ОГРНИП|СНИЛС|КПП)\b", addr, flags=re.IGNORECASE)[0]
@@ -3711,6 +3973,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 cleaned, maxsplit=1
             )[0].strip().rstrip(" ,;-")
             cleaned = self._truncate_glued_address(cleaned)
+            # Точка в конце — это конец ПРЕДЛОЖЕНИЯ, а не часть адреса
+            # («…, а/я 4. Согласно положениям главы 10…»). Сокращения внутри
+            # («ул.», «д.56») не задеваются: срезается ровно хвостовая точка.
+            cleaned = cleaned.rstrip(".")
             if not re.search(r"[А-Яа-яЁё]{3}", cleaned):
                 fields.pop(k, None)
             elif cleaned != v:

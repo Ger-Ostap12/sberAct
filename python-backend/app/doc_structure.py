@@ -383,3 +383,96 @@ def structural_value(parts: List[DocPart], field: str) -> Optional[Tuple[str, st
             if value:
                 return value, query_name
     return None
+
+
+# --- Шапка «метки стопкой» ----------------------------------------------------
+#
+# Часть заявлений печатает шапку в две колонки, и при конвертации колонки
+# разъезжаются: сначала идут ПОДРЯД все метки, затем ПОДРЯД все значения в том
+# же порядке.
+#
+#     Заинтересованное лицо (должник):        <- метка 1
+#     Адрес регистрации:                      <- метка 2
+#     Петросян Генрих Суренович (ИНН …)       <- значение 1
+#     344049, г. Ростов-на-Дону, ул. Еляна…   <- значение 2
+#
+# В плоском тексте это неразличимо: метка и чужое значение оказываются на одной
+# строке, и построчный разбор выдаёт «Адрес регистрации: Петросян Генрих
+# Суренович». В разметке DOCX границы абзацев целы — отсюда и решение.
+#
+# В проекте этот приём уже есть, но захардкожен под ОДНУ сигнатуру ВТБ
+# (`_STACKED_SIG_RE`). Здесь то же правило, но метки берутся из реестра.
+
+_LABEL_TAIL_RE = re.compile(r":\s*$")
+
+
+@lru_cache(maxsize=1)
+def _any_bare_label_re() -> Pattern[str]:
+    """Часть целиком является меткой реестра (возможно с уточнением в скобках)."""
+    from label_synonyms import all_labels, labels_alternation
+
+    return re.compile(
+        r"^\s*(?:" + labels_alternation(all_labels()) + r")"
+        r"[^\n:]{0,30}\s*:\s*$",
+        re.IGNORECASE | re.DOTALL,
+    )
+
+
+def _merge_split_labels(texts: List[str]) -> List[str]:
+    """Склеивает метку, разорванную переносом колонки.
+
+    «ФИНАНСОВЫЙ» + «УПРАВЛЯЮЩИЙ:» — одна метка, разложенная на две части.
+    Без склейки хвост метки принимается за ЗНАЧЕНИЕ, и все пары съезжают.
+    """
+    out: List[str] = []
+    i = 0
+    while i < len(texts):
+        cur = texts[i]
+        if (i + 1 < len(texts) and not _LABEL_TAIL_RE.search(cur)
+                and _any_bare_label_re().match(f"{cur} {texts[i + 1]}")):
+            out.append(f"{cur} {texts[i + 1]}")
+            i += 2
+            continue
+        out.append(cur)
+        i += 1
+    return out
+
+
+def stacked_label_pairs(parts: List[DocPart]) -> List[Tuple[str, str]]:
+    """Пары «метка → значение» из шапки, где метки идут стопкой.
+
+    Возвращает пары в порядке следования. Стопкой считается серия из ДВУХ и
+    более меток подряд: одна метка со значением ниже — это обычная раскладка,
+    и трогать её нельзя.
+
+    Чистая функция: один вход — один результат, побочных эффектов нет.
+    """
+    texts = _merge_split_labels(
+        [" ".join(p.text.split()) for p in parts if p.text and p.text.strip()]
+    )
+    bare = _any_bare_label_re()
+    pairs: List[Tuple[str, str]] = []
+    i = 0
+    while i < len(texts):
+        run = []
+        while i < len(texts) and bare.match(texts[i]):
+            run.append(texts[i])
+            i += 1
+        if len(run) < 2:
+            # Одна метка (или ни одной) — обычная раскладка. Сдвиг обязателен:
+            # без него цикл не двигается и виснет.
+            i += 1
+            continue
+        # Значения — столько же частей подряд, и ни одна из них не метка:
+        # иначе стопка не кончилась и пары съедут.
+        values = []
+        for text in texts[i:i + len(run)]:
+            if bare.match(text):
+                break
+            values.append(text)
+        # strict=False намеренно: значений может оказаться МЕНЬШЕ, чем меток
+        # (стопка оборвалась следующей меткой), и лишние метки остаются без
+        # пары — додумывать за документ нельзя.
+        pairs.extend(zip(run, values, strict=False))
+        i += len(values)
+    return pairs

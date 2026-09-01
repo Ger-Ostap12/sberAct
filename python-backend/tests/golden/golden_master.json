@@ -1487,7 +1487,7 @@
   "documentType": "rtk_application",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "347375, Ростовская область, г. Волгодонск, пр-кт Курчатова д. 55, кв. 203.",
+   "applicantAddress": "347375, Ростовская область, г. Волгодонск, пр-кт Курчатова д. 55, кв. 203",
    "applicantName": "Анохина Маргарита Николаевна",
    "applicantNameAccusative": "Анохину Маргариту Николаевну",
    "applicantNameDative": "Анохиной Маргарите Николаевне",
@@ -1512,7 +1512,7 @@
    "interest": "39 667,74",
    "interest14": "39 667,74",
    "loanDebt": "218 897,30",
-   "managerAddress": "610000, Кировская обл., г. Киров, а/я 99.",
+   "managerAddress": "610000, Кировская обл., г. Киров, а/я 99",
    "managerName": "Шалегин Вячеслав Владимирович",
    "messageDate": "28.04.2026",
    "obligations": [
@@ -7975,6 +7975,7 @@
    "companyInn": "616511409929",
    "contractDate": "18.05.2026",
    "contractNumber": "2-4-436/2025",
+   "creditorAddress": "400050, г. Волгоград, ул. им. Рокоссовского, 62, этаж 9",
    "creditorInn": "6670056296",
    "creditorName": "ООО «ПКО Воксис»",
    "creditorOgrn": "1046603500426",
