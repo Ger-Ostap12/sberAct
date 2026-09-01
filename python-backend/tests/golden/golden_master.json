@@ -6888,7 +6888,7 @@
   "confidence": 0.95,
   "debtors": [
    {
-    "address": "344002, г. Ростов-на-Дону",
+    "address": "346744, Ростовская обл., Азовский р-н, с. Кулешовка, Автомагистраль «Дон», 9 км. а/д «Ростов-на-Дону Азов»",
     "birthDate": "02.04.1985",
     "birthPlace": "",
     "inn": "614104690687",
@@ -6901,7 +6901,7 @@
   "documentType": "initiation_physical",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "344002, г. Ростов-на-Дону",
+   "applicantAddress": "346744, Ростовская обл., Азовский р-н, с. Кулешовка, Автомагистраль «Дон», 9 км. а/д «Ростов-на-Дону Азов»",
    "applicantName": "Ким Клим",
    "applicantNameAccusative": "Кима Клима",
    "applicantNameGenitive": "Кима Клима",

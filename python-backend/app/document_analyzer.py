@@ -1,5 +1,7 @@
 import re
 import sys
+from difflib import SequenceMatcher
+
 import spacy
 from docx import Document
 from doc_structure import DocPart, docx_parts, flat_pairs
@@ -43,7 +45,7 @@ from ip_mixin import IpExtractionMixin
 from obligations_mixin import ObligationsMixin
 from inflection_mixin import InflectionMixin
 from prior_collection_mixin import PriorCollectionMixin
-from patterns import build_patterns
+from patterns import SNILS_VALUE, build_patterns
 # Исполнение паттернов идёт через модуль: он компилирует их один раз и отсеивает
 # заведомо непопадающие по обязательным литералам (см. patterns.required_literals).
 import patterns as pattern_exec
@@ -388,6 +390,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
             self._contract_checkpoint(extracted_fields, "извлечение по паттернам")
 
+            # До постобработки: она дописывает ИНН управляющего в его отображаемое
+            # имя, и чужой реквизит успел бы прилипнуть к верному ФИО.
+            self._prefer_header_manager(extracted_fields, text)
+
             document_type = self._maybe_upgrade_to_observation_collateral(extracted_fields, text, document_type, text_lower)
 
             if is_kfh_detected:
@@ -545,6 +551,12 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                     if isinstance(_ea, str) and _ea.strip():
                         _clean = re.split(r"\b(?:ИНН|ОГРНИП|ОГРН|СНИЛС|КПП)\b", _ea,
                                           flags=re.IGNORECASE)[0].strip(" ,;-")
+                        # Та же реестровая обрезка, что и у полей: без неё адрес
+                        # должника уносил с собой всю запись следующей стороны
+                        # («…а/д «Ростов-на-Дону Азов» Наследник: Ким Эмма
+                        # Николаевна 346744, …»).
+                        _clean = self._ADDRESS_TAIL_LABEL_RE.split(
+                            _clean, maxsplit=1)[0].strip(" ,;-")
                         _entry["address"] = self._truncate_glued_address(_clean)
 
             # Банкротная госпошлина не должна совпадать с итогом/осн.долгом —
@@ -3551,6 +3563,115 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             logger.warning(f"Контракт нарушен после шага «{step}»: {issue}")
         if self._STRICT_CONTRACT:
             raise AssertionError(f"Контракт нарушен после шага «{step}»: {issues}")
+
+    # --- Управляющий: шапка против прозы -------------------------------------
+    #
+    # Заявление может назвать ДВУХ разных управляющих: в мотивировке — того, кого
+    # утвердил суд («Финансовым управляющим утвержден Ширшов Дмитрий Игоревич
+    # (ИНН …, СНИЛС …)»), а в блоке сторон — действующего («АРБИТРАЖНЫЙ
+    # УПРАВЛЯЮЩИЙ:\nПотапов Дмитрий Викторович\n344090, г.Ростов-на-Дону, а/я 77»).
+    # Поля извлекаются независимо, поэтому имя бралось из одного места, а ИНН и
+    # СНИЛС — из другого, и в акт уходил человек, которого в деле нет.
+    #
+    # Правило: верен тот, кто в ШАПКЕ. Признак шапки — ПАДЕЖ: именительный с
+    # двоеточием («Финансовый управляющий:») открывает блок стороны, творительный
+    # («финансовым управляющим утвержден») это проза мотивировки.
+    #
+    # Замер на 101 документе: двух управляющих называют два документа. Во втором
+    # («Геворгян») это ОДИН человек, чью фамилию OCR прочёл двояко — «Теслёлкин»
+    # и «Тесёлкин». Отсюда сверка по похожести, а не по равенству: иначе правило
+    # срабатывало бы там, где спора нет.
+    _MANAGER_ROLE_RE = r"(?:финансов\w+|арбитражн\w+|конкурсн\w+|временн\w+)"
+    _FIO3_RE = r"(?-i:[А-ЯЁ][А-ЯЁа-яё\-]+(?:\s+[А-ЯЁ][А-ЯЁа-яё\-]+){2})"
+
+    _MANAGER_HEADER_RE = re.compile(
+        _MANAGER_ROLE_RE + r"\s+управляющий\s*:", re.IGNORECASE)
+    _MANAGER_PROSE_RE = re.compile(
+        _MANAGER_ROLE_RE + r"\s+управляющ(?:им|его)\s+\w*\s*(" + _FIO3_RE + r")",
+        re.IGNORECASE)
+    # Конец блока стороны: метка ЛЮБОГО другого блока, пустая строка, заголовок.
+    _MANAGER_BLOCK_END_RE = re.compile(
+        r"\n\s*(?:Должник|Ответчик|Заёмщик|Заемщик|Кредитор|Взыскател\w*|Истец|"
+        r"Заявител\w*|Треть\w+\s+лиц\w*|Заинтересованн\w+\s+лиц\w*)\s*:"
+        r"|\n\s*\n|\nЗАЯВЛЕНИЕ|\nТРЕБОВАНИЕ", re.IGNORECASE)
+    # Адрес в блоке — строка, начинающаяся с почтового индекса. Метка над ней
+    # («Адрес для корреспонденции:») отдельной строкой, поэтому опираемся на
+    # индекс, а не на метку.
+    _MANAGER_BLOCK_ADDR_RE = re.compile(r"^\s*((?<!\d)\d{6}(?!\d)[^\n]{6,160})", re.MULTILINE)
+    # Похожесть ФИО, выше которой считаем, что это один человек с разночтением.
+    # 0.95 отделяет «Теслёлкин/Тесёлкин» (0.98) от разных людей с общим именем
+    # («Иванов Иван Иванович» / «Иванов Иван Петрович» — 0.80).
+    _MANAGER_SAME_PERSON_RATIO = 0.95
+
+    @staticmethod
+    def _fio_key(name: str) -> str:
+        """Ключ ФИО для сверки: регистр и ё/е к делу не относятся."""
+        return " ".join(str(name or "").lower().replace("ё", "е").split())
+
+    def _manager_header_block(self, text: str) -> Optional[Dict[str, Any]]:
+        """Реквизиты управляющего из блока сторон (шапки) или None."""
+        m = self._MANAGER_HEADER_RE.search(text or "")
+        if not m:
+            return None
+        block = text[m.end():m.end() + 400]
+        end = self._MANAGER_BLOCK_END_RE.search(block)
+        if end:
+            block = block[:end.start()]
+        # Имя обязано стоять СРАЗУ за меткой: между ними допустимы только пробелы
+        # и знаки, но не буквы. Гард закрывает раскладку ВТБ «метки стопкой»:
+        #     КРЕДИТОР:
+        #     ДОЛЖНИК:
+        #     ФИНАНСОВЫЙ
+        #     УПРАВЛЯЮЩИЙ:
+        #     Банк ВТБ (публичное акционерное общество) --- ОГРН …
+        # Там за меткой управляющего идёт значение КРЕДИТОРА, и первое попавшееся
+        # ФИО (сотрудник банка, 284 символа спустя) объявлялось управляющим —
+        # правило вычищало верные ИНН и СНИЛС на двух документах корпуса.
+        fio = re.match(r"[\s\W]{0,40}?(" + self._FIO3_RE + r")", block)
+        if not fio:
+            return None
+        addr = self._MANAGER_BLOCK_ADDR_RE.search(block)
+        inn = re.search(r"ИНН[:\s]*(\d{12})(?!\d)", block, re.IGNORECASE)
+        snils = re.search(r"СНИЛС[:\s№]*" + SNILS_VALUE, block, re.IGNORECASE)
+        return {
+            "managerName": fio.group(1).strip(),
+            "managerAddress": (re.sub(r"\s+", " ", addr.group(1)).strip().rstrip(" ,;")
+                               if addr else None),
+            "managerInn": inn.group(1) if inn else None,
+            "managerSnils": (re.sub(r"\s+", " ", snils.group(1)).strip()
+                             if snils else None),
+        }
+
+    def _prefer_header_manager(self, fields: Dict[str, Any], text: str) -> None:
+        """Если управляющих названо больше одного — верен тот, что в шапке.
+
+        Реквизиты второго вычищаются целиком: пусто лучше чужого значения в акте
+        (правило §K.1). Когда управляющий один — функция не трогает ничего, и
+        потому не может сдвинуть разбор на подавляющем большинстве заявлений.
+        """
+        header = self._manager_header_block(text)
+        if not header:
+            return
+        head_key = self._fio_key(header["managerName"])
+        rivals = set()
+        for m in self._MANAGER_PROSE_RE.finditer(text or ""):
+            key = self._fio_key(m.group(1))
+            if key == head_key:
+                continue
+            if SequenceMatcher(None, head_key, key).ratio() >= self._MANAGER_SAME_PERSON_RATIO:
+                continue  # одно лицо, разночтение OCR
+            rivals.add(key)
+        if not rivals:
+            return
+        for field, value in header.items():
+            if value:
+                fields[field] = value
+            else:
+                fields.pop(field, None)
+        logger.info(
+            "Управляющих названо несколько (%s) — взят из шапки: %s",
+            ", ".join(sorted(rivals)), header["managerName"],
+        )
 
     # Подпись СЛЕДУЮЩЕГО поля в хвосте адреса — граница значения.
     #

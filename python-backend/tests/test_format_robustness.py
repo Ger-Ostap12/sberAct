@@ -18,6 +18,7 @@ KNOWN_BRITTLE — базовая линия на 2026-07-17. Тест зелён
 """
 import logging
 import os
+import re
 import sys
 
 import pytest
@@ -72,14 +73,27 @@ SAMPLE = [
 # Ось «ё/е» остаётся хрупкой по той же причине: нормализация вернула бы в поле
 # «Петров» вместо «Пётров», а правило Андрея — «текст в поля как в документе».
 # Чинится только через span ownership (значение из оригинала по позиции) — фаза 4.
+#
+# 01.09.2026: пара «умерший сос»×quotes УБРАНА — она никогда не была хрупкостью.
+# Расходилось единственное поле `creditorName`, и расходилось РОВНО символом
+# кавычки, который переписала сама мутация. Сверка по оси «quotes» теперь идёт с
+# приведёнными кавычками (`_canon_quotes`), и такие пары отсеиваются сами.
+# Настоящая хрупкость приведение переживает: у «отсутствующий заявление» едут
+# `entityType` и падежи имени — там кавычка служит ГРАНИЦЕЙ значения.
 KNOWN_BRITTLE = {
     ("НОвая конвертация/Остальные/main_Заявление о включении в РТК - 2 л.docx", "yo"),  # creditorAddress
     ("НОвая конвертация/отсутствующий заявление.docx", "quotes"),  # entityType, applicantName + падежи
-    ("НОвая конвертация/умерший сос.docx", "quotes"),  # creditorName
 }
 
 _analyzer = DocumentAnalyzer()
 _base_cache = {}
+
+_QUOTE_CHARS = re.compile(r"[«»“”„‟‘’\"']")
+
+
+def _canon_quotes(flat: dict) -> dict:
+    """Все виды кавычек к одному символу — для сверки по оси «quotes»."""
+    return {k: _QUOTE_CHARS.sub('"', v) for k, v in flat.items()}
 
 
 def _baseline(rel: str):
@@ -104,7 +118,16 @@ def test_result_survives_cosmetic_mutation(rel: str, mutation: str):
         pytest.skip("мутация неприменима к этому документу")
 
     known = (rel, mutation) in KNOWN_BRITTLE
-    changed = diff_fields(base, significant_result(_analyzer.analyze_from_text(mutated_text, 2)))
+    mutated = significant_result(_analyzer.analyze_from_text(mutated_text, 2))
+    if mutation == "quotes":
+        # Мутация переписывает САМ СИМВОЛ кавычки, в том числе внутри законных
+        # значений: адрес «Автомагистраль «Дон», 9 км» отличается до и после
+        # ровно этим — и разбор тут ни при чём. Сверяем поля с приведёнными
+        # кавычками, иначе тест ловит собственную мутацию, а не хрупкость.
+        # Настоящая хрупкость переживает приведение: там паттерн использует
+        # кавычку как ГРАНИЦУ значения, и меняется длина, а не только символ.
+        base, mutated = _canon_quotes(base), _canon_quotes(mutated)
+    changed = diff_fields(base, mutated)
 
     if known:
         assert changed, (

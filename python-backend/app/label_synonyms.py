@@ -44,6 +44,15 @@ THIRD_PARTY_HEADER_LABELS: List[str] = [
     "Третье лицо",
 ]
 
+# Наследники умершего должника (ст. 223.1). Отдельная группа, а не «третьи
+# лица»: у наследника своя роль в акте. В реестре метки не было вовсе, и адрес
+# должника съедал всю запись наследника целиком — «…а/д «Ростов-на-Дону Азов»
+# Наследник: Ким Эмма Николаевна 346744, …».
+HEIR_HEADER_LABELS: List[str] = [
+    "Наследники",
+    "Наследник",
+]
+
 # Арбитражный/финансовый управляющий.
 MANAGER_HEADER_LABELS: List[str] = [
     "Финансовый управляющий",
@@ -140,6 +149,7 @@ def header_labels() -> List[str]:
         *CREDITOR_HEADER_LABELS,
         *THIRD_PARTY_HEADER_LABELS,
         *MANAGER_HEADER_LABELS,
+        *HEIR_HEADER_LABELS,
     ]
     return sorted(set(labels), key=len, reverse=True)
 
@@ -198,6 +208,7 @@ def all_labels() -> List[str]:
         *CREDITOR_HEADER_LABELS,
         *THIRD_PARTY_HEADER_LABELS,
         *MANAGER_HEADER_LABELS,
+        *HEIR_HEADER_LABELS,
         *(lbl for variants in FIELD_LABELS.values() for lbl in variants),
     ]
     return sorted(set(labels), key=len, reverse=True)
