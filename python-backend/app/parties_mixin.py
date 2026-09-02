@@ -1,8 +1,9 @@
 import logging
 import re
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import field_contract
+from address_match import same_address
 from creditor_registry import _match_creditor_registry
 from fio_detector import (
     _find_birthdate,
@@ -34,6 +35,7 @@ class PartiesMixin:
         def extract_legal_entity_short_name(self, text: Optional[str]) -> Optional[str]: ...
         def _extract_creditor_block(self, text: str) -> Optional[str]: ...
         def _extract_creditor_address(self, text: str) -> Optional[str]: ...
+        def _creditor_address_non_legal(self, block: str) -> Optional[Tuple[str, str]]: ...
         def _clean_creditor_address(self, addr: str) -> str: ...
         def _clean_court_line(self, s: str) -> Optional[str]: ...
         def _convert_name_to_genitive(self, full_name: str) -> Optional[str]: ...
@@ -41,6 +43,18 @@ class PartiesMixin:
         def _convert_name_to_instrumental(self, full_name: str) -> Optional[str]: ...
         def _convert_name_to_accusative(self, full_name: str) -> Optional[str]: ...
     _PROVENANCE_KEY = "_provenance"
+    # Предупреждения «посмотри на это поле», которые ставит РАЗБОР, а не контракт.
+    # Ключ временный: снимается вместе с _PROVENANCE_KEY перед сборкой ответа,
+    # иначе служебная запись уехала бы в поля документа и в эталон.
+    _ADVISORY_KEY = "_advisories"
+
+    def _advise(self, fields: Dict[str, Any], field: str, reason: str) -> None:
+        """Пометить поле как требующее проверки, НЕ трогая само значение.
+
+        Правило §K.1: реквизиты и адреса помечаем, а не чистим — вычищенное поле
+        юрист уже не увидит и не сможет сверить с документом.
+        """
+        fields.setdefault(self._ADVISORY_KEY, {})[field] = reason
 
     def _extract_party_inn_ogrn(self, extracted_fields, text, field_name):
         """ИНН/ОГРН/ОГРНИП должника строго из блока «Должник:»/«Ответчик:» (а не кредитора), с валидацией контрольной суммы. Все пути исходно завершались continue. Вынесено из основного pattern-цикла extract_fields."""
@@ -1450,6 +1464,79 @@ class PartiesMixin:
                 out["address"] = addr
         return out
 
+    # Порядок видов адреса кредитора (решение Андрея, 02.09.2026) — сверху вниз:
+    #   1) ЮРИДИЧЕСКИЙ адрес из документа;
+    #   2) фактический адрес из документа;
+    #   3) адрес для корреспонденции из документа;
+    #   4) юридический адрес из справочника (банки / ФНС).
+    # Справочник ушёл ВНИЗ по сравнению с редакцией 01.09: заявление описывает
+    # конкретное дело, справочник — общий случай, и расходиться они могут законно
+    # (филиал, переезд). Поэтому справочник здесь не источник значения, а СВЕРКА:
+    # разошлись — берём документ и просим юриста посмотреть.
+    #
+    # Молча заполняется ровно один случай — юр-адрес из документа, совпавший со
+    # справочником: два независимых источника сказали одно и то же.
+    _ADDR_MISMATCH = "Юридический адрес в документе расходится со справочником: «{}». Проверьте."
+    _ADDR_NON_LEGAL = "Юридического адреса в документе нет, взят {}. Проверьте."
+    _ADDR_FROM_REGISTRY = "Адреса кредитора в документе нет, значение из справочника. Проверьте."
+
+    def _choose_creditor_address(
+        self,
+        fields: Dict[str, Any],
+        block: Optional[str],
+        doc_addr: Optional[str],
+        matched: Optional[Dict[str, str]],
+    ) -> Tuple[Optional[str], Optional[str]]:
+        """Выбирает адрес кредитора и, если надо, помечает поле для проверки.
+
+        Возвращает (адрес, адрес_из_документа): второй нужен вызывающему, чтобы
+        записать происхождение — непрофильный адрес тоже взят ИЗ ДОКУМЕНТА, и
+        показывать «значение из справочника» на нём нельзя.
+        """
+        registry_addr = (matched or {}).get("address")
+
+        # Сверка со справочником здесь НЕ делается: она общая для всех путей и
+        # живёт в `_verify_creditor_address` — этот слой вызывается не всегда.
+        if doc_addr:
+            return doc_addr, doc_addr
+
+        non_legal = self._creditor_address_non_legal(block or "")
+        if non_legal:
+            addr, kind = non_legal
+            self._advise(fields, "creditorAddress", self._ADDR_NON_LEGAL.format(kind))
+            return addr, addr
+
+        if registry_addr:
+            self._advise(fields, "creditorAddress", self._ADDR_FROM_REGISTRY)
+            return registry_addr, None
+
+        return None, None
+
+    def _verify_creditor_address(self, fields: Dict[str, Any]) -> None:
+        """Сверяет адрес кредитора со справочником — ПОСЛЕ всех слоёв разбора.
+
+        Отдельным шагом, а не внутри `_fill_creditor_requisites`, по двум причинам:
+        адрес попадает в поле разными путями (блок кредитора, шапка «метки
+        стопкой», платёжные реквизиты), и сам слой реквизитов вызывается НЕ
+        ВСЕГДА — когда ИНН и ОГРН уже извлечены, он пропускается целиком. Так у
+        ВТБ расхождение со справочником оставалось незамеченным.
+        """
+        addr = (fields.get("creditorAddress") or "").strip()
+        if not addr:
+            return
+        # Пометка уже стоит — вид адреса известен (непрофильный или из
+        # справочника), и вторая пометка на том же поле только зашумит панель.
+        if "creditorAddress" in (fields.get(self._ADVISORY_KEY) or {}):
+            return
+        if (fields.get(self._PROVENANCE_KEY) or {}).get("creditorAddress") == field_contract.SOURCE_REGISTRY:
+            return
+        name = (fields.get("creditorName") or "").strip()
+        if not name or len(name) > 200:
+            return
+        registry_addr = (_match_creditor_registry(name) or {}).get("address")
+        if registry_addr and not same_address(addr, registry_addr):
+            self._advise(fields, "creditorAddress", self._ADDR_MISMATCH.format(registry_addr))
+
     def _fill_creditor_requisites(self, fields: Dict[str, Any], text: str) -> None:
         """
         Заполняет creditorInn, creditorOgrn, creditorAddress.
@@ -1513,24 +1600,14 @@ class PartiesMixin:
 
         inn = doc_inn or (matched["inn"] if matched else None)
         ogrn = doc_ogrn or (matched["ogrn"] if matched else None)
-        # Порядок для адреса (решение Андрея, 01.09.2026):
-        #   1) ЮРИДИЧЕСКИЙ адрес из документа;
-        #   2) юридический адрес из справочника банков;
-        #   3) фактический / почтовый / для корреспонденции из документа.
-        # Третий шаг НЕ должен обгонять справочник: у банка из справочника есть
-        # настоящий юр-адрес, и подменять его адресом для корреспонденции нельзя
-        # (замер: так менялись 5 документов корпуса).
-        non_legal_addr = None
-        if not doc_addr and not (matched and matched.get("address")):
-            non_legal_addr = self._creditor_address_non_legal(block)
-        addr = doc_addr or (matched["address"] if matched else None) or non_legal_addr
+        addr, addr_from_doc = self._choose_creditor_address(fields, block, doc_addr, matched)
         provenance = fields.setdefault(self._PROVENANCE_KEY, {})
         for field_name, value, from_doc in (
             ("creditorInn", inn, doc_inn),
             ("creditorOgrn", ogrn, doc_ogrn),
             # Непрофильный адрес — тоже ИЗ ДОКУМЕНТА: происхождение должно это
             # отражать, иначе фронт покажет «значение из справочника».
-            ("creditorAddress", addr, doc_addr or non_legal_addr),
+            ("creditorAddress", addr, addr_from_doc),
         ):
             if not value:
                 continue
@@ -1542,7 +1619,7 @@ class PartiesMixin:
             f"Реквизиты кредитора '{creditor_name[:40]}': "
             f"ИНН {'док' if doc_inn else 'реестр'}, "
             f"ОГРН {'док' if doc_ogrn else 'реестр'}, "
-            f"адрес {'док' if doc_addr else 'реестр'}"
+            f"адрес {'док' if addr_from_doc else 'реестр'}"
         )
 
     def _extract_court_name(self, text: str) -> Optional[str]:

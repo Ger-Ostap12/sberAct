@@ -140,7 +140,11 @@ const FieldIssuesPanel: React.FC<FieldIssuesPanelProps> = ({ issues }) => {
         <Chip
           size="small"
           variant="outlined"
-          label={`было: ${issue.value.length > 60 ? `${issue.value.slice(0, 60)}…` : issue.value}`}
+          // «было» только для очищенных: у помеченных значение осталось в поле,
+          // и подпись «было» заставляла думать, что его стёрли.
+          label={`${issue.cleared ? 'было' : 'значение'}: ${
+            issue.value.length > 60 ? `${issue.value.slice(0, 60)}…` : issue.value
+          }`}
           sx={{ ml: 1, maxWidth: '100%' }}
         />
       )}

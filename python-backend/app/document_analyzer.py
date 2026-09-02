@@ -3,6 +3,7 @@ import sys
 from difflib import SequenceMatcher
 
 import spacy
+from address_match import same_address
 from docx import Document
 from doc_structure import DocPart, docx_parts, flat_pairs, stacked_label_pairs
 import field_contract
@@ -798,8 +799,21 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                     # «нотариус»/«умер» вне контекста смерти должника — чужие факты.
                     extracted_fields.update(self._extract_death_details(text))
                     heirs_result = extract_heirs(text)
+            # Последним шагом: адрес кредитора мог прийти любым слоем, а сверять
+            # его со справочником надо один раз и на итоговом значении.
+            self._verify_creditor_address(extracted_fields)
+
             provenance = extracted_fields.pop(self._PROVENANCE_KEY, {}) or {}
+            advisories = extracted_fields.pop(self._ADVISORY_KEY, {}) or {}
             contract_issues = field_contract.apply_contract(extracted_fields)
+            # Претензии РАЗБОРА идут тем же каналом, что и претензии контракта, —
+            # иначе фронту понадобился бы второй способ подсветить поле. Значение
+            # не вычищается (cleared=False): его нужно показать юристу для сверки.
+            contract_issues += [
+                field_contract.Issue(name, reason, extracted_fields.get(name), cleared=False)
+                for name, reason in advisories.items()
+                if extracted_fields.get(name)
+            ]
 
             for _entries, _label in ((debtors_result, "debtors"),
                                      (third_parties_result, "thirdParties"),
@@ -1707,19 +1721,35 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         return self._creditor_address_glued_to_requisites(block)
 
     # Запасные виды адреса, в порядке предпочтения. Юридический сюда не входит:
-    # его ищут слои выше, и он всегда главнее.
+    # его ищут слои выше, и он всегда главнее. Вид сохраняется рядом с меткой —
+    # он попадает в предупреждение юристу («взят фактический адрес»), а без
+    # названия вида предупреждение не сказало бы, ЧТО именно проверять.
     _CREDITOR_FALLBACK_ADDRESS_LABELS = (
-        r"фактическ\w*\s+адрес",
-        r"почтов\w*\s+адрес(?:\s+для\s+корреспонденц\w+)?",
-        r"адрес\s+для\s+(?:направлен\w+\s+|отправк\w+\s+)?(?:почтов\w+\s+)?корреспонденц\w+",
+        ("фактический адрес", r"фактическ\w*\s+адрес"),
+        ("почтовый адрес", r"почтов\w*\s+адрес(?:\s+для\s+корреспонденц\w+)?"),
+        ("адрес для корреспонденции",
+         r"адрес\s+для\s+(?:направлен\w+\s+|отправк\w+\s+)?(?:почтов\w+\s+)?корреспонденц\w+"),
     )
 
     # Строка адреса ОБОРВАНА и продолжается следующей. К признакам
     # `_ADDR_CONTINUES_RE` добавлен ДЕФИС: узкая колонка рвёт по нему название
     # города («…г. Санкт-\nПетербург, пр. Большой Сампсониевский, д. \n28, …»).
+    #
+    # Концевой ПРОБЕЛ признаком НЕ является, хотя выглядит похоже: конвертер
+    # ставит его в конце почти каждой строки, и «…д. 50 корп. 8 » дочитывало
+    # следующую строку «Представитель Аханова О.В.» прямо в адрес (2 документа
+    # корпуса). Обрыв виден по запятой, дефису или сокращению — их и проверяем,
+    # а хвостовые пробелы снимаются до сопоставления.
+    # Тип улицы, написанный СЛОВОМ, — такой же признак обрыва, как сокращение с
+    # точкой: «…, г. Саратов, проспект \nСтроителей, д.1». Без него узкая колонка
+    # обрубала адрес на слове «проспект».
     _NON_LEGAL_CONTINUES_RE = re.compile(
-        r"(?:[ \t]|,|-|\b(?:г|ул|д|к|корп|стр|обл|пер|наб|пр|просп|кв|оф|ком|тер"
-        r"|вн|лит|литера|мкр|пос|р-н|пом|зд)\.)$"
+        r"(?:,|-|\b(?:г|ул|д|к|корп|стр|обл|пер|наб|пр|просп|кв|оф|ком|тер"
+        r"|вн|лит|литера|мкр|пос|р-н|пом|зд)\."
+        r"|\b(?:проспект|улиц[аы]|переул(?:ок|ка)|бульвар|шоссе|набережн(?:ая|ой)"
+        r"|площад[ьи]|проезд|микрорайон|квартал|область|район|город|дом|корпус"
+        r"|строение|литера|помещение|офис|квартира|комната|этаж))$",
+        re.IGNORECASE,
     )
     # Хвост, который в адрес не входит: почта и повтор названия организации
     # («…оф. 642, ООО "ПКО "АСВ"»).
@@ -1728,7 +1758,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         re.IGNORECASE,
     )
 
-    def _creditor_address_non_legal(self, block: str) -> Optional[str]:
+    def _creditor_address_non_legal(self, block: str) -> Optional[Tuple[str, str]]:
         """Фактический адрес / адрес для корреспонденции — когда юр-адреса нет.
 
         Решение Андрея (01.09.2026): пустое поле хуже, чем непрофильный, но
@@ -1737,10 +1767,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
         Метка обязательна. Без неё правило брало бы любую строку с индексом, а в
         блоке кредитора это может быть адрес суда или представителя.
+
+        Возвращает ПАРУ (адрес, вид): вид нужен предупреждению, которое просит
+        юриста проверить поле.
         """
         block = block or ""
         lines = block.split("\n")
-        for label in self._CREDITOR_FALLBACK_ADDRESS_LABELS:
+        for kind, label in self._CREDITOR_FALLBACK_ADDRESS_LABELS:
             label_re = re.compile(label + r"\s*:?\s*", re.IGNORECASE)
             for i, line in enumerate(lines):
                 m = label_re.search(line)
@@ -1749,7 +1782,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 parts, cur = [line[m.end():]], line[m.end():]
                 # Дочитываем строки, оборванные мягким переносом узкой колонки.
                 for nxt in lines[i + 1:i + 5]:
-                    if not self._NON_LEGAL_CONTINUES_RE.search(cur.rstrip("\r")):
+                    if not self._NON_LEGAL_CONTINUES_RE.search(cur.rstrip()):
                         break
                     if not nxt.strip() or self._ADDR_STOP_LINE_RE.match(nxt):
                         break
@@ -1761,7 +1794,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 if addr and 10 <= len(addr) <= 200 and re.search(
                     r"\d{6}|город|\bг\.|ул\.|улиц|пр-?кт|проспект", addr, re.IGNORECASE
                 ):
-                    return addr
+                    return addr, kind
         return None
 
     # Адрес, ВКЛЕЕННЫЙ в строку с реквизитами и без своей метки:
@@ -2970,6 +3003,33 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         flush()
         return entries
 
+    def _reconcile_fns_address(self, fields: Dict[str, Any], reg_addr: str) -> None:
+        """Сводит адрес налогового органа из документа с адресом из справочника.
+
+        Правило единое для всех кредиторов (решение Андрея, 02.09.2026): документ
+        главнее справочника, расхождение — повод показать юристу, а не молча
+        подменить. Прежняя редакция перезаписывала адрес из документа БЕЗУСЛОВНО,
+        и юрист не видел, что в заявлении написано другое.
+        """
+        current = (fields.get("creditorAddress") or "").strip()
+
+        if not current:
+            fields["creditorAddress"] = reg_addr
+            fields.setdefault(self._PROVENANCE_KEY, {})["creditorAddress"] = (
+                field_contract.SOURCE_REGISTRY
+            )
+            self._advise(fields, "creditorAddress", self._ADDR_FROM_REGISTRY)
+            return
+
+        # Пометка на поле уже стоит — значит адрес непрофильный (фактический, для
+        # корреспонденции) либо сам из справочника. Сверять запасной вид с
+        # юридическим бессмысленно: они законно разные, а поле и так под проверкой.
+        if "creditorAddress" in (fields.get(self._ADVISORY_KEY) or {}):
+            return
+
+        if not same_address(current, reg_addr):
+            self._advise(fields, "creditorAddress", self._ADDR_MISMATCH.format(reg_addr))
+
     def _apply_fns_authority(self, fields: Dict[str, Any], text: str) -> None:
         """Заявления уполномоченного органа (ФНС) о банкротстве/включении в РТК.
 
@@ -3028,12 +3088,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             except Exception as exc:  # справочник недоступен — тихо пропускаем
                 logger.warning(f"Реестр ФНС не ответил: {exc}")
             if reg_addr:
-                fields["creditorAddress"] = reg_addr
-                # Адрес инспекции — из справочника, а не из разбора текста: это
-                # независимое подтверждение, юристу его перепроверять не нужно.
-                fields.setdefault(self._PROVENANCE_KEY, {})["creditorAddress"] = (
-                    field_contract.SOURCE_REGISTRY
-                )
+                self._reconcile_fns_address(fields, reg_addr)
 
 
         _PN = r"[А-ЯЁ][А-ЯЁа-яё]+(?:-[А-ЯЁ][А-ЯЁа-яё]+)?(?:\s+[А-ЯЁ][А-ЯЁа-яё]+){2}"

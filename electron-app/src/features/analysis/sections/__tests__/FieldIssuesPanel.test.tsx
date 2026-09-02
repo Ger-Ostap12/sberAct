@@ -90,7 +90,7 @@ describe('FieldIssuesPanel', () => {
         ]}
       />,
     );
-    expect(screen.getAllByText(/было: 612102429513/)).toHaveLength(1);
+    expect(screen.getAllByText(/значение: 612102429513/)).toHaveLength(1);
     expect(
       screen.getByText('ИНН должника, ИНН организации, ИНН должника (карточка)'),
     ).toBeInTheDocument();
@@ -107,8 +107,8 @@ describe('FieldIssuesPanel', () => {
         ]}
       />,
     );
-    expect(screen.getByText(/было: 612102429513/)).toBeInTheDocument();
-    expect(screen.getByText(/было: 770708389311/)).toBeInTheDocument();
+    expect(screen.getByText(/значение: 612102429513/)).toBeInTheDocument();
+    expect(screen.getByText(/значение: 770708389311/)).toBeInTheDocument();
   });
 
   it('одинаковая причина, но разный статус — не схлопывается', () => {
@@ -124,7 +124,9 @@ describe('FieldIssuesPanel', () => {
     );
     expect(screen.getByText(/Очищены/)).toBeInTheDocument();
     expect(screen.getByText(/Оставлены, но проверьте/)).toBeInTheDocument();
-    expect(screen.getAllByText(/было: 612102429513/)).toHaveLength(2);
+    // Подпись у чипа разная: очищенному полю «было», помеченному — «значение».
+    expect(screen.getByText(/было: 612102429513/)).toBeInTheDocument();
+    expect(screen.getByText(/значение: 612102429513/)).toBeInTheDocument();
   });
 
   it('длинное значение обрезается, чтобы не разносить вёрстку', () => {
