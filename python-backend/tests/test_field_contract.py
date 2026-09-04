@@ -357,3 +357,44 @@ def test_checkpoint_silent_on_clean_fields_even_in_strict_mode():
     clean = {"courtName": "Арбитражный суд Ростовской области", "loanDebt": "25 000,00"}
     DocumentAnalyzer._contract_checkpoint(
         types.SimpleNamespace(_STRICT_CONTRACT=True), clean, "шаг")
+
+
+# --- Заполнители из шаблона заявителя (02.09.2026) ---------------------------
+#
+# Заявитель печатает заполнитель из СВОЕГО шаблона, когда данных у него нет.
+# Реальный случай корпуса: «Место рождения: None» — чужой генератор вывел
+# питоновский None. Разбор отработал ВЕРНО, грязный тут вход, поэтому фильтр
+# стоит на границе контракта, а не в конкретном извлекателе.
+
+@pytest.mark.parametrize("значение", [
+    "None", "none", "NULL", "nan", "N/A", "-", "—", "н/д", "нд",
+    "нет данных", "не указано", "не указана", "отсутствует", "____", "XXX",
+])
+def test_заполнитель_опознан(значение):
+    assert FC.is_placeholder(значение)
+
+
+@pytest.mark.parametrize("значение", [
+    "г. Ростов-на-Дону", "Иванов Иван Иванович", "7707083893",
+    "нет данных о регистрации права",   # заполнитель — только ЦЕЛОЕ значение
+    "Нонна Петровна", "Ноне Ивановне",  # начинается на «нон», но не заполнитель
+])
+def test_настоящее_значение_не_заполнитель(значение):
+    assert not FC.is_placeholder(значение)
+
+
+def test_заполнитель_вычищается_из_полей():
+    поля = {"birthPlace": "None", "debtorName": "Иванов Иван Иванович"}
+    претензии = FC.apply_contract(поля)
+    assert "birthPlace" not in поля
+    assert поля["debtorName"] == "Иванов Иван Иванович"
+    assert [i.field for i in претензии] == ["birthPlace"]
+    assert претензии[0].cleared is True
+
+
+def test_заполнитель_вычищается_из_карточки_должника():
+    """Тот же «None» приезжает и в fields, и в debtors[0] — разными путями."""
+    записи = [{"name": "Иванов Иван Иванович", "birthPlace": "None"}]
+    претензии = FC.check_entries(записи, "debtors")
+    assert записи[0]["birthPlace"] == ""
+    assert [i.field for i in претензии] == ["debtors[0].birthPlace"]

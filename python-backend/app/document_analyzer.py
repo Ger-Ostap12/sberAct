@@ -3844,6 +3844,15 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             addr, re.IGNORECASE)
         if m_soft:
             addr = addr[: m_soft.start()]
+        # ВТОРОЙ почтовый индекс = начало второго адреса, даже если он совпал с
+        # первым. Правило ниже (повтор компонента с ДРУГИМ значением) этот случай
+        # не берёт: у солидарных должников адреса стоят в одном населённом пункте,
+        # и совпадают разом индекс, край и станица, а различающаяся улица во
+        # второй адрес уже не попадает. Замер: на 565 адресных значениях корпуса
+        # и свежих два индекса встречаются РОВНО в двух — и оба случая склейка.
+        индексы = list(re.finditer(r"(?<!\d)\d{6}(?!\d)", addr))
+        if len(индексы) >= 2:
+            addr = addr[: индексы[1].start()]
         cut = len(addr)
         for kind, rx in self._ADDR_COMPONENT_RES:
             first_val = None
@@ -4007,6 +4016,20 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
     # 66 — ни разу, поэтому эталон сдвинуться не может.
     _ADDRESS_TAIL_LABEL_RE = re.compile(
         r"[\s,;]+(?:" + labels_alternation(all_labels()) + r")\s*[:\-–—]",
+        re.IGNORECASE,
+    )
+
+    # Значение, которое целиком совпало с МЕТКОЙ, — это не значение.
+    #
+    # Заявление вводит термин («…«Газпромбанк» (АО), далее — Кредитор») и дальше
+    # пользуется им: «(далее — Кредитор) является кредитором должника». Паттерн
+    # `([^,\n]+)\s+является кредитором` захватывал определение, и в creditorName
+    # приезжало «Кредитор)» вместо имени банка.
+    #
+    # Гард общий для всех полей: ни одно поле не может законно равняться метке
+    # из реестра — ни «Кредитор», ни «Адрес», ни «ИНН».
+    _BARE_LABEL_VALUE_RE = re.compile(
+        r"^[\W_]*(?:" + labels_alternation(all_labels()) + r")[\W_]*$",
         re.IGNORECASE,
     )
 
@@ -4230,6 +4253,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                         )
                         if value.strip() and (len(value) > 2 or _short_number):  # Фильтруем текстовый мусор и пустые строки
                             cleaned_value = self.clean_extracted_value(value)
+
+                            # Захват совпал с ПОДПИСЬЮ поля, а не с его значением —
+                            # пробуем следующий паттерн, а не сохраняем метку.
+                            if cleaned_value and self._BARE_LABEL_VALUE_RE.match(cleaned_value):
+                                continue
 
                             if field_name == "courtName" and cleaned_value:
                                 procedure_type = extracted_fields.get('procedureType', '').lower()

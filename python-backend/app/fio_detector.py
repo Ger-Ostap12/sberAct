@@ -330,6 +330,37 @@ _BIRTH_MARKER_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Подписи СОБСТВЕННЫХ полей лица — второй признак начала записи.
+#
+# Дата рождения одна в этой роли не справляется: у должника её может не быть, и
+# тогда запись не открывается — предыдущая карточка заглатывает его имя в свой
+# адрес, своей карточки он лишается, а все следующие съезжают на одного.
+# Замер на 10 должниках, у восьмого нет даты рождения: 9 карточек вместо 10 и
+# перепутанные поля у четверых.
+#
+# Берём только те подписи, что принадлежат САМОМУ лицу. «Дата государственной
+# регистрации», «Размер требований» и «Госпошлина» сюда не входят: это поля
+# кредитора и дела, они открыли бы запись на пустом месте.
+_PARTY_FIELD_KEYS = ("inn", "ogrn", "ogrnip", "snils", "passport",
+                     "birthDate", "birthPlace", "address")
+
+
+def _party_field_marker_re():
+    """Regex подписи собственного поля лица. Строится из реестра меток один раз."""
+    global _PARTY_FIELD_MARKER_RE
+    if _PARTY_FIELD_MARKER_RE is None:
+        from label_synonyms import FIELD_LABELS, labels_alternation
+        labels = sorted(
+            {lbl for key in _PARTY_FIELD_KEYS for lbl in FIELD_LABELS[key]},
+            key=len, reverse=True,
+        )
+        _PARTY_FIELD_MARKER_RE = re.compile(
+            r"^\s*(?:" + labels_alternation(labels) + r")\s*:", re.IGNORECASE)
+    return _PARTY_FIELD_MARKER_RE
+
+
+_PARTY_FIELD_MARKER_RE = None
+
 
 def _strip_address_label(addr: str) -> str:
     """Срезает ведущую метку адреса («Адрес регистрации: …» «…»)."""
@@ -428,7 +459,8 @@ def extract_debtors(text: str) -> list:
                 window.append(t)
             if len(window) >= 2:
                 break
-        if any(_BIRTH_MARKER_RE.search(w) for w in window):
+        if any(_BIRTH_MARKER_RE.search(w) or _party_field_marker_re().match(w)
+               for w in window):
             starts.append(i)
 
     records = []

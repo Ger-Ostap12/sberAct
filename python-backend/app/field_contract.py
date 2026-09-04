@@ -229,6 +229,24 @@ def check_value(field: str, value: Any) -> Optional[str]:
     return None
 
 
+PLACEHOLDER_REASON = "значение-заполнитель, а не данные"
+
+# Заявитель печатает заполнитель из СВОЕГО шаблона, когда данных у него нет.
+# Реальный пример из корпуса: «Место рождения: None» — чужой генератор вывел
+# питоновский None. Разбор при этом отработал верно, грязный тут ВХОД, поэтому
+# и фильтр стоит на границе контракта, а не в конкретном извлекателе.
+_PLACEHOLDER_RE = re.compile(
+    r"^(?:none|null|nan|n/?a|-{1,3}|—|–|_{2,}|x{3,}|н/?д|нет\s+данных"
+    r"|не\s+указан[оаы]?|не\s+заполнено|отсутствует)$",
+    re.IGNORECASE,
+)
+
+
+def is_placeholder(value: Any) -> bool:
+    """Значение — заполнитель отсутствующих данных, а не сами данные. Чистая функция."""
+    return bool(_PLACEHOLDER_RE.match(str(value or "").strip(" .,;:«»\"'")))
+
+
 def _is_flag_only(field: str, reason: str) -> bool:
     """Помечаем, но не чистим: реквизиты (по типу) и склейка адреса (по причине)."""
     return FIELD_TYPES.get(field) in _FLAG_ONLY_TYPES or reason.startswith(FOREIGN_LABEL_REASON)
@@ -281,6 +299,14 @@ def apply_contract(fields: Dict[str, Any]) -> List[Issue]:
     (в fields не кладём: они бы уехали в editedFields фронта и в golden).
     """
     issues: List[Issue] = []
+
+    # 0. Заполнители — раньше всего: «None» не должен ни чиститься как хвост
+    #    организации, ни проверяться контрольной суммой.
+    for field in list(fields.keys()):
+        value = fields[field]
+        if isinstance(value, str) and is_placeholder(value):
+            issues.append(Issue(field, PLACEHOLDER_REASON, value))
+            fields.pop(field, None)
 
     # 1. Хвосты в именах организаций — до проверок типов: обрезанное имя может
     #    оказаться валидным, и претензии не будет.
@@ -386,6 +412,12 @@ def check_entries(
     for i, entry in enumerate(entries or []):
         if not isinstance(entry, dict):
             continue
+        # Заполнитель из шаблона заявителя приезжает и в карточку должника —
+        # «Место рождения: None» разбирается в fields и в debtors[0] независимо.
+        for key in list(entry.keys()):
+            if isinstance(entry[key], str) and is_placeholder(entry[key]):
+                issues.append(Issue(f"{name_field}[{i}].{key}", PLACEHOLDER_REASON, entry[key]))
+                entry[key] = ""
         address = entry.get(address_field)
         reason = check_value("applicantAddress", address) if address else None
         if reason:

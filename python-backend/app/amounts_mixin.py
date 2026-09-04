@@ -469,7 +469,6 @@ class AmountsMixin:
                 extracted_fields[field_name] = collected_values[0]
                 logger.info(f"Selected {field_name}: {extracted_fields[field_name]}")
         return True
-        return False
 
     def _fin_amount(self, s) -> float:
         """Парсит денежную строку в float (учёт пробелов/неразрывных пробелов/запятой)."""
