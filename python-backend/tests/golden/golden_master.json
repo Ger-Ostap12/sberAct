@@ -233,11 +233,11 @@
   "rawTextLen": 17969,
   "rawTextSha": "21ac77a499c4e708910dbc399ffbee0ec3fa3741753ab3a251aeafd3969f70b7",
   "recommendedActs": {
-   "collateralOption": "no_collateral",
+   "collateralOption": "collateral",
    "entityType": "individual",
    "recommendedActIds": [
     "final_realization",
-    "acceptance_definition"
+    "acceptance_no_motion_no_duty_collateral"
    ]
   },
   "thirdParties": []
@@ -583,11 +583,11 @@
   "rawTextLen": 15915,
   "rawTextSha": "14aad256c78cadb9d5172c704977b7f55683b5d61ad93339694cc92f73f665d7",
   "recommendedActs": {
-   "collateralOption": "no_collateral",
+   "collateralOption": "collateral",
    "entityType": "individual",
    "recommendedActIds": [
     "final_realization",
-    "acceptance_definition"
+    "acceptance_no_motion_no_duty_collateral"
    ]
   },
   "thirdParties": []
@@ -718,11 +718,11 @@
   "rawTextLen": 15618,
   "rawTextSha": "887376cc634e8a2b1b9977a623b90e2cca25369a7a2657a16a79b8265193f208",
   "recommendedActs": {
-   "collateralOption": "no_collateral",
+   "collateralOption": "collateral",
    "entityType": "individual",
    "recommendedActIds": [
     "final_realization",
-    "acceptance_definition"
+    "acceptance_no_motion_no_duty_collateral"
    ]
   },
   "thirdParties": []
@@ -857,11 +857,11 @@
   "rawTextLen": 17172,
   "rawTextSha": "f703eccbd673b85fc8d48f492145dd4b559a73cb603be3a77915ecad8b2b1fc8",
   "recommendedActs": {
-   "collateralOption": "no_collateral",
+   "collateralOption": "collateral",
    "entityType": "individual",
    "recommendedActIds": [
     "final_realization",
-    "acceptance_definition"
+    "acceptance_no_motion_no_duty_collateral"
    ]
   },
   "thirdParties": []
@@ -1023,11 +1023,11 @@
   "rawTextLen": 19590,
   "rawTextSha": "5025d7c45e964e7b0252df77bc2c650755a435475be173f78010c4a527a94edc",
   "recommendedActs": {
-   "collateralOption": "no_collateral",
+   "collateralOption": "collateral",
    "entityType": "individual",
    "recommendedActIds": [
     "final_realization",
-    "acceptance_definition"
+    "acceptance_no_motion_no_duty_collateral"
    ]
   },
   "thirdParties": []
@@ -1291,11 +1291,11 @@
   "rawTextLen": 18353,
   "rawTextSha": "98475978c716788b700200d2690d4e07cdeab301b1ce708fabb298274f13a707",
   "recommendedActs": {
-   "collateralOption": "no_collateral",
+   "collateralOption": "collateral",
    "entityType": "individual",
    "recommendedActIds": [
     "final_realization",
-    "acceptance_definition"
+    "acceptance_no_motion_no_duty_collateral"
    ]
   },
   "thirdParties": [
@@ -1451,11 +1451,11 @@
   "rawTextLen": 17038,
   "rawTextSha": "7796645bdca2d903a7ab3a649728a08f05529fdbcfd644d670ccd32e01a85af7",
   "recommendedActs": {
-   "collateralOption": "no_collateral",
+   "collateralOption": "collateral",
    "entityType": "individual",
    "recommendedActIds": [
     "final_realization",
-    "acceptance_definition"
+    "acceptance_no_motion_no_duty_collateral"
    ]
   },
   "thirdParties": [
@@ -4899,11 +4899,11 @@
   "rawTextLen": 25526,
   "rawTextSha": "52b3793867e30a4abc19b03234751fe7c36e0cfeb3bd52ef863537a66d5b741d",
   "recommendedActs": {
-   "collateralOption": "no_collateral",
+   "collateralOption": "collateral",
    "entityType": "individual",
    "recommendedActIds": [
     "final_restructuring",
-    "acceptance_definition"
+    "acceptance_no_motion_no_duty_collateral"
    ]
   },
   "thirdParties": []
@@ -5346,11 +5346,11 @@
   "rawTextLen": 43973,
   "rawTextSha": "4763b0136a2bea026278ed2d67cf2ad1869f9220a0b6ba51cfefbb2b6589477b",
   "recommendedActs": {
-   "collateralOption": "no_collateral",
+   "collateralOption": "collateral",
    "entityType": "legal",
    "recommendedActIds": [
     "final_observation",
-    "acceptance_definition",
+    "acceptance_no_motion_no_duty_collateral",
     "final_competition"
    ]
   },
@@ -5583,11 +5583,11 @@
   "rawTextLen": 40916,
   "rawTextSha": "01a3c9f54fa31ca3fe8adcd85cfbb816ac2a814d83a324f39678a58a95240531",
   "recommendedActs": {
-   "collateralOption": "no_collateral",
+   "collateralOption": "collateral",
    "entityType": "legal",
    "recommendedActIds": [
     "final_observation",
-    "acceptance_definition",
+    "acceptance_no_motion_no_duty_collateral",
     "final_competition"
    ]
   },
@@ -6219,11 +6219,11 @@
   "rawTextLen": 16264,
   "rawTextSha": "43b5a9d74bf8257fd5bab41052ddfd3a8e8cfd470ce3b552afab401fd3adc8aa",
   "recommendedActs": {
-   "collateralOption": "no_collateral",
+   "collateralOption": "collateral_auto",
    "entityType": "legal",
    "recommendedActIds": [
     "final_observation",
-    "acceptance_definition",
+    "acceptance_no_motion_no_duty_collateral",
     "final_competition"
    ]
   },
@@ -7242,7 +7242,7 @@
   "rawTextLen": 6149,
   "rawTextSha": "0117dbb11993e49d0fd98ac5edf2f5514ac5b499ff8146c4686ac1884b04bf18",
   "recommendedActs": {
-   "collateralOption": "no_collateral",
+   "collateralOption": "collateral",
    "entityType": "individual",
    "recommendedActIds": []
   },
@@ -8414,11 +8414,11 @@
   "rawTextLen": 8775,
   "rawTextSha": "910b5325ed87413a718be9a493f610a165dd5140bbfe694fa2e32d30f74d57b6",
   "recommendedActs": {
-   "collateralOption": "no_collateral",
+   "collateralOption": "collateral",
    "entityType": "individual",
    "recommendedActIds": [
     "final_realization",
-    "acceptance_definition"
+    "acceptance_no_motion_no_duty_collateral"
    ]
   },
   "thirdParties": []

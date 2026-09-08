@@ -51,7 +51,7 @@ from ip_mixin import IpExtractionMixin
 from obligations_mixin import ObligationsMixin
 from inflection_mixin import InflectionMixin
 from prior_collection_mixin import PriorCollectionMixin
-from patterns import MANAGER_ADDRESS_AFTER_NAME, SNILS_VALUE, build_patterns
+from patterns import COLLATERAL_SECURED, MANAGER_ADDRESS_AFTER_NAME, SNILS_VALUE, build_patterns
 # Исполнение паттернов идёт через модуль: он компилирует их один раз и отсеивает
 # заведомо непопадающие по обязательным литералам (см. patterns.required_literals).
 import patterns as pattern_exec
@@ -861,7 +861,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                     ),
                 }
 
-            recommended_acts = self._get_recommended_acts(document_type, extracted_fields, text)
+            recommended_acts = self._get_recommended_acts(document_type, extracted_fields, text,
+                                                         collaterals_final)
 
             # Ипотека: структурированные предметы залога для формы (стоимость/НПЦ/
             # отчёт/ЕГРН реконсилируются из абзаца оценки и записей ЕГРН). Top-level,
@@ -5201,11 +5202,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
             # ОБЯЗАТЕЛЬНАЯ ПРОВЕРКА: документ считается залоговым ТОЛЬКО если есть формулировка "обеспеченное залогом"
             required_collateral_phrases = [
-                r"обеспеченное\s+залогом",
-                r"обеспечено\s+залогом",
-                r"обеспечен\s+залогом",
-                r"обеспечена\s+залогом",
-                r"обеспечены\s+залогом",
+                COLLATERAL_SECURED,
                 r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку",
                 r"обязательство.*обеспечен.*залогом",
                 r"обязательства.*обеспечен.*залогом"
@@ -6520,7 +6517,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
 
 
-    def _get_recommended_acts(self, document_type: str, extracted_fields: Dict[str, Any], text: str) -> Dict[str, Any]:
+    def _get_recommended_acts(self, document_type: str, extracted_fields: Dict[str, Any], text: str,
+                              collaterals: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
         """
         Определяет рекомендуемые акты на основе типа документа, типа лица и наличия залога.
 
@@ -6573,11 +6571,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         # ОБЯЗАТЕЛЬНАЯ ПРОВЕРКА: документ считается залоговым ТОЛЬКО если есть формулировка "обеспеченное залогом"
         # или похожие формулировки, которые явно указывают на залог (ограничиваем расстояние, чтобы не ловить случайные совпадения)
         required_collateral_phrases = [
-            r"обеспеченное\s+залогом",
-            r"обеспечено\s+залогом",
-            r"обеспечен\s+залогом",
-            r"обеспечена\s+залогом",
-            r"обеспечены\s+залогом",
+            COLLATERAL_SECURED,
             r"В\s+качестве\s+обеспечения\s+исполнения\s+обязательств\s+кредитному\s+договору\s+Заемщик\s+предоставил\s+в\s+залог\s+Банку",
             r"обязательство[^.]{0,120}?обеспечен[^.]{0,30}?залогом",
             r"обязательства[^.]{0,120}?обеспечен[^.]{0,30}?залогом"
@@ -6598,6 +6592,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 extracted_fields.get("ipCollateralContractNumber") or
                 extracted_fields.get("ipCollateralContractDate") or
                 _valid_collateral_desc or
+                # Разобранные предметы залога — самый прямой признак, но раньше
+                # его тут не спрашивали: у «Форте Пром Стил» четыре предмета на
+                # 73,9 млн, а кнопка стояла «Без залога», потому что в документе
+                # нет ни одной из фраз-индикаторов вроде «договор залога №».
+                # Список уже отфильтрован _collateral_has_substance, пустышки
+                # до сюда не доходят.
+                collaterals or extracted_fields.get("collaterals") or
                 extracted_fields.get("physicalHasCollateral") == "true" or
                 extracted_fields.get("observationHasCollateral") == "true" or
                 extracted_fields.get("ipHasCollateral") == "true"
@@ -6608,7 +6609,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 r"что\s+подтверждается\s+договором\s+залога",
                 r"договор\s+залога\s+№",
                 r"предоставил\s+в\s+залог",
-                r"предоставляет\s+в\s+залог"
+                r"предоставляет\s+в\s+залог",
+                # Просительная часть: «включить … в реестр … КАК обеспеченные
+                # залогом имущества». Предлог «как» здесь и отличает требование
+                # заявителя от цитаты закона: ст. 334 и 348 ГК РФ говорят «по
+                # обеспеченному залогом обязательству», ст. 213.8 — «требования
+                # которых обеспечены залогом», и на шести документах корпуса
+                # именно эта проза стоит без единого предмета залога.
+                r"как\s+обеспеченн\w+\s+залогом",
             ]
 
             has_collateral_text = any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in collateral_indicators)
