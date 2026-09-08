@@ -181,7 +181,6 @@ export interface ExtractedData {
     managerBirthDate?: string;
     managerAddress?: string;
     managerInn?: string;
-    managerSnils?: string;
     // Поля для третьих лиц
     thirdPartyName?: string;
     thirdPartyBirthDate?: string;

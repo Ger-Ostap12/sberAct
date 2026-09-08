@@ -166,26 +166,37 @@ def test_чужая_метка_роли_обрывает_окно(analyzer):
     assert not _manager_snils(analyzer, text)
 
 
-# --- контракт поля -------------------------------------------------------------
+# --- поле снято из данных приложения (08.09.2026) ------------------------------
+#
+# Решение Андрея: СНИЛС управляющего не печатается в акте и не показывается на
+# форме. Извлечение НЕ удалено намеренно: значение остаётся входом кросс-блочного
+# дедупа — без него у должника остался бы чужой СНИЛС.
 
-def test_плохой_снилс_помечается_но_не_чистится():
-    """Правило §K.1: реквизит с битой цифрой — «свой, но с опечаткой», а не
-    чужое значение. Чистить его дороже, чем поправить глазами."""
-    fields = {"managerSnils": "14358739380"}
-    issues = field_contract.apply_contract(fields)
-    assert fields["managerSnils"] == "14358739380", "значение чистить нельзя"
-    assert any(i.field == "managerSnils" and not i.cleared for i in issues)
-
-
-def test_причина_на_русском():
-    reason = field_contract.check_value("managerSnils", "14358739380")
-    assert reason and reason.startswith("СНИЛС"), reason
+def test_поле_ушло_из_контракта_и_претензий():
+    """Раз поля нет в данных приложения, ему нечего валидировать."""
+    assert "managerSnils" not in field_contract.FIELD_TYPES
+    assert field_contract.check_value("managerSnils", "14358739380") is None
 
 
-def test_верный_снилс_претензий_не_вызывает():
-    assert field_contract.check_value("managerSnils", "055-053-091 30") is None
+def test_дедуп_всё_ещё_видит_снилс_управляющего():
+    """Главная причина, по которой извлечение оставлено живым.
+
+    Должнику приписан СНИЛС управляющего (частая протечка при плотной вёрстке).
+    Дедуп обязан его вычистить — иначе в акт уйдёт чужой реквизит.
+    """
+    analyzer = DocumentAnalyzer()
+    fields = {"snils": "055-053-091 30", "managerSnils": "055-053-091 30"}
+    analyzer._dedup_cross_block_ids(fields, {"inn": "614213424727"}, [])
+    assert "snils" not in fields, "чужой СНИЛС остался у должника"
 
 
-def test_верный_снилс_повышает_уверенность():
-    quality = field_contract.assess_quality({"managerSnils": "055-053-091 30"}, {})
-    assert quality.get("managerSnils", {}).get("level") == field_contract.HIGH
+def test_анализ_не_отдаёт_поле_наружу():
+    """Снятие поля стоит ПОСЛЕ дедупа — в выдаче анализа его быть не должно."""
+    sys.path.insert(0, os.path.join(_THIS, "golden"))
+    import _snapshot
+
+    analyzer = DocumentAnalyzer()
+    путь = os.path.join(_snapshot.CORPUS_DIR,
+                        _snapshot.corpus_files()[0].replace("/", os.sep))
+    результат = analyzer.analyze(путь)
+    assert "managerSnils" not in (результат.get("fields") or {})

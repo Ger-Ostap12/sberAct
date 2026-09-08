@@ -1582,6 +1582,119 @@
   },
   "thirdParties": []
  },
+ "НОвая конвертация/Остальные/0 Заявление на включение в РТК ЛАВРУХИН ДМИТРИЙ ЮРЬЕВИЧ 3л.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "Ростовская область, г БЕЛАЯ КАЛИТВА, р-н БЕЛОКАЛИТВИНСКИЙ, ул СОВХОЗНАЯ, д 7, 1",
+    "birthDate": "05.11.1997",
+    "birthPlace": "БЕЛАЯ КАЛИТВА",
+    "inn": "614213424727",
+    "name": "ЛАВРУХИН ДМИТРИЙ ЮРЬЕВИЧ",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "Ростовская область, г БЕЛАЯ КАЛИТВА, р-н БЕЛОКАЛИТВИНСКИЙ, ул СОВХОЗНАЯ, д 7, 1",
+   "applicantName": "ЛАВРУХИН ДМИТРИЙ ЮРЬЕВИЧ",
+   "applicantNameAccusative": "ЛАВРУХИНА ДМИТРИЯ ЮРЬЕВИЧА",
+   "applicantNameDative": "ЛАВРУХИНУ ДМИТРИЮ ЮРЬЕВИЧУ",
+   "applicantNameGenitive": "ЛАВРУХИНА ДМИТРИЯ ЮРЬЕВИЧА",
+   "applicantNameInstrumental": "ЛАВРУХИНЫМ ДМИТРИЕМ ЮРЬЕВИЧЕМ",
+   "birthDate": "05.11.1997",
+   "birthPlace": "БЕЛАЯ КАЛИТВА",
+   "caseNumber": "А53-40552/2025",
+   "companyInn": "614213424727",
+   "contractDate": "19.02.2024",
+   "contractNumber": "184650",
+   "courtDecisionDate": "16.12.2025",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
+   "creditorInn": "7707083893",
+   "creditorName": "ПАО Сбербанк",
+   "creditorOgrn": "1027700132195",
+   "debtAmount": "437 176,96",
+   "debtorName": "ЛАВРУХИН ДМИТРИЙ ЮРЬЕВИЧ",
+   "entityType": "individual",
+   "forfeit": "5 344,67",
+   "forfeit15": "5 344,67",
+   "inn": "614213424727",
+   "interest": "133 912,85",
+   "interest14": "133 912,85",
+   "loanDebt": "437 176,96",
+   "loanStateDuty17": "2 589,01",
+   "managerAddress": "344000, обл Ростовская, г.Ростов-на-Дону, а/я 6262",
+   "managerInn": "614106118605",
+   "managerName": "Счасный Станислав Алексеевич",
+   "messageDate": "20.12.2025",
+   "messageNumber": "77216893856",
+   "obligationType": "кредитный договор",
+   "obligations": [
+    {
+     "amount": "437 176,00",
+     "amountValue": 437176.0,
+     "contractDate": "19.02.2024",
+     "contractNumber": "184650",
+     "id": "obligation_1",
+     "isCollateral": false,
+     "issuedAmount": "299 999,00",
+     "issuedAmountValue": 299999.0,
+     "obligationType": "Кредитный договор",
+     "penalty0071": null,
+     "penalty0071Value": 0.0
+    }
+   ],
+   "obligationsTotalDebt": "437 176,00",
+   "penalties": "0,00",
+   "principalDebt": "295 330,43",
+   "principalDebt13": "295 330,43",
+   "procedureType": "realization",
+   "procedureTypeRaw": "реализации имущества гражданина",
+   "registrationDate": "20.06.1991",
+   "requirementsSum": "437 176,96",
+   "sourceDocumentType": "rtk_application",
+   "stateDuty": "13 429,00",
+   "stateDuty16": "13 429,00",
+   "totalDebt": "437 176,96"
+  },
+  "heirs": [],
+  "metadata": {
+   "language": "ru",
+   "pageCount": 1,
+   "wordCount": 701
+  },
+  "obligations": [
+   {
+    "amount": "437 176,00",
+    "amountValue": 437176.0,
+    "contractDate": "19.02.2024",
+    "contractNumber": "184650",
+    "id": "obligation_1",
+    "isCollateral": false,
+    "issuedAmount": "299 999,00",
+    "issuedAmountValue": 299999.0,
+    "obligationType": "Кредитный договор",
+    "penalty0071": null,
+    "penalty0071Value": 0.0
+   }
+  ],
+  "rawTextLen": 5600,
+  "rawTextSha": "67de903d2810d8db850f8d23e10e2bc6028caedb7027bce41cd584e8ebe95d5c",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition"
+   ]
+  },
+  "thirdParties": []
+ },
  "НОвая конвертация/Остальные/main_Заявление о включении в РТК - 2 л.docx": {
   "collaterals": [],
   "confidence": 1.0,
@@ -2125,6 +2238,116 @@
   },
   "thirdParties": []
  },
+ "НОвая конвертация/Остальные/Заявление на включение в РТК_КАЛУГИНА 3л.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "Ростовская область, г РОСТОВ-НА-ДОНУ, ул ПОГОДИНА, д 17, 11",
+    "birthDate": "15.12.1988",
+    "birthPlace": "ГОР. РОСТОВ-НА-ДОНУ",
+    "inn": "616512841377",
+    "name": "КАЛУГИНА НАТАЛЬЯ ЮРЬЕВНА",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "Ростовская область, г РОСТОВ-НА-ДОНУ, ул ПОГОДИНА, д 17, 11",
+   "applicantName": "КАЛУГИНА НАТАЛЬЯ ЮРЬЕВНА",
+   "applicantNameAccusative": "КАЛУГИНУ НАТАЛЬЮ ЮРЬЕВНУ",
+   "applicantNameDative": "КАЛУГИНОЙ НАТАЛЬЕ ЮРЬЕВНЕ",
+   "applicantNameGenitive": "ЛУГИНОЙ НАТАЛЬИ ЮРЬЕВНЫ",
+   "applicantNameInstrumental": "КАЛУГИНОЙ НАТАЛЬЕЙ ЮРЬЕВНОЙ",
+   "birthDate": "15.12.1988",
+   "birthPlace": "ГОР. РОСТОВ-НА-ДОНУ",
+   "caseNumber": "А53-37965/2025",
+   "companyInn": "616512841377",
+   "contractDate": "03.08.2022",
+   "contractNumber": "заключен, 52ТКПР22080300165645",
+   "courtDecisionDate": "08.12.2025",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditInterestRate": "25,4",
+   "creditorAddress": "117312, г. Москва, ул. Вавилова, д. 19",
+   "creditorInn": "7707083893",
+   "creditorName": "ПАО Сбербанк",
+   "creditorOgrn": "1027700132195",
+   "debtAmount": "104 977,05",
+   "debtorName": "КАЛУГИНА НАТАЛЬЯ ЮРЬЕВНА",
+   "entityType": "individual",
+   "forfeit": "35,89",
+   "forfeit15": "35,89",
+   "inn": "616512841377",
+   "interest": "4 944,00",
+   "interest14": "4 944,00",
+   "kommersantDate": "13.12.2025",
+   "loanDebt": "104 977,05",
+   "managerAddress": "пр. Соколова д. 63 а/я 525, г. Ростов - на - Дону, 344000",
+   "managerName": "Карпусь Александра Викторовна",
+   "obligations": [
+    {
+     "amount": "104 977,00",
+     "amountValue": 104977.0,
+     "contractDate": "03.08.2022",
+     "contractNumber": "52ТКПР22080300165645",
+     "id": "obligation_1",
+     "isCollateral": false,
+     "issuedAmount": null,
+     "issuedAmountValue": 0.0,
+     "obligationType": "Кредитная карта",
+     "penalty0071": null,
+     "penalty0071Value": 0.0
+    }
+   ],
+   "obligationsTotalDebt": "104 977,00",
+   "penalties": "0,00",
+   "principalDebt": "99 997,16",
+   "principalDebt13": "99 997,16",
+   "procedureType": "realization",
+   "procedureTypeRaw": "реализации имущества граж",
+   "registrationDate": "20.06.1991",
+   "requirementsSum": "104 977,05",
+   "sourceDocumentType": "rtk_application",
+   "stateDuty": "5 124,00",
+   "stateDuty16": "5 124,00",
+   "totalDebt": "104 977,05"
+  },
+  "heirs": [],
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 729
+  },
+  "obligations": [
+   {
+    "amount": "104 977,00",
+    "amountValue": 104977.0,
+    "contractDate": "03.08.2022",
+    "contractNumber": "52ТКПР22080300165645",
+    "id": "obligation_1",
+    "isCollateral": false,
+    "issuedAmount": null,
+    "issuedAmountValue": 0.0,
+    "obligationType": "Кредитная карта",
+    "penalty0071": null,
+    "penalty0071Value": 0.0
+   }
+  ],
+  "rawTextLen": 5782,
+  "rawTextSha": "c816d440693f8c079e930f2b1bb4e366e4a1aae970aa78033c7b4675aa432bc1",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition"
+   ]
+  },
+  "thirdParties": []
+ },
  "НОвая конвертация/Остальные/Заявление на включение требований в РТК_ДОЛАКОВ 3л.docx": {
   "collaterals": [],
   "confidence": 1.0,
@@ -2173,7 +2396,6 @@
    "managerAddress": "386151, РЕСП ИНГУШЕТИЯ, СЕЛО ЭКАЖЕВО, НАЗРАНОВСКИЙ Р-Н, УЛ МУТАЛИЕВА, 120",
    "managerInn": "060203933434",
    "managerName": "Аушев Дауд Мухамедович",
-   "managerSnils": "14986438627",
    "messageDate": "27.02.2024",
    "messageNumber": "13758787",
    "obligationType": "кредитный договор",
@@ -2396,6 +2618,91 @@
   ],
   "rawTextLen": 5097,
   "rawTextSha": "870f718ff976e529a5ce7ca2c32f714c65262d7bc08615709df93a1f60dadb89",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "individual",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/Остальные/Заявление о включении в РТК А53-41535-2025  3 стр.docx": {
+  "collaterals": [],
+  "confidence": 1.0,
+  "debtors": [
+   {
+    "address": "344111 г Ростов-на-Дону, пр-кт 40-летия Победы, д 318, кв 461",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "",
+    "name": "АВЕТЯН ЭДУАРД ВЕЛЬМИРОВИЧ",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "entityType": "individual",
+  "fields": {
+   "applicantAddress": "344111 г Ростов-на-Дону, пр-кт 40-летия Победы, д 318, кв 461",
+   "applicantName": "АВЕТЯН ЭДУАРД ВЕЛЬМИРОВИЧ",
+   "applicantNameAccusative": "АВЕТЯНА ЭДУАРДА ВЕЛЬМИРОВИЧА",
+   "applicantNameDative": "АВЕТЯНУ ЭДУАРДУ ВЕЛЬМИРОВИЧУ",
+   "applicantNameGenitive": "АВЕТЯНА ЭДУАРДА ВЕЛЬМИРОВИЧА",
+   "applicantNameInstrumental": "АВЕТЯНОМ ЭДУАРДОМ ВЕЛЬМИРОВИЧЕМ",
+   "caseNumber": "А53-41535/2025",
+   "contractDate": "02.08.2011",
+   "contractNumber": "332552560",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "630091, г. Новосибирск, ул. Гоголя, д.14",
+   "creditorInn": "4401116480",
+   "creditorName": "ПАО «Совкомбанк»",
+   "creditorOgrn": "1144400000425",
+   "debtAmount": "679 023,89",
+   "debtorName": "АВЕТЯН ЭДУАРД ВЕЛЬМИРОВИЧ",
+   "entityType": "individual",
+   "forfeit": "0,00",
+   "forfeit15": "0,00",
+   "interest": "7,48",
+   "interest14": "7,48",
+   "loanDebt": "98 658,66",
+   "managerAddress": "344003, г. Ростов-на-Дону, а/я 63",
+   "managerName": "Кутилева Виктория Сергеевна",
+   "obligations": [
+    {
+     "contractDate": "02.08.2011",
+     "contractNumber": "332552560",
+     "id": "obligation_11_1",
+     "obligationType": "Кредитный договор"
+    }
+   ],
+   "penalties": "514 290,23",
+   "principalDebt": "164 726,18",
+   "principalDebt13": "164 726,18",
+   "requirementsSum": "679 023,89",
+   "sourceDocumentType": "rtk_application",
+   "stateDuty": "19 476,00",
+   "stateDuty16": "19 476,00",
+   "totalDebt": "679 023,89"
+  },
+  "heirs": [],
+  "metadata": {
+   "language": "ru",
+   "pageCount": 2,
+   "wordCount": 688
+  },
+  "obligations": [
+   {
+    "contractDate": "02.08.2011",
+    "contractNumber": "332552560",
+    "id": "obligation_11_1",
+    "obligationType": "Кредитный договор"
+   }
+  ],
+  "rawTextLen": 5383,
+  "rawTextSha": "a4f80cae7ee9103dd757ead2cf9f5cba0843cdf069c90828f5bef87edd6956b8",
   "recommendedActs": {
    "collateralOption": "no_collateral",
    "entityType": "individual",
@@ -2653,7 +2960,6 @@
    "managerAddress": "410004, обл. Саратовская, г Саратов, ул. им Чернышев-ского Н.Г., д 50А, оф. 506",
    "managerInn": "645100186818",
    "managerName": "Рябинина Екатерина Сергеевна",
-   "managerSnils": "13726672779",
    "messageDate": "29.04.2026",
    "messageNumber": "22677177",
    "mortgageCollateralDescription1221": "А53-11228/2026 СУЗАНСКАЯ ЛИДИЯ АЛЕКСЕЕВНА",
@@ -2910,7 +3216,6 @@
    "managerAddress": "344019, Ростовская обл., г. Ростов-на-Дону, пр-кт Шолохова, д. 34А, оф.З.2",
    "managerInn": "615519848330",
    "managerName": "Удодов Сергей Александрович",
-   "managerSnils": "118-781-995 07",
    "messageDate": "30.05.2026",
    "messageNumber": "77240708355",
    "obligationType": "кредитный договор",
@@ -3203,7 +3508,6 @@
    "managerAddress": "350012, Краснодарский край, Краснодар, Красных Партизан, 77, а/я 4701",
    "managerInn": "632107827106",
    "managerName": "Ефимович Евгения Николаевна",
-   "managerSnils": "07725793102",
    "obligations": [
     {
      "contractDate": "13.06.2024",
@@ -3305,7 +3609,6 @@
    "managerAddress": "454092, г. Челябинск, а/я 9317",
    "managerInn": "745111378257",
    "managerName": "Данилова Аделя Ринатовна",
-   "managerSnils": "13517430235",
    "obligations": [
     {
      "contractDate": "17.12.2025",
@@ -3398,7 +3701,6 @@
    "managerAddress": "344029, обл Ростовская, г. Ростов-на-Дону, ул. 1-й Конной Армии, д. 23/10, офис 31",
    "managerInn": "616602539072",
    "managerName": "Тимченко Павел Иванович",
-   "managerSnils": "112-979-523 77",
    "messageDate": "28.04.2026",
    "messageNumber": "22660261",
    "obligationType": "кредитный договор",
@@ -5516,7 +5818,6 @@
    "loanDebt": "1 000 000 000,00",
    "managerInn": "644923704326",
    "managerName": "Панин Александр Владимирович",
-   "managerSnils": "143-211-094 04",
    "messageDate": "02.03.2026",
    "messageNumber": "34277008",
    "obligationType": "кредитный договор",

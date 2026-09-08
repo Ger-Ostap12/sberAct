@@ -619,6 +619,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             else:
                 debtors_result, third_parties_result = self._resolve_debtors_and_third_parties(extracted_fields, text, details)
 
+            # СНИЛС управляющего в акте не печатается и на форме не показывается
+            # (решение Андрея 08.09.2026) — поле убрано из данных приложения.
+            # Извлечение и кросс-блочный дедуп ВЫШЕ трогать нельзя: managerSnils
+            # входит в список «чужих реквизитов» `_dedup_cross_block_ids` и
+            # защищает должника от протечки чужого СНИЛС. Поэтому снимаем поле
+            # здесь — после дедупа, до претензий и генерации.
+            extracted_fields.pop("managerSnils", None)
 
             _raw_cols = collaterals_list if collaterals_list else extracted_fields.get('collaterals', [])
             collaterals_final = [c for c in _raw_cols if self._collateral_has_substance(c)]

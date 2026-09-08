@@ -99,7 +99,6 @@ FIELD_TYPES: Dict[str, str] = {
     "creditorOgrn": OGRN,
     "ogrnip": OGRNIP,
     "snils": SNILS,
-    "managerSnils": SNILS,
     "thirdPartySnils": SNILS,
     # адреса
     "applicantAddress": ADDRESS,

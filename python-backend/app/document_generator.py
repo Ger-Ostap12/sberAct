@@ -1994,7 +1994,6 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             'managerBirthDate': 'финансовый управляющий',
             'managerAddress': 'финансовый управляющий',
             'managerInn': 'финансовый управляющий',
-            'managerSnils': 'финансовый управляющий'
         }
 
         third_party_fields = {
@@ -2056,11 +2055,6 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                         if re.search(pattern, text):
                             paragraph.text = re.sub(pattern, f'финансовый управляющий ИНН: {field_value}', text)
                             logger.info(f"Заменен ИНН финансового управляющего: {field_value}")
-                    elif field_key == 'managerSnils':
-                        pattern = r'финансовый\s+управляющий[^,]*?СНИЛС[:\s]*([0-9-]{11,14})'
-                        if re.search(pattern, text):
-                            paragraph.text = re.sub(pattern, f'финансовый управляющий СНИЛС: {field_value}', text)
-                            logger.info(f"Заменен СНИЛС финансового управляющего: {field_value}")
 
             for field_key, context in third_party_fields.items():
                 field_value = data.get(field_key, '')

@@ -35,7 +35,6 @@ const FIELD_LABELS: Record<string, string> = {
   managerInn: 'ИНН управляющего',
   thirdPartyInn: 'ИНН третьего лица',
   snils: 'СНИЛС должника',
-  managerSnils: 'СНИЛС управляющего',
   thirdPartySnils: 'СНИЛС третьего лица',
   ogrn: 'ОГРН',
   ogrnip: 'ОГРНИП',
