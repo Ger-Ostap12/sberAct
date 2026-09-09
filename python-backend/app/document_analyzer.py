@@ -623,6 +623,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # веток: карточка должника уже собрана, тип лица уже определён.
             self._reconcile_flat_debtor_name(extracted_fields, debtors_result)
             self._drop_legal_short_name_for_person(extracted_fields)
+            self._drop_ogrn_for_person(extracted_fields, debtors_result)
 
             # СНИЛС управляющего в акте не печатается и на форме не показывается
             # (решение Андрея 08.09.2026) — поле убрано из данных приложения.
@@ -4856,6 +4857,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             extracted_fields["companyInn"] = re.sub(r"\D", "", extracted_fields["companyInn"])
 
         self._sanitize_credit_params(extracted_fields, text)
+
+        # Строго ДО определения типа: ОГРН саморегулируемой организации,
+        # утёкший должнику, сам по себе объявлял гражданина юрлицом.
+        self._drop_sro_requisites_from_debtor(extracted_fields, text)
 
         self._finalize_debtor_type(extracted_fields, text, debtor_clean)
 
