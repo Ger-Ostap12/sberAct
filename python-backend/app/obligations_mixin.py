@@ -10,6 +10,46 @@ logger = logging.getLogger(__name__)
 # Замер по корпусу: медиана 7%, худший законный случай 22%, выше 30% нет.
 _TITLE_MAX_OFFSET = 0.4
 
+# Денежная сумма внутри блока обязательства.
+#
+# Класс числа ОБЯЗАН включать точку: копейки банки пишут и через запятую
+# («2789060,93»), и через точку («7371840.35»). Прежний класс [0-9\s,]+ на
+# точке обрывался, копейки терялись, и карточка несла «7 371 840,00» вместо
+# «7 371 840,35» — три документа корпуса.
+# Копейки бывают ОТОРВАНЫ пробелом — «138 909, 16 руб.» (артефакт
+# конвертера). Пробел разрешён только после ЗАПЯТОЙ: точка с пробелом —
+# это конец предложения, и «в размере 500000. 15 марта» иначе дало бы
+# копейки «15».
+_MONEY = r"(\d[\d\s\u00a0\u202f]*(?:,\s?\d{1,2}|\.\d{1,2})?)"
+
+# Две вёрстки одной и той же мысли. Первая — «образовалась задолженность
+# в размере X руб.». Вторая — «…задолженности по кредитному договору от
+# 26.10.2023 №6123013561-23-1 составляет X руб.»; на трёх документах корпуса
+# фразы «образовалась» нет вовсе, и карточка получала выдуманный «0,00».
+#
+# Между «договору» и «составляет» окно в 140 знаков, а не [^.]: в разрыв
+# попадают дата договора и его номер, оба с точками.
+_AMOUNT_PATTERNS = (
+    r"образовалась\s+задолженность\s+в\s+размере[:\s]*" + _MONEY
+    + r"\s*(?:руб|рублей|₽|р\.?)",
+    r"образовалась\s+задолженность\s+в\s+размере[:\s]*" + _MONEY,
+    r"задолженност\w+\s+по\s+(?:\w+\s+){0,2}договору[\s\S]{0,140}?"
+    r"составляет[:\s]*" + _MONEY + r"\s*(?:руб|рублей|₽|р\.?)",
+)
+
+# Итог по КОНКРЕТНОМУ договору: «Итого, общая сумма задолженности по договору
+# №332552560: 679023.89 руб.». Номер подставляется в паттерн, поэтому сумма не
+# может приехать от соседнего обязательства — а в заявлении их бывает десяток.
+# Номер подставляется ЗАМЕНОЙ подстроки, а не str.format: в самих регулярках
+# полно фигурных скобок ({0,20}, {1,2}), и format на них падает KeyError.
+_НОМЕР = "<НОМЕР>"
+_AMOUNT_BY_CONTRACT = (
+    r"сумма\s+задолженности\s+по\s+договору\s*№?\s*" + _НОМЕР
+    + r"\b[^\d]{0,20}" + _MONEY + r"\s*(?:руб|рублей|₽|р\.?)",
+    r"задолженности\s+по\s+договору\s*№?\s*" + _НОМЕР
+    + r"\b[^\d]{0,20}" + _MONEY + r"\s*(?:руб|рублей|₽|р\.?)",
+)
+
 
 class ObligationsMixin:
     if TYPE_CHECKING:
@@ -20,6 +60,23 @@ class ObligationsMixin:
         def normalize_amount_value(self, value: str) -> str: ...
         def find_date_near_contract(self, text: str, contract_number: str) -> str: ...
         def detect_obligation_type(self, text: str, contract_number: str) -> str: ...
+
+    def _amount_for_contract(self, text: str, contract_number: str) -> Optional[str]:
+        """Сумма долга по договору с ЭТИМ номером, или None.
+
+        Нужна сборщику, который находит только номера договоров: карточка
+        уходила на форму без суммы вовсе. Якорь — сам номер, поэтому чужая
+        сумма подставиться не может; когда фразы нет, поле остаётся пустым,
+        а не превращается в выдуманный «0,00».
+        """
+        if not contract_number:
+            return None
+        num = re.escape(contract_number.strip())
+        for шаблон in _AMOUNT_BY_CONTRACT:
+            m = re.search(шаблон.replace(_НОМЕР, num), text, re.IGNORECASE)
+            if m:
+                return self.normalize_amount_value(m.group(1))
+        return None
 
     def _parse_obligation_blocks(self, extracted_fields, text, obligations, obligation_blocks):
         """Разбор блоков «Обязательство N:»: номер/дата договора, суммы, тип. Аппендит в obligations (по ссылке). Вынесено из extract_obligations."""
@@ -72,10 +129,14 @@ class ObligationsMixin:
                 contract_number = self.clean_extracted_value(contract_match.group(1)) if contract_match and contract_match.groups() else f'Договор_{obligation_num}'
                 num_for_type = contract_number
 
-            # Извлекаем сумму после "образовалась задолженность в размере"
-            amount_match = re.search(r'образовалась\s+задолженность\s+в\s+размере[:\s]*([0-9\s,]+)\s*(?:руб|рублей|₽|р\.?)', block_text)
-            if not amount_match:
-                amount_match = re.search(r'образовалась\s+задолженность\s+в\s+размере[:\s]*([0-9\s,]+)', block_text)
+            # Сумма долга по обязательству — лесенкой: сначала строгая фраза
+            # с «руб.» на конце, затем она же без единицы, затем вторая
+            # вёрстка. Порядок важен: общая формулировка ниже строгой.
+            amount_match = None
+            for _pat in _AMOUNT_PATTERNS:
+                amount_match = re.search(_pat, block_text, re.IGNORECASE)
+                if amount_match:
+                    break
 
             raw_amount = amount_match.group(1) if amount_match and amount_match.groups() else '0'
             normalized_amount_str = self.normalize_amount_value(raw_amount)
@@ -278,6 +339,9 @@ class ObligationsMixin:
                         'contractDate': (contract_date or 'Не указана').strip(),
                         'obligationType': self.detect_obligation_type(text, contract_number)
                     }
+                    сумма = self._amount_for_contract(text, contract_number)
+                    if сумма:
+                        obligation['amount'] = сумма
                     obligations.append(obligation)
                     logger.info(f"Найдено обязательство: {obligation}")
 

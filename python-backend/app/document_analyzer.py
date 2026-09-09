@@ -619,6 +619,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             else:
                 debtors_result, third_parties_result = self._resolve_debtors_and_third_parties(extracted_fields, text, details)
 
+            # Плоское имя должника и краткое наименование ЮЛ — после ОБЕИХ
+            # веток: карточка должника уже собрана, тип лица уже определён.
+            self._reconcile_flat_debtor_name(extracted_fields, debtors_result)
+            self._drop_legal_short_name_for_person(extracted_fields)
+
             # СНИЛС управляющего в акте не печатается и на форме не показывается
             # (решение Андрея 08.09.2026) — поле убрано из данных приложения.
             # Извлечение и кросс-блочный дедуп ВЫШЕ трогать нельзя: managerSnils
