@@ -260,6 +260,25 @@ def _find_birthdate(block: str):
     return None
 
 
+# ИНН РОВНО десять или двенадцать цифр подряд, без цифры следом.
+#
+# Класс [0-9\s]{10,12} глотал пробел и первую цифру почтового индекса со
+# следующей строки: «ИНН 6162059094 344002, Ростовская область…» давало
+# «61620590943». Двенадцать проверяем раньше десяти — у гражданина ИНН длиннее.
+_INN_STRICT_RE = re.compile(r"ИНН[:\s\u2116]*(\d{12}|\d{10})(?!\d)", re.IGNORECASE)
+# Запасной, терпимый к разрывам вёрстки («61 62 05 90 94»).
+_INN_LOOSE_RE = re.compile(r"ИНН[:\s]*([0-9\s]{10,12})", re.IGNORECASE)
+
+
+def _inn_candidates(text: str) -> list:
+    """Кандидаты в ИНН из записи стороны: сначала строгие, потом терпимые."""
+    строгие = _INN_STRICT_RE.findall(text or "")
+    if строгие:
+        return строгие
+    цифры = [re.sub(r"\D", "", c) for c in _INN_LOOSE_RE.findall(text or "")]
+    return [c for c in цифры if 10 <= len(c) <= 12]
+
+
 def extract_debtor_details(text: str) -> dict:
     """Извлекает реквизиты должника-физлица из его блока: дата/место рождения, СНИЛС.
 
@@ -291,8 +310,7 @@ def extract_debtor_details(text: str) -> dict:
         details["passportSeries"], details["passportNumber"] = pp
 
     # ИНН должника — строго из его записи (иначе жадный поиск берёт ИНН банка-истца).
-    inn_cands = [re.sub(r"\D", "", c) for c in re.findall(r"ИНН[:\s]*([0-9\s]{10,12})", block, re.IGNORECASE)]
-    inn_cands = [c for c in inn_cands if 10 <= len(c) <= 12]
+    inn_cands = _inn_candidates(block)
     if inn_cands:
         from requisites_validation import is_valid_inn
         details["inn"] = next((c for c in inn_cands if is_valid_inn(c)), inn_cands[0])
@@ -403,8 +421,7 @@ def _parse_debtor_record(rec_text: str):
     if pp:
         d["passportSeries"], d["passportNumber"] = pp
 
-    inn_cands = [re.sub(r"\D", "", c) for c in re.findall(r"ИНН[:\s]*([0-9\s]{10,12})", rec_text, re.IGNORECASE)]
-    inn_cands = [c for c in inn_cands if 10 <= len(c) <= 12]
+    inn_cands = _inn_candidates(rec_text)
     if inn_cands:
         from requisites_validation import is_valid_inn
         d["inn"] = next((c for c in inn_cands if is_valid_inn(c)), inn_cands[0])

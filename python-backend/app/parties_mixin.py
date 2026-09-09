@@ -56,6 +56,34 @@ class PartiesMixin:
         """
         fields.setdefault(self._ADVISORY_KEY, {})[field] = reason
 
+    # Заголовок заявления сам называет должника и тут же даёт его ИНН:
+    #     «ЗАЯВЛЕНИЕ о включении требований кредитора в реестр требований
+    #      кредиторов Воробьевой Светланы Михайловны ИНН 611000587986»
+    # Имя между меткой и ИНН ограничено 80 знаками — этого хватает на ФИО с
+    # отчеством в родительном падеже и не хватает, чтобы перепрыгнуть в
+    # соседнее предложение.
+    _DEBTOR_INN_IN_TITLE_RE = re.compile(
+        r"реестр\w*\s+требований\s+кредиторов\s+[^\n]{0,80}?"
+        r"ИНН[:\s\u2116]*(\d{10,12})(?!\d)",
+        re.IGNORECASE)
+
+    @classmethod
+    def _debtor_inn_from_title(cls, text: str) -> Optional[str]:
+        """ИНН должника из заголовка заявления — фолбэк, когда блока не хватило.
+
+        Блок «Должник:» обрывается на слове «ЗАЯВЛЕНИЕ» (так и задумано: иначе
+        в него утекают реквизиты кредитора), а ИНН стоит сразу ЗА этим словом.
+        На семи заявлениях ФНС и Сбербанка поле оставалось пустым, хотя ИНН
+        напечатан в первой же строке.
+
+        Формула называет должника по имени, поэтому чужой ИНН по ней прийти
+        не может. Предпочитаем кандидата, прошедшего контрольную сумму.
+        """
+        кандидаты = [m.group(1) for m in cls._DEBTOR_INN_IN_TITLE_RE.finditer(text or "")]
+        if not кандидаты:
+            return None
+        return next((c for c in кандидаты if is_valid_inn(c)), кандидаты[0])
+
     def _extract_party_inn_ogrn(self, extracted_fields, text, field_name):
         """ИНН/ОГРН/ОГРНИП должника строго из блока «Должник:»/«Ответчик:» (а не кредитора), с валидацией контрольной суммы. Все пути исходно завершались continue. Вынесено из основного pattern-цикла extract_fields."""
         debtor_block = None
@@ -188,7 +216,17 @@ class PartiesMixin:
             elif field_name == "inn" or field_name == "companyInn":
                 # Извлекаем ИНН (как в реструктуризации)
                 logger.info(f"Ищем {field_name} в блоке должника/ответчика...")
-                inn_candidates = re.findall(r"ИНН[:\s]*([0-9\s]{9,12})", debtor_block, re.IGNORECASE)
+                # Сначала СТРОГО: ровно 10 или 12 цифр подряд, без цифры следом.
+                # Класс [0-9\s]{9,12} глотал пробел и первую цифру почтового
+                # индекса со следующей строки («ИНН 6162059094 344002, Ростовская
+                # область…» -> «61620590943»). Двенадцать проверяем раньше
+                # десяти: у гражданина ИНН длиннее.
+                inn_candidates = re.findall(
+                    r"ИНН[:\s№]*(\d{12}|\d{10})(?!\d)", debtor_block, re.IGNORECASE)
+                if not inn_candidates:
+                    # Запасной, терпимый к разрывам вёрстки («61 62 05 90 94»).
+                    inn_candidates = re.findall(
+                        r"ИНН[:\s]*([0-9\s]{9,12})", debtor_block, re.IGNORECASE)
                 inn_candidates += re.findall(r"([0-9\s]{9,12})\s*\[4\]", debtor_block)
                 inn_clean = []
                 for raw in inn_candidates:
@@ -214,13 +252,25 @@ class PartiesMixin:
                 logger.info(f" {field_name} найден в блоке должника/ответчика: {extracted_fields.get(field_name)}")
                 return
             else:
-                logger.info(f" {field_name} НЕ найден в блоке должника/ответчика - пропускаем дальнейший поиск, чтобы не брать данные кредитора")
-                # Пропускаем дальнейший поиск, чтобы не брать ИНН/ОГРН кредитора
+                logger.info(f" {field_name} НЕ найден в блоке должника/ответчика - пробуем заголовок заявления")
+                self._apply_title_inn(extracted_fields, text, field_name)
                 return
         else:
             logger.info(f" Блоки 'Должник:' и 'Ответчик:' не найдены для {field_name}")
-            # Если блоков нет, пропускаем поиск, чтобы не брать данные кредитора
+            self._apply_title_inn(extracted_fields, text, field_name)
             return
+
+    def _apply_title_inn(self, extracted_fields, text, field_name):
+        """Последняя попытка для ИНН: заголовок заявления. Для ОГРН формулы нет."""
+        if field_name not in ("inn", "companyInn"):
+            return
+        if extracted_fields.get("inn"):
+            return
+        значение = self._debtor_inn_from_title(text)
+        if значение:
+            extracted_fields["inn"] = значение
+            extracted_fields["companyInn"] = значение
+            logger.info(f" ИНН должника взят из заголовка заявления: {значение}")
 
     def _extract_party_address(self, extracted_fields, text, field_name):
         """Адрес должника из блока «Должник:»/«Ответчик:» (юр.адрес/адрес регистрации/место нахождения), с очисткой строк от маркеров и служебных токенов. Возвращает True, если адрес установлен (тогда основной цикл делает continue). Вынесено из pattern-цикла."""
