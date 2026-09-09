@@ -1257,6 +1257,11 @@ class PartiesMixin:
         else:
             third_parties_result = []
 
+        # СТРОГО ДО дедупа: пока чужой СНИЛС стоит в карточке, дедуп считает
+        # его собственным реквизитом должника и не трогает плоское поле.
+        self._drop_manager_requisites_from_debtor(
+            extracted_fields, debtors_result, details)
+
         # Кросс-блочный дедуп индивидуальных реквизитов: один ИНН/ОГРН/СНИЛС не
         # может принадлежать сразу должнику и третьему лицу/кредитору/управляющему.
         self._dedup_cross_block_ids(extracted_fields, details, third_parties_result)
@@ -1526,6 +1531,38 @@ class PartiesMixin:
             logger.info(f"ИНН должника-гражданина: {плоский!r} -> {свой} (из карточки)")
             fields["inn"] = свой
             fields["companyInn"] = свой
+
+    @staticmethod
+    def _drop_manager_requisites_from_debtor(fields: Dict[str, Any],
+                                             debtors: List[Dict[str, Any]],
+                                             debtor_details: Dict[str, Any]) -> None:
+        """Снимает с должника СНИЛС и ИНН арбитражного управляющего.
+
+        В шапке реквизиты управляющего идут СРАЗУ за блоком должника:
+
+            Адрес регистрации: 346884, Ростовская обл., г. Батайск, …
+            Удодов Сергей Александрович (ИНН 615519848330, СНИЛС 118-781-995 07)
+
+        Разбор блока «Должник:» дотягивался до следующей строки и клал чужой
+        СНИЛС в КАРТОЧКУ. Кросс-блочный дедуп это не ловил: он сверяет плоское
+        поле со списком чужих реквизитов, но значение из карточки считает
+        «собственным» — и сам себя ослеплял.
+
+        Поэтому чистка идёт ДО дедупа: сначала убираем чужое из карточки,
+        и только потом дедуп судит о плоских полях.
+        """
+        чужие = {re.sub(r"\D", "", str(fields.get(k) or ""))
+                 for k in ("managerSnils", "managerInn")}
+        чужие.discard("")
+        if not чужие:
+            return
+        for хранилище in list(debtors or []) + [debtor_details or {}]:
+            for поле in ("snils", "inn"):
+                значение = re.sub(r"\D", "", str(хранилище.get(поле) or ""))
+                if значение and значение in чужие:
+                    logger.info(
+                        f"Реквизит управляющего в карточке должника: {поле}={значение} — очищено")
+                    хранилище[поле] = ""
 
     def _dedup_cross_block_ids(self, fields: Dict[str, Any], debtor_details: Dict[str, Any],
                                third_parties: List[Dict[str, Any]]) -> None:
