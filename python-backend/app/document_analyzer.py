@@ -828,6 +828,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                     # «нотариус»/«умер» вне контекста смерти должника — чужие факты.
                     extracted_fields.update(self._extract_death_details(text))
                     heirs_result = extract_heirs(text)
+            # Адрес кредитора мог прийти любым слоем — в том числе ошибочно от
+            # должника. Чиним протечку ДО сверки со справочником: сверять надо
+            # уже собственный адрес кредитора, а не чужой.
+            self._fix_creditor_address_leak(extracted_fields, text)
+
             # Последним шагом: адрес кредитора мог прийти любым слоем, а сверять
             # его со справочником надо один раз и на итоговом значении.
             self._verify_creditor_address(extracted_fields)

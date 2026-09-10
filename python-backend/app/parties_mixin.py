@@ -805,8 +805,19 @@ class PartiesMixin:
 
                 extracted_fields.pop("snils", None)
 
-                extracted_fields['procedureType'] = 'observation'
-                extracted_fields.setdefault('procedureTypeRaw', 'наблюдение')
+                # Наблюдение — ДОГАДКА по типу лица, а текст мог назвать процедуру
+                # прямо. На корпус-20 сказано «введена процедура реализации
+                # имущества гражданина», разбор это распознал, а догадка затирала
+                # результат: должник в тот момент ошибочно считался юрлицом
+                # (в debtorName стоял мусор «ФИНАНСОВЫЙ» из шапки).
+                # Явно названная процедура сильнее догадки.
+                if not extracted_fields.get('procedureType'):
+                    extracted_fields['procedureType'] = 'observation'
+                    extracted_fields.setdefault('procedureTypeRaw', 'наблюдение')
+                else:
+                    logger.info(
+                        "Процедура уже определена по тексту "
+                        f"({extracted_fields['procedureType']}) — наблюдение не навязываем")
 
                 # Для ЮЛ добавляем ИНН в отображаемое ФИО финансового управляющего (для актов и интерфейса)
                 manager_name = extracted_fields.get("managerName")
@@ -1613,6 +1624,48 @@ class PartiesMixin:
                     logger.info(
                         f"Реквизит управляющего в карточке должника: {поле}={значение} — очищено")
                     хранилище[поле] = ""
+
+    # Шапка «метки стопкой»: имя кредитора и его адрес стоят в ОДНОЙ строке,
+    # разделённые табуляцией:
+    #     «Заявитель: АО ПКО «ЦДУ»\t117420, г. Москва, ул. Намёткина, д. 15,
+    #      этаж 1, помещение I, ком. 01-\t06 \tДата гос. регистрации: …»
+    # Разбор такую строку не читал и подставлял кредитору адрес ДОЛЖНИКА.
+    _CREDITOR_LINE_RE = re.compile(
+        r"^[^\S\r\n]*(?:Заявитель|Кредитор|Взыскатель|Истец)\s*:[^\r\n]*?"
+        r"(\d{6}\s*,[^\r\n]+)$",
+        re.IGNORECASE | re.MULTILINE)
+
+    def _fix_creditor_address_leak(self, fields: Dict[str, Any], text: str) -> None:
+        """Чинит адрес кредитора, совпавший с адресом должника.
+
+        Совпадение — верный признак протечки: у банка и у гражданина адрес
+        один и тот же не бывает. Замер по корпусу: таких документов ноль,
+        то есть правило не может задеть ничего работающего.
+
+        Источник верного значения — строка «Заявитель:» из шапки, где адрес
+        начинается с шестизначного индекса. Значение обрезается по реестру
+        меток (иначе за адресом едет «Дата гос. регистрации: …») и склеивается
+        по переносу внутри номера помещения («ком. 01-\t06» -> «ком. 01-06»).
+        """
+        адрес_кредитора = (fields.get("creditorAddress") or "").strip()
+        адрес_должника = (fields.get("applicantAddress") or "").strip()
+        if not адрес_кредитора or адрес_кредитора != адрес_должника:
+            return
+
+        m = self._CREDITOR_LINE_RE.search(text or "")
+        if not m:
+            logger.info("Адрес кредитора совпал с адресом должника, но строки «Заявитель:» нет — очищено")
+            fields.pop("creditorAddress", None)
+            return
+
+        from doc_structure import _trim_at_next_label
+
+        значение = _trim_at_next_label(m.group(1))
+        # Табуляция внутри номера помещения — след вёрстки, а не разделитель.
+        значение = re.sub(r"-[ \t]+", "-", значение)
+        значение = re.sub(r"[ \t]+", " ", значение).strip().rstrip(",;")
+        logger.info(f"Адрес кредитора взят из строки «Заявитель:»: {значение!r}")
+        fields["creditorAddress"] = значение
 
     def _dedup_cross_block_ids(self, fields: Dict[str, Any], debtor_details: Dict[str, Any],
                                third_parties: List[Dict[str, Any]]) -> None:
