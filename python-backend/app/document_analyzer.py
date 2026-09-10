@@ -729,9 +729,25 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                         extracted_fields[k] = v
                 # Если основной номер дела совпал с «ранее вынесенным» — это его
                 # контекст («…по делу №… взыскана…»), а не дело текущего заявления.
+                #
+                # НО только когда «ранее вынесенное» и правда решение: с судом,
+                # суммой или датой. На трёх свежих заявлениях разбор возвращал
+                # ОДИН голый номер — тот самый «Дело №А53-43425/2025» из шапки,
+                # встреченный ещё раз в реквизитах для платежа. Пустое «решение»
+                # стирало номер текущего дела, и поле уходило на форму пустым.
                 pc = prior_decision.get("priorCaseNumber")
+                _prior_substantiated = any(
+                    prior_decision.get(k) for k in
+                    ("priorCourtName", "priorAmount", "priorDecisionDate", "priorStateDuty")
+                )
                 if pc and extracted_fields.get("caseNumber") == pc:
-                    extracted_fields.pop("caseNumber", None)
+                    if _prior_substantiated:
+                        extracted_fields.pop("caseNumber", None)
+                    else:
+                        logger.info(
+                            f"«Ранее вынесенное решение» — один голый номер {pc}; "
+                            "это номер текущего дела, оставляем его")
+                        extracted_fields.pop("priorCaseNumber", None)
 
 
             if not any(k.startswith("fnsQ") for k in extracted_fields):
@@ -5277,6 +5293,23 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
 
         _cn = extracted_fields.get("caseNumber")
+
+        # Дело о банкротстве ведёт АРБИТРАЖНЫЙ суд, и его номер всегда с буквой
+        # региона: «А53-25457/2026». Номер без буквы — из суда общей юрисдикции:
+        #     «на основании судебного приказа № 2-1178/2024» (самобанкрот, дела
+        #     ещё нет вовсе)
+        #     «Каменским районным судом … в рамках дела №2-1142/2010»
+        # Оба попадали в поле «Номер дела» и уехали бы в акт.
+        #
+        # Ипотечный иск ИСКЛЮЧЁН: он и подаётся в суд общей юрисдикции, там
+        # номер без буквы — свой, а не чужой.
+        if _cn and document_type != "mortgage_claim":
+            _cn_flat = re.sub(r"\s+", "", str(_cn)).upper().replace("Ё", "Е")
+            if not re.match(r"^[А-ЯA-Z]", _cn_flat):
+                logger.info(f"Номер дела '{_cn}' не арбитражный — это чужое дело, очищено")
+                extracted_fields.pop("caseNumber", None)
+                _cn = None
+
         if _cn and not self._is_valid_case_number(_cn):
             _cn_norm = re.sub(r"\s+", "", str(_cn)).upper().replace("Ё", "Е")
             if self._MAGISTRATE_CASE_NUMBER_RE.match(_cn_norm):
