@@ -5275,6 +5275,32 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 extracted_fields["observationHasCollateral"] = "true"
         return document_type
 
+    def _fill_representative_name(self, fields: Dict[str, Any], text: str) -> None:
+        """Представитель истца для ЛЮБОГО вида заявления, а не только ипотеки.
+
+        До этого шага представитель извлекался только в ипотечной ветке и только
+        по метке «Представитель истца:», которой в заявлениях о банкротстве почти
+        не бывает. Общий разбор (метка в шапке + блок подписи) живёт в
+        representative_extractor — там же разобрано, почему побеждает полнота
+        записи, а не место в документе.
+
+        ИПОТЕКА НЕПРИКОСНОВЕННА. Если ипотечная ветка уже назвала представителя,
+        её значение и уходит в representativeName: на ипотеке старый разбор
+        сверен эталоном, и подменять его общим слоем незачем.
+        """
+        if fields.get("representativeName"):
+            return
+        ипотечный = fields.get("mortgageRepresentative22")
+        if ипотечный:
+            fields["representativeName"] = ипотечный
+            return
+        from representative_extractor import extract_representative
+
+        имя = extract_representative(text)
+        if имя:
+            fields["representativeName"] = имя
+            logger.info(f"Представитель истца: {имя!r}")
+
     def _postprocess_mortgage_and_case_number(self, extracted_fields, text, document_type):
         """Постобработка ипотеки/залога (корректировка интерфейсных значений) и валидация номера дела («/ГОД» в конце, отсев доверенностей/договоров). Вынесено из analyze."""
         if document_type == "mortgage_claim" or document_type == "competition_collateral":
@@ -5288,6 +5314,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if manager_name_cc and manager_inn_cc and "инн" not in manager_name_cc.lower():
                 extracted_fields["managerName"] = f"{manager_name_cc.strip()} (ИНН {manager_inn_cc})"
 
+        self._fill_representative_name(extracted_fields, text)
 
         if extracted_fields.get("entityType") not in ("kfh", "ip", "legal"):
             text_entity = self._entity_from_text(text)
