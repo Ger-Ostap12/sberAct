@@ -5275,24 +5275,36 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 extracted_fields["observationHasCollateral"] = "true"
         return document_type
 
-    def _fill_representative_name(self, fields: Dict[str, Any], text: str) -> None:
-        """Представитель истца для ЛЮБОГО вида заявления, а не только ипотеки.
+    def _fill_representative_name(self, fields: Dict[str, Any], text: str,
+                                  document_type: Optional[str] = None) -> None:
+        """Представитель истца в каноническое поле representativeName.
 
-        До этого шага представитель извлекался только в ипотечной ветке и только
-        по метке «Представитель истца:», которой в заявлениях о банкротстве почти
-        не бывает. Общий разбор (метка в шапке + блок подписи) живёт в
-        representative_extractor — там же разобрано, почему побеждает полнота
-        записи, а не место в документе.
+        ЗАЧЕМ ПОЛЕ НУЖНО ЗАПОЛНЯТЬ НА БЭКЕНДЕ. Резолвер шаблонов выбирает
+        резолютивку ипотеки по наличию представителя (templates_resolver_mixin,
+        `_mortgage_selection`) и читает ТОЛЬКО representativeName. Ипотечная
+        ветка кладёт имя в номерное mortgageRepresentative22, поэтому без
+        зеркала резолвер видел пустоту и выбирал вариант «должник» на КАЖДОМ
+        ипотечном заявлении, хотя представитель в документе назван.
 
-        ИПОТЕКА НЕПРИКОСНОВЕННА. Если ипотечная ветка уже назвала представителя,
-        её значение и уходит в representativeName: на ипотеке старый разбор
-        сверен эталоном, и подменять его общим слоем незачем.
+        ИПОТЕКА — ТОЛЬКО ИЗ СВОЕЙ ВЕТКИ. Общий разбор (representative_extractor)
+        к ипотеке не подпускаем: в конце ипотечных заявлений подшито письмо
+        банка должнику со своей подписью, и если метки «Представитель истца:»
+        в шапке не окажется, общий слой возьмёт подпись из этого письма —
+        резолвер уйдёт на вариант «представители» по чужому имени. Пусто
+        лучше правдоподобного чужого.
+
+        Конкурсный залог под запрет НЕ подпадает, хотя ипотечную нормализацию
+        полей и проходит: пакет шаблонов у него свой («Залог/Конкурсное»),
+        выбора по представителям там нет, и общий разбор для него — обычный
+        банкротный случай.
         """
         if fields.get("representativeName"):
             return
         ипотечный = fields.get("mortgageRepresentative22")
         if ипотечный:
             fields["representativeName"] = ипотечный
+            return
+        if document_type == "mortgage_claim":
             return
         from representative_extractor import extract_representative
 
@@ -5314,7 +5326,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if manager_name_cc and manager_inn_cc and "инн" not in manager_name_cc.lower():
                 extracted_fields["managerName"] = f"{manager_name_cc.strip()} (ИНН {manager_inn_cc})"
 
-        self._fill_representative_name(extracted_fields, text)
+        self._fill_representative_name(extracted_fields, text, document_type)
 
         if extracted_fields.get("entityType") not in ("kfh", "ip", "legal"):
             text_entity = self._entity_from_text(text)
