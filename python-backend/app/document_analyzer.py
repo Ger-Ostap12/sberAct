@@ -1944,6 +1944,18 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 r"мест\w*\s*жительства|адрес)\s*:?\s*",
                 "", extended, flags=re.IGNORECASE
             ).strip(" ,;:")
+            # Строка целиком — это ещё и подпись СЛЕДУЮЩЕГО поля, если она
+            # напечатана встык: «…КВАРТИРА 68 Иной известный адрес проживания:
+            # 350011, …». Расширение обязано знать те же границы, что и сборка
+            # адреса, иначе оно возвращает обратно ровно тот хвост, который она
+            # только что отрезала.
+            стоп = self._ADDR_STOP_RE.search(extended)
+            if стоп:
+                extended = extended[:стоп.start()].strip(" ,;:")
+            # После обрезки расширение могло стать короче исходного — тогда
+            # расширять нечем.
+            if len(extended) <= len(address_clean):
+                return None
             return extended or None
         return None
 

@@ -2,6 +2,8 @@ import logging
 import re
 from typing import TYPE_CHECKING, Dict, List
 
+from patterns import DEBTOR_BLOCK
+
 logger = logging.getLogger(__name__)
 
 
@@ -71,7 +73,7 @@ class IpExtractionMixin:
 
         # Сначала пытаемся найти блок "Должник:"
         debtor_block_match = re.search(
-            r"Должник[:\s]*(.*?)(?=\n\s*\n|Временн(?:ый|ым)\s+управляющ|Сумма\s+требований|ЗАЯВЛЕНИЕ|Дело\s*№|$)",
+            DEBTOR_BLOCK,
             normalized_text,
             re.IGNORECASE | re.DOTALL
         )

@@ -14,6 +14,7 @@ from fio_detector import (
     extract_third_party_details,
     is_person_name,
 )
+from patterns import DEBTOR_BLOCK, RESPONDENT_BLOCK
 from requisites_validation import is_valid_inn, is_valid_ogrnip
 
 logger = logging.getLogger(__name__)
@@ -90,7 +91,7 @@ class PartiesMixin:
 
         # Сначала пытаемся найти блок "Должник:" (как в реструктуризации)
         debtor_block_match = re.search(
-            r"Должник[:\s]*(.*?)(?=\n\s*\n|Временн(?:ый|ым)\s+управляющ|Сумма\s+требований|ЗАЯВЛЕНИЕ|Дело\s*№|$)",
+            DEBTOR_BLOCK,
             text,
             re.IGNORECASE | re.DOTALL
         )
@@ -114,29 +115,10 @@ class PartiesMixin:
 
         # Если блока "Должник:" нет, ищем блок "Ответчик:"
         if not debtor_block:
-            answer_matches = list(re.finditer(r"Ответчик[:\s]", text, re.IGNORECASE))
-            logger.info(f"Найдено блоков 'Ответчик:': {len(answer_matches)}")
-            if answer_matches:
-                # Берем первый блок "Ответчик:"
-                answer_match = answer_matches[0]
-                start_pos = answer_match.start()
-                logger.info(f"Позиция начала блока 'Ответчик:': {start_pos}")
-
-                # Находим следующий "Истец:" ПОСЛЕ этого "Ответчик:" или конец документа
-                end_pos = len(text)
-                next_plaintiff = re.search(r"Истец[:\s]", text[start_pos:], re.IGNORECASE)
-                if next_plaintiff:
-                    end_pos = start_pos + next_plaintiff.start()
-                    logger.info(f"Найден следующий 'Истец:' на позиции: {end_pos}")
-                else:
-                    logger.info(f"Следующий 'Истец:' не найден, используем конец документа: {end_pos}")
-
-                debtor_block = text[start_pos:end_pos]
-                logger.info(f"Найден блок Ответчик: позиция {start_pos}-{end_pos}, длина {len(debtor_block)}")
-                logger.debug(f"Первые 200 символов блока: {debtor_block[:200]}")
-                # Для отладки ogrnip выводим весь блок, если он не слишком длинный
-                if field_name == "ogrnip" and len(debtor_block) < 1000:
-                    logger.debug(f" Полный блок Ответчик для ogrnip: {debtor_block}")
+            answer_match = re.search(RESPONDENT_BLOCK, text, re.IGNORECASE | re.DOTALL)
+            if answer_match:
+                debtor_block = answer_match.group(1)
+                logger.info(f"Найден блок Ответчик: длина {len(debtor_block)}")
 
         # Извлекаем ИНН или ОГРН из найденного блока должника/ответчика
         if debtor_block:
@@ -277,22 +259,16 @@ class PartiesMixin:
         debtor_block = None
 
         debtor_block_match = re.search(
-            r"Должник[:\s]*(.*?)(?=\n\s*\n|Временн(?:ый|ым)\s+управляющ|Сумма\s+требований|ЗАЯВЛЕНИЕ|Дело\s*№|$)",
+            DEBTOR_BLOCK,
             text,
             re.IGNORECASE | re.DOTALL
         )
         if debtor_block_match:
             debtor_block = debtor_block_match.group(1)
         else:
-            answer_matches = list(re.finditer(r"Ответчик[:\s]", text, re.IGNORECASE))
-            if answer_matches:
-                answer_match = answer_matches[0]
-                start_pos = answer_match.start()
-                end_pos = len(text)
-                next_plaintiff = re.search(r"Истец[:\s]", text[start_pos:], re.IGNORECASE)
-                if next_plaintiff:
-                    end_pos = start_pos + next_plaintiff.start()
-                debtor_block = text[start_pos:end_pos]
+            answer_match = re.search(RESPONDENT_BLOCK, text, re.IGNORECASE | re.DOTALL)
+            if answer_match:
+                debtor_block = answer_match.group(1)
 
         if debtor_block:
             debtor_block = debtor_block.replace('\u202f', ' ').replace('\xa0', ' ')
@@ -336,7 +312,7 @@ class PartiesMixin:
     def _extract_legal_entity_requisites(self, extracted_fields, text):
         """Реквизиты ЮЛ из блока «Должник:»: юридический адрес (в т.ч. многострочный), ОГРН, ИНН (по контрольной сумме), адрес КФХ. Возвращает найденный debtor_block для downstream-логики. Вынесено из extract_fields."""
         debtor_block_match = re.search(
-            r"Должник[:\s]*(.*?)(?=\n\s*\n|Временн(?:ый|ым)\s+управляющ|Сумма\s+требований|ЗАЯВЛЕНИЕ|Дело\s*№|$)",
+            DEBTOR_BLOCK,
             text,
             re.IGNORECASE | re.DOTALL
         )
@@ -531,7 +507,36 @@ class PartiesMixin:
         "цена иска", "госпошлина", "заинтересованные лица", "заинтересованное лицо",
         "третьи лица", "третье лицо", "третьих лиц", "заявитель",
         "на №", "о направлении", "заемщик", "заёмщик",
+        # Подписи, которые идут сразу за адресом в шапке искового заявления.
+        # «телефон» в списке уже был, но обрезал строку ПОСЛЕ слова
+        # «Контактный», и оно оставалось хвостом адреса.
+        "контактн", "иной извест", "наименование",
     ]
+
+    # Тот же список, но пробел между словами НЕОБЯЗАТЕЛЕН. Конвертер регулярно
+    # съедает пробел на стыке колонок: «Финансовыйуправляющий: СЕРГИЕНКО ИВАН
+    # ГЕННАДЬЕВИЧ» ехало в адрес целиком, потому что подстрока с пробелом не
+    # находилась. Поиск подстрокой тут не спасает — нужен именно зазор.
+    _ADDR_STOP_RE = re.compile(
+        "|".join(r"\s*".join(re.escape(сл) for сл in т.split())
+                 for т in _ADDR_STOP_TOKENS),
+        re.IGNORECASE,
+    )
+
+    # Метка ЧУЖОЙ стороны в начале строки-продолжения. Нужна отдельно от списка
+    # выше: в двухколоночной вёрстке подпись разрывается между колонками и от
+    # неё остаётся одно слово — «…кв. 53\nФИНАНСОВЫЙ \tСелина Ольга Олеговна»
+    # (второе слово «УПРАВЛЯЮЩИЙ» уехало в соседний столбец). Ловим только в
+    # НАЧАЛЕ строки: внутри строки «финансовый» встречается в прозе.
+    _ADDR_FOREIGN_LINE_RE = re.compile(
+        r"^\s*(?:финансов\w*|временн\w*|конкурсн\w*|арбитражн\w*|"
+        r"кредитор|заявител\w*|взыскател\w*|представител\w*|"
+        # Исходящий номер письма следующей секции: «кв. 1\n№007.28.7-3/918/26
+        # от 09.07.2026». В адресе номер дома пишется «д. №5», то есть с меткой
+        # перед номером, а не с начала строки.
+        r"№\s*\d)",
+        re.IGNORECASE,
+    )
 
     # ГЕОГРАФИЧЕСКИЕ признаки адреса: город, область, улица, дом, а/я. Набор
     # намеренно широкий — задача отсечь ФИО и прозу, а не проверить адрес на
@@ -539,10 +544,25 @@ class PartiesMixin:
     # отдельно, иначе кандидат, начинающийся с шести цифр, подтверждает сам себя
     # («499999, 53 руб., в том числе — просроченный основной долг»: сумма без
     # пробела выглядит как индекс, и `\d{6}` объявлял её адресом).
+    # Правая граница у «обл», «ул», «г» НЕ ставится намеренно: конвертер съедает
+    # пробел на стыке колонок и печатает «Ростовская облРостов-на-Донуг
+    # 20-яулд.62» — с \b ни один признак не срабатывал, и настоящий адрес
+    # должника отбраковывался в пользу а/я управляющего строкой ниже.
+    # Левая граница остаётся: без неё «обл» ловится внутри «Проблема».
     _ADDR_GEO_MARKER_RE = re.compile(
-        r"\bг\.|\bгород|\bобл\b|област|\bул\b|\bул\.|улиц|\bд\.|\bдом\b|"
+        r"\bг\.|\bг\b|\bгород|\bобл|област|\bул|улиц|\bд\.|\bдом\b|"
         r"\bкв\b|\bкв\.|\bпр-?кт|проспект|\bпер\b|\bпер\.|\bнаб\b|шоссе|"
         r"респ|\bкрай\b|\bр-н\b|\bа/я\b|\bстр\b|\bпос\b|\bст-ца|хутор|\bх\.",
+        re.IGNORECASE,
+    )
+
+    # Признак УЛИЦЫ. Место рождения — это населённый пункт; улицы и дома в нём
+    # не бывает. Отсюда простое различение: значение под меткой «Место
+    # рождения», в котором есть улица, — на самом деле адрес (свежие-1, вёрстка
+    # слила две строки шапки). Замер по корпусу: из 44 заполненных мест
+    # рождения улицу содержит РОВНО ОДНО — то самое.
+    _ADDR_STREET_RE = re.compile(
+        r"\bул\b|\bул\.|улиц|\bпр-?кт|проспект|\bпер\.|\bнаб\b|шоссе|бульвар",
         re.IGNORECASE,
     )
 
@@ -581,19 +601,32 @@ class PartiesMixin:
         )
         # Прилипшие служебные слова в начале хвоста (когда сработала голая метка «адрес»).
         lead_junk_re = re.compile(
-            r"^\s*(?:регистрации|прописки|нахождения|жительства|"
+            # Тире в начале — след переноса строки в исходной вёрстке:
+            # «адрес — регистрации: Ростовская обл., …». Без него остаток метки
+            # уезжал в значение вместе с чёрточкой.
+            r"^\s*[-–—]?\s*(?:регистрации|прописки|нахождения|жительства|"
+            # «адрес регистрации ПО МЕСТУ ЖИТЕЛЬСТВА: 346496, …» — метка длиннее,
+            # чем ловит label_re, и её хвост уезжал в значение. В вёрстке между
+            # словами стоят табы, поэтому зазор обязателен гибкий.
+            r"по\s*мест\w*\s*жительства|по\s*мест\w*\s*нахождени\w*|"
             r"мест\w*\s*нахождени\w*|мест\w*\s*жительства)\s*:?\s*",
             re.IGNORECASE,
         )
 
         def cut_at_stop(s):
-            """(строка_до_первого_маркера, встретился_ли_маркер). Точки сохраняем."""
+            """(строка_до_первого_маркера, встретился_ли_маркер). Точки сохраняем.
+
+            Запятая в КОНЦЕ строки не срезается: строки склеиваются пробелом, и
+            вместе с ней терялся разделитель, который стоял в документе —
+            «ул. Литовская,⏎д. 180» превращалось в «ул. Литовская д. 180».
+            Лишняя запятая на самом конце адреса снимается общей чисткой ниже.
+            """
             s = re.sub(r"\[[0-9.]+\]", "", s)
-            low = s.lower()
-            idxs = [low.find(t) for t in self._ADDR_STOP_TOKENS if low.find(t) != -1]
-            if idxs:
-                return s[:min(idxs)].strip(" ,;:\t"), True
-            return s.strip(" ,;:\t"), False
+            m = self._ADDR_STOP_RE.search(s)
+            if m:
+                s = s[:m.start()]
+                return s.lstrip(" ,;:\t").rstrip(" ;:\t"), True
+            return s.lstrip(" ,;:\t").rstrip(" ;:\t"), False
 
         start_idx, first_tail = -1, ""
         for i, line in enumerate(lines):
@@ -653,6 +686,11 @@ class PartiesMixin:
             # числе — просроченный основной долг»). Поэтому мало найти индекс:
             # продолжение обязано выглядеть адресом.
             for i, line in enumerate(lines):
+                # За подписью чужой стороны начинается ЕЁ запись, и первый же
+                # индекс там — её индекс. Без этого обрыва должнику доставался
+                # а/я финансового управляющего строкой ниже.
+                if self._ADDR_FOREIGN_LINE_RE.match(line):
+                    break
                 cand = None
                 if re.match(r"^\d{6}[,\s]", line):
                     cand = line
@@ -669,6 +707,35 @@ class PartiesMixin:
                     start_idx, first_tail = i, cand
                     break
         if start_idx == -1:
+            # Адрес, подписанный «Место рождения»: вёрстка слила две строки
+            # шапки, и настоящее место рождения осталось пустым. Метка врёт,
+            # значение — нет (см. _ADDR_STREET_RE).
+            for i, line in enumerate(lines):
+                m = re.match(r"\s*мест\w*\s*рождени\w*\s*:?\s*", line, re.IGNORECASE)
+                if not m:
+                    continue
+                хвост = line[m.end():].strip()
+                if хвост and self._ADDR_STREET_RE.search(хвост):
+                    start_idx, first_tail = i, хвост
+                break
+        if start_idx == -1:
+            # Ни метки, ни индекса: часть банков печатает адрес должника голой
+            # строкой сразу под именем —
+            #     «Должник: Терников Юрий Александрович
+            #      Москва г ВоротЫНСКАЯ улд.12 кв.ЗО
+            #      Финансовый управляющий: …»
+            # Здесь подтвердить строку может только она сама, поэтому порог —
+            # ДВА географических признака: одного достаточно, чтобы принять за
+            # адрес фамилию («Кулиговская» содержит «ул»), а двух — уже нет.
+            # Дальше подписи чужой стороны не идём по той же причине, что и выше.
+            for i, line in enumerate(lines):
+                if self._ADDR_FOREIGN_LINE_RE.match(line):
+                    break
+                cleaned, _ = cut_at_stop(line)
+                if cleaned and len(self._ADDR_GEO_MARKER_RE.findall(cleaned)) >= 2:
+                    start_idx, first_tail = i, cleaned
+                    break
+        if start_idx == -1:
             return None
 
         parts = []
@@ -679,6 +746,12 @@ class PartiesMixin:
             for nxt in lines[start_idx + 1:start_idx + 7]:
                 if not nxt:
                     break
+                # Строка начинается подписью ЧУЖОЙ стороны или исходящим номером —
+                # адрес кончился. Список стоп-токенов этого не ловит: там подпись
+                # записана целиком, а в двухколоночной вёрстке от неё остаётся
+                # одно слово.
+                if self._ADDR_FOREIGN_LINE_RE.match(nxt):
+                    break
                 cleaned, stopped = cut_at_stop(nxt)
                 if not cleaned:
                     break
@@ -688,10 +761,33 @@ class PartiesMixin:
         if not parts:
             return None
         addr = " ".join(parts)                      # склейка строк пробелом
+        addr = self._cut_at_unbalanced_paren(addr)
         addr = re.sub(r"\s+", " ", addr)
         addr = re.sub(r"(?:\s*,\s*){2,}", ", ", addr)   # «,,» / «, ,» -> «, »
         addr = re.sub(r"\s*,\s*", ", ", addr).strip(" ,;:\t")
         return addr or None
+
+    @staticmethod
+    def _cut_at_unbalanced_paren(addr: str) -> str:
+        """Обрезает адрес по закрывающей скобке, которая ничего не открывала.
+
+        В теле заявления реквизиты должника печатают в скобках после имени:
+        «Краснянсков Сергей Игоревич (17.09.1987, …, адрес регистрации:
+        Ростовская обл. …, д.2) признан несостоятельным (банкротом)».
+        Открывающая скобка осталась ЗА пределами значения, поэтому закрывающая
+        внутри него — это край, а дальше идёт мотивировка.
+
+        Парные скобки не трогаем: «ул. Ленина (быв. Советская), д. 5» — адрес.
+        """
+        глубина = 0
+        for i, ch in enumerate(addr):
+            if ch == "(":
+                глубина += 1
+            elif ch == ")":
+                if глубина == 0:
+                    return addr[:i]
+                глубина -= 1
+        return addr
 
     # Окно после имени должника, в котором ещё уместно искать его дату рождения.
     _BIRTH_NEAR_NAME_WINDOW = 140
@@ -864,6 +960,14 @@ class PartiesMixin:
         if applicant_addr and creditor_addr and applicant_addr == creditor_addr:
             extracted_fields.pop("applicantAddress", None)
             logger.warning(" Адрес заявителя совпадал с адресом кредитора — поле очищено")
+
+        # Место рождения с улицей — это адрес, попавший под чужую метку из-за
+        # слипшихся строк шапки. Значение уже забрано в адрес; оставить его ещё
+        # и здесь значит показать юристу улицу в графе «Место рождения».
+        birth_place = (extracted_fields.get("birthPlace") or "").strip()
+        if birth_place and self._ADDR_STREET_RE.search(birth_place):
+            extracted_fields.pop("birthPlace", None)
+            logger.warning(f" «Место рождения» содержало улицу — это адрес, поле очищено: {birth_place!r}")
 
         # Адрес должника не должен быть названием/адресом суда (индекс + "Арбитражный суд ... области")
         if extracted_fields.get("applicantAddress"):

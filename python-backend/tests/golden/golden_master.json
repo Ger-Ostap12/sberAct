@@ -275,7 +275,7 @@
   "documentType": "mortgage_claim",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "",
+   "applicantAddress": "353911, Краснодарский край, г. НОВОРОССИЙСК, пер.ГЕЛЕНДЖИКСКИЙ, д.8Б",
    "applicantName": "Нуриева Елена Валидиновна",
    "applicantNameAccusative": "Приморского районного суд",
    "applicantNameGenitive": "НУРИЕВОЙ ЕЛЕНЫ ВАЛИДИНОВНЫ",
@@ -627,7 +627,7 @@
   "documentType": "mortgage_claim",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "",
+   "applicantAddress": "366312, СОЛАР-ПРО РЕСПУБЛИКА, КУРЧАЛОЕВСКИЙ Р-Н, с. ЦОЦИ-ЮРТ, ул. Р.Ж.ГУЧИГОВА, д. 13",
    "applicantName": "Путова Совдаш Ромзановна",
    "applicantNameAccusative": "Шалинского городского суд",
    "applicantNameGenitive": "ПУТОВОЙ СОВДАШ РОМЗАНОВНЫ",
@@ -1059,7 +1059,7 @@
   "documentType": "mortgage_claim",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "",
+   "applicantAddress": "366666, ЧЕЧЕНСКАЯ РЕСПУБЛИКА, ШАЛИНСКИЙ Р-Н, С. ГЕРМЕНЧУК, УЛ. СТРОИТЕЛЬНАЯ, ДОМ 484",
    "applicantName": "Жевнин Магомед Тимурович",
    "applicantNameAccusative": "Шалинского городского суд",
    "applicantNameGenitive": "ЖЕВНИНА МАГОМЕДА ТИМУРОВИЧА",
@@ -1204,7 +1204,7 @@
   "documentType": "mortgage_claim",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "",
+   "applicantAddress": "675014. АМУРСКАЯ ОБЛАСТЬ. Г БЛАГОВЕЩЕНСК, УЛ. ТЕКСТИЛЬНАЯ, ДОМ 86/2, КВАРТИРА 68",
    "applicantName": "Фонарева Инна Викторовна",
    "applicantNameAccusative": "Октябрьского районного суд",
    "applicantNameGenitive": "ФОНАРЕВОЙ ИННЫ ВИКТООРОВНЫ",
@@ -1366,7 +1366,7 @@
   "documentType": "mortgage_claim",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "",
+   "applicantAddress": "353353, КРАСНОДАРСКИЙ КРАЙ, ТЕМРЮКСКИЙ Р-Н, г. ТЕМРЮК, ул. КАЛИНИНА, д. 854",
    "applicantName": "Налибаев Андрей Михайлович",
    "applicantNameAccusative": "Темрюкского районного суд",
    "applicantNameGenitive": "КАРПАКОВА АНДРЕЯ МИХАЙЛОВИЧА",
@@ -1924,7 +1924,7 @@
   "confidence": 1.0,
   "debtors": [
    {
-    "address": "346404, Ростовская область гор.Новочеркасск, Харьковское шоссе, д.10, офис 27",
+    "address": "346404, Ростовская область, гор.Новочеркасск, Харьковское шоссе, д.10, офис 27",
     "birthDate": "",
     "birthPlace": "",
     "inn": "3448049188",
@@ -1937,7 +1937,7 @@
   "documentType": "initiation_legal",
   "entityType": "legal",
   "fields": {
-   "applicantAddress": "346404, Ростовская область гор.Новочеркасск, Харьковское шоссе, д.10, офис 27",
+   "applicantAddress": "346404, Ростовская область, гор.Новочеркасск, Харьковское шоссе, д.10, офис 27",
    "applicantName": "ООО «Форте Пром ГМБХ»",
    "applicantNameAccusative": "ООО «форт Пром ГМБХ»",
    "applicantNameDative": "ООО «форту Прому ГМБХАМ»",
@@ -3412,7 +3412,7 @@
   "confidence": 1.0,
   "debtors": [
    {
-    "address": "РОССИЯ, 346660, РОСТОВСКАЯ МАРТЫНОВСКИЙ, СЛ. БОЛЬШАЯ МАРТЫНОВКА, УЛ. СТЕПНАЯ, Д. 37, КВ. 2",
+    "address": "РОССИЯ, 346660, РОСТОВСКАЯ, МАРТЫНОВСКИЙ, СЛ. БОЛЬШАЯ МАРТЫНОВКА, УЛ. СТЕПНАЯ, Д. 37, КВ. 2",
     "birthDate": "",
     "birthPlace": "",
     "inn": "",
@@ -3425,7 +3425,7 @@
   "documentType": "rtk_application",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "РОССИЯ, 346660, РОСТОВСКАЯ МАРТЫНОВСКИЙ, СЛ. БОЛЬШАЯ МАРТЫНОВКА, УЛ. СТЕПНАЯ, Д. 37, КВ. 2",
+   "applicantAddress": "РОССИЯ, 346660, РОСТОВСКАЯ, МАРТЫНОВСКИЙ, СЛ. БОЛЬШАЯ МАРТЫНОВКА, УЛ. СТЕПНАЯ, Д. 37, КВ. 2",
    "applicantName": "КЛИМОВ МАКСИМ ВЛАДИМИРОВИЧ",
    "applicantNameAccusative": "КЛИМОВА МАКСИМА ВЛАДИМИРОВИЧА",
    "applicantNameDative": "КЛИМОВУ МАКСИМУ ВЛАДИМИРОВИЧУ",
@@ -5825,7 +5825,7 @@
   "confidence": 1.0,
   "debtors": [
    {
-    "address": "346404, Ростовская область, г. о. город Новочеркасск, г. Новочеркасск Харьковское шоссе, д. 10",
+    "address": "346404, Ростовская область, г. о. город Новочеркасск, г. Новочеркасск, Харьковское шоссе, д. 10",
     "birthDate": "",
     "birthPlace": "",
     "inn": "3461063590",
@@ -5838,7 +5838,7 @@
   "documentType": "initiation_legal",
   "entityType": "legal",
   "fields": {
-   "applicantAddress": "346404, Ростовская область, г. о. город Новочеркасск, г. Новочеркасск Харьковское шоссе, д. 10",
+   "applicantAddress": "346404, Ростовская область, г. о. город Новочеркасск, г. Новочеркасск, Харьковское шоссе, д. 10",
    "applicantName": "ООО «Форте Пром Стил ГМБХ»",
    "applicantNameAccusative": "ООО «форт Пром Стившего ГМБХ»",
    "applicantNameDative": "ООО «форту Прому Стившему ГМБХАМ»",
@@ -6947,8 +6947,6 @@
    "passportNumber": "278902",
    "passportSeries": "6023",
    "principalDebt13": "158 434,00",
-   "procedureType": "observation",
-   "procedureTypeRaw": "наблюдение",
    "representativeName": "Шульженко Ю.В.",
    "requirementsSum": "2 126,00",
    "sourceDocumentType": "rtk_application",
@@ -8381,7 +8379,7 @@
   "confidence": 1.0,
   "debtors": [
    {
-    "address": "347810, Ростовская область г. Каменск-Шахтинский, ул. Ленина, д.65",
+    "address": "347810, Ростовская область, г. Каменск-Шахтинский, ул. Ленина, д.65",
     "birthDate": "30.01.1962",
     "birthPlace": "",
     "inn": "",
@@ -8394,7 +8392,7 @@
   "documentType": "initiation_physical",
   "entityType": "individual",
   "fields": {
-   "applicantAddress": "347810, Ростовская область г. Каменск-Шахтинский, ул. Ленина, д.65",
+   "applicantAddress": "347810, Ростовская область, г. Каменск-Шахтинский, ул. Ленина, д.65",
    "applicantName": "Манукян Сос Жораевич",
    "applicantNameAccusative": "Манукяна Сос Жораевич",
    "applicantNameDative": "Манукяну Сос Жораевич",
