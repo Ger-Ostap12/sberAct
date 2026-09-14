@@ -51,7 +51,13 @@ from ip_mixin import IpExtractionMixin
 from obligations_mixin import ObligationsMixin
 from inflection_mixin import InflectionMixin
 from prior_collection_mixin import PriorCollectionMixin
-from patterns import COLLATERAL_SECURED, MANAGER_ADDRESS_AFTER_NAME, SNILS_VALUE, build_patterns
+from patterns import (
+    COLLATERAL_SECURED,
+    MANAGER_ADDRESS_AFTER_NAME,
+    MANAGER_ROLE,
+    SNILS_VALUE,
+    build_patterns,
+)
 # Исполнение паттернов идёт через модуль: он компилирует их один раз и отсеивает
 # заведомо непопадающие по обязательным литералам (см. patterns.required_literals).
 import patterns as pattern_exec
@@ -160,6 +166,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 # Шапка «метки стопкой» различима только по разметке: в плоском
                 # тексте метка и ЧУЖОЕ значение оказываются на одной строке.
                 self._apply_stacked_header(result, file_path, doc=doc)
+                # Запись управляющего, разорванную порядком сборки плоского
+                # текста, восстанавливаем по истинному порядку чтения.
+                self._fill_manager_address_true_order(result, file_path)
             return result
         except Exception as e:
             logger.error(f"Ошибка при анализе документа: {str(e)}")
@@ -3616,12 +3625,106 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # огрызком до переноса строки.
             m = re.search(MANAGER_ADDRESS_AFTER_NAME, text, re.IGNORECASE)
         if not m:
+            # Двухколоночная шапка ВТБ: конвертер разделяет колонки строкой из
+            # дефисов, и метка разорвана значением —
+            #     «ФИНАНСОВЫЙ Селина Ольга Олеговна (ИНН …, СНИЛС 125- УПРАВЛЯЮЩИЙ: 151-221 05)
+            #      ------------------------------------------- 115455, г. Москва, …, а/я 13»
+            # Ни один слой выше не смотрит ЗА черту, и адрес терялся целиком.
+            # Черта встречается и у других сторон, поэтому якорь — слово
+            # «управляющ…» С ДВОЕТОЧИЕМ в предыдущей строке.
+            m = re.search(
+                r"управляющ\w*\s*:[^\n]*\n[ \t]*-{10,}[ \t]*"
+                r"((?<!\d)\d{6}(?!\d)[^\n]{10,160})",
+                text, re.IGNORECASE,
+            )
+        if not m:
             return
         addr = re.sub(r"\s+", " ", m.group(1)).strip()
         addr = re.split(r"\b(?:ИНН|ОГРН|ОГРНИП|СНИЛС|КПП)\b", addr, flags=re.IGNORECASE)[0]
         addr = addr.strip().rstrip(" ,;")
         if re.search(r"[А-Яа-яЁё]{3}", addr):
             fields["managerAddress"] = addr
+
+    # Конец записи управляющего в истинном порядке: метка следующего поля бланка
+    # или начало тела заявления.
+    _MANAGER_RECORD_END_RE = re.compile(
+        r"^(?:Адрес\s+электронной\s+почты|Электронн\w*\s+почт|E-?mail|Тел\b|Телефон|"
+        r"Дело\b|Номер\s+дела|Государственн\w*\s+пошлин|Госпошлин|Размер\s+требован|"
+        r"Должник|Кредитор|Заявител|Ответчик|Взыскател|Треть[еи]\s+лиц|"
+        r"ЗАЯВЛЕНИЕ|Заявление|ТРЕБОВАНИЕ|Требование|ПРОШУ|ПРОСИТ|Приложени|"
+        r"Реквизиты|На\s+основании|В\s+соответствии|Согласно|Арбитражный\s+суд)",
+        re.IGNORECASE,
+    )
+
+    # Метка блока управляющего в ШАПКЕ: роль с двоеточием, короткой строкой.
+    # Двоеточие обязательно — иначе якорем становится проза тела («…направления
+    # заявления в адрес арбитражного управляющего»), и следом за ней идёт
+    # просительная часть с адресом КРЕДИТОРА.
+    _MANAGER_HEADER_LABEL_RE = re.compile(MANAGER_ROLE + r"\s*:", re.IGNORECASE)
+    _MANAGER_LABEL_MAX = 120
+
+    def _fill_manager_address_true_order(self, result: Dict[str, Any], file_path: str) -> None:
+        """Адрес управляющего, разорванный ПОРЯДКОМ СБОРКИ плоского текста.
+
+        `extract_text` кладёт сначала ВСЕ абзацы тела, потом ВСЕ ячейки таблиц
+        (инвариант плоского текста, на нём стоит golden). Если шапка свёрстана
+        частично таблицей, частично абзацами, запись стороны рвётся: на свежие-25
+        метка с ФИО («Финансовый управляющий:» / «Сипакова Алина Олеговна,
+        адрес:») — ячейки таблицы и уезжают в плоском тексте на 39 строк ВНИЗ,
+        а сам адрес остаётся абзацем наверху и выглядит ничейным.
+
+        В ИСТИННОМ порядке чтения они стоят подряд, поэтому запись собираем
+        оттуда. Плоский текст при этом не трогаем — иначе поехал бы весь golden.
+
+        Слой срабатывает ТОЛЬКО на пустом поле: испортить разобранное он не может.
+        """
+        fields = result.get("fields")
+        if not isinstance(fields, dict) or (fields.get("managerAddress") or "").strip():
+            return
+        try:
+            parts = self._docx_parts_true_order(file_path)
+        except Exception as exc:  # разметка не читается — это не повод падать
+            logger.debug(f"Истинный порядок не прочитан: {exc}")
+            return
+
+        for i, (текст, _origin, _flat) in enumerate(parts):
+            текст = текст.strip()
+            if len(текст) > self._MANAGER_LABEL_MAX:
+                continue
+            if not self._MANAGER_HEADER_LABEL_RE.search(текст):
+                continue
+            адрес = self._manager_address_from_parts(parts[i + 1:i + 7])
+            if адрес:
+                fields["managerAddress"] = адрес
+                logger.info(f"Адрес управляющего собран по истинному порядку: {адрес}")
+                return
+
+    def _manager_address_from_parts(self, хвост) -> Optional[str]:
+        """Адрес из частей, идущих ЗА меткой управляющего в истинном порядке.
+
+        Адресом считаем ОТДЕЛЬНУЮ часть, НАЧИНАЮЩУЮСЯ с почтового индекса, — так
+        свёрстана ячейка шапки. Кусок прозы с индексом где-то в середине сюда не
+        подходит: в теле заявления «по адресу: 650992, …» — это адрес кредитора.
+        """
+        for k, (текст, _o, _f) in enumerate(хвост):
+            текст = текст.strip()
+            if self._MANAGER_RECORD_END_RE.match(текст):
+                return None
+            m = re.match(r"(?<!\d)(\d{6})(?!\d)(.{10,200})$", текст, re.DOTALL)
+            if not m:
+                continue
+            адрес = re.sub(r"\s+", " ", m.group(1) + m.group(2)).strip()
+            # Абонентский ящик регулярно разрывается переносом: «… а/я» приходит
+            # одной частью, номер — следующей. Без номера ящик бессмыслен.
+            if re.search(r"а\s*/\s*я\s*$", адрес, re.IGNORECASE) and k + 1 < len(хвост):
+                следующая = хвост[k + 1][0].strip()
+                if re.fullmatch(r"\d{1,6}", следующая):
+                    адрес = f"{адрес} {следующая}"
+            адрес = re.split(r"\b(?:ИНН|ОГРН|ОГРНИП|СНИЛС|КПП)\b", адрес,
+                             flags=re.IGNORECASE)[0].strip().rstrip(" ,;")
+            if адрес and re.search(r"[А-Яа-яЁё]{3}", адрес):
+                return адрес
+        return None
 
     # Метка (якорь роли, стоп-метки других сторон) для NLP-достройки адреса.
     # Окно берём ПОСЛЕ якоря и ОБРЫВАЕМ на метке следующей стороны — иначе окно
