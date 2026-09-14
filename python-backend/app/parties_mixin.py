@@ -57,6 +57,15 @@ class PartiesMixin:
         """
         fields.setdefault(self._ADVISORY_KEY, {})[field] = reason
 
+    def _unadvise(self, fields: Dict[str, Any], field: str) -> None:
+        """Снять пометку: проверять юристу больше нечего.
+
+        Нужно там, где поздний слой ПОДТВЕРЖДАЕТ значение, помеченное ранним.
+        Пометка не безобидна: панель претензий — это список работы, и лишняя
+        строка в нём стоит юристу времени на сверку, у которой нет предмета.
+        """
+        (fields.get(self._ADVISORY_KEY) or {}).pop(field, None)
+
     # Заголовок заявления сам называет должника и тут же даёт его ИНН:
     #     «ЗАЯВЛЕНИЕ о включении требований кредитора в реестр требований
     #      кредиторов Воробьевой Светланы Михайловны ИНН 611000587986»
@@ -1926,6 +1935,13 @@ class PartiesMixin:
         non_legal = self._creditor_address_non_legal(block or "")
         if non_legal:
             addr, kind = non_legal
+            # Справочник = СВЕРКА, а не источник (§S.16). Если непрофильный адрес
+            # из документа совпал с юридическим из справочника, проверять юристу
+            # нечего: документ подтвердил справочник. Так у ФНС стояла пометка
+            # «адреса в документе нет», хотя он там есть — под меткой «Адрес для
+            # корреспонденции», и это ровно адрес инспекции.
+            if registry_addr and same_address(addr, registry_addr):
+                return addr, addr
             self._advise(fields, "creditorAddress", self._ADDR_NON_LEGAL.format(kind))
             return addr, addr
 

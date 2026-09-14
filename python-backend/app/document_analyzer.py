@@ -1660,7 +1660,12 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         header = text[:4500]
         for start_pattern in [
             r"Заявитель\s*\(кредитор\)\s*:?\s*",
-            r"Истец\s*:\s*",
+            # «Истеп:» — не опечатка юриста, а распознавание: в этом начертании
+            # «ц» с хвостиком читается как «п». Замер по корпусу: 1 документ,
+            # и на нём блок кредитора не находился вовсе — адрес, ИНН и ОГРН
+            # брались из справочника с пометкой «в документе их нет».
+            # Пара букв закрыта явно, чтобы не ловить «истек», «истечение».
+            r"Исте[цп]\s*:\s*",
             r"Кредитор\s*:\s*",
             # «Взыскатель:» реестр объявляет наравне с «Кредитор:», но якоря его не
             # знали: на заявлении с такой шапкой блок кредитора не находился вовсе,
@@ -1701,8 +1706,35 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             r"e-?mail|эл\.?\s*почт|ОГРН|ИНН|КПП|БИК|Дата\s+гос|р/с|к/с|корр)",
             addr, flags=re.IGNORECASE,
         )[0]
-        addr = re.sub(r"\s+", " ", addr).strip().strip(",;. ")
+        # Хвостовой «№» — начало СЛЕДУЮЩЕГО поля («…450075 №исх.»), обрезанное
+        # границей блока кредитора. Внутри адреса номер законен («кабинет №818»),
+        # поэтому снимаем только концевой.
+        addr = re.sub(r"\s+", " ", addr).strip().strip(",;. ").rstrip("№ ")
         return addr
+
+    # Метка ЮРИДИЧЕСКОГО адреса. Зазор между словами необязателен: половина
+    # банков печатает «Адрес местонахождения:» ОДНИМ словом (замер по корпусу —
+    # 4 документа), и требование пробела теряло адрес целиком, а поле
+    # заполнялось из справочника с пометкой «в документе адреса нет».
+    _LEGAL_ADDR_LABEL = r"(?:мест\w*\s*нахождени\w*|юридическ\w+\s+адрес)"
+
+    # Адрес заявителя в ПРОСИТЕЛЬНОЙ части: «…прошу суд рассмотреть дело в
+    # отсутствии Заявителя и направить копию определения суда Заявителю по
+    # адресу: 650992, Кемеровская область-Кузбасс, …, кабинет №818.»
+    #
+    # Источник высокой надёжности: одна строка, явная метка, законченное
+    # предложение. Нужен там, где шапка свёрстана в перемешанные колонки и
+    # адрес в ней собирается кусками не по порядку («Адрес: Октября, д. 11,⏎
+    # 650992, … ул. 50 лет⏎кабинет №818»). Замер по корпусу: 3 документа,
+    # во всех трёх значение полное и совпадает с вычитанным вручную.
+    _CREDITOR_ADDR_IN_PRAYER_RE = re.compile(
+        # Точку из класса исключать НЕЛЬЗЯ: в адресе их полно («г.», «ул.»,
+        # «д. 11»), и захват обрывался на первой же — «650992, Кемеровская
+        # область-Кузбасс, г». Конец предложения снимает общая чистка (.strip).
+        r"направит[ья]\s+копию\s+(?:определения|решения)\s+суда\s+"
+        r"(?:Заявителю|Кредитору|Истцу|Взыскателю)\s+по\s+адресу\s*:\s*([^\n]{15,200})",
+        re.IGNORECASE,
+    )
 
     def _extract_creditor_address(self, text: str) -> Optional[str]:
         """Извлекает ТОЛЬКО юридический адрес кредитора (без почтового и мусора).
@@ -1716,19 +1748,48 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         block = self._extract_creditor_block(text)
         if not block:
             return None
+        def принять(значение: Optional[str]) -> Optional[str]:
+            """Общий фильтр годности для всех слоёв: длина и географический признак."""
+            if not значение:
+                return None
+            addr = self._clean_creditor_address(self.clean_extracted_value(значение.strip()))
+            if addr and 10 <= len(addr) <= 200 and re.search(
+                r"\d{6}|город|\bг\.|ул\.|улиц|пр-?кт|проспект", addr, re.IGNORECASE
+            ):
+                return addr
+            return None
+
         # Приоритет — явные метки юр-адреса; «почтовый/фактический адрес» исключаем.
         for addr_pattern in [
-
-            r"(?:место\s+нахождения|юридическ\w+\s+адрес)[:\s]*([0-9]{6}[,\s]+[^\n]+(?:\n[^\n]+)?)",
-            r"(?:место\s+нахождения|юридическ\w+\s+адрес)[:\s]*([^\n]+)",
-            # Плоская метка «Адрес:» в начале строки (индекс + продолжение на след. строке).
-            r"(?:^|\n)\s*адрес[:\s]*([0-9]{6}[,\s]+[^\n]+(?:\n[^\n]+)?)",
+            self._LEGAL_ADDR_LABEL + r"[:\s]*([0-9]{6}[,\s]+[^\n]+(?:\n[^\n]+)?)",
+            self._LEGAL_ADDR_LABEL + r"[:\s]*([^\n]+)",
         ]:
             addr_m = re.search(addr_pattern, block, re.IGNORECASE)
             if addr_m:
-                addr = self._clean_creditor_address(self.clean_extracted_value(addr_m.group(1).strip()))
-                if addr and 10 <= len(addr) <= 200 and re.search(r"\d{6}|город|\bг\.|ул\.|улиц|пр-?кт|проспект", addr, re.IGNORECASE):
+                addr = принять(addr_m.group(1))
+                if addr:
                     return addr
+
+        # Просительная часть — ВЫШЕ плоской метки «Адрес:» и сканирования по
+        # индексу. Оба нижних слоя собирают значение из строк блока, а в
+        # перемешанных колонках соседство строк не означает порядок частей
+        # адреса: у «Вернём» так получался обрезок «…, ул. 50 лет» без дома.
+        # Одна строка просительной части даёт адрес целиком.
+        prayer = self._CREDITOR_ADDR_IN_PRAYER_RE.search(text)
+        if prayer:
+            addr = принять(prayer.group(1))
+            if addr:
+                return addr
+
+        # Плоская метка «Адрес:» в начале строки (индекс + продолжение на след. строке).
+        addr_m = re.search(
+            r"(?:^|\n)\s*адрес[:\s]*([0-9]{6}[,\s]+[^\n]+(?:\n[^\n]+)?)",
+            block, re.IGNORECASE,
+        )
+        if addr_m:
+            addr = принять(addr_m.group(1))
+            if addr:
+                return addr
 
         lines = [ln.strip() for ln in block.split("\n")]
         for i, line in enumerate(lines):
@@ -1783,6 +1844,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         r"|вн|лит|литера|мкр|пос|р-н|пом|зд)\."
         r"|\b(?:проспект|улиц[аы]|переул(?:ок|ка)|бульвар|шоссе|набережн(?:ая|ой)"
         r"|площад[ьи]|проезд|микрорайон|квартал|область|район|город|дом|корпус"
+        # «Республика» и «край» — такие же оборванные типы региона, как «область»:
+        # узкая колонка рвёт «…г. Уфа, Республика⏎Башкортостан, 450075», и без
+        # них адрес инспекции обрывался на слове «Республика».
+        r"|республика|край"
         r"|строение|литера|помещение|офис|квартира|комната|этаж))$",
         re.IGNORECASE,
     )
@@ -1815,8 +1880,17 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 if not m:
                     continue
                 parts, cur = [line[m.end():]], line[m.end():]
+                # Метка стоит ОДНА на строке, значение начинается со следующей
+                # («Адрес для корреспонденции:⏎ул. Мясникова, 52/32,⏎…»).
+                # Проверка обрыва ниже смотрит на хвост метки — у пустого хвоста
+                # признака обрыва нет, и адрес терялся целиком, а поле
+                # заполнялось из справочника с пометкой «в документе адреса нет».
+                start = i
+                if not cur.strip() and i + 1 < len(lines) and lines[i + 1].strip():
+                    start = i + 1
+                    parts, cur = [lines[start]], lines[start]
                 # Дочитываем строки, оборванные мягким переносом узкой колонки.
-                for nxt in lines[i + 1:i + 5]:
+                for nxt in lines[start + 1:start + 5]:
                     if not self._NON_LEGAL_CONTINUES_RE.search(cur.rstrip()):
                         break
                     if not nxt.strip() or self._ADDR_STOP_LINE_RE.match(nxt):
@@ -3068,14 +3142,21 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             self._advise(fields, "creditorAddress", self._ADDR_FROM_REGISTRY)
             return
 
+        if same_address(current, reg_addr):
+            # Документ ПОДТВЕРДИЛ справочник — проверять нечего, и пометку,
+            # поставленную ранним слоем, снимаем. У инспекции «Адрес для
+            # корреспонденции» и есть её адрес, поэтому предупреждение
+            # «юридического адреса в документе нет» было ложным: адрес там есть.
+            self._unadvise(fields, "creditorAddress")
+            return
+
         # Пометка на поле уже стоит — значит адрес непрофильный (фактический, для
         # корреспонденции) либо сам из справочника. Сверять запасной вид с
         # юридическим бессмысленно: они законно разные, а поле и так под проверкой.
         if "creditorAddress" in (fields.get(self._ADVISORY_KEY) or {}):
             return
 
-        if not same_address(current, reg_addr):
-            self._advise(fields, "creditorAddress", self._ADDR_MISMATCH.format(reg_addr))
+        self._advise(fields, "creditorAddress", self._ADDR_MISMATCH.format(reg_addr))
 
     def _apply_fns_authority(self, fields: Dict[str, Any], text: str) -> None:
         """Заявления уполномоченного органа (ФНС) о банкротстве/включении в РТК.
