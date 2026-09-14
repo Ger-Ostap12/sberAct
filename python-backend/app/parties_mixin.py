@@ -1416,6 +1416,13 @@ class PartiesMixin:
                     single["inn"] = rec["inn"]
             debtors_result = [single]
 
+        # Третье лицо — это НЕ должник: одна и та же сторона не может стоять в
+        # обеих ролях. Правило было записано только для LLM-пути (llm/prompts.py),
+        # а регексовый его не знал — и на свежие-33/34 должник, названный в теле
+        # заявления, попадал в карточки третьих лиц лишней записью.
+        parsed_tp = self._drop_debtor_from_third_parties(parsed_tp, extracted_fields,
+                                                         parsed_debtors)
+
         # Несколько третьих лиц: если извлеклись — отдаём как есть; иначе одно лицо
         # из плоских полей (если есть).
         if parsed_tp:
@@ -1440,6 +1447,28 @@ class PartiesMixin:
         # может принадлежать сразу должнику и третьему лицу/кредитору/управляющему.
         self._dedup_cross_block_ids(extracted_fields, details, third_parties_result)
         return debtors_result, third_parties_result
+
+    @staticmethod
+    def _drop_debtor_from_third_parties(parsed_tp, extracted_fields, parsed_debtors):
+        """Убирает из третьих лиц записи, которые на деле являются должником.
+
+        Сравниваем по имени: ИНН у такой записи может быть чужим (он вычитан из
+        соседней строки тела), а имя — то самое, под которым должник назван
+        в шапке. Регистр и «ё» приводим, чтобы «БУНИАТЯН» и «Буниатян» совпали.
+        """
+        if not parsed_tp:
+            return parsed_tp
+
+        def ключ(имя: str) -> str:
+            return re.sub(r"\s+", " ", (имя or "")).strip().casefold().replace("ё", "е")
+
+        имена_должника = {ключ(extracted_fields.get("debtorName")),
+                          ключ(extracted_fields.get("applicantName"))}
+        имена_должника.update(ключ(d.get("name")) for d in (parsed_debtors or []))
+        имена_должника.discard("")
+        if not имена_должника:
+            return parsed_tp
+        return [tp for tp in parsed_tp if ключ(tp.get("name")) not in имена_должника]
 
     def _combine_debtors(self, debtors: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Склеивает реквизиты нескольких должников в плоские поля через запятую.
