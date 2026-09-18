@@ -253,6 +253,17 @@ def _find_birthdate(block: str):
             block, re.IGNORECASE,
         )
     if not m:
+        # Форма БЕЗ метки, перечислением внутри записи стороны:
+        # «Кравцова Алина Викторовна, 08.05.1995, ИНН 616809024129».
+        # Якорь двусторонний — ФИО слева и реквизит справа: одной голой даты
+        # мало, в записи попадаются и договорные. Имя в (?-i:…), потому что
+        # под IGNORECASE класс [А-ЯЁ] ловит и строчные.
+        m = re.search(
+            r"(?-i:" + _NAME_SEQ_RE + r")\s*,\s*"
+            r"(\d{1,2})[.,](\d{1,2})[.,](\d{4})\s*,\s*(?:ИНН|СНИЛС)",
+            block, re.IGNORECASE,
+        )
+    if not m:
         return None
     day, month, year = int(m.group(1)), int(m.group(2)), int(m.group(3))
     if 1 <= day <= 31 and 1 <= month <= 12 and 1900 <= year <= 2100:

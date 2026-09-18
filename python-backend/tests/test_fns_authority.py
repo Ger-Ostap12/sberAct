@@ -124,7 +124,12 @@ def test_legal_debtor_name_address_and_entity_type(da):
     # ИНН/ОГРН в тексте), а тип лица определялся как individual по мусорному должнику.
     fields = {"creditorInn": "4028073775", "creditorOgrn": "1234000001256"}
     da._apply_fns_authority(fields, _LEGAL_TEXT)
-    assert fields["debtorName"] == "СМТ 40"            # краткое имя (соглашение для ЮЛ)
+    # Соглашение изменено 18.09.2026 (решение Андрея, handoff §S.27): поле формы
+    # «Должник» показывает имя КАК В ДОКУМЕНТЕ, с ОПФ; без ОПФ живёт только
+    # legalShortName — оно для того и заведено. Раньше ОПФ срезалась у всех трёх
+    # полей сразу, и юрист видел «СМТ 40» вместо «ООО «СМТ 40»» (корпус-63).
+    assert fields["debtorName"] == "ООО «СМТ 40»"
+    assert fields["legalShortName"] == "СМТ 40"        # краткая форма для маркеров
     assert fields["applicantName"] == "ООО «СМТ 40»"   # с ОПФ: должник живёт в applicant*
     assert fields["applicantNameGenitive"] == "ООО «СМТ 40»"  # организацию не склоняем
     assert fields["entityType"] == "legal"

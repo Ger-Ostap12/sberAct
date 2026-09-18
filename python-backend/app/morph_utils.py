@@ -12,6 +12,7 @@
 """
 from __future__ import annotations
 
+import re
 from typing import Optional
 
 # Падежи pymorphy: gent=род., datv=дат., ablt=твор., accs=вин., loct=предл.
@@ -100,6 +101,83 @@ def _manual_surname(surname: str, case: str, gender: Optional[str]) -> Optional[
             ending = _SURNAME_ENDINGS[suf][case][g]
             return surname[: -len(suf)] + ending
     return None
+
+
+_PERSONAL_TAGS = ("Name", "Patr", "Surn")
+
+# Токен ФИО: слово с заглавной (или инициал), допускается двойная часть через дефис.
+_FIO_TOKEN_RE = re.compile(r"^[А-ЯЁ][А-Яа-яЁё]*(?:-[А-ЯЁ][А-Яа-яЁё]*)*\.?$")
+
+
+def looks_like_fio(tokens: list[str]) -> bool:
+    """Строка действительно ФИО, а не проза и не название организации.
+
+    По старому латентному дефекту в склонение ФИО попадают и другие строки:
+    название юрлица («ООО «форт Пром Стил ГМБХ»») и целые куски прозы
+    («… в лице законного представителя …»). Их падежи мусорны и без нас;
+    менять там один мусор на другой — не починка, а шум в golden. Поэтому
+    строгий разбор имени включаем только на форме «2-4 слова с заглавной».
+    """
+    return 2 <= len(tokens) <= 4 and all(_FIO_TOKEN_RE.match(t) for t in tokens)
+
+
+def _given_name_parse(morph, token: str, gender: Optional[str]):
+    """Выбрать разбор для склонения имени/отчества. None — склонять нечем.
+
+    Отбор осознанный, а не «первый по весу»: у редкого имени первым идёт
+    ошибочный разбор, и слово уезжает в чужую парадигму. «Совдаш» pymorphy
+    читает как родительный МНОЖЕСТВЕННОГО и даёт «Совдашам», «Сальвиназ» —
+    так же. Сами документы такие имена не склоняют.
+
+    Правила по убыванию силы:
+      1) множественное число отбрасываем всегда — ФИО не бывает во мн.ч.;
+      2) есть личные разборы (имя/отчество/фамилия) — берём личный в
+         именительном единственном, согласный с известным родом; если
+         подходящего нет, значит слово опознано неверно и склонять нельзя;
+      3) личных разборов нет — слово попало в ФИО не как имя (хвост прозы
+         вроде «Сообщение»). Поведение прежнее: первый разбор в ед.ч.
+    """
+    разборы = morph.parse(token)
+    единственные = [p for p in разборы if "plur" not in str(p.tag)]
+    if any(any(t in str(p.tag) for t in _PERSONAL_TAGS) for p in разборы):
+        for разбор in единственные:
+            тег = str(разбор.tag)
+            if not any(t in тег for t in _PERSONAL_TAGS) or "nomn" not in тег:
+                continue
+            # Род известен из отчества: разбор другого рода спорит с фактом
+            # и даёт мужскую форму женского имени.
+            if gender and gender not in тег:
+                continue
+            return разбор
+        return None
+    return единственные[0] if единственные else None
+
+
+def inflect_given_name(morph, token: str, case: str, gender: Optional[str],
+                       strict: bool = True) -> str:
+    """Просклонять имя или отчество. Неопознанное слово возвращается как есть.
+
+    `strict=False` — прежнее поведение (первый разбор по весу). Нужно для строк,
+    которые ФИО не являются: см. looks_like_fio.
+    """
+    if not token or case == "nomn" or morph is None:
+        return token
+    if "-" in token:
+        return "-".join(
+            inflect_given_name(morph, часть, case, gender, strict) for часть in token.split("-"))
+
+    if strict:
+        разбор = _given_name_parse(morph, token, gender)
+    else:
+        разборы = morph.parse(token)
+        разбор = разборы[0] if разборы else None
+    if разбор is None:
+        return token
+    граммемы = {case, "anim"} if case == "accs" else {case}
+    склонённое = разбор.inflect(граммемы) or разбор.inflect({case})
+    if not склонённое:
+        return token
+    return match_original_case(token, склонённое.word)
 
 
 def inflect_surname(morph, surname: str, case: str, gender: Optional[str]) -> str:

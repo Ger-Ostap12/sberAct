@@ -1563,14 +1563,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         return name
 
     def _convert_full_name_case(self, full_name: str, target_case: str) -> Optional[str]:
-        if not full_name:
-            return None
-        tokens = [token for token in re.split(r"\s+", full_name.strip()) if token]
-        if not tokens:
-            return None
-        inflected_tokens = [self._inflect_word(token, target_case) for token in tokens]
-        result = " ".join(inflected_tokens).strip()
-        return result or None
+        """ФИО в падеж. Единый путь с InflectionMixin — род обязателен.
+
+        Здесь был свой пословный разбор через parse[0]: он не знал рода и
+        склонял женскую фамилию по мужскому типу («Нуриеву» вместо «Нуриевой»),
+        а незнакомую мужскую — по чужой парадигме («Налибаям» из «Налибаев»).
+        Грамотный путь всё это время лежал в унаследованном миксине.
+        """
+        return self._inflect_full_name(full_name, target_case)
 
     def _extract_creditor_name_from_text(self, text: str) -> Optional[str]:
         if not text:
@@ -3463,7 +3463,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
 
         short = self._strip_ooo_prefix(org) or org
-        fields["debtorName"] = short
+        # Поле «Должник» на форме показывает имя как в документе, с ОПФ;
+        # без ОПФ живёт только legalShortName, он для того и заведён.
+        fields["debtorName"] = org
         fields["legalShortName"] = short
         fields["applicantName"] = org
 

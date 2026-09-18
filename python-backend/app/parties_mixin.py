@@ -879,12 +879,27 @@ class PartiesMixin:
             extracted_fields['entityType'] = detected_entity_type
             logger.info(f"Определён тип должника: {detected_entity_type}")
             if detected_entity_type == "legal":
-                # Для юрлиц: legalShortName и debtorName могут быть без ОПФ, но applicantName должен сохранять ОПФ для маркеров [2], [2.1], [2.2]
+                # Для юрлиц ОПФ срезается ТОЛЬКО в legalShortName — он на то и заведён.
+                # debtorName — это поле «Должник» на форме, юрист ждёт там имя как
+                # в документе: «ООО «СМТ 40»», а не «СМТ 40». applicantName ОПФ
+                # сохраняет для маркеров [2], [2.1], [2.2].
                 name_source_legal = debtor_clean or extracted_fields.get("debtorName") or extracted_fields.get("applicantName")
+                # Роль-суффикс снимаем ДО срезания ОПФ. Иначе «ООО «КОЛОР» (заемщик)»
+                # даёт краткое имя «КОЛОР« (заемщик)»», а поздний чистильщик его уже
+                # не достанет: мусор оканчивается кавычкой, а не скобкой.
+                if name_source_legal:
+                    name_source_legal = self._ROLE_SUFFIX_RE.sub("", name_source_legal).strip()
                 if name_source_legal:
                     short_legal_name = self._strip_ooo_prefix(name_source_legal)
                     if short_legal_name:
-                        extracted_fields["debtorName"] = short_legal_name
+                        # «Общество с ограниченной ответственностью ООО «Форте Пром
+                        # Стил ГмбХ»» — ОПФ записана ДВАЖДЫ, внешняя лишняя. Если
+                        # после снятия одной формы строка начинается с формы снова,
+                        # полным именем считаем уже снятое.
+                        полное = name_source_legal
+                        if self._OPF_HEAD_RE.match(short_legal_name):
+                            полное = short_legal_name
+                        extracted_fields["debtorName"] = полное
                         # applicantName НЕ перезаписываем здесь, чтобы сохранить ОПФ для маркеров [2], [2.1], [2.2]
                         # Если applicantName еще не установлен, используем исходное значение с ОПФ
                         if not extracted_fields.get("applicantName"):
@@ -1138,10 +1153,7 @@ class PartiesMixin:
         Все правки строго локальные и условные, чтобы не задеть корректные значения.
         """
         # 1. Роль-суффикс в скобках в конце имени/наименования.
-        role_suffix = re.compile(
-            r'\s*\(\s*(?:заёмщик|заемщик|должник|ответчик|кредитор|истец|взыскатель)\s*\)\s*$',
-            re.IGNORECASE,
-        )
+        role_suffix = self._ROLE_SUFFIX_RE
         for k in ("applicantName", "debtorName", "legalShortName", "creditorName"):
             v = extracted_fields.get(k)
             if isinstance(v, str) and v:
@@ -1562,6 +1574,14 @@ class PartiesMixin:
     _NAME_MANGLED_RE = re.compile(
         r"[«»\"]\s*\(|\(\s*(?:заемщик|заёмщик|должник|ответчик|кредитор)\w*\s*\)",
         re.IGNORECASE)
+    # Организационно-правовая форма в начале наименования.
+    _OPF_HEAD_RE = re.compile(
+        r"^\s*(?:ООО|ОАО|ПАО|ЗАО|НАО|АО|Обществ[ао]\s+с\s+ограниченной\s+ответственностью)\b",
+        re.IGNORECASE)
+    # Роль-суффикс в конце наименования: «ООО «КОЛОР» (заемщик)».
+    _ROLE_SUFFIX_RE = re.compile(
+        r'\s*\(\s*(?:заёмщик|заемщик|должник|ответчик|кредитор|истец|взыскатель)\s*\)\s*$',
+        re.IGNORECASE)
 
     @staticmethod
     def _name_key(value: Any) -> str:
@@ -1604,6 +1624,15 @@ class PartiesMixin:
             return
 
         физлицо = (fields.get("entityType") or "").lower() != "legal"
+        if not физлицо:
+            # У ЮЛ одна сторона несёт ОПФ, а другая нет: «ООО «КОЛОР»» против
+            # карточки «КОЛОР (заемщик)». По полным строкам они читаются как
+            # НЕСВЯЗАННЫЕ, и мусорная карточка выигрывает у чистого имени.
+            # Сравниваем без ОПФ — отношение строк становится честным.
+            к = self._name_key(self._strip_ooo_prefix(карточка) or карточка)
+            п = self._name_key(self._strip_ooo_prefix(плоское) or плоское)
+            if not к or not п or к == п:
+                return
         if п in к:
             брать_карточку = физлицо          # обрубленное имя, а не краткая форма
         elif к in п:

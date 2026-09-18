@@ -2,7 +2,7 @@ import logging
 import re
 from typing import TYPE_CHECKING, Optional
 
-from morph_utils import detect_gender, inflect_surname
+from morph_utils import detect_gender, inflect_given_name, inflect_surname, looks_like_fio
 
 if TYPE_CHECKING:
     from pymorphy3 import MorphAnalyzer
@@ -70,13 +70,14 @@ class InflectionMixin:
             return None
 
         gender = detect_gender(tokens)
+        строгий = looks_like_fio(tokens)
         inflected_tokens = []
         for idx, token in enumerate(tokens):
             try:
                 if idx == 0:
                     inflected_tokens.append(inflect_surname(morph, token, case, gender))
                 else:
-                    inflected_tokens.append(self._inflect_name_token(token, case))
+                    inflected_tokens.append(self._inflect_name_token(token, case, gender, строгий))
             except Exception as e:
                 logger.warning(f"Ошибка при склонении слова '{token}' в падеж {case}: {e}")
                 inflected_tokens.append(token)
@@ -84,17 +85,18 @@ class InflectionMixin:
         result = " ".join(inflected_tokens).strip()
         return result or None
 
-    def _inflect_name_token(self, token: str, case: str) -> str:
-        """Склонение имени/отчества. Для винительного — одушевлённая форма (кого?)."""
-        if case == "accs":
-            morph = self._ensure_morph()
-            if morph and token:
-                parsed = morph.parse(token)[0]
-                inflected = parsed.inflect({'accs', 'anim'}) or parsed.inflect({'accs'})
-                if inflected:
-                    return self._match_original_case(token, inflected.word)
+    def _inflect_name_token(self, token: str, case: str, gender: Optional[str] = None,
+                            strict: bool = True) -> str:
+        """Склонение имени/отчества. Для винительного — одушевлённая форма (кого?).
+
+        Род важен и здесь, а не только у фамилии: без него редкое женское имя
+        уходит в мужскую парадигму. Разбор выбирается осознанно (см.
+        morph_utils._given_name_parse), а не первым по весу.
+        """
+        morph = self._ensure_morph()
+        if not morph or not token:
             return token
-        return self._inflect_word(token, case)
+        return inflect_given_name(morph, token, case, gender, strict)
 
     def _convert_name_to_genitive(self, full_name: str) -> Optional[str]:
         """ФИО в родительный падеж (кого? чего?). Маркер [2.1]."""
