@@ -615,8 +615,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
             is_self_bk = self._detect_self_bankruptcy(text)
             sb_third_parties = None
+            creditors_result: list = []
             if is_self_bk:
                 sb_third_parties = self._apply_self_bankruptcy_layout(extracted_fields, text)
+                # Кредиторов перечисляет САМ должник, отдельным блоком шапки.
+                # Только у самобанкрота: в обычном заявлении кредитор один и
+                # живёт в полях creditor*, а слово «Кредитор:» встречается
+                # в прозе два десятка раз.
+                creditors_result = self._extract_sb_creditors(text)
                 # Тип лица мог поменяться (legal individual) — рекомендации заново.
                 recommended_acts = self._get_recommended_acts(document_type, extracted_fields, text)
 
@@ -968,6 +974,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 "recommendedActs": recommended_acts,
                 "debtors": debtors_result,
                 "thirdParties": third_parties_result,
+                # Кредиторы из шапки самобанкрота. У прочих заявлений список
+                # пуст: там кредитор один и живёт в полях creditor*.
+                "creditors": creditors_result,
                 # Наследники умершего должника — массив, как thirdParties: их может
                 # быть несколько, и у каждого свои реквизиты.
                 "heirs": heirs_result
@@ -3014,6 +3023,131 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
         logger.info(f" Самобанкротство: должник из шапки «{fio}», реквизиты строго из его блока")
         return self._extract_sb_third_parties(text, title_pos)
+
+    # --- Блок «Кредиторы:» в заявлении самобанкрота -------------------------
+    #
+    # Начало записи — организационно-правовая форма или налоговый орган. Голого
+    # «Банк» в списке НЕТ намеренно: слово встречается внутри адресов («улица
+    # Банковская»), а все банки корпуса пишутся с ПАО/АО/НАО впереди.
+    _SB_CRED_ORG_RE = re.compile(
+        r"(?:ООО|АО|ПАО|ЗАО|НАО|ОАО|МФК|МКК|ПКО|КПК|АКБ)\b"
+        r"|Межрайонн\w*|(?:У|И)?ФНС\b|Инспекц\w+\s+Федеральн\w+",
+        re.IGNORECASE,
+    )
+    # Порядковый номер записи: «1.», «1)», «Кредитор 1:», «Кредитор 1.».
+    _SB_CRED_NUM_RE = re.compile(r"^\s*(?:кредитор\w*\s*)?\d{1,2}\s*[.):]\s*", re.IGNORECASE)
+    # Строка-метка блока целиком («Кредиторы:», «11 КРЕДИТОРОВ:») — не запись.
+    _SB_CRED_LABEL_ONLY_RE = re.compile(
+        r"(?:\d{1,2}\s+)?кредитор\w*\s*\d{0,2}\s*[:.]?", re.IGNORECASE)
+    _SB_CRED_END_RES = (
+        re.compile(r"треть\w+\s+лиц", re.IGNORECASE),
+        re.compile(r"№\s*п/п|содержание\s+обязательства|итого\s*:", re.IGNORECASE),
+    )
+    _SB_CRED_INN_RE = re.compile(r"\bИНН\b[:\s]*(\d{10,12})(?!\d)", re.IGNORECASE)
+    _SB_CRED_OGRN_RE = re.compile(r"\bОГРН\w*\b[:\s]*(\d{13,15})(?!\d)", re.IGNORECASE)
+    _SB_CRED_REQ_RE = re.compile(r"\b(?:ИНН|ОГРН)\w*\b", re.IGNORECASE)
+    _SB_INDEX_RE = re.compile(r"(?<!\d)(\d{6})(?!\d)")
+
+    def _sb_creditors_block(self, text: str):
+        """Границы блока кредиторов. None — блока нет."""
+        m = self._SB_CREDITORS_RE.search(text)
+        if not m:
+            return None
+        end = min(len(text), m.start() + 6000)
+        # «Уполномоченный орган» СТОПОМ не является: налоговый орган — такой же
+        # кредитор по обязательным платежам, и вычитка считает его в списке.
+        for rx in self._SB_CRED_END_RES + self._SB_TITLE_RES:
+            m_end = rx.search(text, m.end())
+            if m_end:
+                end = min(end, m_end.start())
+        return text[m.start():end]
+
+    def _extract_sb_creditors(self, text: str):
+        """Кредиторы из блока «Кредиторы:» заявления самобанкрота.
+
+        Четыре раскладки одного и того же блока:
+          «Кредиторы:» + нумерованный список (ОГРН/ИНН/адрес построчно);
+          «Кредиторы:» без нумерации (только название и адрес);
+          заголовок «11 КРЕДИТОРОВ:» со счётом в самой метке;
+          «Кредитор 1:» … «Кредитор N:» по одной записи на метку.
+
+        Записи разделяются НЕ нумерацией (её может не быть), а началом
+        организационно-правовой формы: именно она надёжно отмечает новое имя.
+        """
+        block = self._sb_creditors_block(text)
+        if not block:
+            return []
+
+        entries: list = []
+        current: dict = {}
+
+        def flush():
+            nonlocal current
+            if not current:
+                return
+            name = re.sub(r"\s+", " ", " ".join(current["name"])).strip(" ,;:")
+            tail = re.sub(r"\s+", " ", " ".join(current["tail"])).strip()
+            if name and len(name) >= 4:
+                entry = {"name": name}
+                m_inn = self._SB_CRED_INN_RE.search(tail)
+                if m_inn:
+                    entry["inn"] = m_inn.group(1)
+                m_ogrn = self._SB_CRED_OGRN_RE.search(tail)
+                if m_ogrn:
+                    entry["ogrn"] = m_ogrn.group(1)
+                m_idx = self._SB_INDEX_RE.search(tail)
+                if m_idx:
+                    entry["address"] = re.sub(r"\s+", " ", tail[m_idx.start():]).strip(" ,;")
+                entries.append(entry)
+            current = {}
+
+        def start(name: str):
+            nonlocal current
+            flush()
+            current = {"name": [name], "tail": []}
+
+        for raw_line in (s.strip() for s in block.splitlines()):
+            if not raw_line:
+                continue
+            line = self._SB_CRED_NUM_RE.sub("", raw_line).strip()
+            if not line or self._SB_CRED_LABEL_ONLY_RE.fullmatch(line):
+                continue
+
+            m_org = self._SB_CRED_ORG_RE.search(line)
+            if m_org and m_org.start() == 0:
+                # Реквизиты на ОДНОЙ строке с названием в имя не берём.
+                m_req = self._SB_CRED_REQ_RE.search(line)
+                if m_req and m_req.start() > 0:
+                    start(line[:m_req.start()])
+                    current["tail"].append(line[m_req.start():])
+                else:
+                    start(line)
+                continue
+            if not current:
+                continue
+            # Название, приклеенное к ХВОСТУ адреса предыдущей записи
+            # («… офис 642 АО «Тбанк»»).
+            if m_org and m_org.start() > 0 and self._SB_INDEX_RE.search(line):
+                current["tail"].append(line[:m_org.start()])
+                start(line[m_org.start():])
+                continue
+            # Пока адрес не начался, продолжение строки достраивает ИМЯ: длинные
+            # названия («Межрайонная инспекция Федеральной ⏎ налоговой службы
+            # № 12») разрываются переносом, и без этого имя остаётся обрубком.
+            if not current["tail"]:
+                m_req = self._SB_CRED_REQ_RE.search(line)
+                m_idx = self._SB_INDEX_RE.search(line)
+                if m_req is None and m_idx is None:
+                    current["name"].append(line)
+                    continue
+                cut = min(m.start() for m in (m_req, m_idx) if m)
+                if cut > 0:
+                    current["name"].append(line[:cut])
+                current["tail"].append(line[cut:])
+                continue
+            current["tail"].append(line)
+        flush()
+        return entries
 
     def _extract_sb_third_parties(self, text: str, title_pos: int):
         """Третьи лица из шапки самобанкрота: «Третьи лица[, не заявляющие …]:».

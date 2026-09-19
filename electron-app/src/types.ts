@@ -26,6 +26,16 @@ export interface ThirdParty {
   snils?: string;
 }
 
+/** Кредитор из блока «Кредиторы:» заявления самобанкрота. Организация:
+ *  банк, МФО, коллекторское агентство либо налоговый орган. */
+export interface Creditor {
+  id: string;
+  name: string;
+  address?: string;
+  inn?: string;
+  ogrn?: string;
+}
+
 export interface Heir {
   id: string;
   name: string;
@@ -238,6 +248,9 @@ export interface ExtractedData {
     message: string;
   } | null;
   thirdParties?: ThirdParty[];
+  /** Кредиторы, перечисленные САМИМ должником (заявление самобанкрота). В прочих
+   *  заявлениях кредитор один и живёт в полях creditor*, поэтому список пуст. */
+  creditors?: Creditor[];
   /** Наследники умершего должника — заполняется только для статуса «Умерший». */
   heirs?: Heir[];
   debtors?: Debtor[];

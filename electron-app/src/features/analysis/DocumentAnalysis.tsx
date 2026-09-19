@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import BackIcon from '@mui/icons-material/ArrowBack';
 import CheckIcon from '@mui/icons-material/CheckCircle';
-import { DocumentData, ExtractedData, Obligation, Collateral, CollateralType, EntityType, CollateralOption, DebtorStatus, ApplicationKind, SelectedAct, ThirdParty, Debtor, Heir, PartyLite, MortgageKind, MortgageProperty } from '../../types';
+import { DocumentData, ExtractedData, Obligation, Collateral, CollateralType, EntityType, CollateralOption, DebtorStatus, ApplicationKind, SelectedAct, ThirdParty, Creditor, Debtor, Heir, PartyLite, MortgageKind, MortgageProperty } from '../../types';
 import { useBanks } from './hooks/useBanks';
 import { extractCollateralData } from '../../shared/lib/collateral';
 import { isFnsCreditor, FNS_CREDITOR_KEY } from '../../shared/lib/banks';
@@ -34,6 +34,7 @@ import LiquidationSection from './sections/LiquidationSection';
 import AbsentDebtorSection from './sections/AbsentDebtorSection';
 import DeceasedSection from './sections/DeceasedSection';
 import ThirdPartiesSection from './sections/ThirdPartiesSection';
+import CreditorsListSection from './sections/CreditorsListSection';
 import DebtorsSection from './sections/DebtorsSection';
 import CreditorSection from './sections/CreditorSection';
 import FinancesSection from './sections/FinancesSection';
@@ -491,11 +492,19 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
             : o,
         );
 
+        // Кредиторы приходят готовым списком из шапки самобанкрота; у прочих
+        // заявлений он пуст — секция тогда не показывается.
+        const initialCreditors: Creditor[] = (propExtractedData.creditors || []).map((c, i) => ({
+          ...c,
+          id: c.id || `creditor-${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`
+        }));
+
         const fullAnalysisResult = {
           ...propExtractedData,
           obligations: initialObligations,
           collaterals: initialCollaterals,
           thirdParties: initialThirdParties,
+          creditors: initialCreditors,
           debtors: initialDebtors,
           heirs: initialHeirs,
           coborrowers: initialCoborrowers,
@@ -787,6 +796,33 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     if (!analysisResult?.thirdParties) return;
     const updated = analysisResult.thirdParties.filter((_, i) => i !== index);
     setAnalysisResult({ ...analysisResult, thirdParties: updated });
+  };
+
+  // --- Кредиторы самобанкрота: динамический список (как третьи лица) ---
+  const addCreditor = () => {
+    if (!analysisResult) return;
+    const newCreditor: Creditor = {
+      id: `creditor-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name: '',
+      address: '',
+      inn: '',
+      ogrn: ''
+    };
+    const creditors = [...(analysisResult.creditors || []), newCreditor];
+    setAnalysisResult({ ...analysisResult, creditors });
+  };
+
+  const updateCreditor = (index: number, field: keyof Creditor, value: string) => {
+    if (!analysisResult?.creditors) return;
+    const updated = [...analysisResult.creditors];
+    updated[index] = { ...updated[index], [field]: value };
+    setAnalysisResult({ ...analysisResult, creditors: updated });
+  };
+
+  const removeCreditor = (index: number) => {
+    if (!analysisResult?.creditors) return;
+    const updated = analysisResult.creditors.filter((_, i) => i !== index);
+    setAnalysisResult({ ...analysisResult, creditors: updated });
   };
 
   // --- Предметы ипотеки (ипотека): динамический список (как третьи лица) ---
@@ -1338,6 +1374,20 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 onAdd={addThirdParty}
                 onRemove={removeThirdParty}
                 mode={mode}
+              />
+                </Grid>
+                )}
+
+                {/* Кредиторы перечисляет сам должник — только в заявлении
+                    самобанкрота. У остальных список пуст, секцию не рисуем:
+                    там кредитор один и живёт в блоке «Кредитор». */}
+                {(analysisResult?.creditors || []).length > 0 && (
+                <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
+              <CreditorsListSection
+                creditors={analysisResult?.creditors || []}
+                onUpdate={updateCreditor}
+                onAdd={addCreditor}
+                onRemove={removeCreditor}
               />
                 </Grid>
                 )}
