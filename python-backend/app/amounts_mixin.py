@@ -488,25 +488,69 @@ class AmountsMixin:
         """Форматирует float в «1 234 567,89»."""
         return f"{v:,.2f}".replace(",", " ").replace(".", ",").replace(" ", " ")
 
-    # Сумма в самобанкротной формулировке: разряды пробелами, копейки могут быть
-    # оторваны пробелом («24 395 516, 3 руб.» — так печатает конвертер скана).
-    _SB_AMOUNT = r"(\d[\d   ]*(?:,[   ]?\d{1,2})?)"
+    _SB_SPACE = r"[   \t]"
+
+    # Общее правило для сводной фразы: точные формы (ниже, применяются ПЕРВЫМИ)
+    # покрывают две раскладки из девяти. Остальные семь пишут ту же мысль иначе
+    # («суммарную задолженность
+    # перед кредиторами в размере более …», «Общий размер всех требований
+    # кредиторов … составляет …», «сумма задолженности по указанным выше
+    # основаниям составляет не менее …»).
+    #
+    # Голова обязана называть РАЗМЕР/СУММУ/ОБЪЁМ задолженности или требований.
+    _SB_HEAD = (
+        r"(?:"
+        r"(?:общ\w+|суммарн\w+|итогов\w+)" + _SB_SPACE + r"+"
+        r"(?:(?:размер\w*|сумм\w*|объ[ёе]м\w*)" + _SB_SPACE + r"+)?"
+        r"(?:[а-яё]+" + _SB_SPACE + r"+){0,2}(?:задолженност\w+|требован\w+)"
+        r"|"
+        r"(?:размер\w*|сумм\w*|объ[ёе]м\w*)" + _SB_SPACE + r"+"
+        r"(?:[а-яё]+" + _SB_SPACE + r"+){0,2}(?:задолженност\w+|требован\w+)"
+        r")"
+    )
+    _SB_VERB = r"(?:составля\w+|состави\w+|в" + _SB_SPACE + r"+размере)"
+    # Разрыв между связкой и числом: «не менее», «более», «на момент подачи
+    # Заявления». Цифры в разрыв не пускаем — иначе перескочим через само число.
+    _SB_GAP = r"[^\d\n]{0,40}?"
+    # Рубли, затем НЕОБЯЗАТЕЛЬНАЯ пропись в скобках, затем копейки отдельным
+    # числом: «2126 507 (Два миллиона …) руб. 25 коп.». Без этого число
+    # обрывалось на прописи и давало 2 126,00 — ошибку в тысячу раз.
+    _SB_AMOUNT_FULL = (
+        r"(?P<rub>\d[\d   ]*(?:[.,][  ]?\d{1,2})?)"
+        r"(?:" + _SB_SPACE + r"*\([^)]{0,200}?\))?"
+        r"(?:" + _SB_SPACE + r"*руб\w*\.?" + _SB_SPACE + r"*(?P<kop>\d{1,2})"
+        + _SB_SPACE + r"*коп)?"
+    )
+    _SB_TOTAL_GENERIC_RE = re.compile(
+        _SB_HEAD + r"[^\n]{0,70}?" + _SB_VERB + _SB_GAP + _SB_AMOUNT_FULL,
+        re.IGNORECASE,
+    )
 
     # Грандтотал в заявлении САМОБАНКРОТА. Кредитора-заявителя здесь нет, суммы
     # разложены по кредиторам, а общий долг назван отдельной фразой. Требование
     # «перед кредиторами»/«общий объём» отсекает построчные «общая сумма
     # задолженности ПО кредитному договору №… составляет …» — их в заявлении
     # десяток, и любая из них уезжала в итог вместо целого.
+    # Грамматика суммы у них ОБЩАЯ с правилом ниже: пока у точных форм была своя,
+    # усечённая, они выигрывали перебор и отдавали 2 126,00 вместо 2 126 507,25.
     _SB_TOTAL_RES = (
         re.compile(
-            r"общ\w+\s+объ[её]м\w*\s+задолженност\w+\s+составляет\s*" + _SB_AMOUNT,
+            r"общ\w+\s+объ[её]м\w*\s+задолженност\w+\s+составляет\s*" + _SB_AMOUNT_FULL,
             re.IGNORECASE,
         ),
         re.compile(
             r"(?:размер|сумма|общая\s+сумма)\s+(?:непогашенн\w+\s+)?задолженност\w+\s+"
-            r"(?:должника\s+)?перед\s+кредиторами\s+составляет\s*" + _SB_AMOUNT,
+            r"(?:должника\s+)?перед\s+кредиторами\s+составляет\s*" + _SB_AMOUNT_FULL,
             re.IGNORECASE,
         ),
+    )
+    # Маркер ЦЕЛОГО. Без него «общая сумма задолженности составляет …» — это
+    # строка ОДНОГО кредитора из перечня: в корпус-45 таких семь подряд, и
+    # первая дала бы 9 713 руб вместо 2 126 507,25.
+    _SB_WHOLE_RE = re.compile(
+        r"перед\s+кредиторами|всех\s+требован\w+\s+кредиторов|"
+        r"мо\w+\s+задолженност|по\s+неисполненн\w+|по\s+указанн\w+\s+выше",
+        re.IGNORECASE,
     )
 
     def _apply_self_bankruptcy_total(self, fields: Dict[str, Any], text: str) -> None:
@@ -520,30 +564,57 @@ class AmountsMixin:
         """
         if not text:
             return
+        total = self._sb_total_from_text(text)
+        if total is None:
+            return
+        formatted = self._fin_fmt(total)
+        fields["totalDebt"] = formatted
+        fields["debtAmount"] = formatted
+        fields["requirementsSum"] = formatted
+        # Разбивка (если её успели набрать регулярки) относится к ОДНОМУ
+        # кредитору из списка, а не к целому: печатать её в акте как
+        # «из них основного долга …» нельзя.
+        parts = sum(self._fin_amount(fields.get(k)) for k in
+                    ("principalDebt", "loanDebt", "interest", "forfeit", "penalties"))
+        if parts and abs(parts - total) > 0.05:
+            for key in ("principalDebt", "loanDebt", "interest", "forfeit", "penalties"):
+                fields.pop(key, None)
+            logger.info("Самобанкротство: разбивка долга не сходится с целым — очищена")
+        logger.info("Самобанкротство: общая сумма долга %s", formatted)
+
+    def _sb_total_from_text(self, text: str):
+        """Итог долга самобанкрота из сводной фразы. None — фразы в тексте нет.
+
+        Сначала точные формы (они называют целое без слов-маркеров), затем общее
+        правило с обязательным маркером ЦЕЛОГО.
+        """
         for rx in self._SB_TOTAL_RES:
             match = rx.search(text)
             if not match:
                 continue
-            raw = re.sub(r",[   ]+(\d)", r",\1", match.group(1))  # «516, 3» -> «516,3»
-            token = self.money_token_from_capture(raw)
-            total = self._fin_amount(token)
-            if total <= 0:
+            total = self._sb_amount_from_match(match)
+            if total > 0:
+                return total
+        for match in self._SB_TOTAL_GENERIC_RE.finditer(text):
+            if not self._SB_WHOLE_RE.search(match.group(0)):
                 continue
-            formatted = self._fin_fmt(total)
-            fields["totalDebt"] = formatted
-            fields["debtAmount"] = formatted
-            fields["requirementsSum"] = formatted
-            # Разбивка (если её успели набрать регулярки) относится к ОДНОМУ
-            # кредитору из списка, а не к целому: печатать её в акте как
-            # «из них основного долга …» нельзя.
-            parts = sum(self._fin_amount(fields.get(k)) for k in
-                        ("principalDebt", "loanDebt", "interest", "forfeit", "penalties"))
-            if parts and abs(parts - total) > 0.05:
-                for key in ("principalDebt", "loanDebt", "interest", "forfeit", "penalties"):
-                    fields.pop(key, None)
-                logger.info("Самобанкротство: разбивка долга не сходится с целым — очищена")
-            logger.info("Самобанкротство: общая сумма долга %s", formatted)
-            return
+            total = self._sb_amount_from_match(match)
+            if total > 0:
+                return total
+        return None
+
+    @staticmethod
+    def _sb_amount_from_match(match) -> float:
+        """Рубли и копейки из совпадения общего правила.
+
+        Копейки отдельным числом («… руб. 25 коп.») означают, что в рублях
+        разряды могли съехать при вёрстке («2126 507»): берём из них только
+        цифры, иначе разбор обрывается на первом пробеле.
+        """
+        рубли, копейки = match.group("rub"), match.group("kop")
+        if копейки is not None and not re.search(r"[.,]", рубли):
+            return float(re.sub(r"\D", "", рубли)) + int(копейки) / 100
+        return float(re.sub(r"[   ]", "", рубли).replace(",", "."))
 
     def _apply_prayer_finances(self, fields: Dict[str, Any], text: str) -> None:
         """Финансы из ПРОСИТЕЛЬНОЙ части: суммирует разбивки долга по категориям

@@ -6712,19 +6712,19 @@
    "birthPlace": "гор. Новочеркасск Ростовской обл",
    "companyInn": "615007959197",
    "courtName": "Арбитражный суд Ростовской области",
-   "debtAmount": "116 000,00",
+   "debtAmount": "545 770,14",
    "debtorAddress": "346404,Ростовская обл., г. Новочеркасск, ул. Флерова, д. 4, кв. 18",
    "debtorName": "Каплунов Виталий Геннадиевич",
    "entityType": "individual",
    "inn": "615007959197",
-   "loanDebt": "116 000,00",
    "passportNumber": "465076",
    "passportSeries": "6002",
    "representativeName": "Наумов Дмитрий Витальевич",
+   "requirementsSum": "545 770,14",
    "snils": "049-543-767-96",
    "sourceDocumentType": "rtk_application",
    "sroName": "Саморегулируемая межрегиональная общественная организация «Ассоциация антикризисных управляющих»",
-   "totalDebt": "116 000,00"
+   "totalDebt": "545 770,14"
   },
   "heirs": [],
   "metadata": {
@@ -6784,6 +6784,7 @@
    "birthPlace": "с. Развильное Песчанокопский район Ростовская область",
    "companyInn": "612704321215",
    "courtName": "Арбитражный суд Ростовской области",
+   "debtAmount": "438 983,73",
    "debtorAddress": "347561, Ростовская область, Песчанокопский р-н, с. Развильное, ул. Соляника, д. 20",
    "debtorName": "Слабунов Сергей Сергеевич",
    "entityType": "individual",
@@ -6791,9 +6792,11 @@
    "passportNumber": "114409",
    "passportSeries": "6021",
    "representativeName": "Наумов Дмитрий Витальевич",
+   "requirementsSum": "438 983,73",
    "snils": "129-592-432 90",
    "sourceDocumentType": "rtk_application",
-   "sroName": "Саморегулируемая межрегиональная общественная организация «Ассоциация антикризисных управляющих»"
+   "sroName": "Саморегулируемая межрегиональная общественная организация «Ассоциация антикризисных управляющих»",
+   "totalDebt": "438 983,73"
   },
   "heirs": [],
   "metadata": {
@@ -6851,13 +6854,12 @@
    "contractDate": "13.05.2024, 19.06.2024, 04.08.2025",
    "contractNumber": "2-1178/2024, 2-1535/2024, 2-1387/2025",
    "courtName": "Арбитражный суд Ростовской области",
-   "debtAmount": "301,79",
+   "debtAmount": "808 803,58",
    "debtSnapshotDate88": "10.03.2026",
    "debtorAddress": "346900, Ростовская обл., гор. Новошахтинск, ул. Харьковская, д. 259, кв. 103",
    "debtorName": "Бакалов Дмитрий Александрович",
    "entityType": "individual",
    "inn": "615109700605",
-   "loanDebt": "301,79",
    "obligations": [
     {
      "contractDate": "13.05.2024",
@@ -6880,10 +6882,11 @@
    ],
    "passportNumber": "691850",
    "passportSeries": "6014",
+   "requirementsSum": "808 803,58",
    "snils": "143-252-167 28",
    "sourceDocumentType": "rtk_application",
    "sroName": "саморегулируемой организации арбитражных управляющих Союз АУ «Созидание»",
-   "totalDebt": "402 592,13"
+   "totalDebt": "808 803,58"
   },
   "heirs": [],
   "metadata": {
@@ -7019,7 +7022,7 @@
    "birthDate": "14.06.1990",
    "birthPlace": "г. Ростов-на-Дону",
    "courtName": "Арбитражный суд Ростовской области",
-   "debtAmount": "2 126,00",
+   "debtAmount": "2 126 507,25",
    "debtorAddress": "344039, г. Ростов-на-Дону, ул. Средняя, д. 23",
    "debtorName": "Мирский Алексей Степанович",
    "entityType": "individual",
@@ -7029,10 +7032,10 @@
    "passportSeries": "6023",
    "principalDebt13": "158 434,00",
    "representativeName": "Шульженко Ю.В.",
-   "requirementsSum": "2 126,00",
+   "requirementsSum": "2 126 507,25",
    "sourceDocumentType": "rtk_application",
    "sroName": "Саморегулируемая организация \"Ассоциация арбитражных управляющих \"Паритет\"",
-   "totalDebt": "2 126,00"
+   "totalDebt": "2 126 507,25"
   },
   "heirs": [],
   "metadata": {
@@ -7084,21 +7087,21 @@
    "birthPlace": "ГОР. РОСТОВ-НА-ДОНУ РОССИЯ",
    "companyInn": "616118814199",
    "courtName": "Арбитражный суд Ростовской области",
-   "debtAmount": "25 000,00",
+   "debtAmount": "859 764,45",
    "debtorAddress": "ОБЛ. РОСТОВСКАЯ, Г. РОСТОВ-НА-ДОНУ, УЛ. HOBATOPOB, Д. 6, КВ. 16",
    "debtorName": "Федоренко Алексей Алексеевич",
    "entityType": "individual",
    "inn": "616118814199",
-   "loanDebt": "25 000,00",
    "passportNumber": "513897",
    "passportSeries": "6019",
    "procedureType": "observation",
    "procedureTypeRaw": "наблюдение",
    "representativeName": "Морозова Ю.А.",
+   "requirementsSum": "859 764,45",
    "snils": "157-887-524-35",
    "sourceDocumentType": "initiation_physical",
    "sroName": "Некоммерческое партнерство \"Саморегулируемая организация \"Гильдия арбитражных управляющих\"",
-   "totalDebt": "25 000,00"
+   "totalDebt": "859 764,45"
   },
   "heirs": [],
   "metadata": {
@@ -7150,20 +7153,20 @@
    "birthPlace": "гор. Сальск Ростовской обл",
    "companyInn": "615301047741",
    "courtName": "Арбитражный суд Ростовской области",
-   "debtAmount": "3 000,00",
+   "debtAmount": "1 096 979,68",
    "debtorAddress": "347631, обл. Ростовская, р-н Сальский, гор. Сальск, ул. Севастопольская, д. 93-в, кв. 61",
    "debtorName": "Корсунов Вячеслав Валерьевич",
    "entityType": "individual",
    "inn": "615301047741",
-   "loanDebt": "3 000,00",
    "managerAddress": "121069, город Москва, Поварская ул, д. 10 стр. 1",
    "obligationType": "кредитный договор",
    "passportNumber": "737042",
    "passportSeries": "6014",
+   "requirementsSum": "1 096 979,68",
    "snils": "155-161-603 44",
    "sourceDocumentType": "rtk_application",
    "sroName": "Ассоциация \"Региональная саморегулируемая организация профессиональных арбитражных управляющих\"",
-   "totalDebt": "3 000,00"
+   "totalDebt": "1 096 979,68"
   },
   "heirs": [],
   "metadata": {
@@ -7225,19 +7228,19 @@
    "companyInn": "615398867985",
    "contractNumber": "займа",
    "courtName": "Арбитражный суд Ростовской области",
-   "debtAmount": "19 405,00",
+   "debtAmount": "394 270,65",
    "debtorAddress": "347631, Ростовская область, Сальский район, г. Сальск, пер. Малый, д. 4",
    "debtorName": "Галета (Карпух) Ольга Николаевна",
    "entityType": "individual",
    "inn": "615398867985",
-   "loanDebt": "19 405,00",
    "obligationType": "Договор займа",
    "passportNumber": "402670",
    "passportSeries": "6018",
+   "requirementsSum": "394 270,65",
    "snils": "049-288-075 97",
    "sourceDocumentType": "rtk_application",
    "sroName": "Союз \"Межрегиональный центр арбитражных управляющих\"",
-   "totalDebt": "19 405,00"
+   "totalDebt": "394 270,65"
   },
   "heirs": [],
   "metadata": {
