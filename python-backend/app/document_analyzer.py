@@ -7174,16 +7174,31 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             if _is_plausible_date(direct_date):
                 return direct_date
 
-        # 2) Фолбэк: ищем дату рядом с каждым вхождением номера договора
+        # 2) Фолбэк: ищем дату рядом с каждым вхождением номера договора.
+        #
+        # Берём БЛИЖАЙШУЮ к номеру, а не первую в окне. «Первая» — значит самая
+        # левая, то есть отстоящая на треть окна влево, и туда попадала чужая
+        # дата: публикация в ЕФРСБ вместо даты соглашения (свежие-6, свежие-31)
+        # и дата решения о банкротстве вместо даты выдачи исполнительного
+        # документа (свежие-2, корпус-64). Своя дата у номера стоит вплотную.
+        date_pattern = r'(?<!\d)(\d{1,2}[.,]\d{1,2}[.,]\d{4})(?!\d)'
         for contract_match in re.finditer(re.escape(contract_number), text, re.IGNORECASE):
             start = max(0, contract_match.start() - 300)
             end = min(len(text), contract_match.end() + 300)
             context = text[start:end]
-            date_pattern = r'(?<!\d)(\d{1,2}[.,]\d{1,2}[.,]\d{4})(?!\d)'
+            nearest, distance = '', None
             for date_match in re.finditer(date_pattern, context):
                 candidate = date_match.group(1)
-                if _is_plausible_date(candidate):
-                    return candidate
+                if not _is_plausible_date(candidate):
+                    continue
+                position = start + date_match.start()
+                gap = (contract_match.start() - position
+                       if position < contract_match.start()
+                       else position - contract_match.end())
+                if distance is None or gap < distance:
+                    nearest, distance = candidate, gap
+            if nearest:
+                return nearest
 
         return ''
 

@@ -25,7 +25,7 @@
    "applicantNameGenitive": "Оленченко Олега Игоревича Сообщения",
    "applicantNameInstrumental": "Оленченко Олегом Игоревичем Сообщением",
    "companyInn": "6163105360",
-   "contractDate": "30.06.2025",
+   "contractDate": "30.06.2025, 26.06.2025",
    "contractNumber": "7M-520CPIS-BV0-П1",
    "courtName": "Арбитражный суд Ростовской области",
    "creditTermMonths": "4",
@@ -52,6 +52,12 @@
      "contractNumber": "7M-520CPIS-BV0-П1",
      "id": "obligation_p_0",
      "obligationType": "Договор поручительства"
+    },
+    {
+     "contractDate": "26.06.2025",
+     "contractNumber": "",
+     "id": "obligation_p_1",
+     "obligationType": "Договор поручительства"
     }
    ],
    "ogrn": "1106195009800",
@@ -76,6 +82,12 @@
     "contractDate": "30.06.2025",
     "contractNumber": "7M-520CPIS-BV0-П1",
     "id": "obligation_p_0",
+    "obligationType": "Договор поручительства"
+   },
+   {
+    "contractDate": "26.06.2025",
+    "contractNumber": "",
+    "id": "obligation_p_1",
     "obligationType": "Договор поручительства"
    }
   ],
@@ -952,8 +964,8 @@
     }
    ],
    "companyInn": "261543614802, 232879397753",
-   "contractDate": "14.01.2023, 27.08.2025",
-   "contractNumber": "67177, 67164",
+   "contractDate": "14.01.2023",
+   "contractNumber": "67177",
    "courtName": "Выселковский районный суд Краснодарского края",
    "creditInterestRate": "10,7",
    "creditPenaltyRate": "7,5",
@@ -995,12 +1007,6 @@
      "contractNumber": "67177",
      "id": "obligation_11_2",
      "obligationType": "Кредитный договор"
-    },
-    {
-     "contractDate": "27.08.2025",
-     "contractNumber": "67164",
-     "id": "obligation_26_3",
-     "obligationType": "Договор"
     }
    ],
    "penalties": "0,00",
@@ -1027,12 +1033,6 @@
     "contractNumber": "67177",
     "id": "obligation_11_2",
     "obligationType": "Кредитный договор"
-   },
-   {
-    "contractDate": "27.08.2025",
-    "contractNumber": "67164",
-    "id": "obligation_26_3",
-    "obligationType": "Договор"
    }
   ],
   "rawTextLen": 19590,
@@ -1766,6 +1766,7 @@
    "managerName": "Ермакова Ольга Игоревна",
    "obligations": [
     {
+     "amount": "20 854,44",
      "contractDate": "06.10.2025",
      "contractNumber": "0437689812",
      "id": "obligation_p_0",
@@ -1793,6 +1794,7 @@
   },
   "obligations": [
    {
+    "amount": "20 854,44",
     "contractDate": "06.10.2025",
     "contractNumber": "0437689812",
     "id": "obligation_p_0",
@@ -3258,6 +3260,7 @@
    "obligationType": "кредитный договор",
    "obligations": [
     {
+     "amount": "37 490,52",
      "contractDate": "07.02.2024",
      "contractNumber": "0278146810",
      "id": "obligation_p_0",
@@ -3283,6 +3286,7 @@
   },
   "obligations": [
    {
+    "amount": "37 490,52",
     "contractDate": "07.02.2024",
     "contractNumber": "0278146810",
     "id": "obligation_p_0",
@@ -3459,12 +3463,14 @@
    "obligationType": "кредитный договор",
    "obligations": [
     {
+     "amount": "218 574,56",
      "contractDate": "22.04.2024",
      "contractNumber": "10050033429",
      "id": "obligation_p_0",
      "obligationType": "Кредитный договор"
     },
     {
+     "amount": "66 849,19",
      "contractDate": "28.09.2023",
      "contractNumber": "8963411620",
      "id": "obligation_p_1",
@@ -3489,12 +3495,14 @@
   },
   "obligations": [
    {
+    "amount": "218 574,56",
     "contractDate": "22.04.2024",
     "contractNumber": "10050033429",
     "id": "obligation_p_0",
     "obligationType": "Кредитный договор"
    },
    {
+    "amount": "66 849,19",
     "contractDate": "28.09.2023",
     "contractNumber": "8963411620",
     "id": "obligation_p_1",
@@ -3561,6 +3569,7 @@
    "obligationType": "кредитный договор",
    "obligations": [
     {
+     "amount": "53 476,48",
      "contractDate": "05.05.2022",
      "contractNumber": "5448999116",
      "id": "obligation_p_0",
@@ -3583,6 +3592,7 @@
   },
   "obligations": [
    {
+    "amount": "53 476,48",
     "contractDate": "05.05.2022",
     "contractNumber": "5448999116",
     "id": "obligation_p_0",
@@ -8819,7 +8829,7 @@
    "birthDate": "14.06.1990",
    "caseNumber": "А53-8843/2026",
    "companyInn": "616511409929",
-   "contractDate": "18.05.2026",
+   "contractDate": "18.03.2025",
    "contractNumber": "2-4-436/2025",
    "creditorAddress": "400050, г. Волгоград, ул. им. Рокоссовского, 62, этаж 9",
    "creditorInn": "6670056296",
@@ -8839,7 +8849,7 @@
    "managerName": "Шиленко Юлия Борисовна",
    "obligations": [
     {
-     "contractDate": "18.05.2026",
+     "contractDate": "18.03.2025",
      "contractNumber": "2-4-436/2025",
      "id": "obligation_26_0",
      "obligationType": "Договор"
@@ -8867,7 +8877,7 @@
   },
   "obligations": [
    {
-    "contractDate": "18.05.2026",
+    "contractDate": "18.03.2025",
     "contractNumber": "2-4-436/2025",
     "id": "obligation_26_0",
     "obligationType": "Договор"
