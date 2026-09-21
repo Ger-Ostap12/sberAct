@@ -2424,7 +2424,23 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             else:
                 value = value[:100].strip()
 
-        return value.strip()
+        return self._expand_court_abbreviation(value.strip())
+
+    # Сокращение суда в шапке заявления. Раскрывается ЗДЕСЬ, а не в паттерне:
+    # значение идёт в маркер [0] — заголовок судебного акта, и определение с
+    # шапкой «АС Ростовской области» это брак. Решение Андрея 21.09.2026.
+    _COURT_ABBR_RE = re.compile(r"^АС(?=\s)")
+
+    def _expand_court_abbreviation(self, value: str) -> str:
+        """«АС Ростовской области» -> «Арбитражный суд Ростовской области».
+
+        Раскрытие обязано случиться ДО фильтра вызывающего кода: тот требует
+        в названии слово «суд» либо «арбитражн», и сокращение отсеивалось бы
+        как мусор даже при верно сработавшем паттерне.
+        """
+        if not value:
+            return value
+        return self._COURT_ABBR_RE.sub("Арбитражный суд", value)
 
 
 
