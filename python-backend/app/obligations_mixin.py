@@ -2,9 +2,24 @@ import logging
 import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from claim_basis import general_obligation_pattern
+from claim_basis import CONTRACT_NUMBER, basis_alternation, general_obligation_pattern
 
 logger = logging.getLogger(__name__)
+
+# Судебный акт, названный НЕПОСРЕДСТВЕННО перед номером: «вынесен судебный
+# приказ № 2-5481/2024». Якорь на конец окна — иначе слово «приказ» из другого
+# предложения объявляло бы судебным любой следующий номер.
+_JUDICIAL_BEFORE_RE = re.compile(
+    r"(?:судебн\w+\s+приказ\w*|исполнительн\w+\s+(?:лист\w*|документ\w*)|"
+    r"решени\w*\s+суда|определени\w*\s+суда|постановлени\w*\s+суда)"
+    r"[^.\n]{0,60}$", re.IGNORECASE)
+
+# Договор со своим номером в той же строке. Виды берём из реестра `claim_basis`
+# БЕЗ судебных: сравниваем именно акт с договором, а не акт с актом.
+_CONTRACT_NUMBER_IN_LINE_RE = re.compile(
+    r"(?:" + basis_alternation(["credit", "loan", "surety", "pledge",
+                                "assignment", "other"]) + r")"
+    r"[^.\n]{0,40}?№\s*(" + CONTRACT_NUMBER + r")", re.IGNORECASE)
 
 # Доля документа, внутри которой слово-якорь ещё может быть ЗАГОЛОВКОМ.
 # Замер по корпусу: медиана 7%, худший законный случай 22%, выше 30% нет.
@@ -1079,6 +1094,7 @@ class ObligationsMixin:
             self._regenerate_obligations_from_blocks(extracted_fields, text, obligations)
         obligations = self._dedupe_obligations(obligations)
         obligations = self._drop_tail_only_numbers(text, obligations)
+        obligations = self._drop_judicial_about_contract(text, obligations)
         logger.info(f"Всего найдено обязательств: {len(obligations)}")
         return obligations
 
@@ -1119,6 +1135,51 @@ class ObligationsMixin:
         # Пустой список означал бы, что правило съело документ целиком —
         # тогда прежнее поведение вернее любой догадки.
         return оставить or obligations
+
+    def _drop_judicial_about_contract(self, text: str,
+                                      obligations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Убирает карточку судебного акта, если она ПРО договор, уже ставший карточкой.
+
+        свежие-3: «вынесен судебный приказ № 2-5481/2024 о взыскании … задолженности
+        по договору займа № 003 83 6 2312250225 от 25.12.2023». Долг ОДИН, номеров
+        два: приказ — это акт о взыскании по договору, а не второе обязательство.
+
+        ⚠️ Судебный акт сам по себе — ЗАКОННОЕ основание требования, и широкий
+        запрет недопустим: замер по 101 документу показал, что у корпус-62,
+        корпус-64, корпус-65, свежие-2, свежие-10, свежие-11, свежие-12 и
+        свежие-13 судебный акт — ЕДИНСТВЕННАЯ карточка, а корпус-43 состоит из
+        трёх таких. Поэтому оба условия обязательны: договор назван в ТОМ ЖЕ
+        предложении и его номер уже есть отдельной карточкой. С ними правило
+        срабатывает на ОДНОМ документе из 101 — на том, ради которого заведено.
+        """
+        if len(obligations) < 2:
+            return obligations
+        номера = {(о.get("contractNumber") or "").strip() for о in obligations}
+        оставить = []
+        for о in obligations:
+            ном = (о.get("contractNumber") or "").strip()
+            if ном and self._is_judicial_about_known_contract(text, ном, номера):
+                logger.info(f"Отсев обязательства №{ном}: судебный акт о взыскании "
+                            f"по договору, который уже стал карточкой")
+                continue
+            оставить.append(о)
+        return оставить or obligations
+
+    def _is_judicial_about_known_contract(self, text: str, номер: str,
+                                          номера: set) -> bool:
+        """Номер принадлежит судебному акту, вынесенному по одному из соседних договоров."""
+        for m in re.finditer(re.escape(номер), text):
+            перед = text[max(0, m.start() - 120):m.start()]
+            if not _JUDICIAL_BEFORE_RE.search(перед):
+                continue
+            начало = text.rfind("\n", 0, m.start()) + 1
+            конец = text.find("\n", m.end())
+            предложение = text[начало: len(text) if конец < 0 else конец]
+            for сосед in _CONTRACT_NUMBER_IN_LINE_RE.findall(предложение):
+                сосед = сосед.strip()
+                if сосед != номер and сосед in номера:
+                    return True
+        return False
 
     def _is_valid_contract_number(self, num: Optional[str]) -> bool:
         if not num:

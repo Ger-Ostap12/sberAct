@@ -2370,7 +2370,20 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
         raw_lines = [line.strip() for line in text.split("\n")]
 
-        items: List[str] = [line for line in raw_lines if line and len(line) >= 10]
+        items: List[str] = []
+        for line in raw_lines:
+            if not line or len(line) < 10:
+                continue
+            # «VIN-номер XW8ZZZ16ZEN900156, …» отдельным предметом не бывает: это
+            # атрибут автомобиля, названного строкой выше. Конвертер разрывает
+            # фразу ровно здесь, и один автомобиль превращался в два предмета
+            # (свежие-20: «…залогом автомобиля марки VOLKSWAGEN модель Jetta 2013
+            # г.в.» / «VIN-номер XW8ZZZ16ZEN900156»). Замер по 101 документу:
+            # такая строка встречается один раз — в нём.
+            if items and re.match(r"^VIN\b", line, re.IGNORECASE):
+                items[-1] = items[-1].rstrip(" ,;") + " " + line
+                continue
+            items.append(line)
 
         if not items:
             cleaned = text.strip()
