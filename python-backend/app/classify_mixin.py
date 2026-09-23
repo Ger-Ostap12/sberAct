@@ -188,6 +188,17 @@ def _collateral_expected_from_document_type(document_type):
     return _COLLATERAL_EXPECTED_BY_DOCUMENT_TYPE.get(document_type)
 
 
+def collateral_found(collaterals, mortgage_properties) -> bool:
+    """Разобран ли залог хоть в каком-то виде.
+
+    ⚠️ Предметы ипотеки живут ОТДЕЛЬНЫМ массивом `mortgageProperties`, а не в
+    `collaterals`. Проверка по одному лишь `collaterals` зажигала ложное
+    предупреждение «залог не найден» там, где залог разобран полностью:
+    корпус-6, военная ипотека, два предмета (жилой дом и земельный участок).
+    """
+    return bool(collaterals or mortgage_properties)
+
+
 class ClassifyMixin:
     if TYPE_CHECKING:
         # Реализован в document_analyzer.DocumentAnalyzer; здесь только для Pyright

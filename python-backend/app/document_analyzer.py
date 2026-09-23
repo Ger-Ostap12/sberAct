@@ -44,6 +44,7 @@ from classify_mixin import (
     _procedure_family_from_document_type,
     _entity_type_from_document_type,
     _collateral_expected_from_document_type,
+    collateral_found,
 )
 from parties_mixin import PartiesMixin
 from amounts_mixin import AmountsMixin
@@ -886,23 +887,6 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                     ),
                 }
 
-            collateral_warning = None
-            _expected_collateral = _collateral_expected_from_document_type(document_type)
-            _actual_collateral = bool(collaterals_final)
-            if _expected_collateral is not None and _expected_collateral != _actual_collateral:
-                collateral_warning = {
-                    "documentType": document_type,
-                    "expectedCollateral": _expected_collateral,
-                    "actualCollateral": _actual_collateral,
-                    "message": (
-                        "Тип документа предполагает "
-                        + ("наличие" if _expected_collateral else "отсутствие")
-                        + " залога, но по извлечённым данным "
-                        + ("залог не найден" if _expected_collateral else "залог обнаружен")
-                        + " — рекомендуем перепроверить вручную."
-                    ),
-                }
-
             recommended_acts = self._get_recommended_acts(document_type, extracted_fields, text,
                                                          collaterals_final)
 
@@ -920,6 +904,28 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 self._build_mortgage_properties(text, collaterals_final, mortgage_kind)
                 if document_type == "mortgage_claim" else []
             )
+
+            # Предупреждение «залог не найден» — ПОСЛЕ сборки предметов ипотеки, и
+            # только поэтому оно стоит здесь, а не рядом с остальными проверками
+            # типа документа: у ипотеки предметы живут в `mortgage_properties`
+            # (см. `collateral_found`). Замер по 101 документу: это было
+            # единственное предупреждение о залоге вообще — и оно было ложным.
+            collateral_warning = None
+            _expected_collateral = _collateral_expected_from_document_type(document_type)
+            _actual_collateral = collateral_found(collaterals_final, mortgage_properties)
+            if _expected_collateral is not None and _expected_collateral != _actual_collateral:
+                collateral_warning = {
+                    "documentType": document_type,
+                    "expectedCollateral": _expected_collateral,
+                    "actualCollateral": _actual_collateral,
+                    "message": (
+                        "Тип документа предполагает "
+                        + ("наличие" if _expected_collateral else "отсутствие")
+                        + " залога, но по извлечённым данным "
+                        + ("залог не найден" if _expected_collateral else "залог обнаружен")
+                        + " — рекомендуем перепроверить вручную."
+                    ),
+                }
 
             # [1221] описание предмета — чистое (из структурного mortgageProperties),
             # а НЕ жадный блоб со всей правовой «водой» секции залога (ст.334 ГК, чужие
