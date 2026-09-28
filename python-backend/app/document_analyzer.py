@@ -81,6 +81,47 @@ logger = logging.getLogger(__name__)
 # golden, менять его — осознанное изменение поведения, а не правка «на глаз».
 _DOCX_PARAGRAPHS_PER_PAGE = 20
 
+# Предмет договора ипотеки, названный ОДНОЙ фразой на несколько объектов:
+# «…договоры ипотеки №…, предметом которых являлись земельные участки …
+# с кадастровыми номерами: A, B». Объект во множественном числе, различают
+# объекты только кадастровые номера (корпус-49).
+_CONTRACT_SUBJECT_RE = re.compile(
+    r"предмет\w*\s+котор\w+\s+(?:явля\w+|был\w*)\s*(?:[^.\n]{0,60}?)"
+    r"(земельн\w+\s+участ\w*|квартир\w*|жил\w+\s+дом|\bдом\b|нежил\w*|помещени\w*|"
+    r"здани\w*|гараж\w*|машино-?мест\w*|комнат\w*|строени\w*|сооружени\w*)"
+    r"([^.\n]{0,220}?)кадастровым\w*\s+номер\w*\s*:?\s*([0-9:$\s,]+)",
+    re.IGNORECASE,
+)
+# Кадастровый номер, терпимый к следу конвертера: у корпус-49 вместо цифры
+# стоит «$» («61:01:0$00006:3070»). Номер всё равно различает объекты, а
+# выдумывать пропавшую цифру нельзя — отдаём как в документе.
+_CADASTRAL_RE = re.compile(r"\d{2}:\d{2}:[\d$]{6,7}:\d+")
+
+# Значение поля [1221] состоит из одних цифр и разделителей — это денежная
+# сумма, прихваченная паттерном из соседней строки, а не предмет залога.
+_DIGITS_ONLY_RE = re.compile(r"^[\d\s .,-]+$")
+
+
+def _is_false_collateral_description(value: Optional[str]) -> bool:
+    """Значение поля [1221] — НЕ описание предмета залога.
+
+    Две формы мусора, обе из корпуса:
+      «Кому выдана <ФИО>»  указание получателя закладной, а не предмет;
+      «4509 575,34»        денежная сумма (корпус-49, корпус-65).
+
+    Описание предмета всегда содержит СЛОВА — из одних цифр оно не бывает.
+
+    ⚠️ Числовой мусор ДОЛГО БЫЛ НЕВИДИМ: при пустом списке залогов поле [1221]
+    вычищалось заодно с ним, и дефект жил под этой крышкой. Он вскрылся, когда
+    у корпус-49 появились карточки. Ср. приём «размаскировка».
+    """
+    значение = (value or "").strip()
+    if not значение:
+        return False
+    if re.match(r"^Кому\s+выдана\s+", значение, re.IGNORECASE):
+        return True
+    return bool(_DIGITS_ONLY_RE.match(значение))
+
 
 try:
     from pymorphy3 import MorphAnalyzer
@@ -565,7 +606,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             recommended_acts = self._get_recommended_acts(document_type, extracted_fields, text)
 
             collateral_description = extracted_fields.get("mortgageCollateralDescription1221")
-            if collateral_description and re.match(r"^Кому\s+выдана\s+", (collateral_description or "").strip(), re.IGNORECASE):
+            if _is_false_collateral_description(collateral_description):
                 collateral_description = None
                 if "mortgageCollateralDescription1221" in extracted_fields:
                     del extracted_fields["mortgageCollateralDescription1221"]
@@ -4808,11 +4849,10 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 logger.info(f"Извлечено mortgageCollateralDescription1221 через fallback метод: {collateral_block[:150]}...")
 
         collateral_description = extracted_fields.get("mortgageCollateralDescription1221")
-        if collateral_description and re.match(r"^Кому\s+выдана\s+", collateral_description.strip(), re.IGNORECASE):
-            # "Кому выдана [ФИО]" — не описание залога, а указание получателя; убираем ложное значение
+        if _is_false_collateral_description(collateral_description):
             del extracted_fields["mortgageCollateralDescription1221"]
             collateral_description = None
-            logger.info("Удалено ложное описание залога (Кому выдана ...)")
+            logger.info("Удалено ложное описание залога (получатель закладной или сумма)")
         collaterals_list: List[Dict[str, Any]] = []
         if collateral_description:
             collateral_items = self._split_collateral_items(collateral_description)
@@ -6610,6 +6650,23 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 адрес = re.sub(r"^[ \t]*[-–—•][ \t]*", "", строка).strip(" .,;")
                 if len(адрес) >= 20:
                     items.append(f"{объект}: {адрес}")
+
+        # ПРЕДМЕТ ДОГОВОРА ОДНОЙ ФРАЗОЙ НА НЕСКОЛЬКО ОБЪЕКТОВ: «…заключены
+        # договоры ипотеки №…, ПРЕДМЕТОМ КОТОРЫХ ЯВЛЯЛИСЬ земельные участки
+        # сельскохозяйственного назначения, расположенные в Ростовской области,
+        # Азовского района с кадастровыми номерами: A, B» (корпус-49). Ни перечня,
+        # ни буллетов: объект назван ОДИН раз во множественном числе, а различает
+        # объекты только кадастровый номер — поэтому карточка собирается НА КАЖДЫЙ
+        # номер. Замер по 101 документу: срабатывает на одном, на нём и заведено.
+        for m in _CONTRACT_SUBJECT_RE.finditer(norm):
+            if _is_inventory_item(m.start()):
+                continue
+            объект = re.sub(r"\s+", " ", m.group(1)).strip()
+            # Предлог «с» — начало оборота «с кадастровыми номерами», который мы
+            # сами же и пересобираем; без обрезки описание кончается на «… с».
+            хвост = re.sub(r"\s+с\s*$", "", re.sub(r"\s+", " ", m.group(2)).strip(" ,;"))
+            for номер in _CADASTRAL_RE.findall(m.group(3)):
+                items.append(f"{объект} {хвост} кадастровый номер: {номер}")
 
         items.extend(self._extract_pledge_block_items(norm))
 

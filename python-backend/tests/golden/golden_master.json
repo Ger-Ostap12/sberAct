@@ -7736,7 +7736,32 @@
   ]
  },
  "НОвая конвертация/Умерший ким клим.docx": {
-  "collaterals": [],
+  "collaterals": [
+   {
+    "address": "",
+    "brandModel": "",
+    "cadastralNumber": "",
+    "collateralType": "real_estate",
+    "collateralValue": "",
+    "description": "земельные участки сельскохозяйственного назначения, расположенные в Ростовской области, Азовского района кадастровый номер: 61:01:0$00006:3070",
+    "id": "collateral-0",
+    "objectName": "Земельные участки",
+    "otherDescription": "",
+    "vin": ""
+   },
+   {
+    "address": "",
+    "brandModel": "",
+    "cadastralNumber": "61:01:0600006:3071",
+    "collateralType": "real_estate",
+    "collateralValue": "",
+    "description": "земельные участки сельскохозяйственного назначения, расположенные в Ростовской области, Азовского района кадастровый номер: 61:01:0600006:3071",
+    "id": "collateral-1",
+    "objectName": "Земельные участки",
+    "otherDescription": "",
+    "vin": ""
+   }
+  ],
   "confidence": 0.85,
   "creditors": [],
   "debtors": [
@@ -8965,20 +8990,6 @@
    "applicantNameGenitive": "Манукян Соса Жораевича",
    "applicantNameInstrumental": "Манукяном Сос Жораевичем",
    "birthDate": "30.01.1962",
-   "collaterals": [
-    {
-     "address": "",
-     "brandModel": "",
-     "cadastralNumber": "",
-     "collateralType": "other",
-     "collateralValue": "",
-     "description": "2 867 955,21",
-     "id": "collateral-0",
-     "objectName": "2 867 955",
-     "otherDescription": "21",
-     "vin": ""
-    }
-   ],
    "contractDate": "21.03.2008",
    "contractNumber": "716994",
    "courtName": "Арбитражный суд Ростовской области",
@@ -8995,7 +9006,6 @@
    "interest": "0,00",
    "loanDebt": "2 438 262,70",
    "loanStateDuty17": "22 568,82",
-   "mortgageCollateralDescription1221": "2 867 955,21",
    "obligationType": "кредитный договор",
    "obligations": [
     {
