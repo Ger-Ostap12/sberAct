@@ -77,6 +77,24 @@ describe('FieldIssuesPanel', () => {
     expect(screen.queryByText(/debtors\[0\]/)).not.toBeInTheDocument();
   });
 
+  it('карточка обязательства без вида получает метку, а не ключ', () => {
+    // Вид «Договор» видом не является: из него генерация делает «кредитный
+    // договор» и ставит в акт требование, которого в заявлении нет. Бэкенд
+    // помечает такую карточку, и панель обязана назвать поле по-человечески.
+    render(
+      <FieldIssuesPanel
+        issues={[{
+          field: 'obligations[0].obligationType',
+          reason: 'вид обязательства не определён: в документе нет известного вида основания',
+          value: 'Договор',
+          cleared: false,
+        }]}
+      />,
+    );
+    expect(screen.getByText('Вид обязательства')).toBeInTheDocument();
+    expect(screen.queryByText(/obligations\[0\]/)).not.toBeInTheDocument();
+  });
+
   it('одно значение в трёх полях — ОДНА строка, а не три', () => {
     // A53-9758…docx: битый OCR ИНН разбор кладёт в inn, companyInn и в карточку
     // должника. Это одна проблема; три строки про один номер — шум ровно там,

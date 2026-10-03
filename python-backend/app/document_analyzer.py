@@ -4,6 +4,7 @@ from difflib import SequenceMatcher
 
 import spacy
 from address_match import same_address
+from claim_basis import basis_alternation, basis_title
 from docx import Document
 from doc_structure import DocPart, docx_parts, flat_pairs, stacked_label_pairs
 import field_contract
@@ -100,6 +101,40 @@ _CADASTRAL_RE = re.compile(r"\d{2}:\d{2}:[\d$]{6,7}:\d+")
 # Значение поля [1221] состоит из одних цифр и разделителей — это денежная
 # сумма, прихваченная паттерном из соседней строки, а не предмет залога.
 _DIGITS_ONLY_RE = re.compile(r"^[\d\s .,-]+$")
+
+
+# Все написания видов основания одним паттерном — для определения ВИДА
+# обязательства по тексту рядом с номером. Длинные написания стоят раньше
+# коротких (см. `basis_alternation`), иначе «договор займа» съедается
+# «договором» из другого вида.
+_BASIS_WORDING_RE = re.compile(r"(?:" + basis_alternation() + r")", re.IGNORECASE)
+_BASIS_NEAR_NUMBER = 160
+
+
+# Вид обязательства, который видом НЕ является. Такое значение нельзя ни
+# вычистить (карточка останется без вида вовсе), ни оставить молча: из него
+# генерация делает «кредитный договор» и ставит в акт требование, которого в
+# заявлении нет. Поэтому значение показываем и ПОМЕЧАЕМ — дальше решает юрист.
+_GENERIC_OBLIGATION_TYPES = {"", "договор", "не указано"}
+GENERIC_OBLIGATION_TYPE_REASON = (
+    "вид обязательства не определён: в документе нет известного вида основания — "
+    "проверьте по тексту и укажите вид вручную"
+)
+
+
+def _obligation_type_issues(obligations: Any) -> List["field_contract.Issue"]:
+    """Пометки на карточки, у которых вид обязательства остался родовым."""
+    issues: List[field_contract.Issue] = []
+    for i, obligation in enumerate(obligations or []):
+        if not isinstance(obligation, dict):
+            continue
+        тип = str(obligation.get("obligationType") or "").strip()
+        if тип.lower() not in _GENERIC_OBLIGATION_TYPES:
+            continue
+        issues.append(field_contract.Issue(
+            f"obligations[{i}].obligationType",
+            GENERIC_OBLIGATION_TYPE_REASON, тип, cleared=False))
+    return issues
 
 
 def _is_false_collateral_description(value: Optional[str]) -> bool:
@@ -982,6 +1017,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                     i.as_dict() for i in field_contract.check_entries(
                         mortgage_properties, "mortgageProperties")
                 ]
+
+            # Карточка с родовым видом «Договор» — пометка, а не вычистка:
+            # значение нужно показать юристу, чтобы он дописал вид по тексту.
+            field_issues += [
+                i.as_dict() for i in _obligation_type_issues(
+                    extracted_fields.get("obligations", []))
+            ]
 
             if document_type == "mortgage_claim" and mortgage_properties:
                 _descs = [str(p.get("description") or "").strip() for p in mortgage_properties]
@@ -7322,6 +7364,26 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 gap = (contract_match.start() - position
                        if position < contract_match.start()
                        else position - contract_match.end())
+                # Дата нормативного акта — не дата договора: «Федерального
+                # закона от 26.10.2002 N 127-ФЗ» стоит в каждом заявлении и
+                # оказывалась ближайшей там, где своей даты у договора нет.
+                if date_in_law_context(text, position, position + len(candidate)):
+                    continue
+                # Между номером и датой вклинился ЧУЖОЙ «№» — значит дата
+                # относится к тому, другому договору: «…кредита № ВДРСТ-1/С/17.644,
+                # <…> На основании Договора уступки № О/66-91/2018 от 31.10.2018».
+                # Без этой проверки карточка кредита получала дату уступки
+                # (свежие-30).
+                #
+                # ⚠️ Свой «№» перед номером не в счёт: «14.02.2023 … присвоен
+                # номер № SRSRS510S23021400327» — иначе правило убивало ВЕРНУЮ
+                # дату соглашения (свежие-6, свежие-31).
+                между = (text[position + len(candidate):contract_match.start()]
+                         if position < contract_match.start()
+                         else text[contract_match.end():position])
+                если_свой = re.sub(r"[№N]\s*$", "", между)
+                if "№" in если_свой:
+                    continue
                 if distance is None or gap < distance:
                     nearest, distance = candidate, gap
             if nearest:
@@ -7330,12 +7392,45 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         return ''
 
 
+    def _obligation_type_from_registry(self, text: str, contract_number: str) -> Optional[str]:
+        """Вид обязательства по БЛИЖАЙШЕМУ к номеру написанию из `claim_basis`.
+
+        Слева важнее, чем справа: вид требования почти всегда стоит перед своим
+        номером («заключили Договор потребительского кредита № 21030267-1»).
+        Справа смотрим только когда слева названия нет — так читается
+        самобанкрот Воксиса: «по гражданскому делу № 2-4-436/2025 <…> был выдан
+        исполнительный документ».
+
+        Окно 160 знаков — по корпусу: у «Соглашения о кредитовании» (Альфа-Банк)
+        между названием и номером стоит целое предложение, 103 знака, а
+        прежнее окно в 100 его не доставало.
+        """
+        if not contract_number:
+            return None
+        место = re.search(re.escape(contract_number), text, re.IGNORECASE)
+        if not место:
+            return None
+        слева = text[max(0, место.start() - _BASIS_NEAR_NUMBER):место.start()]
+        найденные = list(_BASIS_WORDING_RE.finditer(слева))
+        if найденные:
+            return basis_title(найденные[-1].group(0))
+        справа = _BASIS_WORDING_RE.search(
+            text[место.end():место.end() + _BASIS_NEAR_NUMBER])
+        return basis_title(справа.group(0)) if справа else None
+
     def detect_obligation_type(self, text: str, contract_number: str) -> str:
         """
         Определяет тип обязательства по контексту
         """
-        context_pattern = rf'.{{0,100}}{re.escape(contract_number)}.{{0,100}}'
-        context_match = re.search(context_pattern, text, re.IGNORECASE)
+        # Номер-заглушка «Договор_N» в тексте не встречается: документ номера
+        # не называет (кредитная карта VISA у корпус-32). Окно вокруг номера
+        # тогда не находится вовсе, и карточка уходила на форму с голым
+        # «Договор» — хотя сам блок прямо говорит, что это за обязательство.
+        if re.fullmatch(r'Договор_\d+', (contract_number or '').strip(), re.IGNORECASE):
+            context_match = re.match(r'(?s).*', text)
+        else:
+            context_pattern = rf'.{{0,100}}{re.escape(contract_number)}.{{0,100}}'
+            context_match = re.search(context_pattern, text, re.IGNORECASE)
 
         local_type = 'Договор'
         if context_match:
@@ -7356,6 +7451,16 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             elif 'ссуд' in context:
                 local_type = 'Договор ссуды'
 
+        if local_type == 'Договор':
+            # Лесенка выше ловит только слова-приметы и потому молчит там, где
+            # вид требования назван полной формой: «Договор потребительского
+            # кредита» (в нём нет «кредитн»), «Соглашение о кредитовании»,
+            # «судебный приказ», «исполнительный документ». Эти основания живут
+            # в реестре `claim_basis`, поэтому вид берём ОТТУДА, а не новым
+            # паттерном на каждую формулировку.
+            registry_type = self._obligation_type_from_registry(text, contract_number)
+            if registry_type:
+                local_type = registry_type
 
         if local_type == 'Договор':
             vm = re.search(

@@ -67,6 +67,7 @@ const ENTRY_LABELS: Record<string, string> = {
   'heirs.inn': 'ИНН наследника (карточка)',
   'heirs.ogrn': 'ОГРН наследника (карточка)',
   'heirs.ogrnip': 'ОГРНИП наследника (карточка)',
+  'obligations.obligationType': 'Вид обязательства',
 };
 
 const ENTRY_FIELD_RE = /^(\w+)\[(\d+)\]\.(\w+)$/;

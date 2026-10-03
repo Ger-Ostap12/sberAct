@@ -4155,8 +4155,7 @@
    "birthDate": "01.09.1982",
    "birthPlace": "СЛ РОДИНОВО-НЕСВЕТАЙСКАЯ РОД-НЕСВЕТ Р-НА РОСТОВСКОЙ ОБЛ",
    "companyInn": "613001729242",
-   "contractDate": "29.11.2023",
-   "contractNumber": "6168086464-23-5",
+   "contractNumber": "6168086464-23-5П02",
    "courtName": "Арбитражный суд Ростовской области",
    "creditInterestRate": "20,34",
    "creditorAddress": "ул. Вавилова, д.19, г. Москва, 117997",
@@ -4177,16 +4176,10 @@
    "obligations": [
     {
      "amount": "7 371 840,35",
-     "amountValue": 7371840.35,
-     "contractDate": "29.11.2023",
-     "contractNumber": "6168086464-23-5",
-     "id": "obligation_1",
-     "isCollateral": false,
-     "issuedAmount": "10 000 000,00",
-     "issuedAmountValue": 10000000.0,
-     "obligationType": "Кредитный договор",
-     "penalty0071": null,
-     "penalty0071Value": 0.0
+     "contractDate": "Не указана",
+     "contractNumber": "6168086464-23-5П02",
+     "id": "obligation_p_0",
+     "obligationType": "Договор поручительства"
     }
    ],
    "passportNumber": "011629",
@@ -4212,16 +4205,10 @@
   "obligations": [
    {
     "amount": "7 371 840,35",
-    "amountValue": 7371840.35,
-    "contractDate": "29.11.2023",
-    "contractNumber": "6168086464-23-5",
-    "id": "obligation_1",
-    "isCollateral": false,
-    "issuedAmount": "10 000 000,00",
-    "issuedAmountValue": 10000000.0,
-    "obligationType": "Кредитный договор",
-    "penalty0071": null,
-    "penalty0071Value": 0.0
+    "contractDate": "Не указана",
+    "contractNumber": "6168086464-23-5П02",
+    "id": "obligation_p_0",
+    "obligationType": "Договор поручительства"
    }
   ],
   "rawTextLen": 7778,
@@ -4866,7 +4853,7 @@
      "isCollateral": true,
      "issuedAmount": null,
      "issuedAmountValue": 0.0,
-     "obligationType": "Договор",
+     "obligationType": "Кредитная карта",
      "penalty0071": "0,31",
      "penalty0071Value": 0.31
     }
@@ -5059,7 +5046,7 @@
     "isCollateral": true,
     "issuedAmount": null,
     "issuedAmountValue": 0.0,
-    "obligationType": "Договор",
+    "obligationType": "Кредитная карта",
     "penalty0071": "0,31",
     "penalty0071Value": 0.31
    }
@@ -7053,19 +7040,19 @@
      "contractDate": "13.05.2024",
      "contractNumber": "2-1178/2024",
      "id": "obligation_26_0",
-     "obligationType": "Договор"
+     "obligationType": "Судебный приказ"
     },
     {
      "contractDate": "19.06.2024",
      "contractNumber": "2-1535/2024",
      "id": "obligation_26_1",
-     "obligationType": "Договор"
+     "obligationType": "Судебный приказ"
     },
     {
      "contractDate": "04.08.2025",
      "contractNumber": "2-1387/2025",
      "id": "obligation_26_2",
-     "obligationType": "Договор"
+     "obligationType": "Судебный приказ"
     }
    ],
    "passportNumber": "691850",
@@ -7087,19 +7074,19 @@
     "contractDate": "13.05.2024",
     "contractNumber": "2-1178/2024",
     "id": "obligation_26_0",
-    "obligationType": "Договор"
+    "obligationType": "Судебный приказ"
    },
    {
     "contractDate": "19.06.2024",
     "contractNumber": "2-1535/2024",
     "id": "obligation_26_1",
-    "obligationType": "Договор"
+    "obligationType": "Судебный приказ"
    },
    {
     "contractDate": "04.08.2025",
     "contractNumber": "2-1387/2025",
     "id": "obligation_26_2",
-    "obligationType": "Договор"
+    "obligationType": "Судебный приказ"
    }
   ],
   "rawTextLen": 15763,
@@ -8721,7 +8708,7 @@
      "contractDate": "19.12.2025",
      "contractNumber": "2-3-2444/2025",
      "id": "obligation_26_0",
-     "obligationType": "Договор"
+     "obligationType": "Судебный приказ"
     }
    ],
    "passportNumber": "561928",
@@ -8746,7 +8733,7 @@
     "contractDate": "19.12.2025",
     "contractNumber": "2-3-2444/2025",
     "id": "obligation_26_0",
-    "obligationType": "Договор"
+    "obligationType": "Судебный приказ"
    }
   ],
   "rawTextLen": 4506,
@@ -8884,7 +8871,7 @@
      "contractDate": "18.03.2025",
      "contractNumber": "2-4-436/2025",
      "id": "obligation_26_0",
-     "obligationType": "Договор"
+     "obligationType": "Исполнительный документ"
     }
    ],
    "penalties": "0,00",
@@ -8912,7 +8899,7 @@
     "contractDate": "18.03.2025",
     "contractNumber": "2-4-436/2025",
     "id": "obligation_26_0",
-    "obligationType": "Договор"
+    "obligationType": "Исполнительный документ"
    }
   ],
   "rawTextLen": 5004,
