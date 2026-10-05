@@ -7340,7 +7340,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         direct_match = re.search(direct_pattern, text, re.IGNORECASE)
         if direct_match:
             direct_date = direct_match.group(1)
-            if _is_plausible_date(direct_date):
+            # ⚠️ Дата нормативного акта сюда проходила: окно до «заключен» —
+            # 220 знаков, и «Федерального закона от 26.10.2002 N 127-ФЗ …
+            # Между Банком и должником заключен договор займа № X» совпадало
+            # целиком. Та же защита, что во второй ветке, нужна и здесь.
+            if (_is_plausible_date(direct_date)
+                    and not date_in_law_context(
+                        text, direct_match.start(1), direct_match.end(1))):
                 return direct_date
 
         # 2) Фолбэк: ищем дату рядом с каждым вхождением номера договора.

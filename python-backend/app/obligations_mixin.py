@@ -3,6 +3,7 @@ import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from claim_basis import CONTRACT_NUMBER, basis_alternation, general_obligation_pattern
+from org_normalizer import date_in_law_context
 
 logger = logging.getLogger(__name__)
 
@@ -550,6 +551,16 @@ class ObligationsMixin:
         if not s:
             return None
         s = s.strip()
+        # ISO: «договор займа № 107977878 ОТ 2024-08-10 года» — так пишет часть
+        # МФО. Паттерн основания (`claim_basis.CONTRACT_DATE`) этот вид ловит,
+        # а нормализация его не знала, и дата карточки уходила как «Не указана»
+        # (свежие-33, свежие-34).
+        m = re.match(r"(\d{4})-(\d{1,2})-(\d{1,2})", s)
+        if m:
+            y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            if 1 <= d <= 31 and 1 <= mo <= 12 and 1900 <= y <= 2100:
+                return f"{d:02d}.{mo:02d}.{y}"
+            return None
         m = re.match(r"(\d{1,2})[.,](\d{1,2})[.,](\d{4})", s)
         if m:
             d, mo, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
@@ -640,7 +651,11 @@ class ObligationsMixin:
         # заёмщика) исключаем, оставляем поручительства (на должника).
         if debtor_is_borrower is None:
             debtor_is_borrower = self._debtor_is_borrower(text, debtor_words)
-        _date = r'[0-3]?\d[.,][01]?\d[.,]\d{4}|[«"“]?\s*[0-3]?\d\s*[»"”]?\s+[а-яё]+\s+\d{4}'
+        # ISO-вид «от 2024-08-10 года» пишет часть МФО (свежие-33, свежие-34).
+        # Без него дата карточки уходила как «Не указана», хотя документ её
+        # называет прямо при номере.
+        _date = (r'[0-3]?\d[.,][01]?\d[.,]\d{4}|\d{4}-[01]?\d-[0-3]?\d'
+                 r'|[«"“]?\s*[0-3]?\d\s*[»"”]?\s+[а-яё]+\s+\d{4}')
         rx = re.compile(
             # Граница слова обязательна: без неё «займ» совпадает ВНУТРИ
             # названий МФО («ЭкваЗАЙМ», «ТурбоЗАЙМ»), и в номер договора
@@ -750,9 +765,17 @@ class ObligationsMixin:
             if not date:
                 pre = text[max(0, m.start() - 200):m.start()]
                 if re.search(r"заключ\w*\s*$", pre):
-                    bm = re.findall(r"(" + _date + r")", pre)
+                    # ⚠️ Берём последнюю дату перед «заключен» — и ею может
+                    # оказаться дата НОРМАТИВНОГО АКТА: «ст. 213.5
+                    # Федерального закона от 26.10.2002 N 127-ФЗ … Между
+                    # Банком и должником заключен договор займа № X». Дыра
+                    # была здесь и до лесенки с find_date_near_contract.
+                    смещение = max(0, m.start() - 200)
+                    bm = [с for с in re.finditer(r"(" + _date + r")", pre)
+                          if not date_in_law_context(text, смещение + с.start(1),
+                                                     смещение + с.end(1))]
                     if bm:
-                        date = self._normalize_obl_date(bm[-1])
+                        date = self._normalize_obl_date(bm[-1].group(1))
             if not date:
                 dm2 = re.search(
                     r"от\s+(" + _date + r")\s*№?\s*" + re.escape(num),
@@ -762,6 +785,22 @@ class ObligationsMixin:
                     date = self._normalize_obl_date(dm2.group(1))
             if not date and prose_date:
                 date = prose_date
+            if not date and len(_prose) < 2:
+                # Последняя лесенка: дата названа в НАЧАЛЕ своего предложения,
+                # а номер — в следующем. «25.01.2022 г. Банк и ДЖАИЕВ …
+                # заключили Соглашение о кредитовании на получение Кредитной
+                # карты. Данному Соглашению был присвоен номер № PILCAUEJ…»
+                # (свежие-32, форма Альфа-Банка). Проверки «кто ближе»,
+                # «не дата закона» и «не за чужим №» уже живут в
+                # find_date_near_contract, своих тут не изобретаем.
+                #
+                # ⚠️ ГЕЙТ НА НЕОДНОЗНАЧНОСТЬ ОБЯЗАТЕЛЕН. Когда в документе
+                # ДВЕ РАЗНЫЕ фразы о заключении, выбор даты — гадание, и
+                # решение по корпусу: оставлять пусто (сторож —
+                # test_дата_прозой_при_нескольких_фразах_не_гадаем). Лесенка
+                # это правило чуть не отменила: она брала ближайшую дату.
+                date = self._normalize_obl_date(
+                    self.find_date_near_contract(text, num))
             typ = ("Кредитная карта" if "карт" in kind
                    else "Кредитный договор" if "кредит" in kind
                    else "Договор займа" if "займ" in kind
