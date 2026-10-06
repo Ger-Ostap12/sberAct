@@ -809,6 +809,12 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # это мусор (в документе отдельной банкротной госпошлины нет). Чистим.
             self._clear_garbage_bankruptcy_duty(extracted_fields)
 
+            # Графа госпошлины по СМЫСЛУ — строго ПОСЛЕ чистки мусора и всего
+            # финансового каскада: решение иначе затирают слои выше (замер
+            # §S.43 — 58% полей переписываются несколько раз), а до чистки
+            # графа выглядит занятой итогом долга и метод её не трогает.
+            self._resolve_duty_graphs(extracted_fields, text)
+
             # Ипотека: госпошлина из шапки, если финансовый каскад её не заполнил.
             if document_type == "mortgage_claim":
                 self._fill_mortgage_state_duty(extracted_fields, text)
