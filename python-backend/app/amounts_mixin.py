@@ -616,6 +616,12 @@ class AmountsMixin:
             return float(re.sub(r"\D", "", рубли)) + int(копейки) / 100
         return float(re.sub(r"[   ]", "", рубли).replace(",", "."))
 
+    # Якорь разбивки требования. Пробел ПОСЛЕ «из» необязателен: конвертер
+    # склеивает слова, и свежие-13 приходит как «в размере 17738,40 руб.,
+    # изкоторых:» — на этом весь слой просительной части не срабатывал,
+    # и итог брался из прозы про уступку (15 738,40 вместо 17 738,40).
+    _РАЗБИВКА_АНКОР = re.compile(r"из\s*котор\w+|в\s+том\s+числе", re.IGNORECASE)
+
     def _apply_prayer_finances(self, fields: Dict[str, Any], text: str) -> None:
         """Финансы из ПРОСИТЕЛЬНОЙ части: суммирует разбивки долга по категориям
         (осн.долг/проценты/неустойка/ссудная госпошлина), итог = их сумма.
@@ -646,6 +652,14 @@ class AmountsMixin:
 
         def classify(ph):
             ph = ph.lower()
+            # СЛИТНЫЙ ИТОГ: подпись сама объявляет, что строка СОДЕРЖИТ другие
+            # категории («сумма основной задолженности, которая включает в себя
+            # основной долг, проценты, комиссии и государственную пошлину»).
+            # Это итог под составной подписью, а не слагаемое: разбивка у таких
+            # заявлений лежит в ТАБЛИЦЕ. Принять её за основной долг — значит
+            # показать юристу итог в графе «Осн. долг» (свежие-10, -11, -12, -13).
+            if "включает в себя" in ph or "включающ" in ph:
+                return "composite"
             # штраф vs неустойка — по ВЕДУЩЕМУ (раннему) слову: «неустойки
             # (штрафы, пени)» неустойка, а «штрафные санкции» штраф.
             _sp = ph.find("штраф")
@@ -659,6 +673,12 @@ class AmountsMixin:
             if "процент" in ph:
                 return "interest"
             if "госпошл" in ph or "пошлин" in ph:
+                return "loan_duty"
+            # «Судебные расходы» в составе требования — та же ссудная пошлина,
+            # просто названная по-другому. Без этой подписи слагаемое выпадало
+            # из разбивки И из итога: свежие-24 давал 18 304,00 вместо
+            # 20 304,00, свежие-25 — 22 999,99 вместо 24 999,99.
+            if "судебн" in ph and "расход" in ph:
                 return "loan_duty"
             if ("основн" in ph or "ссудн" in ph or "просроченный кредит" in ph
                     or "просроченному кредиту" in ph):
@@ -688,7 +708,7 @@ class AmountsMixin:
 
             def is_total(m):
                 tail = seg[m.end():m.end() + 18].lower()
-                return "из котор" in tail or "в том числе" in tail
+                return bool(self._РАЗБИВКА_АНКОР.search(tail))
 
             allm = list(amt_re.finditer(seg))
             starts = [a.start() for a in allm]
@@ -704,6 +724,22 @@ class AmountsMixin:
             def win_before(i, m):
                 pe = ends[i - 1] if i - 1 >= 0 else 0
                 return обрезать_слева(seg[max(pe, m.start() - 45):m.start()])
+
+            def слитный(i, m):
+                """Подпись объявляет строку составной — ищем маркер ДАЛЬШЕ 45 знаков.
+
+                «- 17738,40 руб. – сумма основной задолженности, которая включает
+                в себя основной долг, проценты, комиссии и государственную
+                пошлину» — слова «включает в себя» в окно подписи не попадают,
+                и строка выглядела обычным основным долгом. Окно расширено, но
+                по-прежнему ограничено СОСЕДНЕЙ суммой, так что чужую подпись
+                оно не захватывает.
+                """
+                nb = starts[i + 1] if i + 1 < len(allm) else len(seg)
+                pe = ends[i - 1] if i - 1 >= 0 else 0
+                широкое = (seg[m.end():min(nb, m.end() + 200)]
+                           + " " + seg[max(pe, m.start() - 200):m.start()]).lower()
+                return "включает в себя" in широкое or "включающ" in широкое
 
             after_n = before_n = 0
             for i, m in ms:
@@ -725,16 +761,18 @@ class AmountsMixin:
                     if re.match(r"\s*(?:руб\w*\.?)?\s*[–\-]", wa) and classify(wa.split("\n", 1)[0]):
                         da += 1
                 use_after = da >= db
-            pr = it = fo = pen = ld = 0.0
+            pr = it = fo = pen = ld = comp = 0.0
             hits = 0
             seen = set()
             # Отдельные слагаемые по категориям (для тултипа-разбивки на фронте).
             add: Dict[str, list] = {"principal": [], "interest": [], "forfeit": [],
-                                    "penalty": [], "loan_duty": []}
+                                    "penalty": [], "loan_duty": [], "composite": []}
             for i, m in ms:
                 val = self._fin_amount(m.group(1))
                 ph = win_after(i, m) if use_after else win_before(i, m)
                 cat = classify(ph)
+                if cat and cat != "composite" and слитный(i, m):
+                    cat = "composite"
                 if not cat:
                     continue
                 key = (cat, round(val, 2))
@@ -749,11 +787,13 @@ class AmountsMixin:
                     it += val
                 elif cat == "loan_duty":
                     ld += val
+                elif cat == "composite":
+                    comp += val
                 else:
                     pr += val
                 add[cat].append(val)
                 hits += 1
-            return pr, it, fo, pen, ld, hits, add
+            return pr, it, fo, pen, ld, hits, add, comp
 
         p_anchor = -1
         for a in ("просим суд", "прошу суд", "просит суд",
@@ -767,15 +807,24 @@ class AmountsMixin:
         prayer_full = region[:cutp.start()] if cutp else region
 
         principal = interest = forfeit = penalty = loan_duty = 0.0
+        # Слитные итоги («сумма …, которая включает в себя …»): идут в ОБЩУЮ
+        # сумму, но разбивку не образуют — её берём из таблицы документа.
+        lumped_sum = 0.0
         validated = False
         # Слагаемые по категориям (для тултипа-разбивки поля на фронте).
         addends: Dict[str, list] = {"principal": [], "interest": [], "forfeit": [],
-                                    "penalty": [], "loan_duty": []}
+                                    "penalty": [], "loan_duty": [], "composite": []}
 
         verb_block_re = re.compile(
             r"(?:включить|установить|призна\w+[^.\n]{0,60}?включить)"
             r"[^.]{0,400}?(?:в\s*размере|вразмере|на\s+сумму)\s+" + NUM +
-            r"\s*(?:руб\w*\.?)?[^\n]{0,40}?(?:из\s+котор\w+|в\s+том\s+числе)\s*:?",
+            # Сумма ПРОПИСЬЮ в скобках идёт перед разбивкой и длиннее прежнего
+            # зазора в 40 знаков («…936 023,39 руб. (Девятьсот тридцать шесть
+            # тысяч двадцать три рубля 39 копеек), в том числе:») — из-за этого
+            # блок просительной не опознавался у свежие-31 и свежие-6, и итог
+            # брался из «Расчёта задолженности», то есть БЕЗ госпошлины.
+            r"\s*(?:руб\w*\.?)?\s*(?:\([^)]{0,120}\))?"
+            r"[^\n]{0,40}?(?:из\s*котор\w+|в\s+том\s+числе)\s*:?",
             re.IGNORECASE,
         )
         vblocks = list(verb_block_re.finditer(text))
@@ -796,11 +845,12 @@ class AmountsMixin:
                 if cw:
                     window = window[:cw.start()]
                 window = window[:1800]
-                pr, it, fo, pen, ld, h, add = parse_seg(window)
-                ssum = pr + it + fo + pen + ld
+                pr, it, fo, pen, ld, h, add, comp = parse_seg(window)
+                ssum = pr + it + fo + pen + ld + comp
                 if h and abs(ssum - subtotal) < 1.5 and round(subtotal, 2) not in seen_sub:
                     seen_sub.add(round(subtotal, 2))
                     g[0] += pr; g[1] += it; g[2] += fo; g[3] += pen; g[4] += ld
+                    lumped_sum += comp
                     for cat, vals in add.items():
                         addends[cat].extend(vals)
                     nvalid += 1
@@ -811,7 +861,7 @@ class AmountsMixin:
         if not validated:
             start = -1
             # «из котор\w+» = из которых/которой/которого (разбивка долга).
-            _izm = re.search(r"из\s+котор\w+", low)
+            _izm = re.search(r"из\s*котор\w+", low)
             iz = _izm.start() if _izm else -1
             if iz == -1:
                 for mm in re.finditer("в том числе", low):
@@ -838,7 +888,7 @@ class AmountsMixin:
             cut = re.search(r"\n\s*Приложени", seg, re.IGNORECASE)
             if cut:
                 seg = seg[:cut.start()]
-            has_iz = ("из котор" in seg.lower()) or ("в том числе" in seg.lower())
+            has_iz = bool(self._РАЗБИВКА_АНКОР.search(seg))
             if iz != -1:
                 wb = re.search(
                     r"(?:нормативно|согласно\b|таким\s+образом|на\s+основани|"
@@ -860,19 +910,27 @@ class AmountsMixin:
                     seg = seg[: b.start() + 20]
                 if len(dash_cat_re.findall(seg)) < 2:
                     return
-            principal, interest, forfeit, penalty, loan_duty, hits, addends = parse_seg(seg)
-            if hits == 0 or (principal + interest + forfeit + penalty) <= 0:
+            (principal, interest, forfeit, penalty, loan_duty, hits, addends,
+             lumped_sum) = parse_seg(seg)
+            if hits == 0 or (principal + interest + forfeit + penalty + lumped_sum) <= 0:
                 return
             if has_iz:
                 _strip_sp = lambda z: z.replace(" ", "").replace("\u00a0", "").replace("\u202f", "")
-                total_chk = principal + interest + forfeit + penalty + loan_duty
+                total_chk = principal + interest + forfeit + penalty + loan_duty + lumped_sum
                 if str(int(total_chk)) not in _strip_sp(text):
                     logger.info("PRAYER: total not confirmed in text - skip")
                     return
 
-        if (principal + interest + forfeit + penalty) <= 0:
+        if (principal + interest + forfeit + penalty + lumped_sum) <= 0:
             return
-        total = principal + interest + forfeit + penalty + loan_duty
+        total = principal + interest + forfeit + penalty + loan_duty + lumped_sum
+
+        if lumped_sum > 0 and (principal + interest + forfeit + penalty + loan_duty) <= 0:
+            fields["totalDebt"] = self._fin_fmt(total)
+            fields["debtAmount"] = fields["totalDebt"]
+            logger.info("PRAYER: \u0442\u043e\u043b\u044c\u043a\u043e \u0441\u043b\u0438\u0442\u043d\u044b\u0439 \u0438\u0442\u043e\u0433 %s, \u0440\u0430\u0437\u0431\u0438\u0432\u043a\u0443 \u043d\u0435 \u0442\u0440\u043e\u0433\u0430\u0435\u043c",
+                        fields["totalDebt"])
+            return
 
         if principal > 0:
             fields["principalDebt"] = self._fin_fmt(principal)
@@ -1170,6 +1228,24 @@ class AmountsMixin:
                 % (grand, totals_sum, grand - totals_sum)
             )
 
+    # Банкротная одной меткой, но ДВУМЯ числами: «Госпошлина: 1 490 913 руб.+
+    # 100 000 руб.». Признак нужен двум слоям, поэтому вынесен.
+    _ЧИСЛО_ГП = r"\d[\d  ]*(?:[.,]\d{1,2})?"
+    _ПРОБЕГ_ГП = re.compile(
+        r"(?:гос)?пошлин\w*[^\d]{0,40}?"
+        r"(" + _ЧИСЛО_ГП + r"\s*руб\w*\.?\s*[+и,]\s*" + _ЧИСЛО_ГП
+        + r"(?:\s*руб\w*\.?\s*[+и,]\s*" + _ЧИСЛО_ГП + r")*)",
+        re.IGNORECASE,
+    )
+
+    def _слагаемые_банкротной(self, flat: str) -> list:
+        """Слагаемые банкротной пошлины, записанной через «+»/«и»."""
+        m = self._ПРОБЕГ_ГП.search(flat)
+        if not m:
+            return []
+        числа = [self._fin_amount(x) for x in re.findall(self._ЧИСЛО_ГП, m.group(1))]
+        return [p for p in числа if p and p >= 100]
+
     def _sum_bankruptcy_duty(self, fields: Dict[str, Any], text: str) -> None:
         """Банкротная госпошлина ДВУМЯ слагаемыми после одной метки.
 
@@ -1185,18 +1261,7 @@ class AmountsMixin:
         flat = re.sub(r"[  \t]", " ", text)
         if not re.search(r"банкрот|несостоятельн", flat, re.IGNORECASE):
             return
-        NUM = r"\d[\d ]*(?:[.,]\d{1,2})?"
-        run_re = re.compile(
-            r"(?:гос)?пошлин\w*[^\d]{0,40}?"
-            r"(" + NUM + r"\s*руб\w*\.?\s*[+и,]\s*" + NUM
-            + r"(?:\s*руб\w*\.?\s*[+и,]\s*" + NUM + r")*)",
-            re.IGNORECASE,
-        )
-        m = run_re.search(flat)
-        if not m:
-            return
-        parts = [self._fin_amount(x) for x in re.findall(NUM, m.group(1))]
-        parts = [p for p in parts if p and p >= 100]
+        parts = self._слагаемые_банкротной(flat)
         if len(parts) < 2:
             return
         total_duty = sum(parts)
@@ -1226,6 +1291,15 @@ class AmountsMixin:
         re.compile(r"(?:из\s+котор\w+|в\s+том\s+числе|а\s+именно)\s*:?[\s\S]{0,700}?"
                    r"[-–—•]\s*(?:государственн\w+\s+)?(?:гос)?пошлин\w*\s*[:\-–—]?\s*"
                    + _ДЕНЬГИ_ГП, re.IGNORECASE),
+        # «расходы по оплате госпошлины – 2000 руб» и «судебные расходы»: та же
+        # ссудная пошлина, но подпись стоит СЛОВАМИ, без тире перед «пошлиной».
+        # Свежие-33 и -34: арифметический гейт законно отвергает весь блок
+        # (документ пишет «на сумму 32952» в заголовке и «ИТОГО – 34952» в
+        # конце), поэтому итог не трогаем, а графу заполнить обязаны.
+        re.compile(r"(?:из\s+котор\w+|в\s+том\s+числе|а\s+именно)\s*:?[\s\S]{0,700}?"
+                   r"(?:судебн\w+\s+расход\w*|расход\w*\s+по\s+(?:опла|упла)те\s+"
+                   r"(?:государственн\w+\s+)?(?:гос)?пошлин\w*)[^\d]{0,30}?"
+                   + _ДЕНЬГИ_ГП, re.IGNORECASE),
     )
     # ОСВОБОЖДЕНИЕ: «имеющиеся исполнительные документы освобождают Банк от
     # оплаты государственной пошлины» — банкротной в деле НЕТ вообще.
@@ -1242,7 +1316,7 @@ class AmountsMixin:
         Зовётся ПОСЛЕДНЕЙ в финансовом каскаде: решение по смыслу иначе
         затирают четыре слоя ниже (замер §S.43 — 58% полей переписываются).
 
-        ⚠️ Ворота, а не запрет: графу, которая уже заполнена, метод НЕ
+        Ворота, а не запрет: графу, которая уже заполнена, метод НЕ
         пересчитывает — иначе под удар попадают 43 зелёных ожидания класса
         «госпошлина», в том числе суммированная банкротная корпус-0
         («1 490 913 руб.+ 100 000 руб.»). Трогаем только пустую графу и
@@ -1294,9 +1368,15 @@ class AmountsMixin:
                 logger.info("ГП: банкротная по смыслу = %s", fields["stateDuty16"])
 
         # 3. Пустую ссудную заполняем явно ссудной.
+        #    Кроме слагаемых банкротной: «Госпошлина: 1 490 913 руб.+
+        #    100 000 руб.» — это ОДИН платёж двумя числами, и 100 000 не
+        #    ссудная пошлина. Иначе спорим с `_sum_bankruptcy_duty`, который
+        #    эту ложную ссудную специально убирает (поймано golden, корпус-0).
+        слагаемые = self._слагаемые_банкротной(flat)
         if ссудная <= 0 and явно_ссудные:
             v = max(явно_ссудные)
-            if abs(v - self._fin_amount(fields.get("stateDuty16"))) > 0.01:
+            if (abs(v - self._fin_amount(fields.get("stateDuty16"))) > 0.01
+                    and not any(abs(v - p) < 0.01 for p in слагаемые)):
                 fields["loanStateDuty17"] = self._fin_fmt(v)
                 logger.info("ГП: ссудная по смыслу = %s", fields["loanStateDuty17"])
 
