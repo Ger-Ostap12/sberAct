@@ -5144,7 +5144,16 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 if not extracted_fields.get("interest"):
                     for idx, line in enumerate(lines):
                         ll = line.lower()
-                        if "сумма долга по процентам" in ll or "проценты" in ll:
+                        # Голое «проценты» без своей метки — это может быть ПРОЗА:
+                        # «В соответствии с п. 4.5 Общих условий проценты за
+                        # пользование кредитом уплачиваются…». Номер пункта 4.5
+                        # становился суммой процентов, и дальше сверка «части = целое»
+                        # переписывала общий долг (свежие-18: 494 194,58 вместо
+                        # названных документом 494 190,08). Ячейка таблицы — это
+                        # ОДНА ПОДПИСЬ без цифр, значение лежит в соседней строке.
+                        своя_метка = "сумма долга по процентам" in ll
+                        похоже_на_ячейку = "проценты" in ll and not re.search(r"\d", line)
+                        if своя_метка or похоже_на_ячейку:
                             val = _extract_amount_near_index(idx)
                             if val:
                                 extracted_fields["interest"] = val
