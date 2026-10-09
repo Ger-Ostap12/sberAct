@@ -82,12 +82,15 @@ export const buildSubmitData = (input: SubmitDataInput): ExtractedData => {
   // Синхронизация полей сумм (перенесено 1:1)
   const f = updatedData.fields;
   if (f) {
-    if (f.loanDebt && !f.principalDebt) {
-      f.principalDebt = f.loanDebt;
-      f.principalDebt13 = f.loanDebt;
-    } else if (f.principalDebt && !f.loanDebt) {
-      f.loanDebt = f.principalDebt;
-    }
+    // Три поля маркера [13] сводим к ОДНОМУ значению — тому, что юрист видит
+    // в поле «Основной долг» (FinancesSection показывает
+    // `principalDebt || loanDebt`). Прежняя односторонняя синхронизация
+    // заполняла только пустое, и при двух разных числах в акт уезжало то,
+    // которое раньше попало в словарь, а не то, которое на экране.
+    const оснДолг = (f.principalDebt || f.loanDebt || '').trim();
+    f.principalDebt = оснДолг;
+    f.principalDebt13 = оснДолг;
+    f.loanDebt = оснДолг;
 
     if (f.interest && !f.interest14) {
       f.interest14 = f.interest;

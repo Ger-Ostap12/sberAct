@@ -473,11 +473,32 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 except ValueError:
                     logger.warning(f"Не удалось распарсить дату: {date_value}")
 
-        if cleaned_data.get("loanDebt") and not cleaned_data.get("principalDebt"):
-            cleaned_data["principalDebt"] = cleaned_data["loanDebt"]
-            cleaned_data["principalDebt13"] = cleaned_data["loanDebt"]
-        elif cleaned_data.get("principalDebt") and not cleaned_data.get("loanDebt"):
-            cleaned_data["loanDebt"] = cleaned_data["principalDebt"]
+        # Маркер [13] «Основной долг» питают ТРИ поля (principalDebt13,
+        # principalDebt, loanDebt), а подстановка идёт циклом по cleaned_data —
+        # значит маркер занимало то поле, которое раньше попало в СЛОВАРЬ, то
+        # есть порядок вставки ключей, а не смысл. Замер по корпусу: [13] брал
+        # principalDebt у 66 документов, loanDebt у 10, principalDebt13 у 3.
+        # Отсюда два вида расхождений с формой:
+        #   корпус-11/-12  в графу основного долга уезжала ОБЩАЯ сумма
+        #                  1 871 897 982,82 (эталон записал её как «Общая
+        #                  сумма долга»), потому что loanDebt оказался первым;
+        #   корпус-45      самобанкрот: principalDebt13 держал 158 434,00 —
+        #                  сумму ОДНОГО кредитора при итоге 2 126 507,25, —
+        #                  и печатал её при ПУСТОМ поле формы.
+        #
+        # Правило (решение Андрея 09.10.2026): в [13] печатается РОВНО то, что
+        # юрист видит в поле «Основной долг». Форма показывает
+        # `principalDebt || loanDebt` (FinancesSection.tsx), поэтому сводим все
+        # три поля к одному значению — и порядок словаря перестаёт решать.
+        # Пустое значение гасит маркер: у самобанкрота единого основного долга
+        # нет, у него список кредиторов.
+        #
+        # Ссудная ГП [17] (loanStateDuty17) здесь НЕ ЗАТРАГИВАЕТСЯ: это другое
+        # поле со своим маркером и своей логикой удаления строки.
+        осн_долг = str(cleaned_data.get("principalDebt")
+                       or cleaned_data.get("loanDebt") or "").strip()
+        for поле in ("principalDebt", "principalDebt13", "loanDebt"):
+            cleaned_data[поле] = осн_долг
 
         if cleaned_data.get("interest") and not cleaned_data.get("interest14"):
             cleaned_data["interest14"] = cleaned_data["interest"]

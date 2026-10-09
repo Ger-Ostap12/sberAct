@@ -99,10 +99,21 @@ describe('buildSubmitData — синхронизация сумм', () => {
     expect(run({ editedFields: { stateDuty: '3' } }).fields.stateDuty16).toBe('3');
     expect(run({ editedFields: { stateDuty16: '4' } }).fields.stateDuty).toBe('4');
   });
-  it('не перезаписывает уже заполненные парные поля', () => {
+  // Решение Андрея 09.10.2026: три поля маркера [13] несут ОДНО значение —
+  // то, что юрист видит в поле «Основной долг» (`principalDebt || loanDebt`).
+  // Прежде при двух разных числах оба уезжали на бэкенд как есть, и в акт
+  // попадало то, которое раньше оказалось в словаре, а не то, что на экране
+  // (корпус-11/-12: вместо основного долга печаталась ОБЩАЯ сумма).
+  it('при двух разных числах в [13] побеждает показанное на форме', () => {
     const r = run({ editedFields: { loanDebt: '100', principalDebt: '999' } });
     expect(r.fields.principalDebt).toBe('999');
-    expect(r.fields.loanDebt).toBe('100');
+    expect(r.fields.principalDebt13).toBe('999');
+    expect(r.fields.loanDebt).toBe('999');
+  });
+  it('остальные парные поля по-прежнему не перезаписываются', () => {
+    const r = run({ editedFields: { interest: '5', interest14: '6' } });
+    expect(r.fields.interest).toBe('5');
+    expect(r.fields.interest14).toBe('6');
   });
 });
 
