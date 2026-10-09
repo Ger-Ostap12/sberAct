@@ -5130,9 +5130,16 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 if not extracted_fields.get("principalDebt"):
                     for idx, line in enumerate(lines):
                         ll = line.lower()
+                        # Метка бывает в РОДИТЕЛЬНОМ падеже: ячейка таблицы
+                        # называется «Основного долга:», а значение лежит
+                        # строкой ниже (свежие-1, ООО ПКО АСВ). Жёсткое
+                        # «основной долг» такую запись не видело, а паттерны
+                        # её потеряли, когда денежный класс ужесточили:
+                        # MONEY_NUM начинается с цифры и перевод строки между
+                        # меткой и суммой перепрыгнуть не может.
                         if (
                             "сумма основного долга" in ll
-                            or ("основной долг" in ll and "просроч" not in ll)
+                            or (re.search(r"основн\w*\s+долг\w*", ll) and "просроч" not in ll)
                             or "тело долга" in ll
                         ):
                             val = _extract_amount_near_index(idx)
@@ -5151,8 +5158,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                         # переписывала общий долг (свежие-18: 494 194,58 вместо
                         # названных документом 494 190,08). Ячейка таблицы — это
                         # ОДНА ПОДПИСЬ без цифр, значение лежит в соседней строке.
+                        #
+                        # Основа «процент» вместо точного «проценты»: ячейка
+                        # называется и «Процентов:» (свежие-1). Условие «в
+                        # строке нет цифр» остаётся — именно оно отличает
+                        # подпись ячейки от прозы с номером пункта.
                         своя_метка = "сумма долга по процентам" in ll
-                        похоже_на_ячейку = "проценты" in ll and not re.search(r"\d", line)
+                        похоже_на_ячейку = (
+                            re.search(r"процент\w*", ll) and not re.search(r"\d", line))
                         if своя_метка or похоже_на_ячейку:
                             val = _extract_amount_near_index(idx)
                             if val:
@@ -5168,6 +5181,20 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                             if val:
                                 extracted_fields["forfeit"] = val
                                 logger.info(f"forfeit извлечён из табличного блока: {val}")
+                                break
+
+                # Штрафы читаются ЗДЕСЬ, а не только в `_normalize_financial_block`:
+                # тот слой работает ПОЗЖЕ сверки «части = целое», и без штрафов
+                # сверка считала разбивку неполной и занижала названный итог
+                # (свежие-1: 9 875,00 -> 9 430,92).
+                if not extracted_fields.get("penalties"):
+                    for idx, line in enumerate(lines):
+                        ll = line.lower()
+                        if re.search(r"штраф\w*", ll) and not re.search(r"\d", line):
+                            val = _extract_amount_near_index(idx)
+                            if val:
+                                extracted_fields["penalties"] = val
+                                logger.info(f"penalties извлечены из табличного блока: {val}")
                                 break
 
                 if not extracted_fields.get("stateDuty"):

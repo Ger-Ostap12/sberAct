@@ -1631,7 +1631,21 @@ class AmountsMixin:
                     # включающее пошлину, здесь не годится.
                     both_components_known = principal_f > 0 and interest_f > 0
                     mismatch = abs(total_f - sum_pif) > 0.01
-                    if total_f > sum_pif * 1.15 or (both_components_known and mismatch):
+                    # Разбивка бывает ШИРЕ трёх слагаемых: у свежие-1 названный
+                    # итог 9 875,00 расписан на пять граф (осн. долг 3 950 +
+                    # проценты 5 480,92 + пени 0 + штрафы 244,08 + госпошлина
+                    # 200). Если ПОЛНАЯ разбивка сходится с итогом до копейки,
+                    # итог верен — пересчёт по трём слагаемым занизил бы его
+                    # ровно на штрафы и пошлину.
+                    полная = (sum_pif
+                              + self._safe_amount_field(extracted_fields.get("penalties"))
+                              + self._safe_amount_field(extracted_fields.get("stateDuty")))
+                    итог_сходится = abs(total_f - полная) <= 0.01
+                    if итог_сходится:
+                        logger.info(
+                            "Общая сумма %s сходится с полной разбивкой — не пересчитываем",
+                            total_str)
+                    elif total_f > sum_pif * 1.15 or (both_components_known and mismatch):
                         formatted_sum = f"{sum_pif:,.2f}".replace(",", " ").replace(".", ",")
                         extracted_fields["totalDebt"] = formatted_sum
                         if extracted_fields.get("debtAmount") == extracted_fields.get("totalDebt") or not extracted_fields.get("debtAmount"):
