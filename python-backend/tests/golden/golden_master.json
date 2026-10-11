@@ -1,110 +1,4 @@
 {
- "НОвая конвертация/Заявл_Ликвидир_Оргтехника.docx": {
-  "collaterals": [],
-  "confidence": 0.85,
-  "creditors": [],
-  "debtors": [
-   {
-    "address": "344064, г. РОСТОВ-НА-ДОНУ, ул. ВАВИЛОВА, зд. 59В/101, эт 3, ком. 314",
-    "birthDate": "",
-    "birthPlace": "",
-    "inn": "6163105360",
-    "name": "ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «ОРГТЕХНИКА»",
-    "ogrn": "1106195009800",
-    "ogrnip": "",
-    "snils": ""
-   }
-  ],
-  "documentType": "initiation_legal",
-  "entityType": "legal",
-  "fields": {
-   "applicantAddress": "344064, г. РОСТОВ-НА-ДОНУ, ул. ВАВИЛОВА, зд. 59В/101, эт 3, ком. 314",
-   "applicantName": "ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «ОРГТЕХНИКА»",
-   "applicantNameAccusative": "Оленченко Олега Игоревича Сообщение",
-   "applicantNameDative": "Оленченко Олегу Игоревичу Сообщению",
-   "applicantNameGenitive": "Оленченко Олега Игоревича Сообщения",
-   "applicantNameInstrumental": "Оленченко Олегом Игоревичем Сообщением",
-   "companyInn": "6163105360",
-   "contractDate": "30.06.2025, 26.06.2025",
-   "contractNumber": "7M-520CPIS-BV0-П1",
-   "courtName": "Арбитражный суд Ростовской области",
-   "creditTermMonths": "4",
-   "creditorAddress": "117312, г. Москва, ул. Вавилова, д.19",
-   "creditorInn": "7707083893",
-   "creditorName": "ПАО Сбербанк",
-   "creditorOgrn": "1027700132195",
-   "debtAmount": "501 365 000,90",
-   "debtSnapshotDate88": "07.04.2026",
-   "debtorName": "ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «ОРГТЕХНИКА»",
-   "efirsbPublicationDate": "05.06.2026",
-   "entityType": "legal",
-   "inn": "6163105360",
-   "interest": "494 171 335,67",
-   "interest14": "494 171 335,67",
-   "legalShortName": "ОРГТЕХНИКА\" (ООО \"ОРГТЕХНИКА\")",
-   "liquidatorName": "Оленченко Олег Игоревич",
-   "loanDebt": "494 171 335,67",
-   "messageDate": "05.06.2026",
-   "messageNumber": "36504402",
-   "obligationType": "Кредитный договор",
-   "obligations": [
-    {
-     "contractDate": "30.06.2025",
-     "contractNumber": "7M-520CPIS-BV0-П1",
-     "id": "obligation_p_0",
-     "obligationType": "Договор поручительства"
-    },
-    {
-     "contractDate": "26.06.2025",
-     "contractNumber": "",
-     "id": "obligation_p_1",
-     "obligationType": "Договор поручительства"
-    }
-   ],
-   "ogrn": "1106195009800",
-   "procedureType": "observation",
-   "procedureTypeRaw": "наблюдение",
-   "registrationDate": "20.06.1991",
-   "requirementsSum": "501 365 000,90",
-   "sourceDocumentType": "initiation_legal",
-   "sroName": "Ассоциация \"Саморегулируемая организация арбитражных управляющих \"Меркурий\"",
-   "stateDuty": "1 590 913,00",
-   "stateDuty16": "1 590 913,00",
-   "totalDebt": "988 342 671,34"
-  },
-  "heirs": [],
-  "metadata": {
-   "language": "ru",
-   "pageCount": 5,
-   "wordCount": 5629
-  },
-  "obligations": [
-   {
-    "contractDate": "30.06.2025",
-    "contractNumber": "7M-520CPIS-BV0-П1",
-    "id": "obligation_p_0",
-    "obligationType": "Договор поручительства"
-   },
-   {
-    "contractDate": "26.06.2025",
-    "contractNumber": "",
-    "id": "obligation_p_1",
-    "obligationType": "Договор поручительства"
-   }
-  ],
-  "rawTextLen": 42847,
-  "rawTextSha": "0622264069117ae575aa7b030e71ff641752f30e0da89c510378f6fc94f19954",
-  "recommendedActs": {
-   "collateralOption": "no_collateral",
-   "entityType": "legal",
-   "recommendedActIds": [
-    "final_observation",
-    "acceptance_definition",
-    "final_competition"
-   ]
-  },
-  "thirdParties": []
- },
  "НОвая конвертация/Ипотека/АГЕЕВ 69303105 ипотека Приморский рс Новороссийска.docx_depers.docx": {
   "collaterals": [
    {
@@ -1891,7 +1785,7 @@
    "representativeName": "В.А. Перец",
    "requirementsSum": "1 871 897 982,82",
    "sourceDocumentType": "initiation_legal",
-   "sroName": "Некоммерческое партнерство \"Объединение арбитражных управляющих \"Авангард\"",
+   "sroName": "Союз арбитражных управляющих \"Авангард\"",
    "stateDuty": "5 017 245,00",
    "stateDuty16": "5 017 245,00",
    "totalDebt": "1 871 897 982,82"
@@ -2012,7 +1906,7 @@
    "representativeName": "В.А. Перец",
    "requirementsSum": "1 871 897 982,82",
    "sourceDocumentType": "initiation_legal",
-   "sroName": "Некоммерческое партнерство \"Объединение арбитражных управляющих \"Авангард\"",
+   "sroName": "Союз арбитражных управляющих \"Авангард\"",
    "stateDuty": "5 017 245,00",
    "stateDuty16": "5 017 245,00",
    "totalDebt": "1 871 897 982,82"
@@ -7371,7 +7265,7 @@
    "interest14": "0,00",
    "passportNumber": "278902",
    "passportSeries": "6023",
-   "principalDebt13": "158 434,00",
+   "principalDebt13": "121 727,96",
    "representativeName": "Шульженко Ю.В.",
    "requirementsSum": "2 126 507,25",
    "sourceDocumentType": "rtk_application",
@@ -8570,6 +8464,7 @@
    "requirementsSum": "480 070,88",
    "snils": "063-843-816 80",
    "sourceDocumentType": "initiation_physical",
+   "sroName": "Саморегулируемая межрегиональная общественная организация «Ассоциация антикризисных управляющих»",
    "totalDebt": "5 631 934,26"
   },
   "heirs": [],
