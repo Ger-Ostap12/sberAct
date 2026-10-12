@@ -17,6 +17,8 @@ export interface SubmitDataInput {
   collateralOption: CollateralOption | null;
   debtorStatus: DebtorStatus | null;
   applicationKind: ApplicationKind;
+  /** Самобанкротство — подвид инициирования, на бэкенд уезжает как kind='self'. */
+  selfBankruptcy?: boolean;
   selectedActs: SelectedAct[];
   /** Чекбокс «Короткий текст»: доп. генерация резолютивки основной процедуры. */
   shortText?: boolean;
@@ -33,8 +35,14 @@ export interface SubmitDataInput {
  * penalties→forfeit, stateDuty↔stateDuty16). Чистая функция — тестируется напрямую.
  */
 export const buildSubmitData = (input: SubmitDataInput): ExtractedData => {
-  const { analysisResult, editedFields, entityType, collateralOption, debtorStatus, applicationKind, selectedActs, shortText, documentCategory, mortgageKind } =
+  const { analysisResult, editedFields, entityType, collateralOption, debtorStatus, applicationKind, selfBankruptcy, selectedActs, shortText, documentCategory, mortgageKind } =
     input;
+
+  // Бэкенд различает три вида ('rtk' | 'other' | 'self'), фронт — две оси.
+  // Самобанкротство старше инициирования: при нём роутинг идёт по своим папкам.
+  const wireApplicationKind = selfBankruptcy && applicationKind !== 'rtk'
+    ? 'self'
+    : applicationKind === 'rtk' ? 'rtk' : 'other';
 
   // Финальный тип лица: выбранный пользователем (с приведением) или автоопределённый
   const finalEntityType: 'individual' | 'legal' = entityType
@@ -57,7 +65,7 @@ export const buildSubmitData = (input: SubmitDataInput): ExtractedData => {
       selectedEntityType: entityType || undefined,
       selectedCollateralOption: collateralOption || undefined,
       selectedDebtorStatus: debtorStatus || undefined,
-      selectedApplicationKind: applicationKind || undefined,
+      selectedApplicationKind: wireApplicationKind,
       selectedActsIds: selected.map((a) => a.id).join(',') || undefined,
       selectedActsData: JSON.stringify(selected) || undefined,
       selectedShortText: shortText ? 'true' : undefined,

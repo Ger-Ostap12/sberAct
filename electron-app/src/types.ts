@@ -391,7 +391,9 @@ export type CollateralOption = 'collateral' | 'collateral_auto' | 'no_collateral
 export type DebtorStatus = 'absent' | 'liquidation' | 'deceased';
 
 
-export type ApplicationKind = 'rtk' | 'other' | 'self';
+// Вид заявления — основная ось: включение в РТК либо инициирование банкротства.
+// Самобанкротство — подвид инициирования и живёт отдельным флагом, не значением.
+export type ApplicationKind = 'rtk' | 'initiation';
 
 export interface SelectedAct {
   id: string;

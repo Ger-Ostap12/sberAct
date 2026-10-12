@@ -28,10 +28,13 @@ interface ActSelectionSectionProps {
   collateralOption: CollateralOption | null;
   collateralKinds: { realEstate: boolean; auto: boolean; other: boolean };
   setCollateralKinds: React.Dispatch<React.SetStateAction<{ realEstate: boolean; auto: boolean; other: boolean }>>;
-  /** Вид заявления (ВКЛ в РТК / инициирование / самобанкрот) — независимый блок.
-   *  'rtk' скрывает поле СРО; 'self' скрывает блок кредитора. */
+  /** Вид заявления (ВКЛ в РТК / инициирование) — независимый блок.
+   *  'rtk' скрывает поле СРО. */
   applicationKind: ApplicationKind;
   setApplicationKind: (v: ApplicationKind) => void;
+  /** Самобанкротство — подвид инициирования, скрывает блок кредитора. */
+  selfBankruptcy: boolean;
+  setSelfBankruptcy: (v: boolean) => void;
   /** Статус лица (ликвидируемый/отсутствующий ЮЛ, умерший ФЛ) — независимый,
    *  опциональный блок. null = не задан. Совместим с любым видом заявления. */
   debtorStatus: DebtorStatus | null;
@@ -57,6 +60,8 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
   setCollateralKinds,
   applicationKind,
   setApplicationKind,
+  selfBankruptcy,
+  setSelfBankruptcy,
   debtorStatus,
   setDebtorStatus,
   selectedActs,
@@ -100,12 +105,11 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
               </RadioGroup>
               </Box>
 
-            {/* Вид заявления — независимый взаимоисключающий блок: ВКЛ в РТК /
-                Инициирование / Самобанкрот. «Включение в РТК» скрывает поле СРО
-                (управляющий уже утверждён); «Самобанкрот» скрывает блок кредитора.
-                Драйвер ВКЛ в РТК — акт final_rtk_inclusion (синхронен с чекбоксом в
-                «3. Финальные СА»). Статус лица — отдельный блок ниже, они СОВМЕСТИМЫ
-                (можно выбрать, напр., «Инициирование» + «Ликвидируемый»). */}
+            {/* Вид заявления — две взаимоисключающие основы: ВКЛ в РТК и
+                Инициирование. Самобанкротство — подвид инициирования, поэтому
+                чекбокс, а не третья кнопка: оно скрывает блок кредитора, но
+                заявление остаётся инициирующим. Статус лица — отдельный блок
+                ниже, они совместимы. */}
             <Box sx={{ mb: 4 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                 <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 0 }}>
@@ -126,9 +130,18 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                 onChange={(e) => setApplicationKind(e.target.value as ApplicationKind)}
               >
                 <FormControlLabel value="rtk" control={<Radio />} label="Включение в РТК" />
-                <FormControlLabel value="other" control={<Radio />} label="Инициирование" />
-                <FormControlLabel value="self" control={<Radio />} label="Самобанкрот" />
+                <FormControlLabel value="initiation" control={<Radio />} label="Инициирование" />
               </RadioGroup>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={selfBankruptcy}
+                    disabled={applicationKind === 'rtk'}
+                    onChange={(e) => setSelfBankruptcy(e.target.checked)}
+                  />
+                }
+                label="Самобанкрот"
+              />
             </Box>
 
             {/* Статус лица — независимый, опциональный, взаимоисключающий блок:

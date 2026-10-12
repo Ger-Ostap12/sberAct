@@ -121,9 +121,11 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   // Статус должника (банкротство): отсутствующий / ликвидируемый / умерший.
   // Взаимоисключающие, но ОПЦИОНАЛЬНЫ и НЕЗАВИСИМЫ от вида заявления.
   const [debtorStatus, setDebtorStatus] = useState<DebtorStatus | null>(null);
-  // Вид заявления (независимый блок): ВКЛ в РТК / инициирование / самобанкрот.
+  // Вид заявления (независимый блок): ВКЛ в РТК либо инициирование.
   // По умолчанию — рядовое инициирование.
-  const [applicationKind, setApplicationKind] = useState<ApplicationKind>('other');
+  const [applicationKind, setApplicationKind] = useState<ApplicationKind>('initiation');
+  // Самобанкротство — подвид инициирования: заявление подаёт сам должник.
+  const [selfBankruptcy, setSelfBankruptcy] = useState<boolean>(false);
   // Чекбокс «Короткий текст»: доп. генерация резолютивки основной процедуры.
   const [shortText, setShortText] = useState<boolean>(false);
   // Вид ипотеки (только режим mortgage): гражданская / военная (ЦЖЗ). Военная
@@ -236,10 +238,11 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           setDebtorStatus('deceased');
         }
 
-        // Вид заявления из рекомендаций: самобанкротство (детектор backend) →
-        // «Самобанкрот» (скрывает блок кредитора); рекомендация ВКЛ в РТК → 'rtk'.
+        // Вид заявления из рекомендаций: самобанкротство (детектор backend) —
+        // инициирование с флагом; рекомендация ВКЛ в РТК → 'rtk'.
         if (analysisResult.applicationKind === 'self_bankruptcy') {
-          setApplicationKind('self');
+          setApplicationKind('initiation');
+          setSelfBankruptcy(true);
         } else if (recommendedActs.recommendedActIds?.includes('final_rtk_inclusion')) {
           setApplicationKind('rtk');
         }
@@ -972,14 +975,13 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     );
   };
 
-  // Единый радио-блок «Вид заявления» объединяет две оси: вид (ВКЛ в РТК /
-  // Вид заявления (независимый от статуса лица блок). Драйвер ВКЛ в РТК — акт
-  // final_rtk_inclusion (синхронен с чекбоксом в «3. Финальные СА»). При уходе из
-  // РТК, если задан статус лица, возвращаем его процедурный финал (competition/
-  // realization); иначе просто снимаем ВКЛ в РТК, оставляя финал рекомендации/выбору.
+  // Смена вида заявления. При уходе из РТК возвращаем процедурный финал статуса
+  // лица, если он задан; иначе просто снимаем ВКЛ в РТК.
   const handleApplicationKindChange = (v: ApplicationKind) => {
     setApplicationKind(v);
     if (v === 'rtk') {
+      // Самобанкротство — подвид инициирования, при переходе в РТК снимается.
+      setSelfBankruptcy(false);
       // Только ВКЛ в РТК среди финальных.
       setSelectedActs(prev => prev.map(a =>
         a.category === 'final' ? { ...a, selected: a.id === 'final_rtk_inclusion' } : a));
@@ -1039,6 +1041,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         collateralOption,
         debtorStatus,
         applicationKind,
+        selfBankruptcy,
         selectedActs,
         shortText,
         documentCategory: isMortgage ? 'mortgage' : 'bankruptcy',
@@ -1088,7 +1091,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   // утверждён и в заявлении названа только СРО: банк-инициирование и самобанкрот.
   // Показывается при РТК (управляющий уже утверждён) и во всех ФНС-заявлениях
   // (уполномоченный орган указывает кандидатуру). Матрица: см. блок «Управляющий».
-  const isSelf = applicationKind === 'self';
+  const isSelf = selfBankruptcy;
   const isFns = isFnsCreditor(editedFields.creditorName);
   const showFioField = !isSelf && (rtkInclusion || isFns);
 
@@ -1188,6 +1191,8 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
             setCollateralKinds={setCollateralKinds}
             applicationKind={applicationKind}
             setApplicationKind={handleApplicationKindChange}
+            selfBankruptcy={selfBankruptcy}
+            setSelfBankruptcy={setSelfBankruptcy}
             debtorStatus={debtorStatus}
             setDebtorStatus={setDebtorStatus}
             selectedActs={selectedActs}

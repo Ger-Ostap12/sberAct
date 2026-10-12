@@ -21,7 +21,7 @@ const run = (over: Partial<SubmitDataInput>): ExtractedData =>
     entityType: null,
     collateralOption: null,
     debtorStatus: null,
-    applicationKind: 'other',
+    applicationKind: 'initiation',
     selectedActs: [],
     ...over,
   });
@@ -34,7 +34,7 @@ describe('buildSubmitData — приоритет editedFields', () => {
       entityType: null,
       collateralOption: null,
       debtorStatus: null,
-      applicationKind: 'other',
+      applicationKind: 'initiation',
       selectedActs: [],
     });
     expect(r.fields.courtName).toBe('Новый суд');
@@ -58,7 +58,7 @@ describe('buildSubmitData — finalEntityType', () => {
       entityType: null,
       collateralOption: null,
       debtorStatus: null,
-      applicationKind: 'other',
+      applicationKind: 'initiation',
       selectedActs: [],
     });
     expect(r.entityType).toBe('legal');
@@ -132,10 +132,26 @@ describe('buildSubmitData — выбранные акты', () => {
   });
 
   it('передаёт выбор пользователя (entityType/collateralOption/debtorStatus/applicationKind)', () => {
-    const r = run({ entityType: 'legal', collateralOption: 'no_collateral', debtorStatus: 'absent', applicationKind: 'self' });
+    const r = run({ entityType: 'legal', collateralOption: 'no_collateral', debtorStatus: 'absent', applicationKind: 'initiation' });
     expect(r.fields.selectedEntityType).toBe('legal');
     expect(r.fields.selectedCollateralOption).toBe('no_collateral');
     expect(r.fields.selectedDebtorStatus).toBe('absent');
+    expect(r.fields.selectedApplicationKind).toBe('other');
+  });
+
+  // Бэкенд знает три вида, фронт — две оси: инициирование + флаг самобанкротства.
+  it('самобанкротство уезжает на бэкенд как kind=self', () => {
+    const r = run({ applicationKind: 'initiation', selfBankruptcy: true });
     expect(r.fields.selectedApplicationKind).toBe('self');
+  });
+
+  it('инициирование без флага уезжает как kind=other', () => {
+    const r = run({ applicationKind: 'initiation', selfBankruptcy: false });
+    expect(r.fields.selectedApplicationKind).toBe('other');
+  });
+
+  it('включение в РТК уезжает как kind=rtk и флаг самобанкротства его не перебивает', () => {
+    const r = run({ applicationKind: 'rtk', selfBankruptcy: true });
+    expect(r.fields.selectedApplicationKind).toBe('rtk');
   });
 });

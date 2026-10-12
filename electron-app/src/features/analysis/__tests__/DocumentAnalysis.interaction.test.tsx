@@ -132,22 +132,22 @@ describe('DocumentAnalysis — самобанкротство', () => {
 
   it('«Самобанкрот» — всем категориям (вид заявления); статусы лица гейтятся типом лица', () => {
     renderSelf();
-    // «Самобанкрот» — радио в блоке «Вид заявления», доступно всегда.
+    // «Самобанкрот» — чекбокс при инициировании, доступен всем категориям лица.
     // Статусы лица (Умерший/Отсутствующий/Ликвидируемый) — ToggleButton (role button).
     // ИП: статусов лица нет.
     fireEvent.click(screen.getByRole('radio', { name: 'ИП' }));
-    expect(screen.getByRole('radio', { name: 'Самобанкрот' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Самобанкрот' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Умерший' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Отсутствующий' })).not.toBeInTheDocument();
     // ФЛ: «Умерший».
     fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));
     expect(screen.getByRole('button', { name: 'Умерший' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Самобанкрот' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Самобанкрот' })).toBeInTheDocument();
     // ЮЛ: «Отсутствующий»/«Ликвидируемый».
     fireEvent.click(screen.getByRole('radio', { name: 'Юр.лицо' }));
     expect(screen.getByRole('button', { name: 'Отсутствующий' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ликвидируемый' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Самобанкрот' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Самобанкрот' })).toBeInTheDocument();
   });
 
   it('вид заявления и статус лица независимы: Инициирование + Ликвидируемый одновременно', () => {
@@ -168,24 +168,48 @@ describe('DocumentAnalysis — самобанкротство', () => {
     expect(screen.getByText('Информация о кредиторе')).toBeInTheDocument();
     expect(screen.getByText('Финансовые данные')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Самобанкрот' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Самобанкрот' }));
     expect(screen.queryByText('Информация о кредиторе')).not.toBeInTheDocument();
     // Шаблоны Templates/самобанкротство/ не содержат финансовых маркеров
     // ([12]-[17]) — суммы в акт не попадают, выверять их юристу незачем.
     expect(screen.queryByText('Финансовые данные')).not.toBeInTheDocument();
 
-    // Радио взаимоисключающее — возврат через выбор «Инициирование».
-    fireEvent.click(screen.getByRole('radio', { name: 'Инициирование' }));
+    // Возврат — снятием того же чекбокса.
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Самобанкрот' }));
     expect(screen.getByText('Информация о кредиторе')).toBeInTheDocument();
     expect(screen.getByText('Финансовые данные')).toBeInTheDocument();
+  });
+
+  // Самобанкротство — подвид инициирования, а не третий вид заявления.
+  it('«Самобанкрот» недоступен при «Включение в РТК» и снимается при переходе в РТК', () => {
+    renderSelf();
+    fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Самобанкрот' }));
+    expect(screen.getByRole('checkbox', { name: 'Самобанкрот' })).toBeChecked();
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Включение в РТК' }));
+    expect(screen.getByRole('checkbox', { name: 'Самобанкрот' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Самобанкрот' })).toBeDisabled();
+    // Блок кредитора при РТК обязан вернуться: он скрыт только самобанкротством.
+    expect(screen.getByText('Информация о кредиторе')).toBeInTheDocument();
+  });
+
+  it('возврат на «Инициирование» открывает чекбокс, но сам его не ставит', () => {
+    renderSelf();
+    fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Самобанкрот' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Включение в РТК' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Инициирование' }));
+    expect(screen.getByRole('checkbox', { name: 'Самобанкрот' })).toBeEnabled();
+    expect(screen.getByRole('checkbox', { name: 'Самобанкрот' })).not.toBeChecked();
   });
 
   it('«Самобанкрот» не сбрасывается при смене категории лица', () => {
     renderSelf();
     fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));
-    fireEvent.click(screen.getByRole('radio', { name: 'Самобанкрот' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Самобанкрот' }));
     fireEvent.click(screen.getByRole('radio', { name: 'ИП' }));
-    expect(screen.getByRole('radio', { name: 'Самобанкрот' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Самобанкрот' })).toBeChecked();
     expect(screen.queryByText('Информация о кредиторе')).not.toBeInTheDocument();
   });
 
@@ -194,7 +218,7 @@ describe('DocumentAnalysis — самобанкротство', () => {
       d.applicationKind = 'self_bankruptcy';
       (d as any).recommendedActs = { entityType: 'individual' };
     });
-    expect(screen.getByRole('radio', { name: 'Самобанкрот' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Самобанкрот' })).toBeChecked();
     expect(screen.queryByText('Информация о кредиторе')).not.toBeInTheDocument();
   });
 });
@@ -211,8 +235,8 @@ describe('DocumentAnalysis — ручной выбор финального ак
     // Юрист правит финал руками…
     fireEvent.click(finalCheckbox('Решение конкурсное'));
     fireEvent.click(finalCheckbox('Определение Наблюдение'));
-    // …и переключает НЕЗАВИСИМЫЙ блок «Вид заявления».
-    fireEvent.click(screen.getByRole('radio', { name: 'Самобанкрот' }));
+    // …и ставит НЕЗАВИСИМЫЙ флаг самобанкротства.
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Самобанкрот' }));
 
     // Регрессия: эффект висел на [debtorStatus, applicationKind] и перезаписывал
     // финал по статусу, а handleApplicationKindChange делал то же самое —
@@ -320,7 +344,7 @@ describe('DocumentAnalysis — матрица полей управляющег�
   it('самобанкрот: СРО есть, ФИО скрыт', () => {
     renderMatrix('ПАО Сбербанк');
     fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));
-    fireEvent.click(screen.getByRole('radio', { name: 'Самобанкрот' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Самобанкрот' }));
     expect(hasSro()).toBe(true);
     expect(hasFio()).toBe(false);
   });
