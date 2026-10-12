@@ -391,7 +391,7 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                                         Определение включение в РТК наблюдение
                                       </MenuItem>
                                       <MenuItem value="registry">
-                                        Определение ВКЛ в РТК "зареестр"
+                                        Определение ВКЛ в РТК «За реестр»
                                       </MenuItem>
                                     </Select>
                                   </FormControl>
@@ -415,7 +415,7 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                             onChange={(e) => setShortText(e.target.checked)}
                           />
                         }
-                        label="Короткий текст"
+                        label="Резолютивная часть"
                       />
                     </Box>
                   </AccordionDetails>

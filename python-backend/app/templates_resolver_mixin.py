@@ -1171,7 +1171,10 @@ class TemplatesResolverMixin:
 
                 if rtk_variant == 'registry':
                     templates['rtk_registry'] = entry(
-                        "Определение ВКЛ в РТК зареестр",
+                        # Имя для юриста — «За реестр» раздельно; ИМЯ ФАЙЛА
+                        # шаблона при этом не трогаем: .docx лежит на диске
+                        # как «внести зареестр.docx».
+                        "Определение ВКЛ в РТК «За реестр»",
                         new_acts_dir / "внести зареестр.docx",
                         order
                     )
@@ -1286,7 +1289,7 @@ class TemplatesResolverMixin:
                 procedure = 'realization'
             else:
                 procedure = 'observation' if entity_type in ('legal', 'kfh') else 'realization'
-            templates['short_text'] = entry("Короткий текст (резолютивка)", _short_text_path(procedure, has_collateral), order)
+            templates['short_text'] = entry("Резолютивная часть", _short_text_path(procedure, has_collateral), order)
             order += 1
 
         return templates, unresolved

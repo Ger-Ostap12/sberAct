@@ -3856,8 +3856,16 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if not text:
             return
         # Уже есть нормальный адрес (с индексом и без реквизитов) — не трогаем.
+        # ⚠️ Требование БУКВ обязательно. Без него «нормальным адресом»
+        # считался мусор из одних цифр: у ООО «СПОРТ» в поле лежало
+        # «588079 127247» (хвост ИНН + индекс), шесть цифр находились, слова
+        # «ИНН» в значении не было — и слой молча уходил. Мусор потом удаляли
+        # дальше по конвейеру, а настоящий адрес («127247, Москва, а/я 3»)
+        # уже никто не искал. Та же проверка стоит на выходе функции.
         _ex = fields.get("managerAddress")
-        if _ex and re.search(r"\b\d{6}\b", _ex) and not re.search(r"\b(?:ИНН|СНИЛС|ОГРН|КПП)\b", _ex, re.IGNORECASE):
+        if (_ex and re.search(r"\b\d{6}\b", _ex)
+                and re.search(r"[А-Яа-яЁё]{3}", _ex)
+                and not re.search(r"\b(?:ИНН|СНИЛС|ОГРН|КПП)\b", _ex, re.IGNORECASE)):
             return
         m = re.search(
             r"(?:финансов\w+|временн\w+|конкурсн\w+|арбитражн\w+)\s+управляющ\w+"
@@ -5829,11 +5837,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             # Для конкурсного производства с залогом явно считаем должника юридическим лицом
             if document_type == "competition_collateral":
                 extracted_fields["entityType"] = "legal"
-            # Если есть ИНН финуправляющего — добавляем его в отображаемое имя
-            manager_name_cc = extracted_fields.get("managerName")
-            manager_inn_cc = extracted_fields.get("managerInn")
-            if manager_name_cc and manager_inn_cc and "инн" not in manager_name_cc.lower():
-                extracted_fields["managerName"] = f"{manager_name_cc.strip()} (ИНН {manager_inn_cc})"
+            # ⚠️ Здесь ИНН управляющего ПРИПИСЫВАЛСЯ к его ФИО «для актов и
+            # интерфейса». Решение Андрея 12.10.2026: НЕ приписывать. `managerInn`
+            # не рендерится на форме и не нужен ни в одном акте (маркер [41]
+            # существует, но не используется) — поле сделано на будущее. А имя
+            # с хвостом «(ИНН …)» уезжает в акт по маркеру [8] и портит его.
+            # На корпусе ветка не срабатывала ни на одном из 31 документа с
+            # управляющим, поэтому дефект всплыл только на ООО «СПОРТ».
 
         self._fill_representative_name(extracted_fields, text, document_type)
 

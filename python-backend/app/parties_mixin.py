@@ -507,8 +507,14 @@ class PartiesMixin:
         # продолжался строкой «Адрес электронной почты: …».
         # Оба написания нужны: с «адрес» — чтобы обрезать строку целиком (иначе
         # в адрес доезжает слово «Адрес»), без него — для строк, где подписи нет.
-        "e-mail", "email", "адрес электронной почты", "адрес эл. почты",
-        "электронной почты", "эл. почты", "эл.почты",
+        #
+        # ⚠️ ПАДЕЖ. Здесь стояли ТОЛЬКО родительные формы («…почты»), а ООО
+        # «СПОРТ» пишет ИМЕНИТЕЛЬНЫЙ: «Эл. почта: dy@sellerport.ru» — и вся
+        # строка уезжала в адрес должника. Список литеральный (слова склеиваются
+        # через \s*), поэтому КАЖДАЯ форма должна быть перечислена: обрезаем до
+        # основы «почт», чтобы падеж больше не имел значения.
+        "e-mail", "email", "адрес электронной почт", "адрес эл. почт",
+        "электронной почт", "электронная почт", "эл. почт", "эл.почт",
         "дата рождения", "место рождения", "д.р", "д/р",
         "представитель", "финансовый управляющий", "временный управляющий",
         "арбитражный управляющий", "конкурсный управляющий", "заявление",
@@ -939,11 +945,11 @@ class PartiesMixin:
                         "Процедура уже определена по тексту "
                         f"({extracted_fields['procedureType']}) — наблюдение не навязываем")
 
-                # Для ЮЛ добавляем ИНН в отображаемое ФИО финансового управляющего (для актов и интерфейса)
-                manager_name = extracted_fields.get("managerName")
-                manager_inn_final = extracted_fields.get("managerInn")
-                if manager_name and manager_inn_final and "инн" not in manager_name.lower():
-                    extracted_fields["managerName"] = f"{manager_name.strip()} (ИНН {manager_inn_final})"
+                # ⚠️ Здесь к ФИО управляющего ПРИПИСЫВАЛСЯ его ИНН. Решение
+                # Андрея 12.10.2026: НЕ приписывать — `managerInn` не рендерится
+                # на форме и не нужен ни в одном акте, а имя с хвостом
+                # «(ИНН …)» уезжает в акт по маркеру [8]. Второе такое же место
+                # было в document_analyzer (ипотека/конкурс с залогом).
             elif detected_entity_type in ("individual", "ip"):
                 extracted_fields.pop("ogrn", None)
                 extracted_fields.pop("companyInn", None)
@@ -962,14 +968,12 @@ class PartiesMixin:
             if current_entity not in ("kfh", "ip") and (extracted_fields.get("ogrn") or extracted_fields.get("legalShortName") or extracted_fields.get("companyInn")) and not (name_looks_like_fio and not legal_tokens_in_name):
                 extracted_fields["entityType"] = "legal"
 
-        # Если на более поздних этапах (например, для competition_collateral) тип явно проставили как legal,
-        # добавляем ИНН в отображаемое ФИО финансового управляющего
-        final_entity_type = extracted_fields.get("entityType")
-        if final_entity_type == "legal":
-            manager_name_final = extracted_fields.get("managerName")
-            manager_inn_final = extracted_fields.get("managerInn")
-            if manager_name_final and manager_inn_final and "инн" not in manager_name_final.lower():
-                extracted_fields["managerName"] = f"{manager_name_final.strip()} (ИНН {manager_inn_final})"
+        # ⚠️ ТРЕТЬЕ место, где к ФИО управляющего приписывался ИНН (были ещё два:
+        # выше в этом же файле и в document_analyzer для ипотеки/конкурса с
+        # залогом). Решение Андрея 12.10.2026: НЕ приписывать — `managerInn` не
+        # рендерится на форме и не нужен ни в одном акте. Хвост «(ИНН …)»
+        # уезжал в акт по маркеру [8]. Три копии одного правила — цена того,
+        # что оно писалось в каждой ветке типа лица отдельно.
 
         # Фолбэк для [3] допустим только для не-ЮЛ.
         if extracted_fields.get("entityType") != "legal":
