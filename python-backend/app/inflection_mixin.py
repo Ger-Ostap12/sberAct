@@ -3,6 +3,7 @@ import re
 from typing import TYPE_CHECKING, Optional
 
 from morph_utils import detect_gender, inflect_given_name, inflect_surname, looks_like_fio
+from org_normalizer import is_org_name, org_case_form
 
 if TYPE_CHECKING:
     from pymorphy3 import MorphAnalyzer
@@ -62,6 +63,10 @@ class InflectionMixin:
         """
         if not full_name:
             return None
+        # Организация — не ФИО: здесь первый токен считается фамилией, и
+        # «ООО «СПН ТРАК»» превращался в «ООО «СПН ТРАКА»».
+        if is_org_name(full_name):
+            return org_case_form(full_name, case) or None
         morph = self._ensure_morph()
         if not morph:
             return None

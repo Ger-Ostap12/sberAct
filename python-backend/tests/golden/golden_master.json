@@ -1,5 +1,249 @@
 {
+ "НОвая конвертация/Заявление о включении в РТК  ООО СИРИУС.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
+  "collaterals": [],
+  "confidence": 0.75,
+  "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
+  "debtors": [
+   {
+    "address": "ул. Станиславского, д. 1д, г. Батайск, 346880",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "6150094680",
+    "name": "ООО «СИРИУС»",
+    "ogrn": "",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "documentTypeWarning": null,
+  "entityType": "legal",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
+  "fields": {
+   "applicantAddress": "ул. Станиславского, д. 1д, г. Батайск, 346880",
+   "applicantName": "ООО «СИРИУС»",
+   "applicantNameAccusative": "ООО «СИРИУС»",
+   "applicantNameDative": "ООО «СИРИУС»",
+   "applicantNameGenitive": "ООО «СИРИУС»",
+   "applicantNameInstrumental": "ООО «СИРИУС»",
+   "caseNumber": "А53-37583/2025",
+   "companyInn": "6150094680",
+   "courtDecisionDate": "16.10.2024",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "344002, Ростов-на-Дону г, Социалистическая ул, 96-98",
+   "creditorName": "ФНС России в лице УФНС России по Ростовской области",
+   "debtAmount": "200,00",
+   "debtorAddress": "ул. Станиславского, д. 1д, г. Батайск, 346880",
+   "debtorName": "ООО «СИРИУС»",
+   "entityType": "legal",
+   "fnsQ3LoanDebt": "200,00",
+   "fnsQ3Total": "200,00",
+   "inn": "6150094680",
+   "kommersantDate": "13.12.2025",
+   "kommersantNumber": "231",
+   "legalShortName": "СИРИУС",
+   "managerName": "Лизогуб Анна Сергеевна",
+   "messageDate": "12.01.2026",
+   "procedureType": "observation",
+   "procedureTypeRaw": "банкротства наблюдение",
+   "requirementsSum": "200,00",
+   "sourceDocumentType": "rtk_application",
+   "totalDebt": "200,00"
+  },
+  "financeBreakdown": null,
+  "heirs": [],
+  "metadata": {
+   "language": "ru",
+   "pageCount": 1,
+   "wordCount": 545
+  },
+  "mortgageKind": null,
+  "mortgageProperties": [],
+  "obligations": [],
+  "rawTextLen": 4327,
+  "rawTextSha": "8b4f1f170e1ee7f6c78dce219841018c32b2b54358816b8072c20dafe0c44453",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "legal",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition"
+   ]
+  },
+  "thirdParties": []
+ },
+ "НОвая конвертация/Заявление о включении в РТК - ООО СПОРТ.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
+  "collaterals": [],
+  "confidence": 1.0,
+  "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
+  "debtors": [
+   {
+    "address": "344018, Ростовская область, Г.О. ГОРОД РОСТОВ-НА-ДОНУ, Г РОСТОВ-НА-ДОНУ, ПЕР ДОЛОМАНОВСКИЙ, Д. 132А, КОМ. 8-9-13",
+    "birthDate": "",
+    "birthPlace": "",
+    "inn": "6165231794",
+    "name": "ООО «СПОРТ»",
+    "ogrn": "1226100003282",
+    "ogrnip": "",
+    "snils": ""
+   }
+  ],
+  "documentType": "rtk_application",
+  "documentTypeWarning": null,
+  "entityType": "legal",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
+  "fields": {
+   "applicantAddress": "344018, Ростовская область, Г.О. ГОРОД РОСТОВ-НА-ДОНУ, Г РОСТОВ-НА-ДОНУ, ПЕР ДОЛОМАНОВСКИЙ, Д. 132А, КОМ. 8-9-13",
+   "applicantName": "ООО «СПОРТ»",
+   "applicantNameAccusative": "ООО «СПОРТ»",
+   "applicantNameDative": "ООО «СПОРТ»",
+   "applicantNameGenitive": "ООО «СПОРТ»",
+   "applicantNameInstrumental": "ООО «СПОРТ»",
+   "caseNumber": "А53-37918/2025",
+   "companyInn": "6165231794",
+   "contractDate": "26.01.2024, 02.04.2024, 06.05.2024, 19.06.2024",
+   "contractNumber": "89099-317981, 89099-373093, 89099-403845, 89099-444343",
+   "courtDecisionDate": "10.02.2026",
+   "courtName": "Арбитражный суд Ростовской области",
+   "creditorAddress": "123112, г. Москва, Пресненская наб., д. 10, пом. I, эт. 42, комн. 2",
+   "creditorInn": "9703026898",
+   "creditorName": "ООО МКК «Озон Кредит»",
+   "creditorOgrn": "1217700060820",
+   "debtAmount": "5 529 653,03",
+   "debtSnapshotDate88": "10.02.2026",
+   "debtorName": "ООО «СПОРТ»",
+   "entityType": "legal",
+   "forfeit": "0,00",
+   "forfeit15": "0,00",
+   "inn": "6165231794",
+   "interest": "783 464,51",
+   "interest14": "783 464,51",
+   "kommersantDate": "21.02.2026",
+   "legalShortName": "СПОРТ",
+   "loanDebt": "5 529 653,03",
+   "loanStateDuty17": "220 570,00",
+   "managerAddress": "127247, Москва, а/я 3",
+   "managerInn": "772836588079",
+   "managerName": "Полейчук Семён Сергеевич",
+   "messageDate": "21.02.2026",
+   "obligationType": "договор займа",
+   "obligations": [
+    {
+     "contractDate": "26.01.2024",
+     "contractNumber": "89099-317981",
+     "id": "obligation_p_0",
+     "obligationType": "Договор займа"
+    },
+    {
+     "contractDate": "02.04.2024",
+     "contractNumber": "89099-373093",
+     "id": "obligation_p_1",
+     "obligationType": "Договор займа"
+    },
+    {
+     "contractDate": "06.05.2024",
+     "contractNumber": "89099-403845",
+     "id": "obligation_p_2",
+     "obligationType": "Договор займа"
+    },
+    {
+     "contractDate": "19.06.2024",
+     "contractNumber": "89099-444343",
+     "id": "obligation_p_3",
+     "obligationType": "Договор займа"
+    }
+   ],
+   "ogrn": "1226100003282",
+   "penalties": "0,00",
+   "principalDebt": "4 525 618,52",
+   "principalDebt13": "4 525 618,52",
+   "procedureType": "observation",
+   "procedureTypeRaw": "наблюдение",
+   "representativeName": "Баркова К.С.",
+   "requirementsSum": "5 529 653,03",
+   "sourceDocumentType": "rtk_application",
+   "stateDuty": "13 919,00",
+   "stateDuty16": "13 919,00",
+   "totalDebt": "5 529 653,03"
+  },
+  "financeBreakdown": {
+   "interest": [
+    "276 231,53",
+    "251 864,86",
+    "56 770,06",
+    "198 598,06"
+   ],
+   "loanStateDuty17": [
+    "67 575,00",
+    "78 325,00",
+    "74 670,00"
+   ],
+   "principalDebt": [
+    "1 142 934,17",
+    "1 525 648,67",
+    "399 969,94",
+    "1 457 065,74"
+   ]
+  },
+  "heirs": [],
+  "metadata": {
+   "language": "ru",
+   "pageCount": 3,
+   "wordCount": 1069
+  },
+  "mortgageKind": null,
+  "mortgageProperties": [],
+  "obligations": [
+   {
+    "contractDate": "26.01.2024",
+    "contractNumber": "89099-317981",
+    "id": "obligation_p_0",
+    "obligationType": "Договор займа"
+   },
+   {
+    "contractDate": "02.04.2024",
+    "contractNumber": "89099-373093",
+    "id": "obligation_p_1",
+    "obligationType": "Договор займа"
+   },
+   {
+    "contractDate": "06.05.2024",
+    "contractNumber": "89099-403845",
+    "id": "obligation_p_2",
+    "obligationType": "Договор займа"
+   },
+   {
+    "contractDate": "19.06.2024",
+    "contractNumber": "89099-444343",
+    "id": "obligation_p_3",
+    "obligationType": "Договор займа"
+   }
+  ],
+  "rawTextLen": 7454,
+  "rawTextSha": "94ab8a579e0f738c349c370ccb9fe7c47b4d914754846ab9cd7c5c4cf689bdd7",
+  "recommendedActs": {
+   "collateralOption": "no_collateral",
+   "entityType": "legal",
+   "recommendedActIds": [
+    "final_rtk_inclusion",
+    "acceptance_definition"
+   ]
+  },
+  "thirdParties": []
+ },
  "НОвая конвертация/Ипотека/АГЕЕВ 69303105 ипотека Приморский рс Новороссийска.docx_depers.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [
    {
     "address": "Краснодарский край, г.о. город Новороссийск, г. Новороссийск, тер. Цемдолина, ул. Прославленная, д. 57",
@@ -16,6 +260,8 @@
   ],
   "confidence": 0.7,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "413105, САРАТОВСКАЯ ОБЛАСТЬ, г. ЭНГЕЛЬС, ул. ОДЕССКАЯ, д. 9, кв. 46.",
@@ -33,7 +279,23 @@
    }
   ],
   "documentType": "mortgage_claim",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "creditorOgrn",
+    "reason": "ОГРН не проходит контрольную сумму",
+    "value": "1027785006605"
+   },
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Юридический адрес в документе расходится со справочником: «117312, г. Москва, ул. Вавилова, д. 19». Проверьте.",
+    "value": "117312, г. Москва, ул. Вавилова, д.16"
+   }
+  ],
   "fields": {
    "applicantAddress": "413105, САРАТОВСКАЯ ОБЛАСТЬ, г. ЭНГЕЛЬС, ул. ОДЕССКАЯ, д. 9, кв. 46",
    "applicantName": "Ёлкин Денис Александрович, Елкина Наталия Сергеевна",
@@ -121,12 +383,56 @@
    "stateDuty16": "84 776,00",
    "totalDebt": "5 825 199,47"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "2 364,11",
+    "9 234,31",
+    "64 004,55"
+   ],
+   "interest": [
+    "211 032,76"
+   ],
+   "principalDebt": [
+    "5 538 563,74"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 7,
    "wordCount": 2360
   },
+  "mortgageKind": "civil",
+  "mortgageProperties": [
+   {
+    "address": "Краснодарский край, г.о. город Новороссийск, г. Новороссийск, тер. Цемдолина, ул. Прославленная, д. 57",
+    "appraisalReport": "№3782800 от 12.12.2022",
+    "cadastralNumber": "23:50:7228765:0587",
+    "dduContract": "",
+    "dduDate": "",
+    "description": "Жилой дом, общей площадью 112.4 кв. м",
+    "egrnRecord": "23:26:5876727:9651-59/678/6420-2",
+    "egrnRecordDate": "08.11.2023",
+    "id": "mortgageProperty-0",
+    "npcStrategy": "90%",
+    "startingPrice": "3662572,50",
+    "value": "4069525"
+   },
+   {
+    "address": "Краснодарский край, г.о. город Новороссийск, г. Новороссийск, тер. Цемдолина, ул. Прославленная, з/у. 57",
+    "appraisalReport": "№3782800 от 12.12.2022",
+    "cadastralNumber": "23:69:1597481:8372",
+    "dduContract": "",
+    "dduDate": "",
+    "description": "Земельный участок, площадью 400 +/- 7 кв.м",
+    "egrnRecord": "23:93:5353427:6867-62/868/3420-2",
+    "egrnRecordDate": "08.11.2023",
+    "id": "mortgageProperty-1",
+    "npcStrategy": "90%",
+    "startingPrice": "2787300",
+    "value": "3097000"
+   }
+  ],
   "obligations": [
    {
     "contractDate": "08.11.2023",
@@ -154,6 +460,8 @@
   "thirdParties": []
  },
  "НОвая конвертация/Ипотека/АДЖИЕВА _535202 ипотека Приморский рс Новороссийска.docx_depers.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [
    {
     "address": "Краснодарский край, г.Новороссийск, с. Мысхако, пер. Любимый, д.38, кв.38",
@@ -170,6 +478,8 @@
   ],
   "confidence": 0.85,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "353911, Краснодарский край, г. НОВОРОССИЙСК, пер.ГЕЛЕНДЖИКСКИЙ, д.8Б",
@@ -183,7 +493,17 @@
    }
   ],
   "documentType": "mortgage_claim",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Юридический адрес в документе расходится со справочником: «117312, г. Москва, ул. Вавилова, д. 19». Проверьте.",
+    "value": "117312, г. Москва, ул. Вавилова, д.38"
+   }
+  ],
   "fields": {
    "applicantAddress": "353911, Краснодарский край, г. НОВОРОССИЙСК, пер.ГЕЛЕНДЖИКСКИЙ, д.8Б",
    "applicantName": "Нуриева Елена Валидиновна",
@@ -480,12 +800,40 @@
    "stateDuty16": "69 693,00",
    "totalDebt": "3 670 388,48"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "5 223,77"
+   ],
+   "interest": [
+    "237 906,88"
+   ],
+   "principalDebt": [
+    "3 427 257,83"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 6,
    "wordCount": 2098
   },
+  "mortgageKind": "civil",
+  "mortgageProperties": [
+   {
+    "address": "Краснодарский край, г.Новороссийск, с. Мысхако, пер. Любимый, д.38, кв.38",
+    "appraisalReport": "№1877 от 15.03.2023",
+    "cadastralNumber": "23:69:9464362:1223",
+    "dduContract": "",
+    "dduDate": "",
+    "description": "Квартира, общей площадью 83,9 кв. м., назначение жилое",
+    "egrnRecord": "23-68-09/699/4620-144",
+    "egrnRecordDate": "12.07.2014",
+    "id": "mortgageProperty-0",
+    "npcStrategy": "70%",
+    "startingPrice": "6307002,10",
+    "value": "9010003,00"
+   }
+  ],
   "obligations": [
    {
     "contractDate": "14.03.2023",
@@ -507,6 +855,8 @@
   "thirdParties": []
  },
  "НОвая конвертация/Ипотека/АЛИЕВА СОВДАШ 1106714 ипотека Шалинский гс ЧР.docx_depers.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [
    {
     "address": "Чеченская Республика, р-н. Курчалоевский, с. Цоци-Юрт, ул. Кирова",
@@ -523,6 +873,8 @@
   ],
   "confidence": 0.7,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "366312, СОЛАР-ПРО РЕСПУБЛИКА, КУРЧАЛОЕВСКИЙ Р-Н, с. ЦОЦИ-ЮРТ, ул. Р.Ж.ГУЧИГОВА, д. 13",
@@ -536,7 +888,17 @@
    }
   ],
   "documentType": "mortgage_claim",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Юридический адрес в документе расходится со справочником: «117312, г. Москва, ул. Вавилова, д. 19». Проверьте.",
+    "value": "117312, г. Москва, ул. Вавилова, д.13"
+   }
+  ],
   "fields": {
    "applicantAddress": "366312, СОЛАР-ПРО РЕСПУБЛИКА, КУРЧАЛОЕВСКИЙ Р-Н, с. ЦОЦИ-ЮРТ, ул. Р.Ж.ГУЧИГОВА, д. 13",
    "applicantName": "Путова Совдаш Ромзановна",
@@ -617,12 +979,40 @@
    "stateDuty16": "51 524,00",
    "totalDebt": "1 652 404,86"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "1 239,10"
+   ],
+   "interest": [
+    "71 922,24"
+   ],
+   "principalDebt": [
+    "1 579 243,52"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 6,
    "wordCount": 2041
   },
+  "mortgageKind": "civil",
+  "mortgageProperties": [
+   {
+    "address": "Чеченская Республика, р-н. Курчалоевский, с. Цоци-Юрт, ул. Кирова",
+    "appraisalReport": "от 14.05.2026",
+    "cadastralNumber": "20:95:3049475:94",
+    "dduContract": "",
+    "dduDate": "",
+    "description": "Земельный участок, площадью 20:95:3049475:94 кв. м",
+    "egrnRecord": "20:51:0747792:23-76/829/9620-2022",
+    "egrnRecordDate": "27.09.2021",
+    "id": "mortgageProperty-0",
+    "npcStrategy": "80%",
+    "startingPrice": "1429600",
+    "value": "1787000"
+   }
+  ],
   "obligations": [
    {
     "contractDate": "11.09.2021",
@@ -644,6 +1034,8 @@
   "thirdParties": []
  },
  "НОвая конвертация/Ипотека/АРИФОВ_Солидарное_ипотека.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [
    {
     "address": "Кабардино-Балкарская Республика, г.о. Прохладный, г. Прохладный, ул. Комарова, д. 975",
@@ -660,6 +1052,8 @@
   ],
   "confidence": 0.95,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "354008, КРАСНОДАРСКИЙ КРАЙ, г. СОЧИ, ул. ЦЕЛИННАЯ (Р-Н ЦЕНТРАЛЬНЫЙ), д. 39В, кв. 46",
@@ -677,7 +1071,17 @@
    }
   ],
   "documentType": "mortgage_claim",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Юридический адрес в документе расходится со справочником: «117312, г. Москва, ул. Вавилова, д. 19». Проверьте.",
+    "value": "117312, г. Москва, ул. Вавилова, д.26"
+   }
+  ],
   "fields": {
    "applicantAddress": "354008, КРАСНОДАРСКИЙ КРАЙ, г. СОЧИ, ул. ЦЕЛИННАЯ (Р-Н ЦЕНТРАЛЬНЫЙ), д. 39В, кв. 46",
    "applicantName": "Шишлину Азиз Аслан Емин, Шишлина Сальвиназ Маматовна",
@@ -759,12 +1163,54 @@
    "stateDuty16": "52 347,00",
    "totalDebt": "1 734 694,06"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "57 259,12"
+   ],
+   "interest": [
+    "144 547,24"
+   ],
+   "principalDebt": [
+    "1 532 887,70"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 6,
    "wordCount": 2244
   },
+  "mortgageKind": "civil",
+  "mortgageProperties": [
+   {
+    "address": "Кабардино-Балкарская Республика, г.о. Прохладный, г. Прохладный, ул. Комарова, д. 975",
+    "appraisalReport": "№170/59-1204",
+    "cadastralNumber": "07:90:9881643:7547",
+    "dduContract": "",
+    "dduDate": "",
+    "description": "Жилой дом, общей площадью 71,1 кв. м",
+    "egrnRecord": "07:94:3760129:9412-53/473/5220-2",
+    "egrnRecordDate": "16.05.2022",
+    "id": "mortgageProperty-0",
+    "npcStrategy": "90%",
+    "startingPrice": "2236500",
+    "value": "2485000"
+   },
+   {
+    "address": "Кабардино-Балкарская Республика, г.о. Прохладный, г. Прохладный, ул. Комарова, д. 975",
+    "appraisalReport": "№170/59-1204",
+    "cadastralNumber": "07:26:3656202:80",
+    "dduContract": "",
+    "dduDate": "",
+    "description": "Земельный участок, площадью 461 +/- 8 кв.м",
+    "egrnRecord": "07:47:5617556:34-13/296/4420-2",
+    "egrnRecordDate": "16.05.2022",
+    "id": "mortgageProperty-1",
+    "npcStrategy": "90%",
+    "startingPrice": "513900",
+    "value": "571000"
+   }
+  ],
   "obligations": [
    {
     "contractDate": "13.05.2022",
@@ -786,6 +1232,8 @@
   "thirdParties": []
  },
  "НОвая конвертация/Ипотека/АРУТЮНЯН_Солидарное_4_ипотека.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [
    {
     "address": "Краснодарский край, м.р-н Выселковский, с.п. Березанское, ст-ца Березанская, ул. Жлобы, д. 8",
@@ -802,6 +1250,8 @@
   ],
   "confidence": 0.95,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "353132, КРАСНОДАРСКИЙ КРАЙ, ВЫСЕЛКОВСКИЙ Р-Н, ст-ца БЕРЕЗАНСКАЯ, ул. ЖЛОБЫ, д. 8",
@@ -833,7 +1283,17 @@
    }
   ],
   "documentType": "mortgage_claim",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Юридический адрес в документе расходится со справочником: «117312, г. Москва, ул. Вавилова, д. 19». Проверьте.",
+    "value": "117312, г. Москва, ул. Вавилова, д.60"
+   }
+  ],
   "fields": {
    "applicantAddress": "353132, КРАСНОДАРСКИЙ КРАЙ, ВЫСЕЛКОВСКИЙ Р-Н, ст-ца БЕРЕЗАНСКАЯ, ул. ЖЛОБЫ, д. 8",
    "applicantName": "Федотьев Александр Артаваздович, Боженков Юрик Ервандович, Федотьев Даниил Александрович в лице законного представителя Федотьева Александра Артаваздовича, Рябов Лиана Сергеевна в лице законного представителя Федотьева Александра Артаваздовича",
@@ -916,12 +1376,54 @@
    "stateDuty16": "46 772,00",
    "totalDebt": "1 177 237,23"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "14 836,16"
+   ],
+   "interest": [
+    "71 006,34"
+   ],
+   "principalDebt": [
+    "1 091 394,73"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 8,
    "wordCount": 2516
   },
+  "mortgageKind": "civil",
+  "mortgageProperties": [
+   {
+    "address": "Краснодарский край, м.р-н Выселковский, с.п. Березанское, ст-ца Березанская, ул. Жлобы, д. 8",
+    "appraisalReport": "№3782800 от 12.12.2022",
+    "cadastralNumber": "23:35:7138621:369",
+    "dduContract": "",
+    "dduDate": "",
+    "description": "Жилой дом, общей площадью 69,7 кв. м",
+    "egrnRecord": "2/4 23:47:0250041:668-03/389/9020-2; 1/4 23:39:9163758:507-82/301/8620-2; 1/4 23:95:5873262:666-48/796/5820-2",
+    "egrnRecordDate": "27.01.2023",
+    "id": "mortgageProperty-0",
+    "npcStrategy": "90%",
+    "startingPrice": "1466100",
+    "value": "1629000"
+   },
+   {
+    "address": "Краснодарский край, м.р-н Выселковский, с.п. Березанское, ст-ца Березанская, ул. Жлобы, 8",
+    "appraisalReport": "№3782800 от 12.12.2022",
+    "cadastralNumber": "23:24:4576687:808",
+    "dduContract": "",
+    "dduDate": "",
+    "description": "Земельный участок, площадью 1500 +/- 14 кв.м",
+    "egrnRecord": "2/4 23:57:6128895:791-21/801/5320-2; 1/4 23:42:9973755:894-51/113/2320-2; 1/4 23:37:1668086:389-28/061/4920-2",
+    "egrnRecordDate": "27.01.2023",
+    "id": "mortgageProperty-1",
+    "npcStrategy": "90%",
+    "startingPrice": "260100",
+    "value": "289000"
+   }
+  ],
   "obligations": [
    {
     "contractDate": "14.01.2023",
@@ -943,9 +1445,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Ипотека/БИЦИЕВ_91790461 воен ипотека Шалинский гс ЧР.docx_depers.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 0.95,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "366666, ЧЕЧЕНСКАЯ РЕСПУБЛИКА, ШАЛИНСКИЙ Р-Н, С. ГЕРМЕНЧУК, УЛ. СТРОИТЕЛЬНАЯ, ДОМ 484",
@@ -959,7 +1465,47 @@
    }
   ],
   "documentType": "mortgage_claim",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "inn",
+    "reason": "ИНН не проходит контрольную сумму",
+    "value": "201233777777"
+   },
+   {
+    "cleared": false,
+    "field": "snils",
+    "reason": "СНИЛС не проходит контрольную сумму",
+    "value": "55615555555"
+   },
+   {
+    "cleared": false,
+    "field": "creditorOgrn",
+    "reason": "ОГРН не проходит контрольную сумму",
+    "value": "1027778802695"
+   },
+   {
+    "cleared": false,
+    "field": "companyInn",
+    "reason": "ИНН не проходит контрольную сумму",
+    "value": "201233777777"
+   },
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Юридический адрес в документе расходится со справочником: «117312, г. Москва, ул. Вавилова, д. 19». Проверьте.",
+    "value": "117312, г. Москва, ул. Вавилова, д.34"
+   },
+   {
+    "cleared": false,
+    "field": "debtors[0].inn",
+    "reason": "ИНН не проходит контрольную сумму",
+    "value": "201233777777"
+   }
+  ],
   "fields": {
    "applicantAddress": "366666, ЧЕЧЕНСКАЯ РЕСПУБЛИКА, ШАЛИНСКИЙ Р-Н, С. ГЕРМЕНЧУК, УЛ. СТРОИТЕЛЬНАЯ, ДОМ 484",
    "applicantName": "Жевнин Магомед Тимурович",
@@ -1028,12 +1574,56 @@
    "thirdPartyAddress": "123007, г. Москва, Хорошевское шоссе, д. 85Д, стр.4",
    "totalDebt": "1 844 383,84"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "5 851,42",
+    "311,97",
+    "3 796,38"
+   ],
+   "interest": [
+    "166 506,03"
+   ],
+   "principalDebt": [
+    "1 667 918,04"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 7,
    "wordCount": 2284
   },
+  "mortgageKind": "military",
+  "mortgageProperties": [
+   {
+    "address": "Чеченская Республика, р-н Шалинский, г. Шали, ул. Кирова, д. 4 в",
+    "appraisalReport": "№Н-243/2024 от 22.08.2024",
+    "cadastralNumber": "20:18:7064242:956",
+    "dduContract": "",
+    "dduDate": "",
+    "description": "Жилой дом, общей площадью 252,9 кв. м., назначение жилое",
+    "egrnRecord": "20:89:7508855:589-82/781/3820-2",
+    "egrnRecordDate": "16.09.2024",
+    "id": "mortgageProperty-0",
+    "npcStrategy": "100%",
+    "startingPrice": "4415000,00",
+    "value": "4415000,00"
+   },
+   {
+    "address": "Чеченская Республика, р-н Шалинский, г. Шали, ул. Кирова, д. 4 в",
+    "appraisalReport": "№Н-243/2024 от 22.08.2024",
+    "cadastralNumber": "20:77:0505799:374",
+    "dduContract": "",
+    "dduDate": "",
+    "description": "Земельный участок, площадью 1053 +/- 11 кв.м",
+    "egrnRecord": "20:78:4754475:506-08/947/0720-2",
+    "egrnRecordDate": "16.09.2024",
+    "id": "mortgageProperty-1",
+    "npcStrategy": "100%",
+    "startingPrice": "4415000,00",
+    "value": "4415000,00"
+   }
+  ],
   "obligations": [
    {
     "contractDate": "20.09.2024",
@@ -1062,6 +1652,8 @@
   ]
  },
  "НОвая конвертация/Ипотека/ДДУ.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [
    {
     "address": "Краснодарский край, г. Краснодар, ул. Обрывная, д. 293/6, строительный номер кв. № 349, и государственной регистрации ипотеки",
@@ -1090,6 +1682,12 @@
   ],
   "confidence": 0.95,
   "creditors": [],
+  "debtorNameWarning": {
+   "message": "Имя должника, найденное вторым способом проверки, отличается от определённого автоматически — рекомендуем перепроверить ФИО/наименование должника вручную.",
+   "regexName": "Фонарева Инна Викторовна",
+   "semanticName": "ООО \"СПЕЦИАЛИЗИРОВАННЫЙ ЗАСТРОЙЩИК «Не гарантирую качество»"
+  },
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "675014. АМУРСКАЯ ОБЛАСТЬ. Г БЛАГОВЕЩЕНСК, УЛ. ТЕКСТИЛЬНАЯ, ДОМ 86/2, КВАРТИРА 68",
@@ -1105,7 +1703,41 @@
    }
   ],
   "documentType": "mortgage_claim",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "inn",
+    "reason": "ИНН не проходит контрольную сумму",
+    "value": "280111111111"
+   },
+   {
+    "cleared": false,
+    "field": "companyInn",
+    "reason": "ИНН не проходит контрольную сумму",
+    "value": "280111111111"
+   },
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Юридический адрес в документе расходится со справочником: «117312, г. Москва, ул. Вавилова, д. 19». Проверьте.",
+    "value": "117997, г. Москва, ул. Вавилова, д. 24"
+   },
+   {
+    "cleared": false,
+    "field": "debtors[0].inn",
+    "reason": "ИНН не проходит контрольную сумму",
+    "value": "280111111111"
+   },
+   {
+    "cleared": false,
+    "field": "thirdParties[0].inn",
+    "reason": "ИНН не проходит контрольную сумму",
+    "value": "2311111111"
+   }
+  ],
   "fields": {
    "applicantAddress": "675014. АМУРСКАЯ ОБЛАСТЬ. Г БЛАГОВЕЩЕНСК, УЛ. ТЕКСТИЛЬНАЯ, ДОМ 86/2, КВАРТИРА 68",
    "applicantName": "Фонарева Инна Викторовна",
@@ -1188,12 +1820,41 @@
    "stateDuty16": "80 400,00",
    "totalDebt": "5 199 989,94"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "724,11",
+    "2 699,73"
+   ],
+   "interest": [
+    "156 502,76"
+   ],
+   "principalDebt": [
+    "5 040 063,34"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
    "wordCount": 2374
   },
+  "mortgageKind": "ddu",
+  "mortgageProperties": [
+   {
+    "address": "Краснодарский край, г. Краснодар. ул. Обрывная, д. 293/6. номер кв. № 349",
+    "appraisalReport": "№2-250513-1847537 от 13.05.2025",
+    "cadastralNumber": "11:11:1111111:11111",
+    "dduContract": "Л2 БС 3-248-Ф",
+    "dduDate": "13.09.2022",
+    "description": "Имущественные права требования участника долевого строительства",
+    "egrnRecord": "11:11:1111111:11111-11/",
+    "egrnRecordDate": "30.10.2023",
+    "id": "mortgageProperty-0",
+    "npcStrategy": "80%",
+    "startingPrice": "3253600.00",
+    "value": "4067000,00"
+   }
+  ],
   "obligations": [
    {
     "contractDate": "23.09.2022",
@@ -1227,6 +1888,8 @@
   ]
  },
  "НОвая конвертация/Ипотека/КАРПАКОВ 112923 воен ипотека Темрюкский рс КК.docx_depers.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [
    {
     "address": "Краснодарский край, м.р-н Темрюкский, г.п. Темрюкское, г Темрюк, ул Калинина, д. 854",
@@ -1255,6 +1918,8 @@
   ],
   "confidence": 0.7,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "353353, КРАСНОДАРСКИЙ КРАЙ, ТЕМРЮКСКИЙ Р-Н, г. ТЕМРЮК, ул. КАЛИНИНА, д. 854",
@@ -1268,7 +1933,35 @@
    }
   ],
   "documentType": "mortgage_claim",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "inn",
+    "reason": "ИНН не проходит контрольную сумму",
+    "value": "790499999999"
+   },
+   {
+    "cleared": false,
+    "field": "companyInn",
+    "reason": "ИНН не проходит контрольную сумму",
+    "value": "790499999999"
+   },
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Юридический адрес в документе расходится со справочником: «117312, г. Москва, ул. Вавилова, д. 19». Проверьте.",
+    "value": "117312, г. Москва, ул. Вавилова, д.29"
+   },
+   {
+    "cleared": false,
+    "field": "debtors[0].inn",
+    "reason": "ИНН не проходит контрольную сумму",
+    "value": "790499999999"
+   }
+  ],
   "fields": {
    "applicantAddress": "353353, КРАСНОДАРСКИЙ КРАЙ, ТЕМРЮКСКИЙ Р-Н, г. ТЕМРЮК, ул. КАЛИНИНА, д. 854",
    "applicantName": "Налибаев Андрей Михайлович",
@@ -1349,12 +2042,54 @@
    "thirdPartyAddress": "123007, г. Москва, Хорошевское шоссе, д. 38Д, стр.2",
    "totalDebt": "499 999,53"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "608,96"
+   ],
+   "interest": [
+    "13 239,54"
+   ],
+   "principalDebt": [
+    "486 151,03"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 7,
    "wordCount": 2233
   },
+  "mortgageKind": "military",
+  "mortgageProperties": [
+   {
+    "address": "Краснодарский край, м.р-н Темрюкский, г.п. Темрюкское, г Темрюк, ул Калинина, д. 854",
+    "appraisalReport": "от 08.05.2026",
+    "cadastralNumber": "23:52:7682224:111",
+    "dduContract": "",
+    "dduDate": "",
+    "description": "Жилой дом, общей площадью 106.4 кв. м",
+    "egrnRecord": "23:44:8052604:606-11/334/8520-2",
+    "egrnRecordDate": "13.05.2021",
+    "id": "mortgageProperty-0",
+    "npcStrategy": "80%",
+    "startingPrice": "4424000",
+    "value": "5530000"
+   },
+   {
+    "address": "Краснодарский край, м.р-н Темрюкский, г.п. Темрюкское, г. Темрюк, ул Калинина, з/у 854",
+    "appraisalReport": "от 08.05.2026",
+    "cadastralNumber": "23:83:9195753:1489",
+    "dduContract": "",
+    "dduDate": "",
+    "description": "Земельный участок, площадью 800 +/- 10 кв.м",
+    "egrnRecord": "23:30:9396862:0278-92/105/0120-2",
+    "egrnRecordDate": "13.05.2021",
+    "id": "mortgageProperty-1",
+    "npcStrategy": "80%",
+    "startingPrice": "915200",
+    "value": "1144000"
+   }
+  ],
   "obligations": [
    {
     "contractDate": "22.03.2021",
@@ -1383,9 +2118,13 @@
   ]
  },
  "НОвая конвертация/Остальные/!Заявление о вкл в ртк.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "347375, Ростовская область, г. Волгодонск, пр-кт Курчатова д. 55, кв. 203.",
@@ -1399,7 +2138,17 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Юридического адреса в документе нет, взят адрес для корреспонденции. Проверьте.",
+    "value": "109052, Москва, ул. Смирновская, д. 10, стр. 22"
+   }
+  ],
   "fields": {
    "applicantAddress": "347375, Ростовская область, г. Волгодонск, пр-кт Курчатова д. 55, кв. 203",
    "applicantName": "Анохина Маргарита Николаевна",
@@ -1461,12 +2210,26 @@
    "stateDuty16": "16 136,00",
    "totalDebt": "545 418,01"
   },
+  "financeBreakdown": {
+   "interest": [
+    "23 117,70",
+    "13 893,71",
+    "2 656,33"
+   ],
+   "principalDebt": [
+    "195 779,60",
+    "279 970,68",
+    "29 999,99"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
    "wordCount": 918
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "contractDate": "21.09.2023",
@@ -1500,9 +2263,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/0 Заявление на включение в РТК ЛАВРУХИН ДМИТРИЙ ЮРЬЕВИЧ 3л.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "Ростовская область, г БЕЛАЯ КАЛИТВА, р-н БЕЛОКАЛИТВИНСКИЙ, ул СОВХОЗНАЯ, д 7, 1",
@@ -1516,7 +2283,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "Ростовская область, г БЕЛАЯ КАЛИТВА, р-н БЕЛОКАЛИТВИНСКИЙ, ул СОВХОЗНАЯ, д 7, 1",
    "applicantName": "ЛАВРУХИН ДМИТРИЙ ЮРЬЕВИЧ",
@@ -1581,12 +2351,29 @@
    "stateDuty16": "13 429,00",
    "totalDebt": "437 176,96"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "1 587,49",
+    "3 757,18"
+   ],
+   "interest": [
+    "133 912,85"
+   ],
+   "loanStateDuty17": [
+    "2 589,01"
+   ],
+   "principalDebt": [
+    "295 330,43"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
    "wordCount": 701
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "amount": "437 176,96",
@@ -1615,9 +2402,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/main_Заявление о включении в РТК - 2 л.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "347148, Ростовская обл, Обливский р-н, х Лобачев, ул Магистральная, д 31",
@@ -1631,7 +2422,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "347148, Ростовская обл, Обливский р-н, х Лобачев, ул Магистральная, д 31",
    "applicantName": "Пискова Татьяна Николаевна",
@@ -1681,12 +2475,19 @@
    "sroName": "Союз \"Саморегулируемая организация \"Гильдия арбитражных управляющих\"",
    "totalDebt": "20 854,44"
   },
+  "financeBreakdown": {
+   "principalDebt": [
+    "20 854,44"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
    "wordCount": 739
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "amount": "20 854,44",
@@ -1709,9 +2510,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявл о б-ве Форте Пром Стил.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "346404, Ростовская область, гор.Новочеркасск, Харьковское шоссе, д.10",
@@ -1725,14 +2530,17 @@
    }
   ],
   "documentType": "initiation_legal",
+  "documentTypeWarning": null,
   "entityType": "legal",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "346404, Ростовская область, гор.Новочеркасск, Харьковское шоссе, д.10",
    "applicantName": "ООО «Форте Пром Стил ГМБХ»",
-   "applicantNameAccusative": "ООО «форт Пром Стившего ГМБХ»",
-   "applicantNameDative": "ООО «форту Прому Стившему ГМБХАМ»",
-   "applicantNameGenitive": "ООО «форта Прома Стившего ГМБХ»",
-   "applicantNameInstrumental": "ООО «фортом Промом Стившим ГМБХАМИ»",
+   "applicantNameAccusative": "ООО «Форте Пром Стил ГМБХ»",
+   "applicantNameDative": "ООО «Форте Пром Стил ГМБХ»",
+   "applicantNameGenitive": "ООО «Форте Пром Стил ГМБХ»",
+   "applicantNameInstrumental": "ООО «Форте Пром Стил ГМБХ»",
    "applicationDate": "29.04.2026",
    "caseNumber": "А53-12200/2026",
    "companyInn": "3461063590",
@@ -1790,12 +2598,27 @@
    "stateDuty16": "5 017 245,00",
    "totalDebt": "1 871 897 982,82"
   },
+  "financeBreakdown": {
+   "interest": [
+    "82 567 757,31",
+    "5 025 751,92",
+    "102 507 438,56",
+    "14 116 990,70",
+    "202 666 438,34"
+   ],
+   "principalDebt": [
+    "465 015 355,26",
+    "999 998 250,73"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 5,
    "wordCount": 4591
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "contractDate": "06.03.2025",
@@ -1830,9 +2653,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявл о б-ве Форте Пром.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "346404, Ростовская область, гор.Новочеркасск, Харьковское шоссе, д.10, офис 27",
@@ -1846,14 +2673,17 @@
    }
   ],
   "documentType": "initiation_legal",
+  "documentTypeWarning": null,
   "entityType": "legal",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "346404, Ростовская область, гор.Новочеркасск, Харьковское шоссе, д.10, офис 27",
    "applicantName": "ООО «Форте Пром ГМБХ»",
-   "applicantNameAccusative": "ООО «форт Пром ГМБХ»",
-   "applicantNameDative": "ООО «форту Прому ГМБХАМ»",
-   "applicantNameGenitive": "ООО «форта Прома ГМБХ»",
-   "applicantNameInstrumental": "ООО «фортом Промом ГМБХАМИ»",
+   "applicantNameAccusative": "ООО «Форте Пром ГМБХ»",
+   "applicantNameDative": "ООО «Форте Пром ГМБХ»",
+   "applicantNameGenitive": "ООО «Форте Пром ГМБХ»",
+   "applicantNameInstrumental": "ООО «Форте Пром ГМБХ»",
    "applicationDate": "29.04.2026",
    "caseNumber": "А53-12198/2026",
    "companyInn": "3448049188",
@@ -1911,12 +2741,27 @@
    "stateDuty16": "5 017 245,00",
    "totalDebt": "1 871 897 982,82"
   },
+  "financeBreakdown": {
+   "interest": [
+    "82 567 757,31",
+    "5 025 751,92",
+    "102 507 438,56",
+    "14 116 990,70",
+    "202 666 438,34"
+   ],
+   "principalDebt": [
+    "465 015 355,26",
+    "999 998 250,73"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 5,
    "wordCount": 4558
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "contractDate": "06.03.2025",
@@ -1951,9 +2796,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление АО Альфа-Банк о признании банкротом ООО Форте Пром Стил ГМбХ.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "346404, Ростовская область, г. Новочеркасск, Харьковское ш., д. 10",
@@ -1967,7 +2816,10 @@
    }
   ],
   "documentType": "initiation_legal",
+  "documentTypeWarning": null,
   "entityType": "legal",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "346404, Ростовская область, г. Новочеркасск, Харьковское ш., д. 10",
    "applicantName": "ООО «Форте Пром Стил ГмбХ»",
@@ -2080,12 +2932,22 @@
    "stateDuty16": "5 100 000,00",
    "totalDebt": "4 593 842 279,40"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "616 497 933,64"
+   ],
+   "principalDebt": [
+    "3 977 344 345,76"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 22,
    "wordCount": 10293
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "contractDate": "17.12.2020",
@@ -2249,9 +3111,13 @@
   ]
  },
  "НОвая конвертация/Остальные/Заявление на включение в РТК_КАЛУГИНА 3л.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "Ростовская область, г РОСТОВ-НА-ДОНУ, ул ПОГОДИНА, д 17, 11",
@@ -2265,7 +3131,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "Ростовская область, г РОСТОВ-НА-ДОНУ, ул ПОГОДИНА, д 17, 11",
    "applicantName": "КАЛУГИНА НАТАЛЬЯ ЮРЬЕВНА",
@@ -2327,12 +3196,26 @@
    "stateDuty16": "5 124,00",
    "totalDebt": "104 977,05"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "20,68",
+    "15,21"
+   ],
+   "interest": [
+    "4 944,00"
+   ],
+   "principalDebt": [
+    "99 997,16"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
    "wordCount": 729
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "amount": "104 977,05",
@@ -2361,9 +3244,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление на включение требований в РТК_ДОЛАКОВ 3л.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "386001, РЕСПУБЛИКА ИНГУШЕТИЯ, Г. МАГАС, УЛ. МАЛЬСАГОВА, Д. 32, КВ. 67",
@@ -2377,7 +3264,17 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Юридический адрес в документе расходится со справочником: «117312, г. Москва, ул. Вавилова, д. 19». Проверьте.",
+    "value": "117997, г. Москва, ул. Вавилова, д. 19"
+   }
+  ],
   "fields": {
    "applicantAddress": "386001, РЕСПУБЛИКА ИНГУШЕТИЯ, Г. МАГАС, УЛ. МАЛЬСАГОВА, Д. 32, КВ. 67",
    "applicantName": "ДОЛАКОВ РАШИД УМАРОВИЧ",
@@ -2439,12 +3336,22 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "3 779 221,49"
   },
+  "financeBreakdown": {
+   "interest": [
+    "278 844,35"
+   ],
+   "principalDebt": [
+    "3 500 377,14"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
    "wordCount": 942
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "amount": "3 779 221,49",
@@ -2473,9 +3380,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о включении в РТК А53-10433-2026  3 стр.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "347924, Ростовская обл, г Таганрог, ул Дзержинского, д 171-4, кв 99",
@@ -2489,7 +3400,17 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Юридического адреса в документе нет, взят адрес для корреспонденции. Проверьте.",
+    "value": "630091, г. Новосибирск, ул. Гоголя, д.14"
+   }
+  ],
   "fields": {
    "applicantAddress": "347924, Ростовская обл, г Таганрог, ул Дзержинского, д 171-4, кв 99",
    "applicantName": "ЧИЛОЯН СОФЬЯ ДМИТРИЕВНА",
@@ -2534,12 +3455,22 @@
    "stateDuty16": "5 000,00",
    "totalDebt": "65 835,14"
   },
+  "financeBreakdown": {
+   "penalties": [
+    "157,58"
+   ],
+   "principalDebt": [
+    "65 677,56"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
    "wordCount": 653
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "amount": "65 835,14",
@@ -2562,9 +3493,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о включении в РТК А53-10932-2026  3 стр.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "346880, Ростовская обл., г. Батайск, ул. Грузинская, д. 275А",
@@ -2578,7 +3513,17 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Юридического адреса в документе нет, взят адрес для корреспонденции. Проверьте.",
+    "value": "630091, г. Новосибирск, ул. Гоголя, д.14"
+   }
+  ],
   "fields": {
    "applicantAddress": "346880, Ростовская обл., г. Батайск, ул. Грузинская, д. 275А",
    "applicantName": "ЗУБКОВА НИНА ЮРЬЕВНА",
@@ -2623,12 +3568,22 @@
    "stateDuty16": "5 000,00",
    "totalDebt": "80 015,88"
   },
+  "financeBreakdown": {
+   "penalties": [
+    "47,83"
+   ],
+   "principalDebt": [
+    "79 968,05"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
    "wordCount": 656
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "amount": "80 015,88",
@@ -2651,9 +3606,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о включении в РТК А53-41535-2025  3 стр.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "344111 г Ростов-на-Дону, пр-кт 40-летия Победы, д 318, кв 461",
@@ -2667,7 +3626,17 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Юридического адреса в документе нет, взят адрес для корреспонденции. Проверьте.",
+    "value": "630091, г. Новосибирск, ул. Гоголя, д.14"
+   }
+  ],
   "fields": {
    "applicantAddress": "344111 г Ростов-на-Дону, пр-кт 40-летия Победы, д 318, кв 461",
    "applicantName": "АВЕТЯН ЭДУАРД ВЕЛЬМИРОВИЧ",
@@ -2712,12 +3681,26 @@
    "stateDuty16": "19 476,00",
    "totalDebt": "679 023,89"
   },
+  "financeBreakdown": {
+   "interest": [
+    "7,48"
+   ],
+   "penalties": [
+    "479 575,10",
+    "34 715,13"
+   ],
+   "principalDebt": [
+    "164 726,18"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
    "wordCount": 688
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "amount": "679 023,89",
@@ -2740,9 +3723,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о включении в РТК_ПИСКОВА ТАТЬЯНА НИКОЛАЕВНА 4л.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "Ростовская область, р-н ОБЛИВСКИЙ, х ЛОБАЧЕВ, ул МАГИСТРАЛЬНАЯ, д 31",
@@ -2756,7 +3743,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "Ростовская область, р-н ОБЛИВСКИЙ, х ЛОБАЧЕВ, ул МАГИСТРАЛЬНАЯ, д 31",
    "applicantName": "ПИСКОВА ТАТЬЯНА НИКОЛАЕВНА",
@@ -2843,12 +3833,26 @@
    "stateDuty16": "14 997,00",
    "totalDebt": "499 895,57"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "3 402,47",
+    "2 545,60"
+   ],
+   "interest": [
+    "66 824,56"
+   ],
+   "principalDebt": [
+    "427 122,94"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
    "wordCount": 1123
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "amount": "254 750,75",
@@ -2903,6 +3907,8 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о включении в РТК_СУЗАНСКАЯ ЛИДИЯ АЛЕКСЕЕВНА 5л.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [
    {
     "address": "Российская Федерация, Ростовская область, Мясниковский район, Краснокрымское сельское поселение, х.Ленинакан, ул. 8-я линия, 88",
@@ -2931,6 +3937,8 @@
   ],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "Ростовская обл., Мясниковскиий район, х. Ленинакан, ул. 8-я линия, д. 88",
@@ -2944,7 +3952,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "Ростовская обл., Мясниковскиий район, х. Ленинакан, ул. 8-я линия, д. 88",
    "applicantName": "СУЗАНСКАЯ ЛИДИЯ АЛЕКСЕЕВНА",
@@ -3048,12 +4059,27 @@
    "stateDuty16": "105 544,00",
    "totalDebt": "4 536 273,95"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "3 534,07",
+    "9 270,71"
+   ],
+   "interest": [
+    "188 175,16",
+    "1 965,43"
+   ],
+   "principalDebt": [
+    "4 333 328,58"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
    "wordCount": 1423
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "amount": "3 320 770,14",
@@ -3108,9 +4134,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о включении в реестр требований кредиторов  2 л.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "346311 РОССИЯ, РОСТОВСКАЯ ОБЛ., Г.ЗВЕРЕВО, УЛ. ОСТАШЕНКО, Д.7, КВ.30",
@@ -3124,7 +4154,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "346311 РОССИЯ, РОСТОВСКАЯ ОБЛ., Г.ЗВЕРЕВО, УЛ. ОСТАШЕНКО, Д.7, КВ.30",
    "applicantName": "Епифанова Людмила Николаевна",
@@ -3173,12 +4206,25 @@
    "stateDuty16": "0,00",
    "totalDebt": "37 490,52"
   },
+  "financeBreakdown": {
+   "interest": [
+    "2 599,47"
+   ],
+   "penalties": [
+    "194,86"
+   ],
+   "principalDebt": [
+    "34 696,19"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
    "wordCount": 770
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "amount": "37 490,52",
@@ -3201,9 +4247,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о включении в реестр требований кредиторов 3л.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "346884, Ростовская обл., г. Батайск, ул. Янтарная, д. 7",
@@ -3217,7 +4267,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "346884, Ростовская обл., г. Батайск, ул. Янтарная, д. 7",
    "applicantName": "Горина Юлия Игоревна",
@@ -3279,12 +4332,22 @@
    "stateDuty16": "10 138,00",
    "totalDebt": "305 513,35"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "1 310,75"
+   ],
+   "principalDebt": [
+    "304 202,60"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
    "wordCount": 852
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "contractDate": "27.05.2021",
@@ -3312,9 +4375,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о включении в реестр требований кредиторов АТАМУРАТОВ БОГДАН ЭРКИНБАЕВИЧ на 3 стр.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "РОССИЯ, 346050, РОСТОВСКАЯ, ТАРАСОВСКИЙ, П. ТАРАСОВСКИЙ, УЛ. ШКОЛЬНАЯ, Д. 1Б",
@@ -3328,7 +4395,17 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Юридического адреса в документе нет, взят адрес для корреспонденции. Проверьте.",
+    "value": "420107, г. Казань, ул. Петербургская, д. 50 корп. 8"
+   }
+  ],
   "fields": {
    "applicantAddress": "РОССИЯ, 346050, РОСТОВСКАЯ, ТАРАСОВСКИЙ, П. ТАРАСОВСКИЙ, УЛ. ШКОЛЬНАЯ, Д. 1Б",
    "applicantName": "АТАМУРАТОВ БОГДАН ЭРКИНБАЕВИЧ",
@@ -3382,12 +4459,27 @@
    "stateDuty16": "9 636,00",
    "totalDebt": "285 423,75"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "1 745,54",
+    "53,39"
+   ],
+   "interest": [
+    "69 884,02"
+   ],
+   "principalDebt": [
+    "146 945,00",
+    "66 795,80"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
    "wordCount": 988
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "amount": "218 574,56",
@@ -3417,9 +4509,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о включении в реестр требований кредиторов КЛИМОВ МАКСИМ ВЛАДИМИРОВИЧ на 3 стр.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "РОССИЯ, 346660, РОСТОВСКАЯ, МАРТЫНОВСКИЙ, СЛ. БОЛЬШАЯ МАРТЫНОВКА, УЛ. СТЕПНАЯ, Д. 37, КВ. 2",
@@ -3433,7 +4529,17 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Юридического адреса в документе нет, взят адрес для корреспонденции. Проверьте.",
+    "value": "420107, г. Казань, ул. Петербургская, д. 50 корп. 8"
+   }
+  ],
   "fields": {
    "applicantAddress": "РОССИЯ, 346660, РОСТОВСКАЯ, МАРТЫНОВСКИЙ, СЛ. БОЛЬШАЯ МАРТЫНОВКА, УЛ. СТЕПНАЯ, Д. 37, КВ. 2",
    "applicantName": "КЛИМОВ МАКСИМ ВЛАДИМИРОВИЧ",
@@ -3479,12 +4585,25 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "53 476,48"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "2 606,73"
+   ],
+   "loanStateDuty17": [
+    "2 000,00"
+   ],
+   "principalDebt": [
+    "48 869,75"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
    "wordCount": 968
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "amount": "53 476,48",
@@ -3507,9 +4626,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о включении в реестр требований кредиторов__ЕЛИСЕЕНКО СЕРГЕЙ ВАСИЛЬЕВИЧ.4л.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "344034, обл Ростовская, г Ростов-на-Дону, пер Рыночный, д. 15",
@@ -3523,7 +4646,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "344034, обл Ростовская, г Ростов-на-Дону, пер Рыночный, д. 15",
    "applicantName": "ЕЛИСЕЕНКО СЕРГЕЙ ВАСИЛЬЕВИЧ",
@@ -3576,12 +4702,23 @@
    "stateDuty16": "5 000,00",
    "totalDebt": "100 000,00"
   },
+  "financeBreakdown": {
+   "interest": [
+    "28 854,66"
+   ],
+   "principalDebt": [
+    "68 689,56",
+    "2 455,78"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
    "wordCount": 885
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "contractDate": "13.06.2024",
@@ -3609,9 +4746,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о включении в реестр требований кредиторов__КУЧУРЯН ШОГИК АРМЕНОВНА.3л.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "346816, обл Ростовская, р-н Мясниковский, с Большие Салы, ул Крестьянская, д. 4Г",
@@ -3625,7 +4766,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "346816, обл Ростовская, р-н Мясниковский, с Большие Салы, ул Крестьянская, д. 4Г",
    "applicantName": "КУЧУРЯН ШОГИК АРМЕНОВНА",
@@ -3672,12 +4816,19 @@
    "stateDuty16": "5 000,00",
    "totalDebt": "100 000,00"
   },
+  "financeBreakdown": {
+   "principalDebt": [
+    "100 000,00"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
    "wordCount": 808
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "contractDate": "17.12.2025",
@@ -3699,9 +4850,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о включении требований Банка ВТБ (ПАО) в реестр требований кредиторов должника 3л.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "Ростовская обл., г. Шахты, ул. Успенского, д. 4",
@@ -3715,7 +4870,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "Ростовская обл., г. Шахты, ул. Успенского, д. 4",
    "applicantName": "Анисимов Роман Сергеевич",
@@ -3777,12 +4935,22 @@
    "stateDuty16": "30 529,00",
    "totalDebt": "1 201 910,33"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "21 333,41"
+   ],
+   "principalDebt": [
+    "1 180 576,92"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
    "wordCount": 1260
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "contractDate": "30.07.2025",
@@ -3810,9 +4978,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о признании должника банкротом  АО  КОНЦЕРН  САРМАТ   (ИНН- 6123010803).docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "344006, РОСТОВСКАЯ ОБЛАСТЬ, ГОРОД РОСТОВ-НА-ДОНУ, ПРОСПЕКТ КИРОВСКИЙ, ЗД. 51, КОМ. 7-10",
@@ -3826,14 +4998,17 @@
    }
   ],
   "documentType": "initiation_legal",
+  "documentTypeWarning": null,
   "entityType": "legal",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "344006, РОСТОВСКАЯ ОБЛАСТЬ, ГОРОД РОСТОВ-НА-ДОНУ, ПРОСПЕКТ КИРОВСКИЙ, ЗД. 51, КОМ. 7-10",
    "applicantName": "АО \"КОНЦЕРН \"САРМАТ\"",
-   "applicantNameAccusative": "АО \"КОНЦЕРН \"САРМАТ\" (заемщик)",
-   "applicantNameDative": "АО \"КОНЦЕРНУ \"САРМАТ\" (заемщик)",
-   "applicantNameGenitive": "АО \"КОНЦЕРНА \"САРМАТ\" (заемщик)",
-   "applicantNameInstrumental": "АО \"КОНЦЕРНОМ \"САРМАТ\" (заемщик)",
+   "applicantNameAccusative": "АО \"КОНЦЕРН \"САРМАТ\"",
+   "applicantNameDative": "АО \"КОНЦЕРН \"САРМАТ\"",
+   "applicantNameGenitive": "АО \"КОНЦЕРН \"САРМАТ\"",
+   "applicantNameInstrumental": "АО \"КОНЦЕРН \"САРМАТ\"",
    "applicationDate": "08.06.2026",
    "companyInn": "6123010803",
    "contractDate": "25.12.2024",
@@ -3880,12 +5055,25 @@
    "stateDuty16": "154 336,00",
    "totalDebt": "2 789 060,93"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "64 027,07"
+   ],
+   "interest": [
+    "430 254,83"
+   ],
+   "principalDebt": [
+    "2 294 779,03"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
    "wordCount": 881
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "contractDate": "25.12.2024",
@@ -3908,9 +5096,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о признании должника банкротом  ООО  КОЛОР   (ИНН- 6123013561).docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 0.95,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "344006, РОСТОВСКАЯ ОБЛАСТЬ, ГОРОД РОСТОВ-НА-ДОНУ, УЛИЦА ПУШКИНСКАЯ, Д. 116, КОМ. 16",
@@ -3924,14 +5116,17 @@
    }
   ],
   "documentType": "initiation_legal",
+  "documentTypeWarning": null,
   "entityType": "legal",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "344006, РОСТОВСКАЯ ОБЛАСТЬ, ГОРОД РОСТОВ-НА-ДОНУ, УЛИЦА ПУШКИНСКАЯ, Д. 116, КОМ. 16",
    "applicantName": "ООО \"КОЛОР\"",
-   "applicantNameAccusative": "ООО \"КОЛОР\" (заемщик)",
-   "applicantNameDative": "ООО \"КОЛОР\" (заемщик)",
-   "applicantNameGenitive": "ООО \"КОЛОР\" (заемщик)",
-   "applicantNameInstrumental": "ООО \"КОЛОР\" (заемщик)",
+   "applicantNameAccusative": "ООО \"КОЛОР\"",
+   "applicantNameDative": "ООО \"КОЛОР\"",
+   "applicantNameGenitive": "ООО \"КОЛОР\"",
+   "applicantNameInstrumental": "ООО \"КОЛОР\"",
    "applicationDate": "08.06.2026",
    "companyInn": "6123013561",
    "contractDate": "26.10.2023",
@@ -3985,12 +5180,25 @@
    "stateDuty16": "154 336,00",
    "totalDebt": "2 789 060,93"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "64 027,07"
+   ],
+   "interest": [
+    "430 254,83"
+   ],
+   "principalDebt": [
+    "2 294 779,03"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
    "wordCount": 713
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "amount": "2 789 060,93",
@@ -4020,9 +5228,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о признании должника банкротом  ФЛ ОМЕЛЯНЧУК ЕВГЕНИЙ АЛЕКСЕЕВИЧ.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "ОБЛАСТЬ РОСТОВСКАЯ, РАЙОН РОДИОНОВО-НЕСВЕТАЙСКИЙ, СЛОБОДА РОДИОНОВО-НЕСВЕТАЙСКАЯ, ПЕРЕУЛОК ЧЕХОВА, 11",
@@ -4038,7 +5250,28 @@
    }
   ],
   "documentType": "initiation_legal",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": {
+   "actualEntityType": "individual",
+   "documentType": "initiation_legal",
+   "expectedEntityType": "legal",
+   "message": "Тип документа предполагает тип лица должника, отличный от определённого по реквизитам — рекомендуем перепроверить вручную."
+  },
+  "fieldIssues": [
+   {
+    "cleared": true,
+    "field": "contractDate",
+    "reason": "значение-заполнитель, а не данные",
+    "value": "Не указана"
+   },
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Юридический адрес в документе расходится со справочником: «117312, г. Москва, ул. Вавилова, д. 19». Проверьте.",
+    "value": "ул. Вавилова, д.19, г. Москва, 117997"
+   }
+  ],
   "fields": {
    "applicantAddress": "ОБЛАСТЬ РОСТОВСКАЯ, РАЙОН РОДИОНОВО-НЕСВЕТАЙСКИЙ, СЛОБОДА РОДИОНОВО-НЕСВЕТАЙСКАЯ, ПЕРЕУЛОК ЧЕХОВА, 11",
    "applicantName": "ОМЕЛЯНЧУК ЕВГЕНИЙ АЛЕКСЕЕВИЧ",
@@ -4090,12 +5323,25 @@
    "stateDuty16": "223 078,00",
    "totalDebt": "7 371 840,35"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "216 347,01"
+   ],
+   "interest": [
+    "610 359,98"
+   ],
+   "principalDebt": [
+    "6 545 133,36"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
    "wordCount": 989
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "amount": "7 371 840,35",
@@ -4118,9 +5364,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о признании должника банкротом ДАВЫДЕНКО КРИСТИНА СТАНИСЛАВОВНА.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "ОБЛАСТЬ РОСТОВСКАЯ, ГОРОД РОСТОВ-НА-ДОНУ, УЛИЦА ПИРАМИДНАЯ, 28",
@@ -4136,7 +5386,10 @@
    }
   ],
   "documentType": "initiation_physical",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "ОБЛАСТЬ РОСТОВСКАЯ, ГОРОД РОСТОВ-НА-ДОНУ, УЛИЦА ПИРАМИДНАЯ, 28",
    "applicantName": "ДАВЫДЕНКО КРИСТИНА СТАНИСЛАВОВНА",
@@ -4206,12 +5459,26 @@
    "stateDuty16": "348 989,00",
    "totalDebt": "27 297 873,89"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "256 792,47",
+    "354 213,38"
+   ],
+   "interest": [
+    "5 821 169,19"
+   ],
+   "principalDebt": [
+    "20 865 698,85"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 4,
    "wordCount": 1567
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "contractDate": "23.07.2024",
@@ -4251,9 +5518,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о признании должника банкротом ИП БАЗОВ ГЕОРГИЙ НИКОЛАЕВИЧ (ИНН- 616506698400).docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 0.95,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "344012, РОСТОВСКАЯ ОБЛАСТЬ, ГОРОД РОСТОВ-НА-ДОНУ, УЛИЦА ЮФИМЦЕВА, 10/1, 68",
@@ -4267,11 +5538,15 @@
    }
   ],
   "documentType": "ip_enforcement_restructuring",
+  "documentTypeWarning": null,
   "entityType": "ip",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "344012, РОСТОВСКАЯ ОБЛАСТЬ, ГОРОД РОСТОВ-НА-ДОНУ, УЛИЦА ЮФИМЦЕВА, 10/1, 68",
    "applicantName": "ИП БАЗОВ ГЕОРГИЙ НИКОЛАЕВИЧ",
    "applicantNameAccusative": "ИП БАЗОВА ГЕОРГИЯ НИКОЛАЕВИЧА",
+   "applicantNameDative": "ИП БАЗОВ ГЕОРГИЙ НИКОЛАЕВИЧ",
    "applicantNameGenitive": "ИП БАЗОВА ГЕОРГИЯ НИКОЛАЕВИЧА",
    "applicantNameInstrumental": "ИП БАЗОВЫМ ГЕОРГИЕМ НИКОЛАЕВИЧЕМ",
    "applicationDate": "16.06.2026",
@@ -4343,12 +5618,25 @@
    "stateDuty16": "320 907,00",
    "totalDebt": "21 681 376,81"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "237 556,64"
+   ],
+   "interest": [
+    "1 476 946,91"
+   ],
+   "principalDebt": [
+    "19 966 873,26"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
    "wordCount": 849
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "amount": "12 698 187,76",
@@ -4390,9 +5678,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о признании должника банкротом ИП ПОЛЯКОВ ДМИТРИЙ ВЛАДИМИРОВИЧ (ИНН- 616270139617.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "РОСТОВСКАЯ ОБЛАСТЬ, ГОРОД РОСТОВ-НА-ДОНУ, УЛИЦА 3-Я КОЛЬЦЕВАЯ, 44, 11",
@@ -4408,7 +5700,22 @@
    }
   ],
   "documentType": "initiation_legal",
+  "documentTypeWarning": null,
   "entityType": "ip",
+  "entityTypeWarning": {
+   "actualEntityType": "ip",
+   "documentType": "initiation_legal",
+   "expectedEntityType": "legal",
+   "message": "Тип документа предполагает тип лица должника, отличный от определённого по реквизитам — рекомендуем перепроверить вручную."
+  },
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Юридический адрес в документе расходится со справочником: «117312, г. Москва, ул. Вавилова, д. 19». Проверьте.",
+    "value": "ул. Вавилова, д.19, г. Москва, 117997"
+   }
+  ],
   "fields": {
    "applicantAddress": "РОСТОВСКАЯ ОБЛАСТЬ, ГОРОД РОСТОВ-НА-ДОНУ, УЛИЦА 3-Я КОЛЬЦЕВАЯ, 44, 11",
    "applicantName": "ПОЛЯКОВ ДМИТРИЙ ВЛАДИМИРОВИЧ",
@@ -4471,12 +5778,25 @@
    "stateDuty16": "252 203,00",
    "totalDebt": "9 313 520,81"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "132 283,43"
+   ],
+   "interest": [
+    "2 023 342,66"
+   ],
+   "principalDebt": [
+    "7 157 894,72"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
    "wordCount": 1002
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "amount": "9 313 520,81",
@@ -4505,6 +5825,8 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о признании должника банкротом Песня 9л.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [
    {
     "address": "Ростовская область, г. Волгодонск, ул. Ленина, д. 22, кв. 5",
@@ -4521,6 +5843,8 @@
   ],
   "confidence": 0.85,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "Ростовская обл., р-нЦимлянский, ст-ца Кумшацкая, ул Молодежная, д 5, кв 2",
@@ -4536,7 +5860,17 @@
    }
   ],
   "documentType": "initiation_physical",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Юридический адрес в документе расходится со справочником: «117312, г. Москва, ул. Вавилова, д. 19». Проверьте.",
+    "value": "ул. Вавилова, д.19, г. Москва, 117997"
+   }
+  ],
   "fields": {
    "applicantAddress": "Ростовская обл., р-нЦимлянский, ст-ца Кумшацкая, ул Молодежная, д 5, кв 2",
    "applicantName": "Песня Сергей Николаевич",
@@ -4768,12 +6102,25 @@
    "stateDuty16": "144 007,00",
    "totalDebt": "2 100 477,62"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "0,31"
+   ],
+   "interest": [
+    "33 302,82"
+   ],
+   "principalDebt": [
+    "2 067 174,49"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 9,
    "wordCount": 3335
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "amount": "1 249 122,53",
@@ -4958,9 +6305,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о признании должника несостоятельным (банкротом) Перспектива.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "344082, Ростовская область, город Ростов-на-Дону, ул. Согласия, д. 18, 1",
@@ -4974,14 +6325,17 @@
    }
   ],
   "documentType": "initiation_legal",
+  "documentTypeWarning": null,
   "entityType": "legal",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "344082, Ростовская область, город Ростов-на-Дону, ул. Согласия, д. 18, 1",
    "applicantName": "Общество с ограниченной ответственностью «Перспектива»",
-   "applicantNameAccusative": "Общество с ограниченного ответственность",
-   "applicantNameDative": "Обществу с ограниченной ответственности",
-   "applicantNameGenitive": "Должника процедуру наблюдения",
-   "applicantNameInstrumental": "Обществом с ограниченной ответственностью",
+   "applicantNameAccusative": "Общество с ограниченной ответственностью «Перспектива»",
+   "applicantNameDative": "Обществу с ограниченной ответственностью «Перспектива»",
+   "applicantNameGenitive": "Общества с ограниченной ответственностью «Перспектива»",
+   "applicantNameInstrumental": "Обществом с ограниченной ответственностью «Перспектива»",
    "caseNumber": "А53-12189/2026",
    "companyInn": "7701887506",
    "contractDate": "17.01.2024, 21.06.2024, 19.05.2023, 16.01.2024, 06.12.2022, 10.04.2025, 21.09.2022",
@@ -5065,12 +6419,25 @@
    "stateDuty16": "5 100 000,00",
    "totalDebt": "4 826 804 161,25"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "46 231 202,36"
+   ],
+   "interest": [
+    "510 347 567,42"
+   ],
+   "principalDebt": [
+    "4 270 225 391,47"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 13,
    "wordCount": 4713
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "contractDate": "17.01.2024",
@@ -5135,6 +6502,8 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о признании должника несостоятельным (банкротом) Форте Пром ГМБХ.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [
    {
     "address": "",
@@ -5223,6 +6592,8 @@
   ],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "346404, Ростовская область, г Новочеркасск, Харьковское ш, д. 10, офис 27",
@@ -5236,14 +6607,17 @@
    }
   ],
   "documentType": "initiation_legal",
+  "documentTypeWarning": null,
   "entityType": "legal",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "346404, Ростовская область, г Новочеркасск, Харьковское ш, д. 10, офис 27",
    "applicantName": "Общество с ограниченной ответственностью «Форте Пром ГмбХ»",
-   "applicantNameAccusative": "Общество с ограниченного ответственность",
-   "applicantNameDative": "Обществу с ограниченной ответственности",
-   "applicantNameGenitive": "Должника процедуру наблюдения",
-   "applicantNameInstrumental": "Обществом с ограниченной ответственностью",
+   "applicantNameAccusative": "Общество с ограниченной ответственностью «Форте Пром ГмбХ»",
+   "applicantNameDative": "Обществу с ограниченной ответственностью «Форте Пром ГмбХ»",
+   "applicantNameGenitive": "Общества с ограниченной ответственностью «Форте Пром ГмбХ»",
+   "applicantNameInstrumental": "Обществом с ограниченной ответственностью «Форте Пром ГмбХ»",
    "caseNumber": "А53-12198/2026",
    "companyInn": "3448049188",
    "contractDate": "07.03.2023, 19.05.2023, 17.01.2024, 16.01.2024, 06.12.2022, 21.06.2024, 10.04.2025, 21.09.2022",
@@ -5334,12 +6708,25 @@
    "stateDuty16": "5 200 000,00",
    "totalDebt": "5 032 544 855,59"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "51 072 996,85"
+   ],
+   "interest": [
+    "518 326 017,27"
+   ],
+   "principalDebt": [
+    "4 463 145 841,47"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 15,
    "wordCount": 5865
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "contractDate": "07.03.2023",
@@ -5410,6 +6797,8 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о признании должника несостоятельным (банкротом) Форте Пром Стил.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [
    {
     "address": "Волгоградская обл., г. Волгоград, ул. 40 лет ВЛКСМ, 78 Г",
@@ -5462,6 +6851,8 @@
   ],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "346404, Ростовская область, г. Новочеркасск, Харьковское ш, д. 10",
@@ -5475,14 +6866,17 @@
    }
   ],
   "documentType": "initiation_legal",
+  "documentTypeWarning": null,
   "entityType": "legal",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "346404, Ростовская область, г. Новочеркасск, Харьковское ш, д. 10",
    "applicantName": "Общество с ограниченной ответственностью ООО «Форте Пром Стил ГмбХ»",
-   "applicantNameAccusative": "Общество с ограниченного ответственность ООО «форт Пром Стившего гмбх»",
-   "applicantNameDative": "Обществу с ограниченной ответственности ООО «форту Прому Стившему гмбхам»",
-   "applicantNameGenitive": "Должника процедуру наблюдения",
-   "applicantNameInstrumental": "Обществом с ограниченной ответственностью ООО «фортом Промом Стившим гмбхами»",
+   "applicantNameAccusative": "Общество с ограниченной ответственностью ООО «Форте Пром Стил ГмбХ»",
+   "applicantNameDative": "Обществу с ограниченной ответственностью ООО «Форте Пром Стил ГмбХ»",
+   "applicantNameGenitive": "Общества с ограниченной ответственностью ООО «Форте Пром Стил ГмбХ»",
+   "applicantNameInstrumental": "Обществом с ограниченной ответственностью ООО «Форте Пром Стил ГмбХ»",
    "caseNumber": "А53-12200/2026",
    "companyInn": "3461063590",
    "contractDate": "21.06.2024, 23.10.2025",
@@ -5573,12 +6967,25 @@
    "stateDuty16": "5 125 000,00",
    "totalDebt": "5 032 544 855,59"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "51 072 996,85"
+   ],
+   "interest": [
+    "518 326 017,27"
+   ],
+   "principalDebt": [
+    "4 463 145 841,47"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 14,
    "wordCount": 5490
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "contractDate": "21.06.2024",
@@ -5649,9 +7056,17 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/Заявление о признании должника несостоятельным (банкротом) Форте Хоум.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": {
+   "message": "Имя должника, найденное вторым способом проверки, отличается от определённого автоматически — рекомендуем перепроверить ФИО/наименование должника вручную.",
+   "regexName": "Форте Хоум ГмбХ",
+   "semanticName": "Общество с ограниченной ответственностью «Форте Хоум ГмбХ»"
+  },
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "344002, Ростовская обл., г. Ростов-На-Дону, ул. Красноармейская, д. 142 к. 50 офис 321",
@@ -5665,11 +7080,17 @@
    }
   ],
   "documentType": "initiation_legal",
+  "documentTypeWarning": null,
   "entityType": "legal",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "344002, Ростовская обл., г. Ростов-На-Дону, ул. Красноармейская, д. 142 к. 50 офис 321",
    "applicantName": "Форте Хоум ГмбХ",
-   "applicantNameGenitive": "Должника процедуру наблюдения",
+   "applicantNameAccusative": "Форте Хоум ГмбХ",
+   "applicantNameDative": "Форте Хоум ГмбХ",
+   "applicantNameGenitive": "Форте Хоум ГмбХ",
+   "applicantNameInstrumental": "Форте Хоум ГмбХ",
    "caseNumber": "А53-10405/2026",
    "companyInn": "6163076960",
    "contractDate": "17.01.2024, 21.09.2022, 10.04.2025, 21.06.2024, 07.03.2023, 19.05.2023, 16.01.2024, 06.12.2022",
@@ -5760,12 +7181,25 @@
    "stateDuty16": "5 100 000,00",
    "totalDebt": "5 032 544 855,59"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "51 072 996,85"
+   ],
+   "interest": [
+    "518 326 017,27"
+   ],
+   "principalDebt": [
+    "4 463 145 841,47"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 7,
    "wordCount": 5036
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "contractDate": "17.01.2024",
@@ -5836,9 +7270,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/заявление о банкротстве Форте Пром Стил ГМБХ.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "346404, Ростовская область, г. о. город Новочеркасск, г. Новочеркасск, Харьковское шоссе, д. 10",
@@ -5852,14 +7290,17 @@
    }
   ],
   "documentType": "initiation_legal",
+  "documentTypeWarning": null,
   "entityType": "legal",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "346404, Ростовская область, г. о. город Новочеркасск, г. Новочеркасск, Харьковское шоссе, д. 10",
    "applicantName": "ООО «Форте Пром Стил ГМБХ»",
-   "applicantNameAccusative": "ООО «форт Пром Стившего ГМБХ»",
-   "applicantNameDative": "ООО «форту Прому Стившему ГМБХАМ»",
-   "applicantNameGenitive": "Панина Александра Владимировича",
-   "applicantNameInstrumental": "ООО «фортом Промом Стившим ГМБХАМИ»",
+   "applicantNameAccusative": "ООО «Форте Пром Стил ГМБХ»",
+   "applicantNameDative": "ООО «Форте Пром Стил ГМБХ»",
+   "applicantNameGenitive": "ООО «Форте Пром Стил ГМБХ»",
+   "applicantNameInstrumental": "ООО «Форте Пром Стил ГМБХ»",
    "companyInn": "3461063590",
    "contractDate": "14.05.2025",
    "contractNumber": "КЛ-25/1472, П-25/1472/1482",
@@ -5896,12 +7337,19 @@
    "sroName": "Ассоциация \"Межрегиональная саморегулируемая организация арбитражных управляющих \"Содействие\"",
    "totalDebt": "1 000 000 000,00"
   },
+  "financeBreakdown": {
+   "principalDebt": [
+    "1 000 000 000,00"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 5,
    "wordCount": 1201
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "contractDate": "14.05.2025",
@@ -5924,6 +7372,8 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/набл Заявление о признании должника банкротом ООО  СПН ТРАК.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [
    {
     "address": "",
@@ -5988,6 +7438,8 @@
   ],
   "confidence": 0.85,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "РОСТОВСКАЯ ОБЛАСТЬ, РАЙОН БЕ-ЛОКАЛИТВИНСКИЙ, РАБОЧИЙ ПОСЕЛОК ЛИТВИНОВ-КА, ПЕР. СВЕТЛЫЙ, Д. 1",
@@ -6001,14 +7453,35 @@
    }
   ],
   "documentType": "competition_collateral",
+  "documentTypeWarning": null,
   "entityType": "legal",
+  "entityTypeWarning": {
+   "actualEntityType": "legal",
+   "documentType": "competition_collateral",
+   "expectedEntityType": "individual",
+   "message": "Тип документа предполагает тип лица должника, отличный от определённого по реквизитам — рекомендуем перепроверить вручную."
+  },
+  "fieldIssues": [
+   {
+    "cleared": true,
+    "field": "birthPlace",
+    "reason": "значение-заполнитель, а не данные",
+    "value": "None"
+   },
+   {
+    "cleared": true,
+    "field": "debtors[0].birthPlace",
+    "reason": "значение-заполнитель, а не данные",
+    "value": "None"
+   }
+  ],
   "fields": {
    "applicantAddress": "РОСТОВСКАЯ ОБЛАСТЬ, РАЙОН БЕ-ЛОКАЛИТВИНСКИЙ, РАБОЧИЙ ПОСЕЛОК ЛИТВИНОВ-КА, ПЕР. СВЕТЛЫЙ, Д. 1",
    "applicantName": "ООО «СПН ТРАК»",
    "applicantNameAccusative": "ООО «СПН ТРАК»",
-   "applicantNameDative": "ООО «СПН ТРАКУ»",
-   "applicantNameGenitive": "ООО «СПН ТРАКА»",
-   "applicantNameInstrumental": "ООО «СПН ТРАКОМ»",
+   "applicantNameDative": "ООО «СПН ТРАК»",
+   "applicantNameGenitive": "ООО «СПН ТРАК»",
+   "applicantNameInstrumental": "ООО «СПН ТРАК»",
    "collaterals": [
     {
      "address": "",
@@ -6204,12 +7677,26 @@
    "stateDuty16": "665 301,00",
    "totalDebt": "91 120 214,12"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "254 456,24",
+    "636 379,24"
+   ],
+   "interest": [
+    "15 303 966,59"
+   ],
+   "principalDebt": [
+    "74 925 412,05"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 5,
    "wordCount": 2162
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "amount": "7 224 940,66",
@@ -6291,9 +7778,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/Остальные/наблюдение Заявление о признании должника банкротом ООО  ТМД.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "344011, РОСТОВСКАЯ ОБЛАСТЬ, Г РОСТОВ-НА-ДОНУ, ПЕР ДОЛОМАНОВСКИЙ, ЗД 70Д, ОФИС 22",
@@ -6307,7 +7798,10 @@
    }
   ],
   "documentType": "initiation_legal",
+  "documentTypeWarning": null,
   "entityType": "legal",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "344011, РОСТОВСКАЯ ОБЛАСТЬ, Г РОСТОВ-НА-ДОНУ, ПЕР ДОЛОМАНОВСКИЙ, ЗД 70Д, ОФИС 22",
    "applicantName": "ООО «ТМД»",
@@ -6443,12 +7937,26 @@
    "stateDuty16": "370 668,00",
    "totalDebt": "31 633 546,28"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "59 548,78",
+    "334 889,33"
+   ],
+   "interest": [
+    "5 902 239,34"
+   ],
+   "principalDebt": [
+    "25 336 868,83"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 4,
    "wordCount": 1858
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "amount": "1 014 145,56",
@@ -6556,6 +8064,8 @@
   "thirdParties": []
  },
  "НОвая конвертация/Самобанкрот/A53-9758-2026_20260318_Zajavlenie.docx": {
+  "applicationKind": "self_bankruptcy",
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 0.85,
   "creditors": [
@@ -6604,6 +8114,8 @@
     "name": "Межрайонная инспекция Федеральной налоговой службы № 12 по Ростовской области 346500,Ростовская обл„Шахты г. Советская ул,134а Отделения Фонда пенсионного социального страхования Российской Федерации по Ростовской области"
    }
   ],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "347211, Ростовская обл, Морозовский р-н, Морозовск, ул Калинина, двлд 38",
@@ -6619,7 +8131,34 @@
    }
   ],
   "documentType": "initiation_legal",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": {
+   "actualEntityType": "individual",
+   "documentType": "initiation_legal",
+   "expectedEntityType": "legal",
+   "message": "Тип документа предполагает тип лица должника, отличный от определённого по реквизитам — рекомендуем перепроверить вручную."
+  },
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "inn",
+    "reason": "ИНН не проходит контрольную сумму",
+    "value": "612102429513"
+   },
+   {
+    "cleared": false,
+    "field": "companyInn",
+    "reason": "ИНН не проходит контрольную сумму",
+    "value": "612102429513"
+   },
+   {
+    "cleared": false,
+    "field": "debtors[0].inn",
+    "reason": "ИНН не проходит контрольную сумму",
+    "value": "612102429513"
+   }
+  ],
   "fields": {
    "applicantAddress": "347211, Ростовская обл, Морозовский р-н, Морозовск, ул Калинина, двлд 38",
    "applicantName": "Тарасенко (Матвеенко) Ольга Анатольевна",
@@ -6646,12 +8185,19 @@
    "sroName": "Ассоциация Евросибирская саморегулируемая организация арбитражных управляющих",
    "totalDebt": "279 733,06"
   },
+  "financeBreakdown": {
+   "principalDebt": [
+    "279 733,06"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 4,
    "wordCount": 1297
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [],
   "rawTextLen": 9742,
   "rawTextSha": "36224660eca062cc41324342c9b7ba8990cbdaa8c28113d751c3c87347ee650c",
@@ -6666,6 +8212,8 @@
   "thirdParties": []
  },
  "НОвая конвертация/Самобанкрот/Заявление РФЛ.docx": {
+  "applicationKind": "self_bankruptcy",
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 0.75,
   "creditors": [
@@ -6688,6 +8236,8 @@
     "ogrn": "1217700060820"
    }
   ],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "346404,Ростовская обл., г. Новочеркасск, ул. Флерова, д. 4, кв. 18",
@@ -6703,7 +8253,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "346404,Ростовская обл., г. Новочеркасск, ул. Флерова, д. 4, кв. 18",
    "applicantName": "Каплунов Виталий Геннадиевич",
@@ -6729,12 +8282,15 @@
    "sroName": "Саморегулируемая межрегиональная общественная организация «Ассоциация антикризисных управляющих»",
    "totalDebt": "545 770,14"
   },
+  "financeBreakdown": null,
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
    "wordCount": 1571
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [],
   "rawTextLen": 12423,
   "rawTextSha": "88fb1680b3a0348d45c6060e14572bb9f3edeab59e5bb32603d471af0660ca0e",
@@ -6758,6 +8314,8 @@
   ]
  },
  "НОвая конвертация/Самобанкрот/Заявление РФЛ1.docx": {
+  "applicationKind": "self_bankruptcy",
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 0.6,
   "creditors": [
@@ -6804,6 +8362,8 @@
     "ogrn": "1027739642281"
    }
   ],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "347561, Ростовская область, Песчанокопский р-н, с. Развильное, ул. Соляника, д. 20",
@@ -6819,7 +8379,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "347561, Ростовская область, Песчанокопский р-н, с. Развильное, ул. Соляника, д. 20",
    "applicantName": "Слабунов Сергей Сергеевич",
@@ -6845,12 +8408,15 @@
    "sroName": "Саморегулируемая межрегиональная общественная организация «Ассоциация антикризисных управляющих»",
    "totalDebt": "438 983,73"
   },
+  "financeBreakdown": null,
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
    "wordCount": 1595
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [],
   "rawTextLen": 12518,
   "rawTextSha": "62134f5dd3ca74632599e8e13d621b6c4c1b496857dc8a23b08ded170efe16e3",
@@ -6870,6 +8436,8 @@
   ]
  },
  "НОвая конвертация/Самобанкрот/Заявление должника о признании его несостоятельным (банкротом) на 5 л..docx": {
+  "applicationKind": "self_bankruptcy",
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [
@@ -6894,6 +8462,8 @@
     "name": "Межрайонная ИФНС России № 12 по Ростовской области"
    }
   ],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "346900, Ростовская обл., гор. Новошахтинск, ул. Харьковская, д. 259, кв. 103",
@@ -6909,7 +8479,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "346900, Ростовская обл., гор. Новошахтинск, ул. Харьковская, д. 259, кв. 103",
    "applicantName": "Бакалов Дмитрий Александрович",
@@ -6957,12 +8530,15 @@
    "sroName": "саморегулируемой организации арбитражных управляющих Союз АУ «Созидание»",
    "totalDebt": "808 803,58"
   },
+  "financeBreakdown": null,
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
    "wordCount": 2096
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "contractDate": "13.05.2024",
@@ -6997,6 +8573,8 @@
   "thirdParties": []
  },
  "НОвая конвертация/Самобанкрот/Заявление на банкротство Медведев М.Ю.docx": {
+  "applicationKind": "self_bankruptcy",
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 0.6,
   "creditors": [
@@ -7101,6 +8679,8 @@
     "name": "Межрайонная инспекция Федеральной налоговой службы № 12 по Ростовской области"
    }
   ],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "347022, Ростовская область, Белокалитвинский р-н, рп. Шолоховский, улица М. Горького, дом 46, квартира 1",
@@ -7116,7 +8696,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "347022, Ростовская область, Белокалитвинский р-н, рп. Шолоховский, улица М. Горького, дом 46, квартира 1",
    "applicantName": "Медведев Максим Юрьевич",
@@ -7145,12 +8728,19 @@
    "sroName": "Ассоциация \"Национальная организация арбитражных управляющих\"",
    "totalDebt": "826 313,77"
   },
+  "financeBreakdown": {
+   "principalDebt": [
+    "826 313,77"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 6,
    "wordCount": 1827
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [],
   "rawTextLen": 13373,
   "rawTextSha": "ed76f69ad0a72e25a4f52ed006d1d5f102691ee05dfb1fec03cd97076716355b",
@@ -7165,6 +8755,8 @@
   "thirdParties": []
  },
  "НОвая конвертация/Самобанкрот/Заявление о признании банкротом.docx": {
+  "applicationKind": "self_bankruptcy",
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 0.85,
   "creditors": [
@@ -7231,6 +8823,8 @@
     "name": "ООО «ПКО Санколлект» Адрес"
    }
   ],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "344039, г. Ростов-на-Дону, ул. Средняя, д. 23",
@@ -7246,7 +8840,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "344039, г. Ростов-на-Дону, ул. Средняя, д. 23",
    "applicantName": "Мирский Алексей Степанович",
@@ -7272,12 +8869,19 @@
    "sroName": "Саморегулируемая организация \"Ассоциация арбитражных управляющих \"Паритет\"",
    "totalDebt": "2 126 507,25"
   },
+  "financeBreakdown": {
+   "principalDebt": [
+    "121 727,96"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 6,
    "wordCount": 2435
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [],
   "rawTextLen": 18085,
   "rawTextSha": "05c89a9fd6da6bf7c99b351c9af340486337d8480672815710af74aa81f55b13",
@@ -7293,6 +8897,8 @@
   "thirdParties": []
  },
  "НОвая конвертация/Самобанкрот/Заявление о признании гражданина несостоятельным (банкротом).docx": {
+  "applicationKind": "self_bankruptcy",
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 0.85,
   "creditors": [
@@ -7339,6 +8945,8 @@
     "ogrn": "1144400000425"
    }
   ],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "ОБЛ. РОСТОВСКАЯ, Г. РОСТОВ-НА-ДОНУ, УЛ. HOBATOPOB, Д. 6, КВ. 16",
@@ -7354,7 +8962,10 @@
    }
   ],
   "documentType": "initiation_physical",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "ОБЛ. РОСТОВСКАЯ, Г. РОСТОВ-НА-ДОНУ, УЛ. HOBATOPOB, Д. 6, КВ. 16",
    "applicantName": "Федоренко Алексей Алексеевич",
@@ -7382,12 +8993,15 @@
    "sroName": "Союз \"Саморегулируемая организация \"Гильдия арбитражных управляющих\"",
    "totalDebt": "859 764,45"
   },
+  "financeBreakdown": null,
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
    "wordCount": 924
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [],
   "rawTextLen": 7464,
   "rawTextSha": "d9dcd34fcaa0a611bc90de6d80494260bde988d754b98c0768cec3b3bb18d7f1",
@@ -7403,6 +9017,8 @@
   "thirdParties": []
  },
  "НОвая конвертация/Самобанкрот/Заявление физического лица о признании его несостоятельным (банкротом).docx": {
+  "applicationKind": "self_bankruptcy",
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 0.75,
   "creditors": [
@@ -7467,6 +9083,8 @@
     "name": "ПАО Сбербанк"
    }
   ],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "347631, обл. Ростовская, р-н Сальский, гор. Сальск, ул. Севастопольская, д. 93-в, кв. 61",
@@ -7482,7 +9100,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "347631, обл. Ростовская, р-н Сальский, гор. Сальск, ул. Севастопольская, д. 93-в, кв. 61",
    "applicantName": "Корсунов Вячеслав Валерьевич",
@@ -7509,12 +9130,15 @@
    "sroName": "Ассоциация \"Региональная саморегулируемая организация профессиональных арбитражных управляющих\"",
    "totalDebt": "1 096 979,68"
   },
+  "financeBreakdown": null,
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 5,
    "wordCount": 1597
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [],
   "rawTextLen": 11561,
   "rawTextSha": "1d14c2cd7be057f5413c5f31c1280f0ff47bad42fa8b6886310b52e75db4061c",
@@ -7539,9 +9163,13 @@
   ]
  },
  "НОвая конвертация/Самобанкрот/заявление.docx": {
+  "applicationKind": "self_bankruptcy",
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 0.85,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "347631, Ростовская область, Сальский район, г. Сальск, пер. Малый, д. 4",
@@ -7557,7 +9185,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "347631, Ростовская область, Сальский район, г. Сальск, пер. Малый, д. 4",
    "applicantName": "Галета (Карпух) Ольга Николаевна",
@@ -7584,12 +9215,15 @@
    "sroName": "Союз \"Межрегиональный центр арбитражных управляющих\"",
    "totalDebt": "394 270,65"
   },
+  "financeBreakdown": null,
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
    "wordCount": 1405
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [],
   "rawTextLen": 10682,
   "rawTextSha": "8262f1ca3bc6fd3c04a7255f80088a35a688ab6b3108deaac60b9ce5d7b72e27",
@@ -7617,6 +9251,8 @@
   ]
  },
  "НОвая конвертация/Умерший ким клим.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [
    {
     "address": "",
@@ -7645,10 +9281,12 @@
   ],
   "confidence": 0.85,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": "deceased",
   "debtors": [
    {
     "address": "346744, Ростовская обл., Азовский р-н, с. Кулешовка, Автомагистраль «Дон», 9 км. а/д «Ростов-на-Дону Азов»",
-    "birthDate": "02.04.1985",
+    "birthDate": "",
     "birthPlace": "",
     "inn": "614104690687",
     "name": "Ким Клим",
@@ -7658,14 +9296,29 @@
    }
   ],
   "documentType": "initiation_physical",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": true,
+    "field": "creditorName",
+    "reason": "убран адресный хвост (почтовый индекс) из наименования",
+    "value": "ПАО Сбербанк России в лице Юго-Западного банка 344068"
+   },
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Адреса кредитора в документе нет, значение из справочника. Проверьте.",
+    "value": "117312, г. Москва, ул. Вавилова, д. 19"
+   }
+  ],
   "fields": {
    "applicantAddress": "346744, Ростовская обл., Азовский р-н, с. Кулешовка, Автомагистраль «Дон», 9 км. а/д «Ростов-на-Дону Азов»",
    "applicantName": "Ким Клим",
    "applicantNameAccusative": "Кима Клима",
    "applicantNameGenitive": "Кима Клима",
    "applicantNameInstrumental": "Кимом Климом",
-   "birthDate": "02.04.1985",
    "companyInn": "614104690687",
    "contractDate": "21.11.2013",
    "contractNumber": "1221/5221/0890/033/13/И01, 1221/5221/0890/034/13/М01",
@@ -7709,6 +9362,14 @@
    "stateDuty": "6 000,00",
    "totalDebt": "15 353 052,99"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "366 332,31"
+   ],
+   "principalDebt": [
+    "14 986 720,68"
+   ]
+  },
   "heirs": [
    {
     "address": "346744, Ростовская обл., Азовский р-н, с. Кулешовка, Автомагистраль «Дон», 9 км. а/д «Ростов-на-Дону — Азов»",
@@ -7720,6 +9381,8 @@
    "pageCount": 2,
    "wordCount": 830
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "contractDate": "21.11.2013",
@@ -7735,7 +9398,7 @@
    }
   ],
   "rawTextLen": 6149,
-  "rawTextSha": "0117dbb11993e49d0fd98ac5edf2f5514ac5b499ff8146c4686ac1884b04bf18",
+  "rawTextSha": "3b79010e9259a3d652f4826011fba417a63c7ccac403cfb216fce6815080b7f1",
   "recommendedActs": {
    "collateralOption": "collateral",
    "entityType": "individual",
@@ -7744,9 +9407,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/ФНС/Зайцев В.В._заявление.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 0.85,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "346630, РОСТОВСКАЯ ОБЛ, Семикаракорский Р-Н, СЕМИКАРАКОРСК Г, ЛЕВЧЕНКО ПЛ,46",
@@ -7760,7 +9427,15 @@
    }
   ],
   "documentType": "initiation_physical",
+  "documentTypeWarning": null,
   "entityType": "ip",
+  "entityTypeWarning": {
+   "actualEntityType": "ip",
+   "documentType": "initiation_physical",
+   "expectedEntityType": "individual",
+   "message": "Тип документа предполагает тип лица должника, отличный от определённого по реквизитам — рекомендуем перепроверить вручную."
+  },
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "346630, РОСТОВСКАЯ ОБЛ, Семикаракорский Р-Н, СЕМИКАРАКОРСК Г, ЛЕВЧЕНКО ПЛ,46",
    "applicantName": "Зайцев Виталий Владимирович",
@@ -7790,12 +9465,15 @@
    "sroName": "Союз арбитражных управляющих \"Саморегулируемая организация \"ДЕЛО\"",
    "totalDebt": "7 267 312,82"
   },
+  "financeBreakdown": null,
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 4,
    "wordCount": 2204
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [],
   "rawTextLen": 16276,
   "rawTextSha": "f25dadfe6e67ee825e1dfa9012f7af236c8e261b2e43133b1898bc5cc960baf9",
@@ -7811,9 +9489,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/ФНС/Заявление РТК Богачева.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "ул. 2-я Краснодарская, 149/5, кв. 43, г. Ростов-на-Дону, 344091",
@@ -7827,7 +9509,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "ул. 2-я Краснодарская, 149/5, кв. 43, г. Ростов-на-Дону, 344091",
    "applicantName": "Богачева Анна Михайловна",
@@ -7855,12 +9540,15 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "4 590,95"
   },
+  "financeBreakdown": null,
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
    "wordCount": 662
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [],
   "rawTextLen": 5096,
   "rawTextSha": "349962c8a567686d1697c73e4333403a66d6002ff0cbee0273cae61d0b64b229",
@@ -7875,9 +9563,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/ФНС/Заявление РТК Бузнякова Е В.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 0.75,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "пер Рязанова, 31, х Елкин, Багаевский р-н, ,346621",
@@ -7891,7 +9583,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "пер Рязанова, 31, х Елкин, Багаевский р-н, ,346621",
    "applicantName": "Бузнякова Елена Васильевна",
@@ -7919,12 +9614,15 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "452,79"
   },
+  "financeBreakdown": null,
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
    "wordCount": 724
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [],
   "rawTextLen": 5649,
   "rawTextSha": "b7a54aee5fe003b588e8f2fddc366842cdf46b67aec682a1a7f4168481613611",
@@ -7939,9 +9637,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/ФНС/Заявление РТК Воробьева С.М.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "ул. Орбитальная, д.90, к.67, г. Ростов-на-Дону, 344114",
@@ -7955,7 +9657,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "ул. Орбитальная, д.90, к.67, г. Ростов-на-Дону, 344114",
    "applicantName": "Воробьева Светлана Михайловна",
@@ -7986,12 +9691,15 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "255 825,84"
   },
+  "financeBreakdown": null,
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
    "wordCount": 1164
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [],
   "rawTextLen": 9036,
   "rawTextSha": "fd80ff50735871e9e944d582b86202f5d5bdabc9f03963fc91b4b812dcf3937e",
@@ -8006,9 +9714,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/ФНС/Заявление РТК Мишунин И.А..docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 0.85,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "ул. Садовая, д. 28, п. Двуречье, Кагальницкий р-н, Ростовская область, 347704",
@@ -8022,7 +9734,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "ул. Садовая, д. 28, п. Двуречье, Кагальницкий р-н, Ростовская область, 347704",
    "applicantName": "Мишунин Иван Александрович",
@@ -8052,12 +9767,15 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "24 314,99"
   },
+  "financeBreakdown": null,
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
    "wordCount": 647
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [],
   "rawTextLen": 5067,
   "rawTextSha": "3afaaecbb50134a6fe53048a95ae8efa822b6e0aad0a054548c18e74640960d4",
@@ -8072,9 +9790,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/ФНС/Заявление РТК Мурадьян М.Е.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "ул. Баумана, 20, кв. 15, г. Ростов-на-Дону, 344002",
@@ -8088,7 +9810,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "ул. Баумана, 20, кв. 15, г. Ростов-на-Дону, 344002",
    "applicantName": "Мурадьян Максим Евгеньевич",
@@ -8119,12 +9844,15 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "187 348,68"
   },
+  "financeBreakdown": null,
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
    "wordCount": 1717
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [],
   "rawTextLen": 13363,
   "rawTextSha": "eb5342a658a9392b46dc1cceeef1f715cf2a513709b0fc06837d1d8bab5d0a57",
@@ -8139,9 +9867,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/ФНС/Заявление на 6 л. в 1 экз (1).docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 0.85,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "ул. Социалистическая, д. 26, г. Сальск, Сальский р-н., Ростовская обл., 347636",
@@ -8155,7 +9887,17 @@
    }
   ],
   "documentType": "unknown",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Адреса кредитора в документе нет, значение из справочника. Проверьте.",
+    "value": "347375, Ростовская обл, Волгодонск г, Ленинградская ул, 10"
+   }
+  ],
   "fields": {
    "applicantAddress": "ул. Социалистическая, д. 26, г. Сальск, Сальский р-н., Ростовская обл., 347636",
    "applicantName": "Карагезова ЛИЛИЯ АРКАДЬЕВНА",
@@ -8189,12 +9931,15 @@
    "sroName": "Ассоциация \"Московская саморегулируемая организация профессиональных арбитражных управляющих\"",
    "totalDebt": "1 712 229,07"
   },
+  "financeBreakdown": null,
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
    "wordCount": 1501
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [],
   "rawTextLen": 11466,
   "rawTextSha": "ee026215dd2bc3e30cb98915232438982831a767a854af71f25bd86792f605a6",
@@ -8209,9 +9954,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/ФНС/Заявление о включении в ртк  Артемов И.Г..docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 0.85,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "346406, РОССИЯ, Ростовская обл, ‚ горно-черкасск, , ул Речная, 43",
@@ -8225,7 +9974,17 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Адреса кредитора в документе нет, значение из справочника. Проверьте.",
+    "value": "346407, Ростовская обл, Новочеркасск г, Ермака пр-кт, 104"
+   }
+  ],
   "fields": {
    "applicantAddress": "346406, РОССИЯ, Ростовская обл, ‚ горно-черкасск, , ул Речная, 43",
    "applicantName": "Артемов Игорь Геннадьевич",
@@ -8254,12 +10013,15 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "855,35"
   },
+  "financeBreakdown": null,
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
    "wordCount": 947
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [],
   "rawTextLen": 7312,
   "rawTextSha": "0cbae3bc633b907994cc3675794ec0791965a40c551c7dd146bda04a08d8dc4b",
@@ -8274,9 +10036,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/ФНС/Заявление о включении в ртк  Геворгян К.В..docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 0.6,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "346611,РОССИЯ,Ростовская обл,„,Багаевская ст-ца, Фрунзе ул,67",
@@ -8290,7 +10056,17 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Адреса кредитора в документе нет, значение из справочника. Проверьте.",
+    "value": "344019, Ростов-на-Дону г, Мясникова ул, 52/32"
+   }
+  ],
   "fields": {
    "applicantAddress": "346611,РОССИЯ,Ростовская обл,„,Багаевская ст-ца, Фрунзе ул,67",
    "applicantName": "Геворгян Ксения Валериевна",
@@ -8318,12 +10094,15 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "338,71"
   },
+  "financeBreakdown": null,
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
    "wordCount": 954
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [],
   "rawTextLen": 7419,
   "rawTextSha": "6f4fe7150eb96d66c35c88d1e9fda9b51bf5df75926e8163d9b88026b1104225",
@@ -8338,9 +10117,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/ФНС/Заявление_Базов Георгий Николаевич_20.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 0.85,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "346731, Россия, обл. Ростовская, Аксайский р-н, Щепкин п., Адмирала Нахимова ул., д.14",
@@ -8356,7 +10139,10 @@
    }
   ],
   "documentType": "initiation_physical",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "346731, Россия, обл. Ростовская, Аксайский р-н, Щепкин п., Адмирала Нахимова ул., д.14",
    "applicantName": "Базов Георгий Николаевич",
@@ -8393,12 +10179,15 @@
    "sroName": "Союз арбитражных управляющих \"Саморегулируемая организация \"ДЕЛО\"",
    "totalDebt": "71 145 066,58"
   },
+  "financeBreakdown": null,
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
    "wordCount": 1498
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [],
   "rawTextLen": 11542,
   "rawTextSha": "e699499bf2ce707c3cd166deb0da46c7ae335331a98e6f3d2d520210bc1e2ce9",
@@ -8413,9 +10202,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/ФНС/ФНС Заявление (1).docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 0.85,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "346404, Россия, Ростовская обл, Новочеркасск г, Флерова А.Ф. ул, 4, кв. 66",
@@ -8431,7 +10224,10 @@
    }
   ],
   "documentType": "initiation_physical",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "346404, Россия, Ростовская обл, Новочеркасск г, Флерова А.Ф. ул, 4, кв. 66",
    "applicantName": "Бирюкова Елена Андреевна",
@@ -8467,12 +10263,15 @@
    "sroName": "Саморегулируемая межрегиональная общественная организация «Ассоциация антикризисных управляющих»",
    "totalDebt": "5 631 934,26"
   },
+  "financeBreakdown": null,
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 3,
    "wordCount": 1565
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [],
   "rawTextLen": 11805,
   "rawTextSha": "34ba44b1b300483269dcbf4fc463180610344ac71d0c2a04e6ea841c493e21eb",
@@ -8487,9 +10286,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/ФНС/Чернов Николай Николаевич_95.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "346414, Ростовская обл,,Новочеркасск г,,Харьковская ул,47",
@@ -8503,7 +10306,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "346414, Ростовская обл,,Новочеркасск г,,Харьковская ул,47",
    "applicantName": "Чернов Николай Николаевич",
@@ -8535,12 +10341,15 @@
    "sroName": "Ассоциация Евросибирская саморегулируемая организация арбитражных управляющих",
    "totalDebt": "54 558,94"
   },
+  "financeBreakdown": null,
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 4,
    "wordCount": 1260
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [],
   "rawTextLen": 9684,
   "rawTextSha": "59b27ef4d2b019dac3dddd35536332e7bb666e80f352edf965f47c2ff3ba3573",
@@ -8555,9 +10364,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/коллекторы пришли включаться.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "347022, Ростовская обл, Белокалитвинский р-н, рп Шолоховский, ул М.Горького, д 46, кв 1",
@@ -8573,7 +10386,10 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [],
   "fields": {
    "applicantAddress": "347022, Ростовская обл, Белокалитвинский р-н, рп Шолоховский, ул М.Горького, д 46, кв 1",
    "applicantName": "Медведев Максим Юрьевич",
@@ -8617,12 +10433,22 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "47 999,98"
   },
+  "financeBreakdown": {
+   "loanStateDuty17": [
+    "2 000,00"
+   ],
+   "principalDebt": [
+    "45 999,98"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 1,
    "wordCount": 552
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "contractDate": "19.12.2025",
@@ -8644,9 +10470,13 @@
   "thirdParties": []
  },
  "НОвая конвертация/пришли коллекторы включаться.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": null,
   "debtors": [
    {
     "address": "344039, Ростовская обл, г Ростов-на-Дону, ул Средняя, д 23",
@@ -8660,7 +10490,17 @@
    }
   ],
   "documentType": "rtk_application",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Юридического адреса в документе нет, взят фактический адрес. Проверьте.",
+    "value": "400050, г. Волгоград, ул. им. Рокоссовского, 62, этаж 9"
+   }
+  ],
   "fields": {
    "applicantAddress": "344039, Ростовская обл, г Ростов-на-Дону, ул Средняя, д 23",
    "applicantName": "Мирский Алексей Степанович",
@@ -8712,12 +10552,25 @@
    "sourceDocumentType": "rtk_application",
    "totalDebt": "36 658,28"
   },
+  "financeBreakdown": {
+   "interest": [
+    "17 768,28"
+   ],
+   "loanStateDuty17": [
+    "2 000,00"
+   ],
+   "principalDebt": [
+    "16 890,00"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
    "wordCount": 649
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "contractDate": "18.03.2025",
@@ -8739,6 +10592,8 @@
   "thirdParties": []
  },
  "НОвая конвертация/умерший сос.docx": {
+  "applicationKind": null,
+  "collateralWarning": null,
   "collaterals": [
    {
     "address": "Ростовская область, г Каменск-Шахтинский, ул. Ленина, 65",
@@ -8779,6 +10634,8 @@
   ],
   "confidence": 1.0,
   "creditors": [],
+  "debtorNameWarning": null,
+  "debtorStatusHint": "deceased",
   "debtors": [
    {
     "address": "347810, Ростовская область, г. Каменск-Шахтинский, ул. Ленина, д.65",
@@ -8792,7 +10649,17 @@
    }
   ],
   "documentType": "initiation_physical",
+  "documentTypeWarning": null,
   "entityType": "individual",
+  "entityTypeWarning": null,
+  "fieldIssues": [
+   {
+    "cleared": false,
+    "field": "creditorAddress",
+    "reason": "Юридический адрес в документе расходится со справочником: «117312, г. Москва, ул. Вавилова, д. 19». Проверьте.",
+    "value": "344068, г. Ростов-на-Дону, ул. Евдокимова, д. 37"
+   }
+  ],
   "fields": {
    "applicantAddress": "347810, Ростовская область, г. Каменск-Шахтинский, ул. Ленина, д.65",
    "applicantName": "Манукян Сос Жораевич",
@@ -8835,12 +10702,25 @@
    "sroName": "Ассоциация \"Дальневосточная межрегиональная саморегулируемая организация профессиональных арбитражных управляющих\"",
    "totalDebt": "2 867 955,21"
   },
+  "financeBreakdown": {
+   "forfeit": [
+    "407 123,69"
+   ],
+   "loanStateDuty17": [
+    "22 568,82"
+   ],
+   "principalDebt": [
+    "2 438 262,70"
+   ]
+  },
   "heirs": [],
   "metadata": {
    "language": "ru",
    "pageCount": 2,
    "wordCount": 1098
   },
+  "mortgageKind": null,
+  "mortgageProperties": [],
   "obligations": [
    {
     "contractDate": "21.03.2008",
