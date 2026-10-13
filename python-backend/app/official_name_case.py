@@ -72,10 +72,17 @@ def clerk_case(left_context: str) -> str:
 
 
 def gender_from_full_name(full_name: str) -> Optional[str]:
-    """Род по полному ФИО: отчество отвечает на этот вопрос без догадок."""
+    """Род по полному ФИО: отчество отвечает на этот вопрос без догадок.
+
+    Сокращённая запись не годится: в «Жигало А.» инициал «А» разбирается как
+    женское имя, и мужчина становится женщиной.
+    """
     if not full_name:
         return None
-    return detect_gender(str(full_name).split())
+    части = str(full_name).split()
+    if any(_ИНИЦИАЛ.match(часть) for часть in части):
+        return None
+    return detect_gender(части)
 
 
 def gender_from_surname(surname: str) -> Optional[str]:
@@ -86,6 +93,14 @@ def gender_from_surname(surname: str) -> Optional[str]:
     if low.endswith(_МУЖСКИЕ_ОКОНЧАНИЯ):
         return "masc"
     return None
+
+
+def gender_of_person(value: str) -> Optional[str]:
+    """Род человека: сначала по отчеству, затем по окончанию фамилии."""
+    if not value:
+        return None
+    части = str(value).split()
+    return gender_from_full_name(value) or (gender_from_surname(части[0]) if части else None)
 
 
 def inflect_short_fio(value: str, case: str, gender: Optional[str] = None) -> str:

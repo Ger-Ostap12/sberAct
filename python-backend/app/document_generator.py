@@ -16,9 +16,11 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.shared import OxmlElement, qn
 # Локальный импорт анализатора без package-префикса, чтобы работать при запуске из app/
 from claim_resolution import CLAIM_RESOLUTION_TEXTS, PARTIAL, build_partial_denial
+from org_normalizer import is_org_name
 from official_name_case import (
     clerk_case,
     gender_from_full_name,
+    gender_of_person,
     inflect_short_fio,
     judge_case,
 )
@@ -1539,6 +1541,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # Падежи судьи и ведущего протокол — ДО общей подстановки: та кладёт
         # значение как есть, и склонять было бы уже нечего.
         self._apply_official_name_cases(doc, cleaned_data)
+        # Род глаголов тоже считаем по маркерам, пока они на месте.
+        self._apply_gender_agreement(doc, cleaned_data)
 
         self._apply_field_mapping_replacements(doc, cleaned_data, field_mapping, is_mortgage_document, is_ip, is_physical_collateral)
 
@@ -1884,6 +1888,29 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             self._replace_regex_in_doc(
                 doc, r"(.{0,80})\[29\]",
                 lambda m: m.group(1) + inflect_short_fio(author, clerk_case(m.group(1))))
+
+    def _apply_gender_agreement(self, doc: DocxDocument, cleaned_data: Dict[str, Any]) -> None:
+        """Согласует «утвержден/утверждена» и «признан/признана» с родом лица.
+
+        Род зашит в шаблон, а лицо бывает любым: у женщины-управляющего печаталось
+        «Финансовым управляющим утвержден Рябинина Е.А.».
+        """
+        def _форма(основа: str, gender: str) -> str:
+            return основа + "а" if gender == "femn" else основа
+
+        род_управляющего = gender_of_person(cleaned_data.get("managerName"))
+        if род_управляющего:
+            self._replace_regex_in_doc(
+                doc, r"(утвержд[её]н)(?:а)?(\s*\[8\])",
+                lambda m: _форма(m.group(1), род_управляющего) + m.group(2))
+
+        # Организация под это правило не подпадает: у неё «общество признано».
+        имя_должника = str(cleaned_data.get("debtorName") or "")
+        род_должника = None if is_org_name(имя_должника) else gender_of_person(имя_должника)
+        if род_должника:
+            self._replace_regex_in_doc(
+                doc, r"(\[2(?:\.\d)?\][^.\[]{0,120}?)(признан)(?:а)?\b",
+                lambda m: m.group(1) + _форма(m.group(2), род_должника))
 
     def _apply_secretary_wording(self, doc: DocxDocument, author_role: str) -> None:
         """Шаблоны по умолчанию по-разному называют роль ведущего протокол — где-то

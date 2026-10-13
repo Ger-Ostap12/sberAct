@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
 
 from official_name_case import (  # noqa: E402
     clerk_case,
+    gender_of_person,
     gender_from_full_name,
     gender_from_surname,
     inflect_short_fio,
@@ -72,6 +73,15 @@ class TestРод:
     def test_без_полного_фио(self):
         assert gender_from_full_name("") is None
         assert gender_from_full_name(None) is None
+
+    def test_инициал_не_считается_женским_именем(self):
+        # «Жигало А.»: разбор по инициалу давал femn — мужчина становился женщиной.
+        assert gender_from_full_name("Жигало А.") is None
+        assert gender_from_full_name("Жигало А.В.") is None
+        assert gender_of_person("Жигало А.") is None
+
+    def test_полное_фио_с_инициалами_тоже_не_разбирается(self):
+        assert gender_from_full_name("Иванов И. Иванович") is None
 
     def test_по_окончанию_фамилии(self):
         assert gender_from_surname("Секретарева") == "femn"
