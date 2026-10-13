@@ -17,6 +17,7 @@ from docx.oxml.shared import OxmlElement, qn
 # Локальный импорт анализатора без package-префикса, чтобы работать при запуске из app/
 from claim_resolution import CLAIM_RESOLUTION_TEXTS, PARTIAL, build_partial_denial
 from org_normalizer import is_org_name
+from hearing_datetime import format_hearing_datetime
 from text_case import normalize_address_case, normalize_name_case
 from official_name_case import (
     clerk_case,
@@ -1433,16 +1434,10 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 if field_key in ("applicationReceiptDate23", "courtSubmissionDate24"):
                     formatted_value = self._normalize_date_format(str(field_value))
                 elif field_key == "courtHearingDateTime99" and str(field_value).strip():
-                    # Дата и время: 2026-02-19T13:18 -> 19.02.2026 13:18
-                    raw = str(field_value).strip()
-                    if "T" in raw:
-                        date_part = raw.split("T")[0]
-                        time_part = raw.split("T")[1] if "T" in raw else ""
-                        formatted_value = self._normalize_date_format(date_part)
-                        if time_part:
-                            formatted_value = f"{formatted_value} {time_part.replace('-', ':')}"
-                    else:
-                        formatted_value = self._normalize_date_format(raw)
+                    # Заседание печатается словами: «14 октября 2026 года в
+                    # 14 часов 58 минут». cleaned_data не меняем — из него же
+                    # считается срок конкурсного производства.
+                    formatted_value = format_hearing_datetime(str(field_value).strip())
                 else:
                     formatted_value = str(field_value)
 
