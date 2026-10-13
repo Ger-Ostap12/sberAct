@@ -163,6 +163,8 @@
     "Дата газеты Коммерсантъ": {ЛЮБОЙ: ("field", "kommersantDate")},
     "Краткое наименование": {ЛЮБОЙ: ("field", "legalShortName")},
     "Процедура": {ЛЮБОЙ: ("field", "procedureType")},
+    # Процедура, которую суд УЖЕ ввёл: по ней подставляется вид акта ВКЛ в РТК.
+    "Введённая процедура": {ЛЮБОЙ: ("field", "introducedProcedure")},
     "Вид документа": {ЛЮБОЙ: ("field", "sourceDocumentType")},
     "Падеж дательный": {ЛЮБОЙ: ("field", "mortgageDebtorNameDative")},
 }

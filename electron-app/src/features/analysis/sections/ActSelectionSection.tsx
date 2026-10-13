@@ -14,15 +14,17 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { EntityType, CollateralOption, ApplicationKind, DebtorStatus, SelectedAct } from '../../../types';
 import { CollateralKinds } from '../lib/collateralSync';
+import {
+  IntroducedProcedure,
+  RTK_VARIANT_LABEL,
+  RtkVariant,
+  rtkVariantsForEntity,
+} from '../lib/finalActs';
 
 interface ActSelectionSectionProps {
   entityType: EntityType | null;
@@ -50,7 +52,9 @@ interface ActSelectionSectionProps {
   /** Больше не используется секцией: поля «Причина»/«Для сторон»/«Запросы суда»
    *  убраны из окон актов. Проп оставлен — родитель по-прежнему им владеет. */
   updateActAdditionalFields?: (actId: string, field: 'reason' | 'forParties' | 'courtRequests', value: string) => void;
-  updateActRtkVariant: (actId: string, variant: 'realization' | 'restructuring' | 'competition' | 'observation' | 'registry') => void;
+  updateActRtkVariant: (actId: string, variant: RtkVariant) => void;
+  /** Процедура, введённая судом: по ней подставляется вид акта ВКЛ в РТК. */
+  introducedProcedure?: IntroducedProcedure | undefined;
   recommendationsApplied: boolean;
   recommendedActs?: { entityType?: string; collateralOption?: string; recommendedActIds?: string[] } | undefined;
   /** Чекбокс «Короткий текст»: доп. генерация резолютивки основной процедуры. */
@@ -76,6 +80,7 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
   selectedActs,
   toggleActSelection,
   updateActRtkVariant,
+  introducedProcedure,
   recommendationsApplied,
   recommendedActs,
   shortText,
@@ -316,26 +321,27 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                   </AccordionSummary>
                   <AccordionDetails>
                     <Box>
-                      {selectedActs
-                        .filter(act => act.category === 'final')
-                        .map(act => {
-                          const isRecommended = recommendationsApplied &&
-                            recommendedActs?.recommendedActIds?.includes(act.id);
-                          const isRtkAct = act.id === 'final_rtk_inclusion';
-
+                      {applicationKind === 'rtk' ? (
+                        // Включение в РТК: виды акта взаимоисключающие, набор
+                        // гейтится типом лица, «За реестр» доступен обоим.
+                        rtkVariantsForEntity(entityType).map(variant => {
+                          const act = selectedActs.find(a => a.id === 'final_rtk_inclusion');
+                          const выбран = act?.rtkVariant === variant;
+                          const рекомендован = act?.selected && !!introducedProcedure
+                            && variant === introducedProcedure;
                           return (
-                            <Box key={act.id} sx={{ mb: 1 }}>
+                            <Box key={variant} sx={{ mb: 1 }}>
                               <FormControlLabel
                                 control={
                                   <Checkbox
-                                    checked={act.selected}
-                                    onChange={() => toggleActSelection(act.id)}
+                                    checked={!!выбран}
+                                    onChange={() => updateActRtkVariant('final_rtk_inclusion', variant)}
                                   />
                                 }
                                 label={
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <span>{act.name}</span>
-                                    {isRecommended && (
+                                    <span>{RTK_VARIANT_LABEL[variant]}</span>
+                                    {рекомендован && (
                                       <Chip
                                         label="Рекомендуется"
                                         size="small"
@@ -346,48 +352,43 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                                   </Box>
                                 }
                               />
-
-                              {/* Дополнительный выбор варианта для "Определение ВКЛ в РТК" */}
-                              {isRtkAct && act.selected && (
-                                <Box sx={{ mt: 1, ml: 4 }}>
-                                  <FormControl fullWidth size="small">
-                                    <InputLabel id={`${act.id}-variant-label`}>
-                                      Выберите вид акта
-                                    </InputLabel>
-                                    <Select
-                                      labelId={`${act.id}-variant-label`}
-                                      label="Выберите вид акта"
-                                      value={act.rtkVariant || ''}
-                                      onChange={(e) =>
-                                        updateActRtkVariant(
-                                          act.id,
-                                          e.target.value as
-                                            'realization' | 'restructuring' | 'competition' | 'observation' | 'registry'
-                                        )
-                                      }
-                                    >
-                                      <MenuItem value="realization">
-                                        Определение включение в РТК реализация
-                                      </MenuItem>
-                                      <MenuItem value="restructuring">
-                                        Определение включение в РТК реструктуризация
-                                      </MenuItem>
-                                      <MenuItem value="competition">
-                                        Определение включение в РТК конкурсное
-                                      </MenuItem>
-                                      <MenuItem value="observation">
-                                        Определение включение в РТК наблюдение
-                                      </MenuItem>
-                                      <MenuItem value="registry">
-                                        Определение ВКЛ в РТК «За реестр»
-                                      </MenuItem>
-                                    </Select>
-                                  </FormControl>
-                                </Box>
-                              )}
                             </Box>
                           );
-                        })}
+                        })
+                      ) : (
+                        // Инициирование: процедурные акты, акта ВКЛ в РТК здесь нет.
+                        selectedActs
+                          .filter(act => act.category === 'final' && act.id !== 'final_rtk_inclusion')
+                          .map(act => {
+                            const isRecommended = recommendationsApplied &&
+                              recommendedActs?.recommendedActIds?.includes(act.id);
+                            return (
+                              <Box key={act.id} sx={{ mb: 1 }}>
+                                <FormControlLabel
+                                  control={
+                                    <Checkbox
+                                      checked={act.selected}
+                                      onChange={() => toggleActSelection(act.id)}
+                                    />
+                                  }
+                                  label={
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <span>{act.name}</span>
+                                      {isRecommended && (
+                                        <Chip
+                                          label="Рекомендуется"
+                                          size="small"
+                                          color="success"
+                                          sx={{ fontSize: '0.65rem', height: '18px' }}
+                                        />
+                                      )}
+                                    </Box>
+                                  }
+                                />
+                              </Box>
+                            );
+                          })
+                      )}
                     </Box>
                     {/* Короткий текст — доп. генерация резолютивки основной процедуры
                         к выбранным финальным актам. Стоит здесь, а не отдельным блоком

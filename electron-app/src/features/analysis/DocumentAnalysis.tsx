@@ -19,6 +19,13 @@ import { extractCollateralData } from '../../shared/lib/collateral';
 import { isFnsCreditor, FNS_CREDITOR_KEY } from '../../shared/lib/banks';
 import { buildSubmitData } from './lib/buildSubmitData';
 import {
+  IntroducedProcedure,
+  defaultRtkVariant,
+  finalActsContextKey,
+  initiationFinalActs,
+  rtkVariantsForEntity,
+} from './lib/finalActs';
+import {
   CollateralKinds,
   KIND_LABEL,
   NO_COLLATERAL,
@@ -148,36 +155,45 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   // увидит только то, что ничего не произошло.
   const actSelectionRef = useRef<HTMLDivElement | null>(null);
 
-  // Статус, для которого рекомендация финала уже применена. Нужен, чтобы
-  // рекомендация срабатывала на СМЕНУ статуса, а не на каждый прогон эффекта:
-  // раньше юрист выбирал финальный акт руками, переключал вид заявления — и
-  // выбор молча возвращался к автоматическому.
-  const finalAppliedFor = useRef<DebtorStatus | null>(null);
-
-  // Статус лица влияет на рекомендацию финального СА:
-  // отсутствующий/ликвидируемый ЮЛ → «Решение конкурсное»; умерший ФЛ → «Решение реализация».
+  // Статус подразумевает тип лица: отсутствующий и ликвидируемый — ЮЛ,
+  // умерший — ФЛ.
   useEffect(() => {
-    if (!debtorStatus) {
-      finalAppliedFor.current = null;
+    if (!debtorStatus) return;
+    setEntityType(debtorStatus === 'deceased' ? 'individual' : 'legal');
+  }, [debtorStatus]);
+
+  // Контекст, для которого набор финальных актов уже проставлен. Пересчёт идёт
+  // на смену вида заявления, типа лица или статуса — но не на каждый рендер,
+  // иначе ручной выбор юриста молча возвращался бы к автоматическому.
+  const finalAppliedFor = useRef<string | null>(null);
+
+  const introducedProcedure = (analysisResult?.fields as any)?.introducedProcedure as
+    IntroducedProcedure | undefined;
+
+  // Набор финальных актов различается по виду заявления: у инициирования —
+  // процедурные акты, у включения в РТК — виды акта ВКЛ.
+  useEffect(() => {
+    if (selectedActs.length === 0) return;
+    const ключ = finalActsContextKey(applicationKind, entityType, debtorStatus);
+    if (finalAppliedFor.current === ключ) return;
+    finalAppliedFor.current = ключ;
+
+    if (applicationKind === 'rtk') {
+      const вид = defaultRtkVariant(introducedProcedure, entityType);
+      setSelectedActs(prev => prev.map(act => {
+        if (act.category !== 'final') return act;
+        if (act.id !== 'final_rtk_inclusion') return { ...act, selected: false };
+        const прежний = act.rtkVariant;
+        const годится = прежний && rtkVariantsForEntity(entityType).includes(прежний);
+        return { ...act, selected: true, rtkVariant: годится ? прежний : (вид || undefined) };
+      }));
       return;
     }
-    // Статус подразумевает тип лица: отсутствующий/ликвидируемый — ЮЛ, умерший — ФЛ.
-    setEntityType(debtorStatus === 'deceased' ? 'individual' : 'legal');
-    if (finalAppliedFor.current === debtorStatus) return;
-    finalAppliedFor.current = debtorStatus;
-    // При ВКЛ в РТК финал уже занят (final_rtk_inclusion) — процедурный не
-    // навязываем; при уходе из РТК его вернёт handleApplicationKindChange.
-    if (applicationKind === 'rtk') return;
-    const finalByStatus: Partial<Record<DebtorStatus, string>> = {
-      absent: 'final_competition',
-      liquidation: 'final_competition',
-      deceased: 'final_realization',
-    };
-    const targetFinal = finalByStatus[debtorStatus];
+
+    const отмечаем = initiationFinalActs(entityType, debtorStatus);
     setSelectedActs(prev => prev.map(act =>
-      act.category === 'final' ? { ...act, selected: act.id === targetFinal } : act
-    ));
-  }, [debtorStatus, applicationKind]);
+      act.category === 'final' ? { ...act, selected: отмечаем.includes(act.id) } : act));
+  }, [applicationKind, entityType, debtorStatus, introducedProcedure, selectedActs.length]);
 
   // Если тип лица сменили на несовместимый со статусом — сбрасываем статус
   // (умерший только у ФЛ; отсутствующий/ликвидируемый только у ЮЛ).
@@ -281,15 +297,6 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           setSelfBankruptcy(true);
         } else if (recommendedActs.recommendedActIds?.includes('final_rtk_inclusion')) {
           setApplicationKind('rtk');
-        }
-
-        // Рекомендации касаются только финальных актов: Принятие и Промежуточные
-        // включены всегда, а залоговый акт ведёт состав залога.
-        if (recommendedActs.recommendedActIds && recommendedActs.recommendedActIds.length > 0) {
-          setSelectedActs(prevActs => prevActs.map(act =>
-            act.category === 'final'
-              ? { ...act, selected: recommendedActs.recommendedActIds!.includes(act.id) }
-              : act));
         }
 
         setRecommendationsApplied(true);
@@ -996,30 +1003,11 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     );
   };
 
-  // Смена вида заявления. При уходе из РТК возвращаем процедурный финал статуса
-  // лица, если он задан; иначе просто снимаем ВКЛ в РТК.
+  // Смена вида заявления. Набор финальных актов переставит эффект по контексту.
   const handleApplicationKindChange = (v: ApplicationKind) => {
     setApplicationKind(v);
-    if (v === 'rtk') {
-      // Самобанкротство — подвид инициирования, при переходе в РТК снимается.
-      setSelfBankruptcy(false);
-      // Только ВКЛ в РТК среди финальных.
-      setSelectedActs(prev => prev.map(a =>
-        a.category === 'final' ? { ...a, selected: a.id === 'final_rtk_inclusion' } : a));
-      return;
-    }
-    // Финалы трогаем ТОЛЬКО при уходе из РТК. Переход между остальными видами
-    // (инициирование ↔ самобанкрот) финала не касается: он выбран рекомендацией
-    // или руками, и вид заявления его не определяет.
-    if (applicationKind !== 'rtk') return;
-    const procFinal = debtorStatus === 'deceased' ? 'final_realization'
-      : (debtorStatus === 'absent' || debtorStatus === 'liquidation') ? 'final_competition'
-      : null;
-    setSelectedActs(prev => prev.map(a => {
-      if (a.category !== 'final') return a;
-      if (procFinal) return { ...a, selected: a.id === procFinal };
-      return a.id === 'final_rtk_inclusion' ? { ...a, selected: false } : a;
-    }));
+    // Самобанкротство — подвид инициирования, при переходе в РТК снимается.
+    if (v === 'rtk') setSelfBankruptcy(false);
   };
 
   // Снять галку вида, под которой живёт карточка, нельзя: иначе состав залога
@@ -1252,6 +1240,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
             toggleActSelection={toggleActSelection}
             updateActAdditionalFields={updateActAdditionalFields}
             updateActRtkVariant={updateActRtkVariant}
+            introducedProcedure={introducedProcedure}
             recommendationsApplied={recommendationsApplied}
             recommendedActs={analysisResult?.recommendedActs}
             shortText={shortText}

@@ -4,6 +4,7 @@ from difflib import SequenceMatcher
 
 import spacy
 from address_match import same_address
+from introduced_procedure import detect_introduced_procedure
 from claim_basis import basis_alternation, basis_title
 from docx import Document
 from doc_structure import DocPart, docx_parts, flat_pairs, stacked_label_pairs
@@ -5110,6 +5111,12 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         if procedure_raw:
             extracted_fields['procedureTypeRaw'] = procedure_raw
             logger.info(f"Оригинальное описание процедуры: {procedure_raw}")
+
+        # Процедура, уже ВВЕДЁННАЯ судом: по ней фронт подставляет вид акта
+        # включения в РТК. Отдельна от procedureType, который берётся и из просьбы.
+        introduced = detect_introduced_procedure(text)
+        if introduced:
+            extracted_fields['introducedProcedure'] = introduced
 
         # Пост-обработка процедуры и managerInn
         self._normalize_procedure_and_manager(extracted_fields, text, procedure_type)

@@ -245,17 +245,19 @@ describe('DocumentAnalysis — ручной выбор финального ак
     expect(finalCheckbox('Решение конкурсное')).not.toBeChecked();
   });
 
-  it('уход из «ВКЛ в РТК» по-прежнему возвращает процедурный финал статуса', () => {
+  it('уход из «ВКЛ в РТК» возвращает процедурный финал статуса', () => {
     // Обратная сторона: сузив правку финала, нельзя потерять то, ради чего она есть.
     renderForm();
     fireEvent.click(screen.getByRole('radio', { name: 'Юр.лицо' }));
     fireEvent.click(screen.getByRole('button', { name: 'Ликвидируемый' }));
     fireEvent.click(screen.getByRole('radio', { name: 'Включение в РТК' }));
-    expect(finalCheckbox('Определение ВКЛ в РТК')).toBeChecked();
+    // В РТК процедурных актов нет — вместо них виды акта включения.
+    expect(screen.queryByRole('checkbox', { name: /Решение конкурсное/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /РТК конкурсное/ })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('radio', { name: 'Инициирование' }));
     expect(finalCheckbox('Решение конкурсное')).toBeChecked();
-    expect(finalCheckbox('Определение ВКЛ в РТК')).not.toBeChecked();
+    expect(screen.queryByRole('checkbox', { name: /РТК конкурсное/ })).not.toBeInTheDocument();
   });
 });
 
