@@ -1,6 +1,7 @@
 // Секция выбора судебных актов, перенесена из DocumentAnalysis 1:1.
 import React from 'react';
 import {
+  Alert,
   Card,
   Typography,
   Box,
@@ -21,13 +22,18 @@ import {
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { EntityType, CollateralOption, ApplicationKind, DebtorStatus, SelectedAct } from '../../../types';
+import { CollateralKinds } from '../lib/collateralSync';
 
 interface ActSelectionSectionProps {
   entityType: EntityType | null;
   setEntityType: (v: EntityType | null) => void;
   collateralOption: CollateralOption | null;
-  collateralKinds: { realEstate: boolean; auto: boolean; other: boolean };
-  setCollateralKinds: React.Dispatch<React.SetStateAction<{ realEstate: boolean; auto: boolean; other: boolean }>>;
+  collateralKinds: CollateralKinds;
+  /** Галки вида производны от карточек залога — родитель решает, можно ли менять. */
+  toggleCollateralKind: (kind: keyof CollateralKinds, checked: boolean) => void;
+  selectNoCollateral: () => void;
+  collateralNotice: string | null;
+  dismissCollateralNotice: () => void;
   /** Вид заявления (ВКЛ в РТК / инициирование) — независимый блок.
    *  'rtk' скрывает поле СРО. */
   applicationKind: ApplicationKind;
@@ -57,7 +63,10 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
   setEntityType,
   collateralOption,
   collateralKinds,
-  setCollateralKinds,
+  toggleCollateralKind,
+  selectNoCollateral,
+  collateralNotice,
+  dismissCollateralNotice,
   applicationKind,
   setApplicationKind,
   selfBankruptcy,
@@ -209,25 +218,30 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
               <Box sx={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 2 }}>
                 <FormControlLabel
                   control={<Checkbox checked={collateralKinds.realEstate}
-                    onChange={(e) => setCollateralKinds(prev => ({ ...prev, realEstate: e.target.checked }))} />}
+                    onChange={(e) => toggleCollateralKind('realEstate', e.target.checked)} />}
                   label="Залог недвижимость"
                 />
                 <FormControlLabel
                   control={<Checkbox checked={collateralKinds.auto}
-                    onChange={(e) => setCollateralKinds(prev => ({ ...prev, auto: e.target.checked }))} />}
+                    onChange={(e) => toggleCollateralKind('auto', e.target.checked)} />}
                   label="Залог ТС"
                 />
                 <FormControlLabel
                   control={<Checkbox checked={collateralKinds.other}
-                    onChange={(e) => setCollateralKinds(prev => ({ ...prev, other: e.target.checked }))} />}
+                    onChange={(e) => toggleCollateralKind('other', e.target.checked)} />}
                   label="Залог иное"
                 />
                 <FormControlLabel
                   control={<Checkbox checked={!collateralKinds.realEstate && !collateralKinds.auto && !collateralKinds.other}
-                    onChange={(e) => { if (e.target.checked) setCollateralKinds({ realEstate: false, auto: false, other: false }); }} />}
+                    onChange={(e) => { if (e.target.checked) selectNoCollateral(); }} />}
                   label="Без залога"
                 />
               </Box>
+              {collateralNotice && (
+                <Alert severity="warning" sx={{ mt: 1 }} onClose={dismissCollateralNotice}>
+                  {collateralNotice}
+                </Alert>
+              )}
             </Box>
 
             {/* Три окна с актами */}
@@ -244,10 +258,7 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
               <Box>
                       {selectedActs
                         .filter(act => act.category === 'acceptance')
-                        .map(act => {
-                          const isRecommended = recommendationsApplied &&
-                            recommendedActs?.recommendedActIds?.includes(act.id);
-                          return (
+                        .map(act => (
                           <Box key={act.id} sx={{ mb: 2 }}>
                             <FormControlLabel
                               control={
@@ -256,28 +267,10 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                                   onChange={() => toggleActSelection(act.id)}
                                 />
                               }
-                              label={
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                  <span>{act.name}</span>
-                                  {isRecommended && (
-                                    <Chip
-                                      label="Рекомендуется"
-                                      size="small"
-                                      color="success"
-                                      sx={{ fontSize: '0.65rem', height: '18px' }}
-                                    />
-                                  )}
-                                </Box>
-                              }
+                              label={act.name}
                             />
-                            {/* Поля «Причина», «Для сторон», «Запросы суда» убраны
-                                по требованию Андрея: окна выбора актов остаются
-                                списком чекбоксов. Сами поля в данных живут
-                                (additionalFields), пустые маркеры зачищаются при
-                                генерации. */}
                           </Box>
-                        );
-                        })}
+                        ))}
                     </Box>
                   </AccordionDetails>
                 </Accordion>
@@ -295,10 +288,7 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                     <Box>
                       {selectedActs
                         .filter(act => act.category === 'intermediate')
-                        .map(act => {
-                          const isRecommended = recommendationsApplied &&
-                            recommendedActs?.recommendedActIds?.includes(act.id);
-                          return (
+                        .map(act => (
                           <Box key={act.id} sx={{ mb: 2 }}>
                             <FormControlLabel
                               control={
@@ -307,25 +297,10 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                                   onChange={() => toggleActSelection(act.id)}
                                 />
                               }
-                              label={
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                  <span>{act.name}</span>
-                                  {isRecommended && (
-                <Chip
-                                      label="Рекомендуется"
-                  size="small"
-                                      color="success"
-                                      sx={{ fontSize: '0.65rem', height: '18px' }}
-                />
-                                  )}
-              </Box>
-                              }
+                              label={act.name}
                             />
-                            {/* Поля «Причина», «Для сторон», «Запросы суда» убраны
-                                по требованию Андрея (см. окно «1. Принятие»). */}
                           </Box>
-                        );
-                        })}
+                        ))}
                     </Box>
                   </AccordionDetails>
                 </Accordion>

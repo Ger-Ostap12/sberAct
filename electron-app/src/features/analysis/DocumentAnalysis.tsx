@@ -18,6 +18,15 @@ import { useBanks } from './hooks/useBanks';
 import { extractCollateralData } from '../../shared/lib/collateral';
 import { isFnsCreditor, FNS_CREDITOR_KEY } from '../../shared/lib/banks';
 import { buildSubmitData } from './lib/buildSubmitData';
+import {
+  CollateralKinds,
+  KIND_LABEL,
+  NO_COLLATERAL,
+  anyKind,
+  hasCardOfKind,
+  kindsFromCollaterals,
+  kindsWithoutCards,
+} from './lib/collateralSync';
 import ObligationsSection from './sections/ObligationsSection';
 import CollateralSection from './sections/CollateralSection';
 import CourtSection from './sections/CourtSection';
@@ -126,11 +135,18 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   const [applicationKind, setApplicationKind] = useState<ApplicationKind>('initiation');
   // Самобанкротство — подвид инициирования: заявление подаёт сам должник.
   const [selfBankruptcy, setSelfBankruptcy] = useState<boolean>(false);
-  // Чекбокс «Короткий текст»: доп. генерация резолютивки основной процедуры.
-  const [shortText, setShortText] = useState<boolean>(false);
+  // Чекбокс «Резолютивная часть»: доп. генерация резолютивки основной процедуры.
+  const [shortText, setShortText] = useState<boolean>(true);
   // Вид ипотеки (только режим mortgage): гражданская / военная (ЦЖЗ). Военная
   // перестраивает блок «Финансовые данные».
   const [mortgageKind, setMortgageKind] = useState<MortgageKind>('civil');
+
+  // Предупреждение по блоку залога: ручное снятие подтверждённого вида либо
+  // отмеченный вид без заполненной карточки.
+  const [collateralNotice, setCollateralNotice] = useState<string | null>(null);
+  // Кнопка «Продолжить» внизу, предупреждение — наверху: без прокрутки юрист
+  // увидит только то, что ничего не произошло.
+  const actSelectionRef = useRef<HTMLDivElement | null>(null);
 
   // Статус, для которого рекомендация финала уже применена. Нужен, чтобы
   // рекомендация срабатывала на СМЕНУ статуса, а не на каждый прогон эффекта:
@@ -182,7 +198,27 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     setCollateralOption(opt);
   }, [collateralKinds]);
 
-  // Инициализация списка актов
+  // Карточки залога — источник истины для галок вида: юрист добавил карточку
+  // недвижимости, галка встала сама; удалил последнюю — встало «Без залога».
+  const collaterals = analysisResult?.collaterals;
+  const fnsCreditor = isFnsCreditor(editedFields.creditorName);
+  useEffect(() => {
+    if (!collaterals) return;
+    // У ФНС залога не бывает: блок скрыт, галки держим пустыми.
+    setCollateralKinds(fnsCreditor ? NO_COLLATERAL : kindsFromCollaterals(collaterals));
+  }, [collaterals, fnsCreditor]);
+
+  // Залоговый акт принятия идёт за составом залога. Юрист может поставить его
+  // руками — эффект перебьёт выбор только при следующей смене залога.
+  useEffect(() => {
+    setSelectedActs(prev => prev.map(act =>
+      act.id === 'acceptance_no_motion_no_duty_collateral'
+        ? { ...act, selected: anyKind(collateralKinds) }
+        : act));
+  }, [collateralKinds]);
+
+  // Инициализация списка актов. Принятие и Промежуточные включены сразу:
+  // юрист снимает лишнее сам. Залоговый акт ставит эффект по видам залога.
   useEffect(() => {
     const allActs: SelectedAct[] = [
       // Финальные СА
@@ -192,17 +228,17 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
       { id: 'final_observation', name: 'Определение Наблюдение', category: 'final', selected: false },
       { id: 'final_rtk_inclusion', name: 'Определение ВКЛ в РТК', category: 'final', selected: false },
       // Принятие
-      { id: 'acceptance_definition', name: 'Определение о принятии', category: 'acceptance', selected: false, additionalFields: { courtRequests: '' } },
-      { id: 'acceptance_no_motion_no_duty', name: 'Определение Б/Д нет ГП', category: 'acceptance', selected: false },
+      { id: 'acceptance_definition', name: 'Определение о принятии', category: 'acceptance', selected: true, additionalFields: { courtRequests: '' } },
+      { id: 'acceptance_no_motion_no_duty', name: 'Определение Б/Д нет ГП', category: 'acceptance', selected: true },
       { id: 'acceptance_no_motion_no_duty_collateral', name: 'Определение Б/Д нет ГП залог', category: 'acceptance', selected: false },
-      { id: 'acceptance_no_motion_other', name: 'Определение Б/Д иное', category: 'acceptance', selected: false, additionalFields: { reason: '', forParties: '' } },
-      { id: 'acceptance_after_no_motion', name: 'Принятие после Б/Д', category: 'acceptance', selected: false, additionalFields: { courtRequests: '' } },
+      { id: 'acceptance_no_motion_other', name: 'Определение Б/Д иное', category: 'acceptance', selected: true, additionalFields: { reason: '', forParties: '' } },
+      { id: 'acceptance_after_no_motion', name: 'Принятие после Б/Д', category: 'acceptance', selected: true, additionalFields: { courtRequests: '' } },
       // Промежуточные
-      { id: 'intermediate_postponement', name: 'Отложение', category: 'intermediate', selected: false, additionalFields: { reason: '', forParties: '', courtRequests: '' } },
-      { id: 'intermediate_return', name: 'Возврат', category: 'intermediate', selected: false, additionalFields: { reason: '', forParties: '' } },
-      { id: 'intermediate_extend_no_motion', name: 'Продление Б/Д', category: 'intermediate', selected: false },
-      { id: 'intermediate_extend_simplified', name: 'Продление упрощёнка', category: 'intermediate', selected: false },
-      { id: 'intermediate_simplified_to_main', name: 'Переход из упрощёнки в основное производство', category: 'intermediate', selected: false },
+      { id: 'intermediate_postponement', name: 'Отложение', category: 'intermediate', selected: true, additionalFields: { reason: '', forParties: '', courtRequests: '' } },
+      { id: 'intermediate_return', name: 'Возврат', category: 'intermediate', selected: true, additionalFields: { reason: '', forParties: '' } },
+      { id: 'intermediate_extend_no_motion', name: 'Продление Б/Д', category: 'intermediate', selected: true },
+      { id: 'intermediate_extend_simplified', name: 'Продление упрощёнка', category: 'intermediate', selected: true },
+      { id: 'intermediate_simplified_to_main', name: 'Переход из упрощёнки в основное производство', category: 'intermediate', selected: true },
     ];
     setSelectedActs(allActs);
   }, []);
@@ -247,15 +283,13 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           setApplicationKind('rtk');
         }
 
-        // Устанавливаем рекомендуемые акты
+        // Рекомендации касаются только финальных актов: Принятие и Промежуточные
+        // включены всегда, а залоговый акт ведёт состав залога.
         if (recommendedActs.recommendedActIds && recommendedActs.recommendedActIds.length > 0) {
-          setSelectedActs(prevActs => {
-            const updatedActs = prevActs.map(act => ({
-              ...act,
-              selected: recommendedActs.recommendedActIds!.includes(act.id)
-            }));
-            return updatedActs;
-          });
+          setSelectedActs(prevActs => prevActs.map(act =>
+            act.category === 'final'
+              ? { ...act, selected: recommendedActs.recommendedActIds!.includes(act.id) }
+              : act));
         }
 
         setRecommendationsApplied(true);
@@ -374,19 +408,6 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           // Залога нет — блок остаётся пустым (без записей).
           // Пользователь может добавить залог вручную кнопкой «Добавить залог».
           initialCollaterals = [];
-        }
-
-        // Виды залога для блока «Выбор залога» — из реальных типов предметов залога.
-        // Может быть выбрано несколько (например, недвижимость И транспорт одновременно).
-        // У ФНС-заявлений (уполномоченный орган) залога не бывает — принудительно
-        // «Без залога», даже если детектор ошибочно нашёл предмет в тексте.
-        if (isFnsCreditor(propExtractedData.fields?.creditorName)) {
-          setCollateralKinds({ realEstate: false, auto: false, other: false });
-        } else {
-          const hasRealEstate = initialCollaterals.some(c => c.collateralType === 'real_estate');
-          const hasAuto = initialCollaterals.some(c => c.collateralType === 'auto');
-          const hasOther = initialCollaterals.some(c => c.collateralType === 'other');
-          setCollateralKinds({ realEstate: hasRealEstate, auto: hasAuto, other: hasOther });
         }
 
         // Инициализируем третьих лиц из полей или создаем пустой массив
@@ -1001,6 +1022,27 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     }));
   };
 
+  // Снять галку вида, под которой живёт карточка, нельзя: иначе состав залога
+  // в акте разойдётся с тем, что юрист видит в блоке «Залог».
+  const toggleCollateralKind = (kind: keyof CollateralKinds, checked: boolean) => {
+    if (!checked && hasCardOfKind(kind, analysisResult?.collaterals || [])) {
+      setCollateralNotice(
+        `«${KIND_LABEL[kind]}» подтверждён карточкой в блоке «Залог» — сначала удалите карточку.`);
+      return;
+    }
+    setCollateralNotice(null);
+    setCollateralKinds(prev => ({ ...prev, [kind]: checked }));
+  };
+
+  const selectNoCollateral = () => {
+    if ((analysisResult?.collaterals || []).length > 0) {
+      setCollateralNotice('В блоке «Залог» есть карточки — удалите их, чтобы выбрать «Без залога».');
+      return;
+    }
+    setCollateralNotice(null);
+    setCollateralKinds(NO_COLLATERAL);
+  };
+
   const updateActAdditionalFields = (actId: string, field: 'reason' | 'forParties' | 'courtRequests', value: string) => {
     setSelectedActs(prevActs =>
       prevActs.map(act => {
@@ -1031,6 +1073,14 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
 
   const handleContinue = () => {
     if (!analysisResult) return;
+    const пустые = kindsWithoutCards(collateralKinds, analysisResult.collaterals || []);
+    if (пустые.length > 0) {
+      setCollateralNotice(
+        `Отмечено: ${пустые.join(', ')} — но карточка залога не заполнена. ` +
+        'Заполните её в блоке «Залог» или снимите галку.');
+      actSelectionRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     // Подготовка итоговых данных (ФИО судьи, синхронизация сумм, выбор пользователя)
     // вынесена в чистую функцию buildSubmitData (features/analysis/lib) — покрыта тестами.
     onAnalysisComplete(
@@ -1182,13 +1232,16 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         </Grid>
 
         {/* Блок выбора судебных актов */}
-        <Grid item xs={12}>
+        <Grid item xs={12} ref={actSelectionRef}>
           <ActSelectionSection
             entityType={entityType}
             setEntityType={setEntityType}
             collateralOption={collateralOption}
             collateralKinds={collateralKinds}
-            setCollateralKinds={setCollateralKinds}
+            toggleCollateralKind={toggleCollateralKind}
+            selectNoCollateral={selectNoCollateral}
+            collateralNotice={collateralNotice}
+            dismissCollateralNotice={() => setCollateralNotice(null)}
             applicationKind={applicationKind}
             setApplicationKind={handleApplicationKindChange}
             selfBankruptcy={selfBankruptcy}

@@ -696,9 +696,10 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                 class="MuiFormControlLabel-root MuiFormControlLabel-labelPlacementEnd css-j204z7-MuiFormControlLabel-root"
                               >
                                 <span
-                                  class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
+                                  class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium Mui-checked MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
                                 >
                                   <input
+                                    checked=""
                                     class="PrivateSwitchBase-input css-1p3z7et-MuiSwitchBase-root"
                                     data-indeterminate="false"
                                     type="checkbox"
@@ -706,12 +707,12 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                   <svg
                                     aria-hidden="true"
                                     class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
-                                    data-testid="CheckBoxOutlineBlankIcon"
+                                    data-testid="CheckBoxIcon"
                                     focusable="false"
                                     viewBox="0 0 24 24"
                                   >
                                     <path
-                                      d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"
+                                      d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
                                     />
                                   </svg>
                                   <span
@@ -721,13 +722,44 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                 <span
                                   class="MuiTypography-root MuiTypography-body1 MuiFormControlLabel-label css-ahj2mt-MuiTypography-root"
                                 >
-                                  <div
-                                    class="MuiBox-root css-axw7ok"
+                                  Определение о принятии
+                                </span>
+                              </label>
+                            </div>
+                            <div
+                              class="MuiBox-root css-1qm1lh"
+                            >
+                              <label
+                                class="MuiFormControlLabel-root MuiFormControlLabel-labelPlacementEnd css-j204z7-MuiFormControlLabel-root"
+                              >
+                                <span
+                                  class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium Mui-checked MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
+                                >
+                                  <input
+                                    checked=""
+                                    class="PrivateSwitchBase-input css-1p3z7et-MuiSwitchBase-root"
+                                    data-indeterminate="false"
+                                    type="checkbox"
+                                  />
+                                  <svg
+                                    aria-hidden="true"
+                                    class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                                    data-testid="CheckBoxIcon"
+                                    focusable="false"
+                                    viewBox="0 0 24 24"
                                   >
-                                    <span>
-                                      Определение о принятии
-                                    </span>
-                                  </div>
+                                    <path
+                                      d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+                                    />
+                                  </svg>
+                                  <span
+                                    class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
+                                  />
+                                </span>
+                                <span
+                                  class="MuiTypography-root MuiTypography-body1 MuiFormControlLabel-label css-ahj2mt-MuiTypography-root"
+                                >
+                                  Определение Б/Д нет ГП
                                 </span>
                               </label>
                             </div>
@@ -763,13 +795,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                 <span
                                   class="MuiTypography-root MuiTypography-body1 MuiFormControlLabel-label css-ahj2mt-MuiTypography-root"
                                 >
-                                  <div
-                                    class="MuiBox-root css-axw7ok"
-                                  >
-                                    <span>
-                                      Определение Б/Д нет ГП
-                                    </span>
-                                  </div>
+                                  Определение Б/Д нет ГП залог
                                 </span>
                               </label>
                             </div>
@@ -780,9 +806,10 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                 class="MuiFormControlLabel-root MuiFormControlLabel-labelPlacementEnd css-j204z7-MuiFormControlLabel-root"
                               >
                                 <span
-                                  class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
+                                  class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium Mui-checked MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
                                 >
                                   <input
+                                    checked=""
                                     class="PrivateSwitchBase-input css-1p3z7et-MuiSwitchBase-root"
                                     data-indeterminate="false"
                                     type="checkbox"
@@ -790,12 +817,12 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                   <svg
                                     aria-hidden="true"
                                     class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
-                                    data-testid="CheckBoxOutlineBlankIcon"
+                                    data-testid="CheckBoxIcon"
                                     focusable="false"
                                     viewBox="0 0 24 24"
                                   >
                                     <path
-                                      d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"
+                                      d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
                                     />
                                   </svg>
                                   <span
@@ -805,13 +832,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                 <span
                                   class="MuiTypography-root MuiTypography-body1 MuiFormControlLabel-label css-ahj2mt-MuiTypography-root"
                                 >
-                                  <div
-                                    class="MuiBox-root css-axw7ok"
-                                  >
-                                    <span>
-                                      Определение Б/Д нет ГП залог
-                                    </span>
-                                  </div>
+                                  Определение Б/Д иное
                                 </span>
                               </label>
                             </div>
@@ -822,9 +843,10 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                 class="MuiFormControlLabel-root MuiFormControlLabel-labelPlacementEnd css-j204z7-MuiFormControlLabel-root"
                               >
                                 <span
-                                  class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
+                                  class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium Mui-checked MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
                                 >
                                   <input
+                                    checked=""
                                     class="PrivateSwitchBase-input css-1p3z7et-MuiSwitchBase-root"
                                     data-indeterminate="false"
                                     type="checkbox"
@@ -832,12 +854,12 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                   <svg
                                     aria-hidden="true"
                                     class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
-                                    data-testid="CheckBoxOutlineBlankIcon"
+                                    data-testid="CheckBoxIcon"
                                     focusable="false"
                                     viewBox="0 0 24 24"
                                   >
                                     <path
-                                      d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"
+                                      d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
                                     />
                                   </svg>
                                   <span
@@ -847,55 +869,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                 <span
                                   class="MuiTypography-root MuiTypography-body1 MuiFormControlLabel-label css-ahj2mt-MuiTypography-root"
                                 >
-                                  <div
-                                    class="MuiBox-root css-axw7ok"
-                                  >
-                                    <span>
-                                      Определение Б/Д иное
-                                    </span>
-                                  </div>
-                                </span>
-                              </label>
-                            </div>
-                            <div
-                              class="MuiBox-root css-1qm1lh"
-                            >
-                              <label
-                                class="MuiFormControlLabel-root MuiFormControlLabel-labelPlacementEnd css-j204z7-MuiFormControlLabel-root"
-                              >
-                                <span
-                                  class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
-                                >
-                                  <input
-                                    class="PrivateSwitchBase-input css-1p3z7et-MuiSwitchBase-root"
-                                    data-indeterminate="false"
-                                    type="checkbox"
-                                  />
-                                  <svg
-                                    aria-hidden="true"
-                                    class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
-                                    data-testid="CheckBoxOutlineBlankIcon"
-                                    focusable="false"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"
-                                    />
-                                  </svg>
-                                  <span
-                                    class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
-                                  />
-                                </span>
-                                <span
-                                  class="MuiTypography-root MuiTypography-body1 MuiFormControlLabel-label css-ahj2mt-MuiTypography-root"
-                                >
-                                  <div
-                                    class="MuiBox-root css-axw7ok"
-                                  >
-                                    <span>
-                                      Принятие после Б/Д
-                                    </span>
-                                  </div>
+                                  Принятие после Б/Д
                                 </span>
                               </label>
                             </div>
@@ -971,9 +945,10 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                 class="MuiFormControlLabel-root MuiFormControlLabel-labelPlacementEnd css-j204z7-MuiFormControlLabel-root"
                               >
                                 <span
-                                  class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
+                                  class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium Mui-checked MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
                                 >
                                   <input
+                                    checked=""
                                     class="PrivateSwitchBase-input css-1p3z7et-MuiSwitchBase-root"
                                     data-indeterminate="false"
                                     type="checkbox"
@@ -981,12 +956,12 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                   <svg
                                     aria-hidden="true"
                                     class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
-                                    data-testid="CheckBoxOutlineBlankIcon"
+                                    data-testid="CheckBoxIcon"
                                     focusable="false"
                                     viewBox="0 0 24 24"
                                   >
                                     <path
-                                      d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"
+                                      d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
                                     />
                                   </svg>
                                   <span
@@ -996,13 +971,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                 <span
                                   class="MuiTypography-root MuiTypography-body1 MuiFormControlLabel-label css-ahj2mt-MuiTypography-root"
                                 >
-                                  <div
-                                    class="MuiBox-root css-axw7ok"
-                                  >
-                                    <span>
-                                      Отложение
-                                    </span>
-                                  </div>
+                                  Отложение
                                 </span>
                               </label>
                             </div>
@@ -1013,9 +982,10 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                 class="MuiFormControlLabel-root MuiFormControlLabel-labelPlacementEnd css-j204z7-MuiFormControlLabel-root"
                               >
                                 <span
-                                  class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
+                                  class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium Mui-checked MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
                                 >
                                   <input
+                                    checked=""
                                     class="PrivateSwitchBase-input css-1p3z7et-MuiSwitchBase-root"
                                     data-indeterminate="false"
                                     type="checkbox"
@@ -1023,12 +993,12 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                   <svg
                                     aria-hidden="true"
                                     class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
-                                    data-testid="CheckBoxOutlineBlankIcon"
+                                    data-testid="CheckBoxIcon"
                                     focusable="false"
                                     viewBox="0 0 24 24"
                                   >
                                     <path
-                                      d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"
+                                      d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
                                     />
                                   </svg>
                                   <span
@@ -1038,13 +1008,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                 <span
                                   class="MuiTypography-root MuiTypography-body1 MuiFormControlLabel-label css-ahj2mt-MuiTypography-root"
                                 >
-                                  <div
-                                    class="MuiBox-root css-axw7ok"
-                                  >
-                                    <span>
-                                      Возврат
-                                    </span>
-                                  </div>
+                                  Возврат
                                 </span>
                               </label>
                             </div>
@@ -1055,9 +1019,10 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                 class="MuiFormControlLabel-root MuiFormControlLabel-labelPlacementEnd css-j204z7-MuiFormControlLabel-root"
                               >
                                 <span
-                                  class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
+                                  class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium Mui-checked MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
                                 >
                                   <input
+                                    checked=""
                                     class="PrivateSwitchBase-input css-1p3z7et-MuiSwitchBase-root"
                                     data-indeterminate="false"
                                     type="checkbox"
@@ -1065,12 +1030,12 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                   <svg
                                     aria-hidden="true"
                                     class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
-                                    data-testid="CheckBoxOutlineBlankIcon"
+                                    data-testid="CheckBoxIcon"
                                     focusable="false"
                                     viewBox="0 0 24 24"
                                   >
                                     <path
-                                      d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"
+                                      d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
                                     />
                                   </svg>
                                   <span
@@ -1080,13 +1045,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                 <span
                                   class="MuiTypography-root MuiTypography-body1 MuiFormControlLabel-label css-ahj2mt-MuiTypography-root"
                                 >
-                                  <div
-                                    class="MuiBox-root css-axw7ok"
-                                  >
-                                    <span>
-                                      Продление Б/Д
-                                    </span>
-                                  </div>
+                                  Продление Б/Д
                                 </span>
                               </label>
                             </div>
@@ -1097,9 +1056,10 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                 class="MuiFormControlLabel-root MuiFormControlLabel-labelPlacementEnd css-j204z7-MuiFormControlLabel-root"
                               >
                                 <span
-                                  class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
+                                  class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium Mui-checked MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
                                 >
                                   <input
+                                    checked=""
                                     class="PrivateSwitchBase-input css-1p3z7et-MuiSwitchBase-root"
                                     data-indeterminate="false"
                                     type="checkbox"
@@ -1107,12 +1067,12 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                   <svg
                                     aria-hidden="true"
                                     class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
-                                    data-testid="CheckBoxOutlineBlankIcon"
+                                    data-testid="CheckBoxIcon"
                                     focusable="false"
                                     viewBox="0 0 24 24"
                                   >
                                     <path
-                                      d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"
+                                      d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
                                     />
                                   </svg>
                                   <span
@@ -1122,13 +1082,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                 <span
                                   class="MuiTypography-root MuiTypography-body1 MuiFormControlLabel-label css-ahj2mt-MuiTypography-root"
                                 >
-                                  <div
-                                    class="MuiBox-root css-axw7ok"
-                                  >
-                                    <span>
-                                      Продление упрощёнка
-                                    </span>
-                                  </div>
+                                  Продление упрощёнка
                                 </span>
                               </label>
                             </div>
@@ -1139,9 +1093,10 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                 class="MuiFormControlLabel-root MuiFormControlLabel-labelPlacementEnd css-j204z7-MuiFormControlLabel-root"
                               >
                                 <span
-                                  class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
+                                  class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium Mui-checked MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
                                 >
                                   <input
+                                    checked=""
                                     class="PrivateSwitchBase-input css-1p3z7et-MuiSwitchBase-root"
                                     data-indeterminate="false"
                                     type="checkbox"
@@ -1149,12 +1104,12 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                   <svg
                                     aria-hidden="true"
                                     class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
-                                    data-testid="CheckBoxOutlineBlankIcon"
+                                    data-testid="CheckBoxIcon"
                                     focusable="false"
                                     viewBox="0 0 24 24"
                                   >
                                     <path
-                                      d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"
+                                      d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
                                     />
                                   </svg>
                                   <span
@@ -1164,13 +1119,7 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                 <span
                                   class="MuiTypography-root MuiTypography-body1 MuiFormControlLabel-label css-ahj2mt-MuiTypography-root"
                                 >
-                                  <div
-                                    class="MuiBox-root css-axw7ok"
-                                  >
-                                    <span>
-                                      Переход из упрощёнки в основное производство
-                                    </span>
-                                  </div>
+                                  Переход из упрощёнки в основное производство
                                 </span>
                               </label>
                             </div>
@@ -1457,9 +1406,10 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                               class="MuiFormControlLabel-root MuiFormControlLabel-labelPlacementEnd css-j204z7-MuiFormControlLabel-root"
                             >
                               <span
-                                class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
+                                class="MuiButtonBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium PrivateSwitchBase-root MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium Mui-checked MuiCheckbox-root MuiCheckbox-colorPrimary MuiCheckbox-sizeMedium css-p6iyue-MuiButtonBase-root-MuiSwitchBase-root-MuiCheckbox-root"
                               >
                                 <input
+                                  checked=""
                                   class="PrivateSwitchBase-input css-1p3z7et-MuiSwitchBase-root"
                                   data-indeterminate="false"
                                   type="checkbox"
@@ -1467,12 +1417,12 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                                 <svg
                                   aria-hidden="true"
                                   class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
-                                  data-testid="CheckBoxOutlineBlankIcon"
+                                  data-testid="CheckBoxIcon"
                                   focusable="false"
                                   viewBox="0 0 24 24"
                                 >
                                   <path
-                                    d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"
+                                    d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
                                   />
                                 </svg>
                                 <span
