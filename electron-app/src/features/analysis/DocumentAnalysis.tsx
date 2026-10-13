@@ -151,6 +151,8 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   // Предупреждение по блоку залога: ручное снятие подтверждённого вида либо
   // отмеченный вид без заполненной карточки.
   const [collateralNotice, setCollateralNotice] = useState<string | null>(null);
+  // Предупреждение по блоку должников: разбор дал больше одного.
+  const [debtorsNotice, setDebtorsNotice] = useState<string | null>(null);
   // Кнопка «Продолжить» внизу, предупреждение — наверху: без прокрутки юрист
   // увидит только то, что ничего не произошло.
   const actSelectionRef = useRef<HTMLDivElement | null>(null);
@@ -459,6 +461,17 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
             birthPlace: pf.birthPlace || '',
             snils: pf.snils || ''
           }];
+        }
+
+        // В банкротстве должник один. Если разбор дал больше — берём первого и
+        // говорим юристу: иначе лишние лица молча уехали бы в акт.
+        if (!isMortgage && initialDebtors.length > 1) {
+          const лишние = initialDebtors.slice(1).map(d => d.name).filter(Boolean);
+          setDebtorsNotice(
+            `Разбор нашёл ${initialDebtors.length} должников, а в банкротстве должник один. ` +
+            `Оставлен первый: ${initialDebtors[0].name || 'без имени'}. ` +
+            (лишние.length ? `Не показаны: ${лишние.join(', ')}.` : ''));
+          initialDebtors = initialDebtors.slice(0, 1);
         }
 
         // Наследники умершего должника: backend отдаёт их без id (как третьих лиц) —
@@ -1322,6 +1335,8 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 onRemove={removeDebtor}
                 fieldQuality={analysisResult?.fieldQuality}
                 mode={mode}
+                notice={debtorsNotice}
+                dismissNotice={() => setDebtorsNotice(null)}
               />
                 </Grid>
 

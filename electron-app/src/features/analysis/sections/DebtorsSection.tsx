@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Card, IconButton, Grid, TextField, Button } from '@mui/material';
+import { Alert, Box, Typography, Card, IconButton, Grid, TextField, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import { Debtor, EntityType, FieldQuality } from '../../../types';
@@ -21,6 +21,9 @@ interface DebtorsSectionProps {
   fieldQuality?: Record<string, FieldQuality>;
   /** Режим формы. В ипотеке роль называется «Ответчик» и добавляется паспорт. */
   mode?: 'bankruptcy' | 'mortgage';
+  /** Предупреждение юристу: разбор дал больше одного должника. */
+  notice?: string | null;
+  dismissNotice?: () => void;
 }
 
 /**
@@ -35,6 +38,8 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
   onRemove,
   fieldQuality,
   mode = 'bankruptcy',
+  notice,
+  dismissNotice,
 }) => {
   const isMortgage = mode === 'mortgage';
   const role = isMortgage ? 'ответчик' : 'должник';
@@ -44,6 +49,11 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
     <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
       {isMortgage ? 'Данные ответчика' : 'Данные должника'}
     </Typography>
+    {notice && (
+      <Alert severity="warning" sx={{ mb: 2 }} onClose={dismissNotice}>
+        {notice}
+      </Alert>
+    )}
     {debtors.map((debtor: Debtor, index: number) => (
       <Card key={debtor.id} sx={{ mb: 2, p: 2, border: '1px solid #e0e0e0' }}>
         {debtors.length > 1 && (
@@ -211,15 +221,17 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
         </Grid>
       </Card>
     ))}
-    <Button
-      startIcon={<AddIcon />}
-      onClick={onAdd}
-      variant="outlined"
-      size="small"
-      sx={{ mt: 1 }}
-    >
-      {isMortgage ? 'Добавить ответчика' : 'Добавить должника'}
-    </Button>
+    {isMortgage && (
+      <Button
+        startIcon={<AddIcon />}
+        onClick={onAdd}
+        variant="outlined"
+        size="small"
+        sx={{ mt: 1 }}
+      >
+        Добавить ответчика
+      </Button>
+    )}
   </Box>
   );
 };

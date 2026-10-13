@@ -11,7 +11,8 @@ describe('DebtorsSection — режим ипотеки (Ответчик)', () =
       <DebtorsSection debtors={[debtor]} entityType="individual" onUpdate={() => {}} onAdd={() => {}} onRemove={() => {}} />,
     );
     expect(screen.getByText('Данные должника')).toBeInTheDocument();
-    expect(screen.getByText('Добавить должника')).toBeInTheDocument();
+    // В банкротстве должник один — добавлять второго нечем.
+    expect(screen.queryByText(/Добавить (должника|ответчика)/)).not.toBeInTheDocument();
     expect(screen.queryByText('Паспорт (серия):')).not.toBeInTheDocument();
   });
 
