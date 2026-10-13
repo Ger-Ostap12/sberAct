@@ -137,10 +137,13 @@ function triggerBrowserDownload(blob: Blob, fileName: string): void {
 }
 
 /** Достаёт имя файла из Content-Disposition, иначе fallback. */
-function fileNameFromResponse(res: Response, fallback: string): string {
+export function fileNameFromResponse(res: Response, fallback: string): string {
   const cd = res.headers.get('Content-Disposition') || '';
-  const match = cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
-  return match ? decodeURIComponent(match[1]) : fallback;
+  // filename* читаем ПЕРВЫМ: в нём кириллица, а в обычном filename — её ASCII-замена.
+  const utf8 = cd.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8) return decodeURIComponent(utf8[1].trim());
+  const match = cd.match(/filename="?([^";]+)"?/i);
+  return match ? decodeURIComponent(match[1].trim()) : fallback;
 }
 
 const notSupported = (method: string) => () => {

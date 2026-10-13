@@ -663,6 +663,22 @@ ipcMain.handle('download-document', async (event, documentId) => {
 });
 
 // API для скачивания всех документов
+// Имя архива из заголовка ответа. filename* читаем первым: в нём кириллица,
+// а в обычном filename — её ASCII-замена для старых клиентов.
+function zipNameFromDisposition(header, fallback) {
+  const cd = header || '';
+  const utf8 = cd.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8) {
+    try {
+      return decodeURIComponent(utf8[1].trim());
+    } catch (e) {
+      return fallback;
+    }
+  }
+  const plain = cd.match(/filename="?([^";]+)"?/i);
+  return plain ? plain[1].trim() : fallback;
+}
+
 ipcMain.handle('download-all-documents', async (event, data) => {
   try {
     console.log(`[main] ========== download-all-documents IPC HANDLER CALLED ==========`);
@@ -703,6 +719,10 @@ ipcMain.handle('download-all-documents', async (event, data) => {
     const arrayBuffer = await blob.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
+    // Имя архива считает бэкенд (ФИО должника + дата) и кладёт в заголовок.
+    const suggestedName = zipNameFromDisposition(
+      response.headers.get('content-disposition'), 'generated_documents.zip');
+
     console.log(`[main] download-all-documents: ZIP loaded, size: ${buffer.length} bytes`);
 
     // ВСЕГДА показываем диалог сохранения
@@ -739,7 +759,7 @@ ipcMain.handle('download-all-documents', async (event, data) => {
     // Используем асинхронный вызов диалога
     const result = await dialog.showSaveDialog(mainWindow, {
       title: 'Сохранить документы',
-      defaultPath: 'generated_documents.zip',
+      defaultPath: suggestedName,
       filters: [
         { name: 'ZIP Archives', extensions: ['zip'] },
         { name: 'All Files', extensions: ['*'] }

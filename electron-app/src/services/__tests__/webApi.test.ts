@@ -1,4 +1,4 @@
-import { webApi, resetLiveBase } from '../webApi';
+import { webApi, resetLiveBase, fileNameFromResponse } from '../webApi';
 
 // Мокаем сеть и браузерные API скачивания.
 const okJson = (body: unknown) =>
@@ -239,5 +239,27 @@ describe('fetchBackend — что можно повторять', () => {
     await webApi.getBanks();
     await expect(webApi.convertNative(pdf())).resolves.toEqual({ job_id: 'j1' });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+// Имя архива считает бэкенд и кладёт в Content-Disposition двумя полями.
+describe('fileNameFromResponse', () => {
+  const ответ = (cd: string | null) =>
+    ({ headers: { get: () => cd } } as unknown as Response);
+
+  it('кириллицу берёт из filename*, а не из ASCII-замены', () => {
+    const cd = 'attachment; filename="13-10-2026.zip"; '
+      + "filename*=UTF-8''%D0%98%D0%B2%D0%B0%D0%BD%D0%BE%D0%B2%2013-10-2026.zip";
+    expect(fileNameFromResponse(ответ(cd), 'x.zip')).toBe('Иванов 13-10-2026.zip');
+  });
+
+  it('без filename* берёт обычное имя', () => {
+    const cd = 'attachment; filename="Sidorov_13-10-2026.zip"';
+    expect(fileNameFromResponse(ответ(cd), 'x.zip')).toBe('Sidorov_13-10-2026.zip');
+  });
+
+  it('без заголовка отдаёт запасное имя', () => {
+    expect(fileNameFromResponse(ответ(null), 'generated_documents.zip'))
+      .toBe('generated_documents.zip');
   });
 });

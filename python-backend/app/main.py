@@ -20,6 +20,7 @@ import json
 import logging
 from datetime import datetime
 
+from archive_name import archive_name_for_documents, content_disposition
 from document_analyzer import DocumentAnalyzer
 from document_generator import DocumentGenerator
 from template_manager import TemplateManager
@@ -877,11 +878,12 @@ async def download_zip_get(ids: str = ""):
 
         # ВАЖНО: Используем правильные заголовки для скачивания файла
         # Content-Disposition с attachment заставляет браузер скачать файл
+        имя = archive_name_for_documents(document_generator.documents, doc_ids)
         return Response(
             content=zip_data,
             media_type="application/zip",
             headers={
-                "Content-Disposition": 'attachment; filename="generated_documents.zip"',
+                "Content-Disposition": content_disposition(имя + ".zip"),
                 "Content-Type": "application/zip",
                 "Content-Length": str(len(zip_data)),
                 "Cache-Control": "no-cache"
@@ -945,7 +947,7 @@ async def download_zip_save(payload: Dict[str, Any]):
         if len(doc_ids) == 1 and first_doc_name:
             base_name = str(first_doc_name)
         else:
-            base_name = f"Судебные акты {ts}"
+            base_name = archive_name_for_documents(document_generator.documents, doc_ids)
 
         zip_safe_name = base_name.replace("\\", "_").replace("/", "_").replace(":", "_").replace('"', "").strip()
         if not zip_safe_name:
@@ -1013,10 +1015,11 @@ async def download_all_documents(request: dict):
         logger.info(f" API: Возвращаем файл для скачивания: {zip_path}")
         # ВНИМАНИЕ: Этот endpoint используется только как fallback
         # В Electron приложении файл должен сохраняться через диалог, а не напрямую
-        logger.warning(f" Файл будет скачан в папку загрузок браузера: generated_documents.zip")
+        имя = archive_name_for_documents(document_generator.documents, ids) + ".zip"
+        logger.info(f" Имя архива: {имя}")
         return FileResponse(
             path=str(zip_path),
-            filename="generated_documents.zip",
+            filename=имя,
             media_type="application/zip"
         )
     except Exception as e:
