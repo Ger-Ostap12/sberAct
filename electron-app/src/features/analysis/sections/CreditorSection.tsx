@@ -100,6 +100,23 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
         </Box>
       </Grid>
 
+      {/* Почтовый адрес в заявлении не ищем: юрист вводит его сам, в акт он
+          уходит отдельным маркером. */}
+      <Grid item xs={12}>
+        <Box sx={LABEL_OVERLAP_BOX}>
+          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{`Почтовый адрес ${party}:`}</Typography>
+          <TextField
+            fullWidth
+            value={editedFields.creditorPostalAddress || ''}
+            multiline
+            onChange={(e) => onFieldChange('creditorPostalAddress', e.target.value)}
+            size="small"
+            margin="dense"
+            placeholder="109052, г. Москва, ул. Смирновская, д. 10, стр. 22"
+          />
+        </Box>
+      </Grid>
+
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{`ОГРН ${party}:`}</Typography>

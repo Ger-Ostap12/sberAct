@@ -740,6 +740,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         ...prev,
         creditorName: '',
         creditorAddress: '',
+        creditorPostalAddress: '',
         creditorOgrn: '',
         creditorInn: ''
       }));
@@ -750,6 +751,8 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         ...prev,
         creditorName: value,
         creditorAddress: bankData.address,
+        // В справочнике банков почтового адреса нет — поле ручное, чистим.
+        creditorPostalAddress: '',
         creditorOgrn: bankData.ogrn,
         creditorInn: bankData.inn
       }));
@@ -759,6 +762,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         ...prev,
         creditorName: '',
         creditorAddress: '',
+        creditorPostalAddress: '',
         creditorOgrn: '',
         creditorInn: ''
       }));

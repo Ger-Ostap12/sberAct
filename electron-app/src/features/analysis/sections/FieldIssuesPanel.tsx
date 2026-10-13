@@ -41,6 +41,7 @@ const FIELD_LABELS: Record<string, string> = {
   creditorOgrn: 'ОГРН кредитора',
   applicantAddress: 'Адрес должника',
   creditorAddress: 'Адрес кредитора',
+  creditorPostalAddress: 'Почтовый адрес кредитора',
   debtorAddress: 'Адрес должника',
   managerAddress: 'Адрес управляющего',
   thirdPartyAddress: 'Адрес третьего лица',

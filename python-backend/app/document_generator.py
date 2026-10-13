@@ -1142,6 +1142,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             "sroName": "987",            # [987] - Название СРО (саморегулируемая организация)
             "creditorName": "989",       # [989] - Название кредитора
             "creditorAddress": "988",    # [988] - Юридический адрес кредитора
+            # [995] — почтовый адрес кредитора. В заявлении не ищется: вводится вручную.
+            "creditorPostalAddress": "995",
             "creditorOgrn": "990",       # [990] - ОГРН кредитора
             "creditorInn": "991",        # [991] - ИНН кредитора
             # Исключаем старые поля, чтобы не конфликтовать с новыми
