@@ -21,7 +21,7 @@ from official_name_case import (
     clerk_case,
     gender_from_full_name,
     gender_of_person,
-    inflect_short_fio,
+    inflect_person_name,
     judge_case,
 )
 from document_analyzer import DocumentAnalyzer
@@ -1881,13 +1881,13 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             род = gender_from_full_name(cleaned_data.get("judgeFullName"))
             self._replace_regex_in_doc(
                 doc, r"(.{0,80})\[415\]",
-                lambda m: m.group(1) + inflect_short_fio(judge, judge_case(m.group(1)), род))
+                lambda m: m.group(1) + inflect_person_name(judge, judge_case(m.group(1)), род))
 
         author = str(cleaned_data.get("authorName") or "").strip()
         if author:
             self._replace_regex_in_doc(
                 doc, r"(.{0,80})\[29\]",
-                lambda m: m.group(1) + inflect_short_fio(author, clerk_case(m.group(1))))
+                lambda m: m.group(1) + inflect_person_name(author, clerk_case(m.group(1))))
 
     def _apply_gender_agreement(self, doc: DocxDocument, cleaned_data: Dict[str, Any]) -> None:
         """Согласует «утвержден/утверждена» и «признан/признана» с родом лица.

@@ -14,7 +14,7 @@ from official_name_case import (  # noqa: E402
     gender_of_person,
     gender_from_full_name,
     gender_from_surname,
-    inflect_short_fio,
+    inflect_person_name,
     judge_case,
 )
 
@@ -92,41 +92,41 @@ class TestРод:
 
 class TestСклонениеКороткогоФИО:
     def test_мужская_фамилия_родительный(self):
-        assert inflect_short_fio("Ерёмин Ф.Ф.", "gent", "masc") == "Ерёмина Ф.Ф."
+        assert inflect_person_name("Ерёмин Ф.Ф.", "gent", "masc") == "Ерёмина Ф.Ф."
 
     def test_женская_фамилия_родительный(self):
-        assert inflect_short_fio("Власова Н.Ю.", "gent", "femn") == "Власовой Н.Ю."
+        assert inflect_person_name("Власова Н.Ю.", "gent", "femn") == "Власовой Н.Ю."
 
     def test_творительный_женский(self):
-        assert inflect_short_fio("Помощникова Ф.А.", "ablt") == "Помощниковой Ф.А."
+        assert inflect_person_name("Помощникова Ф.А.", "ablt") == "Помощниковой Ф.А."
 
     def test_творительный_мужской(self):
-        assert inflect_short_fio("Иванов И.И.", "ablt") == "Ивановым И.И."
+        assert inflect_person_name("Иванов И.И.", "ablt") == "Ивановым И.И."
 
     def test_предложный(self):
-        assert inflect_short_fio("Секретарева С.В.", "loct") == "Секретаревой С.В."
+        assert inflect_person_name("Секретарева С.В.", "loct") == "Секретаревой С.В."
 
     def test_именительный_не_трогаем(self):
-        assert inflect_short_fio("Ерёмин Ф.Ф.", "nomn", "masc") == "Ерёмин Ф.Ф."
+        assert inflect_person_name("Ерёмин Ф.Ф.", "nomn", "masc") == "Ерёмин Ф.Ф."
 
     def test_инициалы_остаются_как_есть(self):
-        assert inflect_short_fio("Ерёмин Ф.Ф.", "gent", "masc").endswith("Ф.Ф.")
+        assert inflect_person_name("Ерёмин Ф.Ф.", "gent", "masc").endswith("Ф.Ф.")
 
     def test_несклоняемая_фамилия_без_рода_не_меняется(self):
         # Род неизвестен — не гадаем: для женщины склонение было бы ошибкой.
-        assert inflect_short_fio("Тарасенко О.А.", "gent") == "Тарасенко О.А."
-        assert inflect_short_fio("Обама Ф.В.", "ablt") == "Обама Ф.В."
+        assert inflect_person_name("Тарасенко О.А.", "gent") == "Тарасенко О.А."
+        assert inflect_person_name("Обама Ф.В.", "ablt") == "Обама Ф.В."
 
     def test_род_из_справочника_перебивает_окончание(self):
         # «Жигало» по окончанию не опознаётся, но отчество даёт род.
         род = gender_from_full_name("Жигало Наталья Александровна")
-        assert inflect_short_fio("Жигало Н.А.", "gent", род) == "Жигало Н.А."
+        assert inflect_person_name("Жигало Н.А.", "gent", род) == "Жигало Н.А."
 
     def test_двойная_фамилия_склоняется_целиком(self):
-        assert inflect_short_fio("Пупкина-Залупкина А.В.", "ablt") == "Пупкиной-Залупкиной А.В."
+        assert inflect_person_name("Пупкина-Залупкина А.В.", "ablt") == "Пупкиной-Залупкиной А.В."
 
     def test_пустое_значение(self):
-        assert inflect_short_fio("", "gent") == ""
+        assert inflect_person_name("", "gent") == ""
 
     def test_значение_из_одних_инициалов_не_ломается(self):
-        assert inflect_short_fio("Ф.Ф.", "gent") == "Ф.Ф."
+        assert inflect_person_name("Ф.Ф.", "gent") == "Ф.Ф."

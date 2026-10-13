@@ -4,7 +4,7 @@ import logging
 import re
 from typing import Optional
 
-from morph_utils import detect_gender, inflect_surname
+from morph_utils import detect_gender, inflect_given_name, inflect_surname
 
 try:
     from pymorphy3 import MorphAnalyzer as _MorphAnalyzerCls
@@ -103,15 +103,23 @@ def gender_of_person(value: str) -> Optional[str]:
     return gender_from_full_name(value) or (gender_from_surname(части[0]) if части else None)
 
 
-def inflect_short_fio(value: str, case: str, gender: Optional[str] = None) -> str:
-    """Склоняет фамилию в записи «Фамилия И.О.», инициалы не трогает."""
+def inflect_person_name(value: str, case: str, gender: Optional[str] = None) -> str:
+    """Склоняет ФИО: фамилию как фамилию, имя и отчество как имена.
+
+    Запись бывает и сокращённой («Иванов И.И.»), и полной («Иванов Иван
+    Иванович») — инициалы остаются как есть, слова склоняются.
+    """
     if not value or case == "nomn":
         return value
     части = str(value).split()
     if not части or _ИНИЦИАЛ.match(части[0]):
         return value
-    род = gender or gender_from_surname(части[0])
+    род = gender or gender_of_person(value)
     if род is None:
         return value
-    склонённая = inflect_surname(_get_morph(), части[0], case, род)
-    return " ".join([склонённая] + части[1:])
+    morph = _get_morph()
+    итог = [inflect_surname(morph, части[0], case, род)]
+    for часть in части[1:]:
+        итог.append(часть if _ИНИЦИАЛ.match(часть)
+                    else inflect_given_name(morph, часть, case, род))
+    return " ".join(итог)
