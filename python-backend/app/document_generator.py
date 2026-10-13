@@ -17,6 +17,7 @@ from docx.oxml.shared import OxmlElement, qn
 # Локальный импорт анализатора без package-префикса, чтобы работать при запуске из app/
 from claim_resolution import CLAIM_RESOLUTION_TEXTS, PARTIAL, build_partial_denial
 from org_normalizer import is_org_name
+from text_case import normalize_address_case, normalize_name_case
 from official_name_case import (
     clerk_case,
     gender_from_full_name,
@@ -1097,6 +1098,54 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             nominative = nominative.capitalize()
         return f"г. {nominative}"
 
+    # Поля-имена и поля-адреса, которым правим регистр. Списки явные: рядом
+    # лежат objectName и description — там проза, её трогать нельзя.
+    _CASE_NAME_FIELDS = (
+        "applicantName", "applicantNameGenitive", "applicantNameDative",
+        "applicantNameInstrumental", "applicantNameAccusative",
+        "debtorName", "creditorName", "managerName", "notaryName", "kfhHeadName",
+        "mortgageDebtorName", "mortgageDebtorNameDative",
+        "mortgageRepresentative22", "respondentRepresentativeName", "thirdPartyName25",
+        # Судья и ведущий протокол: оба попадают под склонение по контексту
+        # маркера, поэтому регистр правим до него.
+        "judge", "judgeFullName", "authorName",
+    )
+    _CASE_ORG_FIELDS = ("legalShortName", "sroName")
+    _CASE_ADDRESS_FIELDS = (
+        "birthPlace", "applicantAddress", "debtorAddress", "creditorAddress",
+        "creditorPostalAddress", "creditorBranchAddress1443", "managerAddress",
+        "notaryAddress", "thirdPartyAddress", "mortgagePropertyAddress1227",
+    )
+
+    def _normalize_value_cases(self, cleaned_data: Dict[str, Any]) -> None:
+        """Регистр имён и адресов к обычному виду: «ИВАНОВ ИВАН» в «Иванов Иван»."""
+        # Нумерованные слоты заинтересованных лиц и ответчиков по ипотеке.
+        name_fields = list(self._CASE_NAME_FIELDS)
+        address_fields = list(self._CASE_ADDRESS_FIELDS)
+        for idx in range(1, self.MAX_INTERESTED_SLOTS + 1):
+            name_fields.append(f"interestedName25_{idx}")
+            address_fields.append(f"interestedAddress54_{idx}")
+            name_fields += [f"mortgageResp{p}_{idx}" for p in ("Nom1400", "Gen1401", "Dat1402")]
+            address_fields.append(f"mortgageRespAddr1403_{idx}")
+
+        правила = (
+            [(f, normalize_name_case, {}) for f in name_fields]
+            + [(f, normalize_name_case, {"как_организацию": True}) for f in self._CASE_ORG_FIELDS]
+            + [(f, normalize_address_case, {}) for f in address_fields]
+        )
+        for field_name, функция, опции in правила:
+            value = cleaned_data.get(field_name)
+            if not value or not isinstance(value, str):
+                continue
+            # ФНС-кредитор — не имя, а название с аббревиатурами (ИФНС/УФНС):
+            # оно уже канонизировано справочником, править нечего.
+            if field_name == "creditorName" and cleaned_data.get("_fnsCreditor"):
+                continue
+            normalized = функция(value, **опции)
+            if normalized != value:
+                cleaned_data[field_name] = normalized
+                logger.info(f" Нормализован регистр {field_name}: '{value}' -> '{normalized}'")
+
     def _base_field_mapping(self) -> Dict[str, str]:
         """Базовый маппинг полей данных на номера маркеров шаблона
         ([1], [2], [2.1], [13]…). Возвращает свежий словарь (вызывающий код
@@ -1458,25 +1507,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # Коррекция падежей для женщин и восстановление обрезанной фамилии (ФЛ)
         self._correct_female_applicant_cases(cleaned_data)
 
-        # Нормализуем регистр всех имен перед заменой в документе
-        name_fields = [
-            "applicantName", "debtorName", "creditorName", "legalShortName",
-            "applicantNameGenitive", "applicantNameInstrumental", "applicantNameAccusative", "applicantNameDative",
-            "mortgageDebtorName", "mortgageDebtorNameDative", "mortgageRepresentative22", "kfhHeadName"
-        ]
-        for field_name in name_fields:
-            if field_name in cleaned_data and cleaned_data[field_name]:
-                original_value = cleaned_data[field_name]
-                if original_value.strip().upper() == "ИП":
-                    continue
-                # ФНС-кредитор — не имя, а орг. название с аббревиатурами (ИФНС/УФНС),
-                # title-case их ломает (ИФНС Ифнс). Оставляем регистр как есть.
-                if field_name == "creditorName" and cleaned_data.get("_fnsCreditor"):
-                    continue
-                normalized_value = self._normalize_name_case(original_value)
-                if normalized_value != original_value:
-                    cleaned_data[field_name] = normalized_value
-                    logger.info(f" Нормализован регистр {field_name}: '{original_value}' -> '{normalized_value}'")
+        # Нормализуем регистр перед заменой в документе: в заявлениях поля
+        # приходят капсом или целиком строчными, в акте нужен обычный регистр.
+        self._normalize_value_cases(cleaned_data)
 
         # Заменяем данные в параграфах
         logger.info("Начинаем замену данных в документе...")
