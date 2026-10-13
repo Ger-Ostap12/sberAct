@@ -19,6 +19,12 @@ import { extractCollateralData } from '../../shared/lib/collateral';
 import { isFnsCreditor, FNS_CREDITOR_KEY } from '../../shared/lib/banks';
 import { buildSubmitData } from './lib/buildSubmitData';
 import {
+  RETURN_NO_DUTY_ID,
+  SIMPLIFIED_ACT_IDS,
+  returnNoDutyAvailable,
+  simplifiedActsSelected,
+} from './lib/intermediateActs';
+import {
   IntroducedProcedure,
   defaultRtkVariant,
   finalActsContextKey,
@@ -235,6 +241,23 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         : act));
   }, [collateralKinds]);
 
+  // Акты упрощёнки — только у включения в РТК. Идут за видом заявления, как
+  // и залоговый акт за составом залога: юрист может поставить их руками.
+  useEffect(() => {
+    setSelectedActs(prev => prev.map(act =>
+      SIMPLIFIED_ACT_IDS.includes(act.id)
+        ? { ...act, selected: simplifiedActsSelected(applicationKind) }
+        : act));
+  }, [applicationKind, selectedActs.length]);
+
+  // «Возврат нет ГП» самобанкроту не положен — галку снимаем, кнопку гасит секция.
+  useEffect(() => {
+    setSelectedActs(prev => prev.map(act =>
+      act.id === RETURN_NO_DUTY_ID
+        ? { ...act, selected: returnNoDutyAvailable(selfBankruptcy) }
+        : act));
+  }, [selfBankruptcy, selectedActs.length]);
+
   // Инициализация списка актов. Принятие и Промежуточные включены сразу:
   // юрист снимает лишнее сам. Залоговый акт ставит эффект по видам залога.
   useEffect(() => {
@@ -253,7 +276,8 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
       { id: 'acceptance_after_no_motion', name: 'Принятие после Б/Д', category: 'acceptance', selected: true, additionalFields: { courtRequests: '' } },
       // Промежуточные
       { id: 'intermediate_postponement', name: 'Отложение', category: 'intermediate', selected: true, additionalFields: { reason: '', forParties: '', courtRequests: '' } },
-      { id: 'intermediate_return', name: 'Возврат', category: 'intermediate', selected: true, additionalFields: { reason: '', forParties: '' } },
+      { id: 'intermediate_return_general', name: 'Общий возврат', category: 'intermediate', selected: true, additionalFields: { reason: '', forParties: '' } },
+      { id: RETURN_NO_DUTY_ID, name: 'Возврат нет ГП', category: 'intermediate', selected: true, additionalFields: { reason: '', forParties: '' } },
       { id: 'intermediate_extend_no_motion', name: 'Продление Б/Д', category: 'intermediate', selected: true },
       { id: 'intermediate_extend_simplified', name: 'Продление упрощёнка', category: 'intermediate', selected: true },
       { id: 'intermediate_simplified_to_main', name: 'Переход из упрощёнки в основное производство', category: 'intermediate', selected: true },

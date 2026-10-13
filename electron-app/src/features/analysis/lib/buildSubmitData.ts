@@ -82,8 +82,10 @@ export const buildSubmitData = (input: SubmitDataInput): ExtractedData => {
     mortgageProperties: analysisResult.mortgageProperties || [],
   };
 
-  // ФИО судьи → «Фамилия И.О.»
+  // ФИО судьи → «Фамилия И.О.». Полное ФИО уезжает рядом: отчество даёт род,
+  // без него бэкенд не склонит фамилию в «в составе судьи …».
   if (updatedData.fields && updatedData.fields.judge) {
+    updatedData.fields.judgeFullName = updatedData.fields.judge;
     updatedData.fields.judge = formatJudgeName(updatedData.fields.judge);
   }
 

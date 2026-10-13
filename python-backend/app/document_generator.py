@@ -16,6 +16,12 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.shared import OxmlElement, qn
 # Локальный импорт анализатора без package-префикса, чтобы работать при запуске из app/
 from claim_resolution import CLAIM_RESOLUTION_TEXTS, PARTIAL, build_partial_denial
+from official_name_case import (
+    clerk_case,
+    gender_from_full_name,
+    inflect_short_fio,
+    judge_case,
+)
 from document_analyzer import DocumentAnalyzer
 from templates_resolver_mixin import TemplatesResolverMixin
 from generator_inflection_mixin import GeneratorInflectionMixin
@@ -1530,6 +1536,10 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # После нормализации creditorName — он уходит в текст абзаца [889] как есть.
         self._apply_claim_resolution(cleaned_data)
 
+        # Падежи судьи и ведущего протокол — ДО общей подстановки: та кладёт
+        # значение как есть, и склонять было бы уже нечего.
+        self._apply_official_name_cases(doc, cleaned_data)
+
         self._apply_field_mapping_replacements(doc, cleaned_data, field_mapping, is_mortgage_document, is_ip, is_physical_collateral)
 
         # Обрабатываем обязательства (договоры) - номера 100-113
@@ -1853,6 +1863,27 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 word = match.group(0)
                 return phrase[:1].upper() + phrase[1:] if word[:1].isupper() else phrase
             self._replace_regex_in_doc(doc, pattern, _sub)
+
+    def _apply_official_name_cases(self, doc: DocxDocument, cleaned_data: Dict[str, Any]) -> None:
+        """Склоняет ФИО судьи [415] и ведущего протокол [29] по контексту маркера.
+
+        Шаблон диктует падеж словом перед маркером: «в составе судьи» — родительный,
+        «Судья» в подписи — именительный, «секретарем» — творительный, «при
+        секретаре» — предложный. Род судьи берём из полного ФИО справочника,
+        у секретаря его неоткуда взять — идём по окончанию фамилии.
+        """
+        judge = str(cleaned_data.get("judge") or "").strip()
+        if judge:
+            род = gender_from_full_name(cleaned_data.get("judgeFullName"))
+            self._replace_regex_in_doc(
+                doc, r"(.{0,80})\[415\]",
+                lambda m: m.group(1) + inflect_short_fio(judge, judge_case(m.group(1)), род))
+
+        author = str(cleaned_data.get("authorName") or "").strip()
+        if author:
+            self._replace_regex_in_doc(
+                doc, r"(.{0,80})\[29\]",
+                lambda m: m.group(1) + inflect_short_fio(author, clerk_case(m.group(1))))
 
     def _apply_secretary_wording(self, doc: DocxDocument, author_role: str) -> None:
         """Шаблоны по умолчанию по-разному называют роль ведущего протокол — где-то
@@ -2456,7 +2487,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                                 if act_id == "acceptance_no_motion_other":
                                     data["acceptance_no_motion_other_reason"] = reason
                                     data["acceptance_no_motion_other_forParties"] = for_parties
-                                elif act_id == "intermediate_return":
+                                elif act_id in ("intermediate_return_general",
+                                                "intermediate_return_no_duty"):
                                     data["intermediate_return_reason"] = reason
                                     data["intermediate_return_forParties"] = for_parties
                                 elif act_id == "intermediate_postponement":

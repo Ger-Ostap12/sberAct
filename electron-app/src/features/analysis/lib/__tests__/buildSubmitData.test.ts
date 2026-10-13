@@ -117,6 +117,26 @@ describe('buildSubmitData — синхронизация сумм', () => {
   });
 });
 
+// Бэкенд склоняет фамилию судьи по падежу контекста, а род берёт из отчества.
+describe('buildSubmitData — ФИО судьи', () => {
+  it('короткая форма идёт в judge, полная — в judgeFullName', () => {
+    const r = run({ editedFields: { judge: 'Ерёмин Филипп Фёдорович' } });
+    expect(r.fields.judge).toBe('Ерёмин Ф.Ф.');
+    expect(r.fields.judgeFullName).toBe('Ерёмин Филипп Фёдорович');
+  });
+
+  it('уже сокращённое ФИО не ломается и дублируется в полное', () => {
+    const r = run({ editedFields: { judge: 'Власова Н.Ю.' } });
+    expect(r.fields.judge).toBe('Власова Н.Ю.');
+    expect(r.fields.judgeFullName).toBe('Власова Н.Ю.');
+  });
+
+  it('без судьи поля не появляются', () => {
+    const r = run({});
+    expect(r.fields.judgeFullName).toBeUndefined();
+  });
+});
+
 describe('buildSubmitData — выбранные акты', () => {
   it('сериализует только выбранные акты', () => {
     const r = run({

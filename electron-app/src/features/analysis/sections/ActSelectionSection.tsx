@@ -19,6 +19,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { EntityType, CollateralOption, ApplicationKind, DebtorStatus, SelectedAct } from '../../../types';
 import { CollateralKinds } from '../lib/collateralSync';
+import { RETURN_NO_DUTY_ID, returnNoDutyAvailable } from '../lib/intermediateActs';
 import {
   IntroducedProcedure,
   RTK_VARIANT_LABEL,
@@ -293,19 +294,25 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                     <Box>
                       {selectedActs
                         .filter(act => act.category === 'intermediate')
-                        .map(act => (
-                          <Box key={act.id} sx={{ mb: 2 }}>
-                            <FormControlLabel
-                              control={
-                                <Checkbox
-                                  checked={act.selected}
-                                  onChange={() => toggleActSelection(act.id)}
-                                />
-                              }
-                              label={act.name}
-                            />
-                          </Box>
-                        ))}
+                        .map(act => {
+                          // У самобанкрота возврата без госпошлины не бывает.
+                          const недоступен = act.id === RETURN_NO_DUTY_ID
+                            && !returnNoDutyAvailable(selfBankruptcy);
+                          return (
+                            <Box key={act.id} sx={{ mb: 2 }}>
+                              <FormControlLabel
+                                control={
+                                  <Checkbox
+                                    checked={act.selected}
+                                    disabled={недоступен}
+                                    onChange={() => toggleActSelection(act.id)}
+                                  />
+                                }
+                                label={act.name}
+                              />
+                            </Box>
+                          );
+                        })}
                     </Box>
                   </AccordionDetails>
                 </Accordion>

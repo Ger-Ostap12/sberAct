@@ -92,7 +92,7 @@ def test_missing_template_warns_and_does_not_substitute_another_act(gen, tmp_pat
     monkeypatch.setattr(gen, "_map_selected_acts_to_templates", lambda *a, **kw: (corrupted_templates, []))
 
     result = gen.generate(AUTO_TEMPLATE, _data(
-        selectedActsIds="intermediate_return,final_rtk_inclusion",
+        selectedActsIds="intermediate_return_general,final_rtk_inclusion",
         selectedActsData=json.dumps([
             {"id": "final_rtk_inclusion", "selected": True, "rtkVariant": "realization"},
         ]),

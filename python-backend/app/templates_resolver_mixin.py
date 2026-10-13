@@ -1235,12 +1235,21 @@ class TemplatesResolverMixin:
                     order
                 )
                 order += 1
-            elif act_id == 'intermediate_return':
-                reason = data.get('intermediate_return_reason', '')
-                for_parties = data.get('intermediate_return_forParties', '')
-                templates['return'] = entry(
-                    "Возврат (РТК ГП)",
-                    new_acts_dir / "внести Возврат" / "возврат ртк ГП.docx",
+            # Возврат: шаблон зависит от вида заявления. У самобанкрота возврата
+            # без госпошлины не бывает — акт просто не генерируется.
+            elif act_id in ('intermediate_return_general', 'intermediate_return_no_duty'):
+                вид = str(data.get("selectedApplicationKind")
+                          or data.get("applicationKind") or "").strip().lower()
+                самобанкрот = вид in ("self", "self_bankruptcy")
+                общий = act_id == 'intermediate_return_general'
+                if not общий and самобанкрот:
+                    order += 1
+                    continue
+                ртк = вид == "rtk"
+                имя_файла = ("возврат ртк.docx" if ртк else "возврат инициирование.docx") if общий                     else ("возврат ртк ГП.docx" if ртк else "возврат инициирование ГП.docx")
+                templates['return_general' if общий else 'return_no_duty'] = entry(
+                    "Общий возврат" if общий else "Возврат нет ГП",
+                    new_acts_dir / "внести Возврат" / имя_файла,
                     order
                 )
                 order += 1
