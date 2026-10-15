@@ -16,7 +16,7 @@ import pytest
 
 _THIS = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE = os.path.abspath(os.path.join(
-    _THIS, "..", "..", "Templates", "ипотека", "Извещение_МАРКИРОВАННЫЙ.docx"))
+    _THIS, "..", "..", "Templates", "Ипотека", "Извещение_МАРКИРОВАННЫЙ.docx"))
 
 # Врезка начинается на 120.35pt от края страницы; правое поле — на 552pt
 # (страница 595pt минус 42.9pt поля). Запас под правую колонку должен остаться

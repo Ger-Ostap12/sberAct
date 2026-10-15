@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 
 from document_generator import DocumentGenerator  # noqa: E402
 
-TEMPLATES = Path(__file__).resolve().parents[2] / "Templates" / "ипотека"
+TEMPLATES = Path(__file__).resolve().parents[2] / "Templates" / "Ипотека"
 PART_RE = re.compile(r"word/(document|header\d*|footer\d*)\.xml$")
 
 # Обрабатываются отдельными механизмами, а не через field_mapping.

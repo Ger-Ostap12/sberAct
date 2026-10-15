@@ -52,7 +52,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         """
         Корень папки с шаблонами. Проверяем несколько возможных путей.
         Приоритет: Shablony, затем Templates/templates для совместимости.
-        При запуске из exe: Shablony рядом с exe, _internal, шаблоны актов без залогов.
+        При запуске из exe: Shablony рядом с exe, затем _internal и встроенные.
         При запуске из исходников — Shablony в корне проекта.
         """
         project_root = self._project_root()
@@ -88,23 +88,34 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             candidates = [
                 project_root / "Shablony",  # Основная папка шаблонов
                 project_root / "Templates",  # Fallback для совместимости
-                project_root,  # project_root/шаблоны актов без залогов
+                project_root,
             ]
 
-        for p in candidates:
-            if not p.exists() or not p.is_dir():
-                continue
-            # Проверяем наличие шаблонов: Shablony/шаблоны..., Templates/шаблоны..., либо шаблоны... напрямую
-            if (p / "шаблоны актов без залогов").exists():
-                return p
-            if (p / "Shablony" / "шаблоны актов без залогов").exists():
-                return p / "Shablony"
-            if (p / "Templates" / "шаблоны актов без залогов").exists():
-                return p / "Templates"
-            if (p / "templates" / "шаблоны актов без залогов").exists():
-                return p / "templates"
-
+        found = self._pick_templates_root(candidates)
+        if found is not None:
+            return found
         return candidates[0] if candidates else project_root / "Shablony"
+
+    # Признак корня шаблонов: в дереве лежит «Банкротство» (новая раскладка) либо
+    # «Ипотека»/«Взыскание». Раньше признаком была старая «шаблоны актов без залогов».
+    _ROOT_MARKERS = ("Банкротство", "Ипотека", "Взыскание")
+    # Папка-обёртка: у собранного exe кандидатом бывает сам каталог запуска.
+    _ROOT_NESTED = ("Shablony", "Templates", "templates")
+
+    @classmethod
+    def _looks_like_templates_root(cls, path: Path) -> bool:
+        return any((path / marker).is_dir() for marker in cls._ROOT_MARKERS)
+
+    @classmethod
+    def _pick_templates_root(cls, candidates: List[Path]) -> Optional[Path]:
+        """Первый кандидат, похожий на корень шаблонов, — сам или через обёртку."""
+        for p in candidates:
+            if cls._looks_like_templates_root(p):
+                return p
+            for nested in cls._ROOT_NESTED:
+                if cls._looks_like_templates_root(p / nested):
+                    return p / nested
+        return None
 
     def _project_root(self) -> Path:
         """Корень проекта (родитель python-backend)."""

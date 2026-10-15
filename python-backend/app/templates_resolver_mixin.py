@@ -835,7 +835,8 @@ class TemplatesResolverMixin:
         выбирается по виду ипотеки, солидарности и наличию представителей.
         """
         root_dir = self._templates_root()
-        base_dir = root_dir / "ипотека"
+        # Папка названа с заглавной: на Astra регистр имени значим.
+        base_dir = root_dir / "Ипотека"
 
         def entry(name: str, filename: str, order: int) -> Dict[str, Any]:
             path = base_dir / filename
