@@ -191,3 +191,32 @@ describe('генерация не идёт, пока отмеченный вид
     expect(onDone).toHaveBeenCalled();
   });
 });
+
+describe('ФНС и акт «Б/Д нет ГП»', () => {
+  const фнс = (d: ExtractedData) => {
+    d.fields = { ...d.fields, creditorName: 'ФНС России в лице Межрайонной ИФНС № 13' };
+  };
+
+  it('у ФНС галка снята: госпошлины не бывает', () => {
+    renderForm(фнс);
+    expect(checkbox('Определение Б/Д нет ГП')).not.toBeChecked();
+  });
+
+  it('у банка галка стоит', () => {
+    renderForm();
+    expect(checkbox('Определение Б/Д нет ГП')).toBeChecked();
+  });
+
+  it('остальные акты принятия у ФНС не трогаются', () => {
+    renderForm(фнс);
+    expect(checkbox('Определение о принятии')).toBeChecked();
+    expect(checkbox('Определение Б/Д иное')).toBeChecked();
+    expect(checkbox('Принятие после Б/Д')).toBeChecked();
+  });
+
+  it('юрист может поставить галку руками', () => {
+    renderForm(фнс);
+    fireEvent.click(checkbox('Определение Б/Д нет ГП'));
+    expect(checkbox('Определение Б/Д нет ГП')).toBeChecked();
+  });
+});

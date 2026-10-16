@@ -241,6 +241,15 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         : act));
   }, [collateralKinds]);
 
+  // У ФНС госпошлины не бывает — акта «Б/Д нет ГП» для неё нет ни в одном
+  // шаблоне, галку гасим (решение юристов).
+  useEffect(() => {
+    setSelectedActs(prev => prev.map(act =>
+      act.id === 'acceptance_no_motion_no_duty'
+        ? { ...act, selected: !fnsCreditor }
+        : act));
+  }, [fnsCreditor, selectedActs.length]);
+
   // Акты упрощёнки — только у включения в РТК. Идут за видом заявления, как
   // и залоговый акт за составом залога: юрист может поставить их руками.
   useEffect(() => {

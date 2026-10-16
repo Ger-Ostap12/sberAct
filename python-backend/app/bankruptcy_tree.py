@@ -28,6 +28,15 @@ PROCEDURE_RULES = (
     ("competition", re.compile(r"конкурс|кокнурс")),
 )
 
+# Акт на форме (галка) → роль файла. Пока только раздел «Первоначальные».
+INITIAL_ACT_ROLES = {
+    "acceptance_definition": "acceptance",
+    "acceptance_after_no_motion": "acceptance_after_no_motion",
+    "acceptance_no_motion_no_duty": "no_motion_no_duty",
+    "acceptance_no_motion_no_duty_collateral": "no_motion_no_duty_collateral",
+    "acceptance_no_motion_other": "no_motion_other",
+}
+
 _ENTITY_DIRS = {"individual": "ФЛ", "ip": "ИП", "legal": "ЮЛ", "kfh": "КФХ"}
 _STATUS_DIRS = {"": "Обычный", "liquidation": "Ликвидируемый", "absent": "Отсутствующий"}
 # Лица, у которых между заявителем и залогом лежит папка статуса.
@@ -169,6 +178,41 @@ def pick_file(folder: Path, role: str, procedure: Optional[str] = None) -> Resol
         return Resolution(None, folder, "неоднозначно, подходят: %s"
                           % ", ".join(p.name for p in candidates))
     return Resolution(candidates[0], folder)
+
+
+def procedure_for_case(
+    entity: str,
+    status: str = "",
+    *,
+    rtk_variant: str = "",
+    act_ids: Optional[List[str]] = None,
+    introduced: str = "",
+) -> str:
+    """Процедура дела: сначала выбор юриста, затем статус, затем тип лица."""
+    known = tuple(p for p, _ in PROCEDURE_RULES)
+    if rtk_variant in known:
+        return rtk_variant
+
+    by_final = {
+        "final_restructuring": "restructuring",
+        "final_competition": "competition",
+        "final_observation": "observation",
+        "final_realization": "realization",
+    }
+    for act_id, procedure in by_final.items():
+        if act_ids and act_id in act_ids:
+            return procedure
+
+    # Статус сужает процедуру жёстче типа лица: у ликвидируемого и отсутствующего
+    # бывает только конкурсное, у умершего — только реализация имущества.
+    if status in ("liquidation", "absent"):
+        return "competition"
+    if status == "deceased":
+        return "realization"
+
+    if introduced in known:
+        return introduced
+    return "observation" if entity in ("legal", "kfh") else "realization"
 
 
 def resolve(

@@ -11,6 +11,8 @@ import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+import bankruptcy_tree
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,6 +22,45 @@ class TemplatesResolverMixin:
         # Pyright (mixin-класс вызывает метод, который появится в итоговом
         # составном классе).
         def _templates_root(self) -> Path: ...
+
+    # Ключ в наборе шаблонов и подпись акта в интерфейсе.
+    _INITIAL_ACT_LABELS = {
+        "acceptance_definition": ("acceptance", "Определение о принятии"),
+        "acceptance_after_no_motion": ("acceptance_after_no_motion", "Принятие после Б/Д"),
+        "acceptance_no_motion_no_duty": ("acceptance_no_motion", "Определение Б/Д нет ГП"),
+        "acceptance_no_motion_no_duty_collateral": (
+            "acceptance_no_motion_collateral", "Определение Б/Д нет ГП залог"),
+        "acceptance_no_motion_other": ("acceptance_no_motion_other", "Определение Б/Д иное"),
+    }
+
+    def _bankruptcy_tree_axes(
+        self,
+        data: Dict[str, Any],
+        entity_type: str,
+        collateral_option: str,
+        act_ids: List[str],
+    ) -> Optional[Dict[str, Any]]:
+        """Оси дела для дерева «Банкротство». None — вид заявления не включение в РТК."""
+        kind = str(data.get("selectedApplicationKind") or data.get("applicationKind") or "").strip().lower()
+        if kind != "rtk":
+            return None
+
+        status = str(data.get("selectedDebtorStatus") or data.get("debtorStatus") or "").strip().lower()
+        entity = entity_type if entity_type in ("individual", "ip", "legal", "kfh") else "individual"
+        procedure = bankruptcy_tree.procedure_for_case(
+            entity,
+            status,
+            rtk_variant=str(data.get("final_rtk_inclusion_variant") or "").strip().lower(),
+            act_ids=act_ids,
+            introduced=str(data.get("introducedProcedure") or "").strip().lower(),
+        )
+        return {
+            "entity": entity,
+            "applicant": "fns" if self._is_fns_creditor(data) else "creditors",
+            "status": status,
+            "collateral": collateral_option in ("collateral", "collateral_auto"),
+            "procedure": procedure,
+        }
 
     @staticmethod
     def _is_fns_creditor(data: Dict[str, Any]) -> bool:
@@ -1038,8 +1079,28 @@ class TemplatesResolverMixin:
         is_self = self._is_self_bankruptcy(data)
         is_deceased = str(data.get("selectedDebtorStatus") or data.get("debtorStatus") or "").strip().lower() == "deceased"
 
+        # Первоначальные акты включения в РТК берём из нового дерева «Банкротство».
+        # Остальные разделы и инициирование пока по старым путям (§S.64).
+        tree_axes = self._bankruptcy_tree_axes(data, entity_type, collateral_option, act_ids)
+
         for act_id in act_ids:
             templates_before = len(templates)
+
+            if tree_axes is not None and act_id in bankruptcy_tree.INITIAL_ACT_ROLES:
+                resolution = bankruptcy_tree.resolve(
+                    self._templates_root(),
+                    role=bankruptcy_tree.INITIAL_ACT_ROLES[act_id],
+                    **tree_axes,
+                )
+                if resolution.path is None:
+                    unresolved.append(act_id)
+                    data.setdefault("_unresolvedReasons", {})[act_id] = resolution.reason
+                    logger.warning(" Шаблон не готов: %s — %s", act_id, resolution.reason)
+                    continue
+                key, label = self._INITIAL_ACT_LABELS[act_id]
+                templates[key] = entry(label, resolution.path, order)
+                order += 1
+                continue
 
             if is_self:
                 resolved = self._resolve_self_bankruptcy_act(act_id, act_ids, data)

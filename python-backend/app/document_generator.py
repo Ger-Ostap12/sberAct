@@ -2619,8 +2619,14 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             # Акты, которые пользователь выбрал, но сгенерировать не удалось: нет ветки
             # маппинга либо нет файла шаблона. Уходят в ответ, чтобы пользователь узнал
             # о них из интерфейса, а не только из логов.
+            # Причину пишет резолвер дерева: «шаблон не готов» юристу понятнее,
+            # чем «не поддерживается генерацией».
+            unresolved_reasons = data.get("_unresolvedReasons") or {}
             warnings: List[str] = [
-                f"Акт «{act_id}» не поддерживается генерацией" for act_id in unresolved_act_ids
+                f"Акт «{act_id}» — шаблон не готов: {unresolved_reasons[act_id]}"
+                if act_id in unresolved_reasons
+                else f"Акт «{act_id}» не поддерживается генерацией"
+                for act_id in unresolved_act_ids
             ]
 
             for doc_type, template_info in templates.items():
