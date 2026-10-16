@@ -9,11 +9,14 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 
 from bankruptcy_tree import (  # noqa: E402
+    INITIAL_ACT_ROLES,
+    INTERMEDIATE_ACT_ROLES,
     ROLE_RULES,
     SECTION_INITIAL,
+    SECTION_INTERMEDIATE,
     act_files,
     child_dir,
-    file_procedure,
+    file_procedures,
     file_role,
     normalize_name,
     pick_file,
@@ -22,7 +25,10 @@ from bankruptcy_tree import (  # noqa: E402
 )
 from document_generator import DocumentGenerator  # noqa: E402
 
-РОЛИ = [r for r, _ in ROLE_RULES]
+# Роли раздела «Первоначальные»: промежуточные живут в своей папке и свои
+# файлы ищут там же, перебирать их по этому разделу бессмысленно.
+РОЛИ = list(INITIAL_ACT_ROLES.values())
+ВСЕ_РОЛИ = [r for r, _ in ROLE_RULES]
 
 
 @pytest.fixture(scope="module")
@@ -53,8 +59,26 @@ class TestРольПоИмени:
         assert file_role("Определение БД нет ГП наблюдение.docx") == "no_motion_no_duty"
 
     def test_чужое_имя_без_роли(self):
-        assert file_role("Отложение залог рестр+реал.docx") is None
+        # Акты включения в РТК — другой раздел, ролей у них пока нет.
         assert file_role("Вкл в РТК реализация залог полный текст.docx") is None
+        assert file_role("Резолютивка ВКЛ реализация Залог.docx") is None
+
+    @pytest.mark.parametrize("имя,роль", [
+        ("Отложение рестр+реал.docx", "postponement"),
+        ("Отложение залог наблюд+конкурс.docx", "postponement"),
+        ("Отложение 3 лицо кокнурсное.docx", "postponement_third_party"),
+        ("Отложение 3 лицо залог рестр+реал.docx", "postponement_third_party"),
+        ("Продление БД конкурс.docx", "extend_no_motion"),
+        ("Общий возврат реализация.docx", "return_general"),
+        ("Возврат нет ГП залог наблюд.docx", "return_no_duty"),
+        ("Переход из упрощенки в основное производство конкурс.docx", "simplified_to_main"),
+    ])
+    def test_роли_промежуточных(self, имя, роль):
+        assert file_role(имя) == роль
+
+    def test_отложение_3_лицо_не_путается_с_общим(self):
+        # Узкое правило раньше широкого: иначе «3 лицо» уедет в общее отложение.
+        assert file_role("Отложение 3 лицо рестр+реал.docx") != "postponement"
 
 
 class TestПроцедураПоИмени:
@@ -67,11 +91,21 @@ class TestПроцедураПоИмени:
         ("Определение БД иное кокнурсное.docx", "competition"),
     ])
     def test_опознаётся(self, имя, процедура):
-        assert file_procedure(имя) == процедура
+        assert file_procedures(имя) == {процедура}
 
     def test_без_токена_процедуры(self):
         # Такой файл годится любой процедуре.
-        assert file_procedure("Определение о принятии.docx") is None
+        assert file_procedures("Определение о принятии.docx") == frozenset()
+
+    @pytest.mark.parametrize("имя,процедуры", [
+        ("Отложение рестр+реал.docx", {"restructuring", "realization"}),
+        ("Отложение залог наблюд+конкурс.docx", {"observation", "competition"}),
+        ("Продление БД наблюдение+конкурсное.docx", {"observation", "competition"}),
+        ("Переход из упрощенки в основное производство наблюд.docx", {"observation"}),
+    ])
+    def test_файл_на_две_процедуры(self, имя, процедуры):
+        # Сокращённые формы: «рестр», «реал», «наблюд», «конкурс».
+        assert file_procedures(имя) == процедуры
 
 
 class TestНормализация:
@@ -167,6 +201,24 @@ class TestРеальноеДерево:
             for роль in РОЛИ:
                 итог = resolve(корень, entity=лицо, applicant=заявитель, status=статус,
                                collateral=залог, role=роль, procedure=процедура)
+                if итог.path is None and "неоднозначно" in итог.reason:
+                    спорные.append("%s/%s: %s" % (процедура, роль, итог.reason))
+        assert not спорные, спорные
+
+    @pytest.mark.parametrize("лицо,заявитель,статус,залог", ОСИ_РТК)
+    def test_промежуточные_опознаны_и_однозначны(self, корень, лицо, заявитель, статус, залог):
+        папка = section_folder(корень, entity=лицо, applicant=заявитель, status=статус,
+                               collateral=залог, section=SECTION_INTERMEDIATE).folder
+        assert папка is not None and папка.is_dir()
+        безродные = [p.name for p in act_files(папка) if file_role(p.name) is None]
+        assert not безродные, "в %s не опознаны: %s" % (папка, безродные)
+
+        спорные = []
+        for процедура in ПРОЦЕДУРЫ[лицо]:
+            for роль in INTERMEDIATE_ACT_ROLES.values():
+                итог = resolve(корень, entity=лицо, applicant=заявитель, status=статус,
+                               collateral=залог, role=роль, procedure=процедура,
+                               section=SECTION_INTERMEDIATE)
                 if итог.path is None and "неоднозначно" in итог.reason:
                     спорные.append("%s/%s: %s" % (процедура, роль, итог.reason))
         assert not спорные, спорные

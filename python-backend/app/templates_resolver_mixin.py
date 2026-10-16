@@ -24,13 +24,21 @@ class TemplatesResolverMixin:
         def _templates_root(self) -> Path: ...
 
     # Ключ в наборе шаблонов и подпись акта в интерфейсе.
-    _INITIAL_ACT_LABELS = {
+    _TREE_ACT_LABELS = {
         "acceptance_definition": ("acceptance", "Определение о принятии"),
         "acceptance_after_no_motion": ("acceptance_after_no_motion", "Принятие после Б/Д"),
         "acceptance_no_motion_no_duty": ("acceptance_no_motion", "Определение Б/Д нет ГП"),
         "acceptance_no_motion_no_duty_collateral": (
             "acceptance_no_motion_collateral", "Определение Б/Д нет ГП залог"),
         "acceptance_no_motion_other": ("acceptance_no_motion_other", "Определение Б/Д иное"),
+        "intermediate_postponement": ("postponement", "Общее отложение"),
+        "intermediate_postponement_third_party": (
+            "postponement_third_party", "Отложение 3 лицо"),
+        "intermediate_extend_no_motion": ("extend_no_motion", "Продление Б/Д"),
+        "intermediate_return_general": ("return_general", "Общий возврат"),
+        "intermediate_return_no_duty": ("return_no_duty", "Возврат нет ГП"),
+        "intermediate_simplified_to_main": (
+            "simplified_to_main", "Переход из упрощёнки в основное производство"),
     }
 
     def _bankruptcy_tree_axes(
@@ -1086,10 +1094,17 @@ class TemplatesResolverMixin:
         for act_id in act_ids:
             templates_before = len(templates)
 
-            if tree_axes is not None and act_id in bankruptcy_tree.INITIAL_ACT_ROLES:
+            if tree_axes is not None and act_id in bankruptcy_tree.ACTS_WITHOUT_TEMPLATE:
+                unresolved.append(act_id)
+                data.setdefault("_unresolvedReasons", {})[act_id] = (
+                    bankruptcy_tree.ACTS_WITHOUT_TEMPLATE[act_id])
+                continue
+
+            if tree_axes is not None and act_id in bankruptcy_tree.ACT_ROLES:
                 resolution = bankruptcy_tree.resolve(
                     self._templates_root(),
-                    role=bankruptcy_tree.INITIAL_ACT_ROLES[act_id],
+                    role=bankruptcy_tree.ACT_ROLES[act_id],
+                    section=bankruptcy_tree.ACT_SECTIONS[act_id],
                     **tree_axes,
                 )
                 if resolution.path is None:
@@ -1097,7 +1112,7 @@ class TemplatesResolverMixin:
                     data.setdefault("_unresolvedReasons", {})[act_id] = resolution.reason
                     logger.warning(" Шаблон не готов: %s — %s", act_id, resolution.reason)
                     continue
-                key, label = self._INITIAL_ACT_LABELS[act_id]
+                key, label = self._TREE_ACT_LABELS[act_id]
                 templates[key] = entry(label, resolution.path, order)
                 order += 1
                 continue

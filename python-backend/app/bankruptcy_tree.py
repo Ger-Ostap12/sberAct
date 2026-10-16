@@ -9,6 +9,7 @@ from typing import List, NamedTuple, Optional
 
 BRANCH_RTK = "Включение в РТК"
 SECTION_INITIAL = "Первоначальные"
+SECTION_INTERMEDIATE = "Промежуточные"
 
 # Роли первоначальных актов. Порядок правил важен: узкие раньше широких, иначе
 # «о принятии после БД» попадёт в обычное принятие, а «нет ГП залог» — в «нет ГП».
@@ -18,12 +19,20 @@ ROLE_RULES = (
     ("no_motion_no_duty_collateral", re.compile(r"бд не?т? гп залог")),
     ("no_motion_no_duty", re.compile(r"бд не?т? гп")),
     ("no_motion_other", re.compile(r"бд иное")),
+    # Промежуточные. «Отложение 3 лицо» — отдельный акт, проверяем раньше общего.
+    ("postponement_third_party", re.compile(r"отложение 3 лицо")),
+    ("postponement", re.compile(r"отложение")),
+    ("extend_no_motion", re.compile(r"продление бд")),
+    ("return_no_duty", re.compile(r"возврат не?т? гп")),
+    ("return_general", re.compile(r"общий возврат")),
+    ("simplified_to_main", re.compile(r"переход из упрощенки")),
 )
 
-# «кокнурсное» — опечатка в именах файлов, встречается у «БД иное».
+# Имена не унифицированы: «реализация» и «реал», «конкурсное» и «конкурс», плюс
+# опечатка «кокнурсное». Один файл бывает на две процедуры — «Отложение рестр+реал».
 PROCEDURE_RULES = (
-    ("realization", re.compile(r"реализац")),
-    ("restructuring", re.compile(r"реструктур")),
+    ("realization", re.compile(r"реализац|\bреал\b")),
+    ("restructuring", re.compile(r"реструктур|\bрестр\b")),
     ("observation", re.compile(r"наблюд")),
     ("competition", re.compile(r"конкурс|кокнурс")),
 )
@@ -36,6 +45,28 @@ INITIAL_ACT_ROLES = {
     "acceptance_no_motion_no_duty_collateral": "no_motion_no_duty_collateral",
     "acceptance_no_motion_other": "no_motion_other",
 }
+
+# Акт на форме → роль файла, раздел «Промежуточные».
+INTERMEDIATE_ACT_ROLES = {
+    "intermediate_postponement": "postponement",
+    "intermediate_postponement_third_party": "postponement_third_party",
+    "intermediate_extend_no_motion": "extend_no_motion",
+    "intermediate_return_general": "return_general",
+    "intermediate_return_no_duty": "return_no_duty",
+    "intermediate_simplified_to_main": "simplified_to_main",
+}
+
+# Галка на форме есть, файла в дереве нет ни у одной оси — «шаблон не готов».
+ACTS_WITHOUT_TEMPLATE = {
+    "intermediate_extend_simplified": "продление упрощёнки: такого акта в дереве нет",
+}
+
+ACT_SECTIONS = {
+    **{act_id: SECTION_INITIAL for act_id in INITIAL_ACT_ROLES},
+    **{act_id: SECTION_INTERMEDIATE for act_id in INTERMEDIATE_ACT_ROLES},
+}
+
+ACT_ROLES = {**INITIAL_ACT_ROLES, **INTERMEDIATE_ACT_ROLES}
 
 _ENTITY_DIRS = {"individual": "ФЛ", "ip": "ИП", "legal": "ЮЛ", "kfh": "КФХ"}
 _STATUS_DIRS = {"": "Обычный", "liquidation": "Ликвидируемый", "absent": "Отсутствующий"}
@@ -67,13 +98,10 @@ def file_role(name: str) -> Optional[str]:
     return None
 
 
-def file_procedure(name: str) -> Optional[str]:
-    """Процедура из имени; None — файл годится любой процедуре."""
+def file_procedures(name: str) -> frozenset:
+    """Процедуры из имени. Пустое множество — файл годится любой процедуре."""
     normalized = normalize_name(name)
-    for procedure, pattern in PROCEDURE_RULES:
-        if pattern.search(normalized):
-            return procedure
-    return None
+    return frozenset(p for p, pattern in PROCEDURE_RULES if pattern.search(normalized))
 
 
 def _same_name(left: str, right: str) -> bool:
@@ -165,9 +193,9 @@ def pick_file(folder: Path, role: str, procedure: Optional[str] = None) -> Resol
         return Resolution(None, folder, "в папке нет акта роли «%s»" % role)
 
     if procedure:
-        exact = [p for p in by_role if file_procedure(p.name) == procedure]
-        # Файл без процедуры в имени годится любой, но точное совпадение важнее.
-        candidates = exact or [p for p in by_role if file_procedure(p.name) is None]
+        exact = [p for p in by_role if procedure in file_procedures(p.name)]
+        # Файл без процедуры в имени годится любой, но названная важнее.
+        candidates = exact or [p for p in by_role if not file_procedures(p.name)]
         if not candidates:
             return Resolution(None, folder, "в папке нет акта роли «%s» для процедуры «%s»"
                               % (role, procedure))

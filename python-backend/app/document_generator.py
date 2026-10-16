@@ -653,12 +653,14 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # Заполняем поля [86] (причина) и [87] (для сторон) для актов "Отложение" и "Возврат"
         reason = (
             cleaned_data.get('intermediate_postponement_reason') or
+            cleaned_data.get('intermediate_postponement_third_party_reason') or
             cleaned_data.get('intermediate_return_reason') or
             cleaned_data.get('acceptance_no_motion_other_reason') or
             ''
         )
         for_parties = (
             cleaned_data.get('intermediate_postponement_forParties') or
+            cleaned_data.get('intermediate_postponement_third_party_forParties') or
             cleaned_data.get('intermediate_return_forParties') or
             cleaned_data.get('acceptance_no_motion_other_forParties') or
             ''
@@ -674,6 +676,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # Заполняем поле [85] (запросы суда) для актов "Отложение", "Определение о принятии", "Принятие после Б/Д"
         court_requests = (
             cleaned_data.get('intermediate_postponement_courtRequests') or
+            cleaned_data.get('intermediate_postponement_third_party_courtRequests') or
             cleaned_data.get('acceptance_definition_courtRequests') or
             cleaned_data.get('acceptance_after_no_motion_courtRequests') or
             ''
@@ -2559,10 +2562,11 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                                                 "intermediate_return_no_duty"):
                                     data["intermediate_return_reason"] = reason
                                     data["intermediate_return_forParties"] = for_parties
-                                elif act_id == "intermediate_postponement":
-                                    data["intermediate_postponement_reason"] = reason
-                                    data["intermediate_postponement_forParties"] = for_parties
-                                    data["intermediate_postponement_courtRequests"] = court_requests
+                                elif act_id in ("intermediate_postponement",
+                                                "intermediate_postponement_third_party"):
+                                    data[f"{act_id}_reason"] = reason
+                                    data[f"{act_id}_forParties"] = for_parties
+                                    data[f"{act_id}_courtRequests"] = court_requests
                                     logger.info(f" Дополнительные поля для {act_id}: reason={reason[:50]}..., forParties={for_parties[:50]}..., courtRequests={court_requests[:50]}...")
                                 elif act_id == "acceptance_definition":
                                     data["acceptance_definition_courtRequests"] = court_requests

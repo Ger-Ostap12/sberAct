@@ -19,7 +19,13 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { EntityType, CollateralOption, ApplicationKind, DebtorStatus, SelectedAct } from '../../../types';
 import { CollateralKinds } from '../lib/collateralSync';
-import { RETURN_NO_DUTY_ID, returnNoDutyAvailable } from '../lib/intermediateActs';
+import {
+  POSTPONEMENT_IDS,
+  RETURN_NO_DUTY_ID,
+  groupState,
+  nextGroupSelection,
+  returnNoDutyAvailable,
+} from '../lib/intermediateActs';
 import {
   IntroducedProcedure,
   RTK_VARIANT_LABEL,
@@ -87,6 +93,9 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
   shortText,
   setShortText,
 }) => {
+  const состояниеОтложений = groupState(
+    selectedActs.filter(act => act.selected).map(act => act.id));
+
   return (
           <Card sx={{ p: 3 }}>
             <Typography variant="h5" gutterBottom sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
@@ -292,8 +301,46 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                   </AccordionSummary>
                   <AccordionDetails>
                     <Box>
+                      {/* Отложение — два акта под общей галкой: она включает и
+                          гасит оба, каждый при этом снимается по отдельности. */}
+                      <Box sx={{ mb: 2 }}>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={состояниеОтложений === 'all'}
+                              indeterminate={состояниеОтложений === 'some'}
+                              onChange={() => {
+                                const включить = nextGroupSelection(состояниеОтложений);
+                                POSTPONEMENT_IDS.forEach(id => {
+                                  const акт = selectedActs.find(a => a.id === id);
+                                  if (акт && акт.selected !== включить) toggleActSelection(id);
+                                });
+                              }}
+                            />
+                          }
+                          label="Отложение"
+                        />
+                        <Box sx={{ pl: 4 }}>
+                          {selectedActs
+                            .filter(act => POSTPONEMENT_IDS.includes(act.id))
+                            .map(act => (
+                              <Box key={act.id}>
+                                <FormControlLabel
+                                  control={
+                                    <Checkbox
+                                      checked={act.selected}
+                                      onChange={() => toggleActSelection(act.id)}
+                                    />
+                                  }
+                                  label={act.name}
+                                />
+                              </Box>
+                            ))}
+                        </Box>
+                      </Box>
                       {selectedActs
-                        .filter(act => act.category === 'intermediate')
+                        .filter(act => act.category === 'intermediate'
+                          && !POSTPONEMENT_IDS.includes(act.id))
                         .map(act => {
                           // У самобанкрота возврата без госпошлины не бывает.
                           const недоступен = act.id === RETURN_NO_DUTY_ID

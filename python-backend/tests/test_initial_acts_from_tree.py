@@ -1,4 +1,4 @@
-"""Первоначальные акты включения в РТК берутся из дерева «Банкротство»."""
+"""Акты включения в РТК берутся из дерева «Банкротство»: первоначальные и промежуточные."""
 
 import json
 import os
@@ -145,6 +145,62 @@ class TestШаблонНеГотов:
         assert результат["success"], результат
         предупреждения = результат.get("warnings") or []
         assert any("шаблон не готов" in w for w in предупреждения), предупреждения
+
+
+ПРОМЕЖУТОЧНЫЕ = list(bankruptcy_tree.INTERMEDIATE_ACT_ROLES)
+
+
+class TestПромежуточные:
+    def _подобрать(self, gen, **поля):
+        data = данные(selectedActsIds=",".join(ПРОМЕЖУТОЧНЫЕ),
+                      selectedActsData=json.dumps(
+                          [{"id": a, "selected": True} for a in ПРОМЕЖУТОЧНЫЕ]),
+                      **поля)
+        шаблоны, нерешённые = подобрать(gen, data)
+        return шаблоны, нерешённые, data
+
+    def test_шесть_актов_из_дерева(self, gen):
+        шаблоны, нерешённые, data = self._подобрать(gen)
+        assert нерешённые == [], (нерешённые, data.get("_unresolvedReasons"))
+        assert len(шаблоны) == len(ПРОМЕЖУТОЧНЫЕ)
+        for сведения in шаблоны.values():
+            assert "Промежуточные" in сведения["path"].parts, сведения["path"]
+            assert сведения["path"].is_file()
+
+    def test_два_отложения_разные_файлы(self, gen):
+        шаблоны, _, _ = self._подобрать(gen)
+        общее = шаблоны["postponement"]["path"].name
+        третье = шаблоны["postponement_third_party"]["path"].name
+        assert общее != третье
+        assert "3 лицо" in третье and "3 лицо" not in общее
+
+    def test_файл_на_две_процедуры_годится_обеим(self, gen):
+        # «Отложение рестр+реал» подходит и реализации, и реструктуризации.
+        реализация, _, _ = self._подобрать(gen)
+        реструктуризация, _, _ = self._подобрать(gen, final_rtk_inclusion_variant="restructuring")
+        assert реализация["postponement"]["path"] == реструктуризация["postponement"]["path"]
+        assert "рестр+реал" in реализация["postponement"]["path"].name
+
+    def test_залог_влияет_на_выбор(self, gen):
+        с_залогом, _, _ = self._подобрать(gen, selectedCollateralOption="collateral")
+        без_залога, _, _ = self._подобрать(gen, selectedCollateralOption="no_collateral")
+        assert "залог" in с_залогом["postponement"]["path"].name.lower()
+        assert с_залогом["postponement"]["path"] != без_залога["postponement"]["path"]
+
+    def test_возврат_без_гп_у_фнс_не_готов(self, gen):
+        _, нерешённые, data = self._подобрать(gen, creditorName="ФНС России",
+                                              selectedCollateralOption="no_collateral")
+        assert нерешённые == ["intermediate_return_no_duty"]
+        assert data["_unresolvedReasons"]["intermediate_return_no_duty"]
+
+    def test_продление_упрощёнки_не_готово_всегда(self, gen):
+        акты = ["intermediate_extend_simplified"]
+        data = данные(selectedActsIds=",".join(акты),
+                      selectedActsData=json.dumps([{"id": a, "selected": True} for a in акты]))
+        шаблоны, нерешённые = подобрать(gen, data)
+        assert шаблоны == {}
+        assert нерешённые == акты
+        assert "в дереве нет" in data["_unresolvedReasons"]["intermediate_extend_simplified"]
 
 
 class TestИнициированиеНеТронуто:

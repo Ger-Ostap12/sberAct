@@ -19,6 +19,8 @@ import { extractCollateralData } from '../../shared/lib/collateral';
 import { isFnsCreditor, FNS_CREDITOR_KEY } from '../../shared/lib/banks';
 import { buildSubmitData } from './lib/buildSubmitData';
 import {
+  POSTPONEMENT_GENERAL_ID,
+  POSTPONEMENT_THIRD_PARTY_ID,
   RETURN_NO_DUTY_ID,
   SIMPLIFIED_ACT_IDS,
   returnNoDutyAvailable,
@@ -284,7 +286,10 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
       { id: 'acceptance_no_motion_other', name: 'Определение Б/Д иное', category: 'acceptance', selected: true, additionalFields: { reason: '', forParties: '' } },
       { id: 'acceptance_after_no_motion', name: 'Принятие после Б/Д', category: 'acceptance', selected: true, additionalFields: { courtRequests: '' } },
       // Промежуточные
-      { id: 'intermediate_postponement', name: 'Отложение', category: 'intermediate', selected: true, additionalFields: { reason: '', forParties: '', courtRequests: '' } },
+      // Отложение — два отдельных акта с собственными полями, в интерфейсе
+      // показаны подсписком под общей галкой «Отложение».
+      { id: POSTPONEMENT_GENERAL_ID, name: 'Общее отложение', category: 'intermediate', selected: true, additionalFields: { reason: '', forParties: '', courtRequests: '' } },
+      { id: POSTPONEMENT_THIRD_PARTY_ID, name: 'Отложение 3 лицо', category: 'intermediate', selected: true, additionalFields: { reason: '', forParties: '', courtRequests: '' } },
       { id: 'intermediate_return_general', name: 'Общий возврат', category: 'intermediate', selected: true, additionalFields: { reason: '', forParties: '' } },
       { id: RETURN_NO_DUTY_ID, name: 'Возврат нет ГП', category: 'intermediate', selected: true, additionalFields: { reason: '', forParties: '' } },
       { id: 'intermediate_extend_no_motion', name: 'Продление Б/Д', category: 'intermediate', selected: true },
