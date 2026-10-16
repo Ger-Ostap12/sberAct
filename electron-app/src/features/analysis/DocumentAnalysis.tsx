@@ -19,11 +19,12 @@ import { extractCollateralData } from '../../shared/lib/collateral';
 import { isFnsCreditor, FNS_CREDITOR_KEY } from '../../shared/lib/banks';
 import { buildSubmitData } from './lib/buildSubmitData';
 import {
+  COLLATERAL_NO_DUTY_ID,
   POSTPONEMENT_GENERAL_ID,
   POSTPONEMENT_THIRD_PARTY_ID,
   RETURN_NO_DUTY_ID,
   SIMPLIFIED_ACT_IDS,
-  returnNoDutyAvailable,
+  collateralNoDutyAvailable,
   simplifiedActsSelected,
 } from './lib/intermediateActs';
 import {
@@ -237,11 +238,12 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   // Залоговый акт принятия идёт за составом залога. Юрист может поставить его
   // руками — эффект перебьёт выбор только при следующей смене залога.
   useEffect(() => {
+    const доступен = collateralNoDutyAvailable(applicationKind);
     setSelectedActs(prev => prev.map(act =>
-      act.id === 'acceptance_no_motion_no_duty_collateral'
-        ? { ...act, selected: anyKind(collateralKinds) }
+      act.id === COLLATERAL_NO_DUTY_ID
+        ? { ...act, selected: доступен && anyKind(collateralKinds) }
         : act));
-  }, [collateralKinds]);
+  }, [collateralKinds, applicationKind]);
 
   // У ФНС госпошлины не бывает — акта «Б/Д нет ГП» для неё нет ни в одном
   // шаблоне, галку гасим (решение юристов).
@@ -260,14 +262,6 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         ? { ...act, selected: simplifiedActsSelected(applicationKind) }
         : act));
   }, [applicationKind, selectedActs.length]);
-
-  // «Возврат нет ГП» самобанкроту не положен — галку снимаем, кнопку гасит секция.
-  useEffect(() => {
-    setSelectedActs(prev => prev.map(act =>
-      act.id === RETURN_NO_DUTY_ID
-        ? { ...act, selected: returnNoDutyAvailable(selfBankruptcy) }
-        : act));
-  }, [selfBankruptcy, selectedActs.length]);
 
   // Инициализация списка актов. Принятие и Промежуточные включены сразу:
   // юрист снимает лишнее сам. Залоговый акт ставит эффект по видам залога.

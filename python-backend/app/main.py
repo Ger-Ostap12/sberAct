@@ -814,7 +814,7 @@ async def download_document(document_id: str):
             raise HTTPException(status_code=404, detail="Документ не найден")
 
         # Имя файла делаем таким же, как в интерфейсе (document_name)
-        doc_info = document_generator.documents.get(document_id, {})
+        doc_info = document_generator.document_meta(document_id)
         doc_name = doc_info.get("document_name", f"Судебный_акт_{document_id}")
         safe_name = str(doc_name).replace("\\", "_").replace("/", "_").replace(":", "_").replace('"', "").strip()
         if not safe_name:
@@ -861,7 +861,7 @@ async def download_zip_get(ids: str = ""):
                     for doc_id in doc_ids:
                         file_path = generated_dir / f"{doc_id}.docx"
                         if file_path.exists():
-                            doc_info = document_generator.documents.get(doc_id, {})
+                            doc_info = document_generator.document_meta(doc_id)
                             doc_name = doc_info.get("document_name", f"document_{doc_id}")
                             zipf.write(file_path, f"{doc_name}.docx")
                 return zip_path.read_bytes()
@@ -878,7 +878,7 @@ async def download_zip_get(ids: str = ""):
 
         # ВАЖНО: Используем правильные заголовки для скачивания файла
         # Content-Disposition с attachment заставляет браузер скачать файл
-        имя = archive_name_for_documents(document_generator.documents, doc_ids)
+        имя = archive_name_for_documents(document_generator.documents_store(doc_ids), doc_ids)
         return Response(
             content=zip_data,
             media_type="application/zip",
@@ -930,7 +930,7 @@ async def download_zip_save(payload: Dict[str, Any]):
             for doc_id in doc_ids:
                 file_path = generated_dir / f"{doc_id}.docx"
                 if file_path.exists():
-                    doc_info = document_generator.documents.get(doc_id, {})
+                    doc_info = document_generator.document_meta(doc_id)
                     doc_name = doc_info.get("document_name", f"document_{doc_id}")
 
                     # Запоминаем имя первого документа для имени ZIP
@@ -947,7 +947,7 @@ async def download_zip_save(payload: Dict[str, Any]):
         if len(doc_ids) == 1 and first_doc_name:
             base_name = str(first_doc_name)
         else:
-            base_name = archive_name_for_documents(document_generator.documents, doc_ids)
+            base_name = archive_name_for_documents(document_generator.documents_store(doc_ids), doc_ids)
 
         zip_safe_name = base_name.replace("\\", "_").replace("/", "_").replace(":", "_").replace('"', "").strip()
         if not zip_safe_name:
@@ -1005,7 +1005,7 @@ async def download_all_documents(request: dict):
                 file_path = generated_dir / f"{doc_id}.docx"
                 if file_path.exists():
                     # Получаем информацию о документе для имени файла
-                    doc_info = document_generator.documents.get(doc_id, {})
+                    doc_info = document_generator.document_meta(doc_id)
                     doc_name = doc_info.get('document_name', f'document_{doc_id}')
 
                     # Добавляем файл в архив
@@ -1015,7 +1015,7 @@ async def download_all_documents(request: dict):
         logger.info(f" API: Возвращаем файл для скачивания: {zip_path}")
         # ВНИМАНИЕ: Этот endpoint используется только как fallback
         # В Electron приложении файл должен сохраняться через диалог, а не напрямую
-        имя = archive_name_for_documents(document_generator.documents, ids) + ".zip"
+        имя = archive_name_for_documents(document_generator.documents_store(ids), ids) + ".zip"
         logger.info(f" Имя архива: {имя}")
         return FileResponse(
             path=str(zip_path),

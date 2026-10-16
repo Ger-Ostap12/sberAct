@@ -59,10 +59,20 @@ class TestРольПоИмени:
         assert file_role("Определение БД нет ГП залог наблюдение.docx") == "no_motion_no_duty_collateral"
         assert file_role("Определение БД нет ГП наблюдение.docx") == "no_motion_no_duty"
 
+    def test_финальные_акты_инициирования(self):
+        assert file_role("Решение реализ заемщик.docx") == "decision_realization"
+        assert file_role("Реализация полный текст самобанкротство.docx") == "decision_realization"
+        assert (file_role("Определение о введении реструктуризации ЗАЕМЩИК.docx")
+                == "introduce_restructuring")
+
+    def test_решение_не_ловится_одним_словом_процедуры(self):
+        # Иначе любой файл со словом «реализация» станет решением о банкротстве.
+        assert file_role("Реализация имущества должника.docx") is None
+        assert file_role("Реструктуризация долгов гражданина.docx") is None
+
     def test_чужое_имя_без_роли(self):
-        # Финальные акты инициирования — другая ветка дерева, ролей у них нет.
-        assert file_role("Решение реализ заемщик.docx") is None
         assert file_role("О введении наблюдения.docx") is None
+        assert file_role("Справка по делу.docx") is None
 
     @pytest.mark.parametrize("имя,роль", [
         ("Отложение рестр+реал.docx", "postponement"),

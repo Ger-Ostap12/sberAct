@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 import time
@@ -2665,6 +2666,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
 
                 file_path = self.generated_dir / f"{document_id}.docx"
                 doc.save(str(file_path))
+                self._save_document_meta(document_id, template_info["name"], doc_type, data)
 
                 self.documents[document_id] = {
                     "template_type": template_type,
@@ -2718,6 +2720,40 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 "error": str(e)
             }
 
+    def _meta_path(self, document_id: str) -> Path:
+        return self.generated_dir / f"{document_id}.json"
+
+    def _save_document_meta(self, document_id: str, name: str, doc_type: str,
+                            data: Dict[str, Any]) -> None:
+        """Подпись акта рядом с файлом: реестр в памяти не переживает перезапуск,
+        и без этого скачанный файл назывался бы «document_<uuid>». Из данных
+        генерации храним только то, из чего строится имя архива."""
+        сведения = {
+            "document_name": name,
+            "document_type": doc_type,
+            "data": {ключ: data.get(ключ) for ключ in ("debtorName", "applicantName")
+                     if data.get(ключ)},
+        }
+        try:
+            with open(self._meta_path(document_id), "w", encoding="utf-8") as f:
+                json.dump(сведения, f, ensure_ascii=False)
+        except OSError as exc:
+            logger.warning(f"Не удалось записать подпись акта {document_id}: {exc}")
+
+    def document_meta(self, document_id: str) -> Dict[str, Any]:
+        """Сведения об акте: из памяти, иначе из файла подписи рядом с документом."""
+        if document_id in self.documents:
+            return self.documents[document_id]
+        try:
+            with open(self._meta_path(document_id), encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, ValueError):
+            return {}
+
+    def documents_store(self, document_ids: List[str]) -> Dict[str, Any]:
+        """Реестр для имени архива: память плюс подписи с диска."""
+        return {doc_id: self.document_meta(doc_id) for doc_id in document_ids or []}
+
     def get_document_path(self, document_id: str) -> Optional[str]:
         """
         Получает путь к сгенерированному документу
@@ -2736,6 +2772,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
 
                 if os.path.exists(file_path):
                     os.remove(file_path)
+                self._meta_path(document_id).unlink(missing_ok=True)
 
                 del self.documents[document_id]
 
@@ -2810,6 +2847,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 if not path.is_file() or path.stat().st_mtime > cutoff:
                     continue
                 path.unlink()
+                if path.suffix == ".docx":
+                    path.with_suffix(".json").unlink(missing_ok=True)
                 removed += 1
             except OSError as exc:
                 logger.debug(f"Не удалось удалить {path}: {exc}")

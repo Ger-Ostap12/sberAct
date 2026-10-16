@@ -295,19 +295,17 @@ class TestФинальныеФНС:
         assert "short_text" not in шаблоны
 
 
-class TestИнициированиеНеТронуто:
-    def test_другой_вид_заявления_идёт_прежним_путём(self, gen):
-        # Инициирование подключаем следующим этапом: оси дерева не считаем.
-        data = данные(selectedApplicationKind="other")
-        оси = gen._bankruptcy_tree_axes(data, "individual", "no_collateral", АКТЫ)
-        assert оси is None
-        шаблоны, _ = подобрать(gen, data)
-        assert шаблоны, "старые ветки маппинга должны отработать как раньше"
-        assert all("Включение в РТК" not in с["path"].parts for с in шаблоны.values())
+class TestИнициированиеНеПопадаетВРТК:
+    """Инициирование ФЛ ходит в свою ветку; подробности — test_initiation_acts_from_tree."""
 
-    def test_самобанкрот_не_идёт_в_дерево(self, gen):
-        data = данные(selectedApplicationKind="self")
-        assert gen._bankruptcy_tree_axes(data, "individual", "no_collateral", АКТЫ) is None
+    @pytest.mark.parametrize("вид", ["other", "self"])
+    def test_ветка_своя(self, gen, вид):
+        data = данные(selectedApplicationKind=вид)
+        оси = gen._bankruptcy_tree_axes(data, "individual", "no_collateral", АКТЫ)
+        assert оси["branch"] == bankruptcy_tree.BRANCH_INITIATION
+        шаблоны, _ = подобрать(gen, data)
+        assert шаблоны
+        assert all("Включение в РТК" not in с["path"].parts for с in шаблоны.values())
 
 
 class TestСквозная:

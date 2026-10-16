@@ -39,6 +39,9 @@ class TemplatesResolverMixin:
         "intermediate_return_no_duty": ("return_no_duty", "Возврат нет ГП"),
         "intermediate_simplified_to_main": (
             "simplified_to_main", "Переход из упрощёнки в основное производство"),
+        "final_realization": ("final_realization", "Решение Реализация"),
+        "final_restructuring": (
+            "final_restructuring", "Определение о введении реструктуризации"),
     }
 
     @staticmethod
@@ -64,13 +67,23 @@ class TemplatesResolverMixin:
         collateral_option: str,
         act_ids: List[str],
     ) -> Optional[Dict[str, Any]]:
-        """Оси дела для дерева «Банкротство». None — вид заявления не включение в РТК."""
+        """Оси дела для дерева «Банкротство». None — ветка ещё не подключена."""
         kind = str(data.get("selectedApplicationKind") or data.get("applicationKind") or "").strip().lower()
-        if kind != "rtk":
-            return None
-
         status = str(data.get("selectedDebtorStatus") or data.get("debtorStatus") or "").strip().lower()
         entity = entity_type if entity_type in ("individual", "ip", "legal", "kfh") else "individual"
+
+        if kind == "rtk":
+            branch, applicant = bankruptcy_tree.BRANCH_RTK, (
+                "fns" if self._is_fns_creditor(data) else "creditors")
+        elif kind in ("other", "self", "self_bankruptcy") and entity == "individual":
+            # Из инициирования подключена только папка ФЛ; у ФНС её там нет.
+            if kind == "other" and self._is_fns_creditor(data):
+                return None
+            branch = bankruptcy_tree.BRANCH_INITIATION
+            applicant = "creditors" if kind == "other" else "self"
+        else:
+            return None
+
         procedure = bankruptcy_tree.procedure_for_case(
             entity,
             status,
@@ -80,10 +93,11 @@ class TemplatesResolverMixin:
         )
         return {
             "entity": entity,
-            "applicant": "fns" if self._is_fns_creditor(data) else "creditors",
+            "applicant": applicant,
             "status": status,
             "collateral": collateral_option in ("collateral", "collateral_auto"),
             "procedure": procedure,
+            "branch": branch,
         }
 
     @staticmethod
@@ -1116,9 +1130,31 @@ class TemplatesResolverMixin:
                     bankruptcy_tree.ACTS_WITHOUT_TEMPLATE[act_id])
                 continue
 
+            # Решение о банкротстве и введение реструктуризации лежат в папке
+            # процедуры. Процедуру задаёт сам акт: юрист может выбрать оба.
+            if (tree_axes is not None
+                    and tree_axes["branch"] == bankruptcy_tree.BRANCH_INITIATION
+                    and act_id in bankruptcy_tree.INITIATION_FINAL_ROLES):
+                resolution = bankruptcy_tree.resolve_final(
+                    self._templates_root(),
+                    role=bankruptcy_tree.INITIATION_FINAL_ROLES[act_id],
+                    **{**tree_axes,
+                       "procedure": bankruptcy_tree.INITIATION_FINAL_PROCEDURES[act_id]},
+                )
+                if resolution.path is None:
+                    unresolved.append(act_id)
+                    data.setdefault("_unresolvedReasons", {})[act_id] = resolution.reason
+                    logger.warning(" Шаблон не готов: %s — %s", act_id, resolution.reason)
+                    continue
+                key, label = self._TREE_ACT_LABELS[act_id]
+                templates[key] = entry(label, resolution.path, order)
+                order += 1
+                continue
+
             # Включение в реестр лежит не в разделе, а в папке процедуры; у ФНС —
             # в корне его папки и выбирается по очереди требований.
-            if tree_axes is not None and act_id == "final_rtk_inclusion":
+            if (tree_axes is not None and act_id == "final_rtk_inclusion"
+                    and tree_axes["branch"] == bankruptcy_tree.BRANCH_RTK):
                 if str(data.get("final_rtk_inclusion_variant") or "").strip().lower() == "registry":
                     unresolved.append(act_id)
                     data.setdefault("_unresolvedReasons", {})[act_id] = (
@@ -1401,7 +1437,9 @@ class TemplatesResolverMixin:
         # отдельный короткий текст не добавляем.
         want_short_text = bool(data.get("selectedShortText") or data.get("shortText"))
         # У ФНС включение само по себе резолютивка, отдельный короткий текст не нужен.
-        if want_short_text and tree_axes is not None and not is_fns:
+        # В инициировании резолютивок нет: короткий текст там идёт по старому пути.
+        if (want_short_text and tree_axes is not None and not is_fns
+                and tree_axes["branch"] == bankruptcy_tree.BRANCH_RTK):
             resolution = bankruptcy_tree.resolve_final(
                 self._templates_root(), role="rtk_short",
                 fns_queue=self._fns_queue(data), **tree_axes)

@@ -78,10 +78,11 @@ class TestВыборШаблона:
 
 
 class TestСамобанкрот:
-    def test_возврат_без_пошлины_не_генерируется(self, gen):
+    def test_возврат_без_пошлины_генерируется(self, gen):
+        """Файл «возврат инициирование ГП» — это и есть возврат без госпошлины."""
         результат = _сгенерировать(gen, ["intermediate_return_no_duty"], "self")
-        # Единственный выбранный акт самобанкроту не положен — документов нет.
-        assert результат.get("count", 0) == 0 or "return_no_duty" not in результат.get("documents", {})
+        assert результат["success"]
+        assert "return_no_duty" in результат["documents"]
 
     def test_общий_возврат_самобанкроту_положен(self, gen):
         результат = _сгенерировать(gen, ["intermediate_return_general"], "self")
@@ -96,8 +97,11 @@ class TestДваАктаВместе:
         assert результат["success"]
         assert set(результат["documents"]) == {"return_general", "return_no_duty"}
 
-    def test_у_самобанкрота_остаётся_только_общий(self, gen):
+    def test_у_самобанкрота_тоже_два(self, gen):
         результат = _сгенерировать(
             gen, ["intermediate_return_general", "intermediate_return_no_duty"], "self")
         assert результат["success"]
-        assert set(результат["documents"]) == {"return_general"}
+        assert set(результат["documents"]) == {"return_general", "return_no_duty"}
+        # Разные файлы, а не один и тот же дважды.
+        пути = {с["file_path"] for с in результат["documents"].values()}
+        assert len(пути) == 2, результат["documents"]

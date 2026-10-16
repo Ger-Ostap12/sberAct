@@ -20,11 +20,11 @@ import { ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { EntityType, CollateralOption, ApplicationKind, DebtorStatus, SelectedAct } from '../../../types';
 import { CollateralKinds } from '../lib/collateralSync';
 import {
+  COLLATERAL_NO_DUTY_ID,
   POSTPONEMENT_IDS,
-  RETURN_NO_DUTY_ID,
+  collateralNoDutyAvailable,
   groupState,
   nextGroupSelection,
-  returnNoDutyAvailable,
 } from '../lib/intermediateActs';
 import {
   IntroducedProcedure,
@@ -273,19 +273,25 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
               <Box>
                       {selectedActs
                         .filter(act => act.category === 'acceptance')
-                        .map(act => (
-                          <Box key={act.id} sx={{ mb: 2 }}>
-                            <FormControlLabel
-                              control={
-                                <Checkbox
-                                  checked={act.selected}
-                                  onChange={() => toggleActSelection(act.id)}
-                                />
-                              }
-                              label={act.name}
-                            />
-                          </Box>
-                        ))}
+                        .map(act => {
+                          // В инициировании залоговость задана папкой — отдельного акта нет.
+                          const недоступен = act.id === COLLATERAL_NO_DUTY_ID
+                            && !collateralNoDutyAvailable(applicationKind);
+                          return (
+                            <Box key={act.id} sx={{ mb: 2 }}>
+                              <FormControlLabel
+                                control={
+                                  <Checkbox
+                                    checked={act.selected}
+                                    disabled={недоступен}
+                                    onChange={() => toggleActSelection(act.id)}
+                                  />
+                                }
+                                label={act.name}
+                              />
+                            </Box>
+                          );
+                        })}
                     </Box>
                   </AccordionDetails>
                 </Accordion>
@@ -341,25 +347,19 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                       {selectedActs
                         .filter(act => act.category === 'intermediate'
                           && !POSTPONEMENT_IDS.includes(act.id))
-                        .map(act => {
-                          // У самобанкрота возврата без госпошлины не бывает.
-                          const недоступен = act.id === RETURN_NO_DUTY_ID
-                            && !returnNoDutyAvailable(selfBankruptcy);
-                          return (
-                            <Box key={act.id} sx={{ mb: 2 }}>
-                              <FormControlLabel
-                                control={
-                                  <Checkbox
-                                    checked={act.selected}
-                                    disabled={недоступен}
-                                    onChange={() => toggleActSelection(act.id)}
-                                  />
-                                }
-                                label={act.name}
-                              />
-                            </Box>
-                          );
-                        })}
+                        .map(act => (
+                          <Box key={act.id} sx={{ mb: 2 }}>
+                            <FormControlLabel
+                              control={
+                                <Checkbox
+                                  checked={act.selected}
+                                  onChange={() => toggleActSelection(act.id)}
+                                />
+                              }
+                              label={act.name}
+                            />
+                          </Box>
+                        ))}
                     </Box>
                   </AccordionDetails>
                 </Accordion>

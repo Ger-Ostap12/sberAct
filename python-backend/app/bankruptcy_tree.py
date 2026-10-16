@@ -1,6 +1,6 @@
 """Выбор файла шаблона в дереве «Банкротство»: папка по осям дела, роль по имени файла.
 
-Пока покрыт только вид «Включение в РТК», раздел «Первоначальные».
+Покрыты «Включение в РТК» целиком и «Инициирование» для ФЛ.
 """
 
 import re
@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import List, NamedTuple, Optional
 
 BRANCH_RTK = "Включение в РТК"
+BRANCH_INITIATION = "Инициирование"
 SECTION_INITIAL = "Первоначальные"
 SECTION_INTERMEDIATE = "Промежуточные"
 
@@ -26,9 +27,18 @@ ROLE_RULES = (
     ("return_no_duty", re.compile(r"возврат не?т? гп")),
     ("return_general", re.compile(r"общий возврат")),
     ("simplified_to_main", re.compile(r"переход из упрощенки")),
-    # Финальные. «Резолютивка», «резолютивная часть» и «(Резолютивка)» — одно и то же.
+    # Возвраты самобанкрота названы иначе: «с ГП» — это возврат без госпошлины.
+    ("return_no_duty", re.compile(r"возврат инициирование гп")),
+    ("return_general", re.compile(r"возврат инициирование")),
+    # Финальные РТК. «Резолютивка», «резолютивная часть» и «(Резолютивка)» — одно и то же.
+    # Идут раньше финальных инициирования: «Вкл в РТК реализация полный текст»
+    # иначе попал бы в решение о банкротстве.
     ("rtk_short", re.compile(r"резолютив")),
     ("rtk_full", re.compile(r"вкл в ртк")),
+    # Финальные акты инициирования: решение о банкротстве и введение реструктуризации.
+    ("decision_realization", re.compile(r"решение реализ|реализация полный текст|решение умерший")),
+    ("introduce_restructuring",
+     re.compile(r"о введении реструктуризации|реструктуризация полный текст")),
 )
 
 # Имена не унифицированы: «реализация» и «реал», «конкурсное» и «конкурс», плюс
@@ -57,6 +67,18 @@ INTERMEDIATE_ACT_ROLES = {
     "intermediate_return_general": "return_general",
     "intermediate_return_no_duty": "return_no_duty",
     "intermediate_simplified_to_main": "simplified_to_main",
+}
+
+# Финальные акты инициирования. Лежат в папке процедуры, как и включение в РТК.
+# Процедуру задаёт сам акт, а не дело: юрист может выбрать оба.
+INITIATION_FINAL_ROLES = {
+    "final_realization": "decision_realization",
+    "final_restructuring": "introduce_restructuring",
+}
+
+INITIATION_FINAL_PROCEDURES = {
+    "final_realization": "realization",
+    "final_restructuring": "restructuring",
 }
 
 # Галка на форме есть, файла в дереве нет ни у одной оси — «шаблон не готов».
@@ -141,6 +163,7 @@ def section_folder(
     status: str = "",
     collateral: bool = False,
     section: str = SECTION_INITIAL,
+    branch: str = BRANCH_RTK,
 ) -> Resolution:
     """Папка раздела по осям дела. Возвращает Resolution с folder либо причиной."""
     entity_dir = _ENTITY_DIRS.get(entity)
@@ -148,12 +171,21 @@ def section_folder(
         return Resolution(None, None, "неизвестный тип лица: %s" % entity)
 
     current = child_dir(root, "Банкротство")
-    for step in (BRANCH_RTK, entity_dir):
+    for step in (branch, entity_dir):
         if current is None:
             break
         current = child_dir(current, step)
     if current is None:
         return Resolution(None, None, "нет папки лица %s в дереве" % entity_dir)
+
+    if applicant == "self":
+        # Самобанкротство: ни статуса, ни залога — заявление подаёт сам должник.
+        current = child_dir(current, "Самобанкрот")
+        current = child_dir(current, "Незалог") if current else None
+        if section and current is not None:
+            current = child_dir(current, section)
+        return _folder_result(current, "Самобанкрот/Незалог/%s" % section if section
+                              else "Самобанкрот/Незалог")
 
     if applicant == "fns":
         # У ФНС нет ни статуса, ни залога: всегда ФНС\Незалог. Резолютивки ВКЛ
@@ -173,7 +205,8 @@ def section_folder(
         # подпапок залога нет вовсе — там акты различаются именем файла.
         current = child_dir(current, "Умерший")
         current = child_dir(current, section) if current else None
-        if section not in (SECTION_INITIAL, SECTION_INTERMEDIATE):
+        # У инициирования подпапок залога нет ни в одном разделе умершего.
+        if branch != BRANCH_RTK or section not in (SECTION_INITIAL, SECTION_INTERMEDIATE):
             return _folder_result(current, "Умерший/%s" % section)
         current = child_dir(current, "залог" if collateral else "незалог") if current else None
         return _folder_result(current, "Умерший/%s/%s" % (section, "залог" if collateral else "незалог"))
@@ -326,10 +359,11 @@ def resolve(
     collateral: bool = False,
     procedure: Optional[str] = None,
     section: str = SECTION_INITIAL,
+    branch: str = BRANCH_RTK,
 ) -> Resolution:
     """Полный путь: оси дела плюс роль и процедура акта."""
     folder = section_folder(root, entity=entity, applicant=applicant, status=status,
-                            collateral=collateral, section=section)
+                            collateral=collateral, section=section, branch=branch)
     if folder.folder is None:
         return folder
     return pick_file(folder.folder, role, procedure, collateral=collateral)
@@ -345,12 +379,14 @@ def resolve_final(
     status: str = "",
     collateral: bool = False,
     fns_queue: str = "3",
+    branch: str = BRANCH_RTK,
 ) -> Resolution:
-    """Финальный акт: он лежит в папке процедуры, а у ФНС — в корне и по очереди."""
-    if applicant == "fns":
+    """Финальный акт: он лежит в папке процедуры, а у ФНС включения — в корне и по очереди."""
+    if applicant == "fns" and branch == BRANCH_RTK:
         # У ФНС один финальный акт на оба вида: включение и есть резолютивка,
         # выбирается по очереди требований.
-        folder = section_folder(root, entity=entity, applicant=applicant, section="")
+        folder = section_folder(root, entity=entity, applicant=applicant, section="",
+                                branch=branch)
         if folder.folder is None:
             return folder
         return pick_fns_inclusion(folder.folder, fns_queue)
@@ -359,4 +395,5 @@ def resolve_final(
     if procedure_dir is None:
         return Resolution(None, None, "неизвестная процедура: %s" % procedure)
     return resolve(root, entity=entity, role=role, applicant=applicant, status=status,
-                   collateral=collateral, procedure=procedure, section=procedure_dir)
+                   collateral=collateral, procedure=procedure, section=procedure_dir,
+                   branch=branch)

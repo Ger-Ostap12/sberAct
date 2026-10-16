@@ -10,10 +10,15 @@ export const SIMPLIFIED_ACT_IDS = [
 export const simplifiedActsSelected = (applicationKind: ApplicationKind): boolean =>
   applicationKind === 'rtk';
 
-/** Возврат без госпошлины. У самобанкрота такого акта нет: пошлину платит сам должник. */
+/** Возврат без госпошлины. Есть у всех, включая самобанкрота. */
 export const RETURN_NO_DUTY_ID = 'intermediate_return_no_duty';
 
-export const returnNoDutyAvailable = (selfBankruptcy: boolean): boolean => !selfBankruptcy;
+/** Залоговый акт «Б/Д нет ГП» есть только у включения в РТК: в инициировании
+ *  залоговость задана папкой, отдельного акта нет. */
+export const COLLATERAL_NO_DUTY_ID = 'acceptance_no_motion_no_duty_collateral';
+
+export const collateralNoDutyAvailable = (applicationKind: ApplicationKind): boolean =>
+  applicationKind === 'rtk';
 
 /** Отложение — два разных акта: обычное и с привлечением третьего лица. */
 export const POSTPONEMENT_GENERAL_ID = 'intermediate_postponement';
