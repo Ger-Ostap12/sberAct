@@ -203,6 +203,98 @@ class TestПромежуточные:
         assert "в дереве нет" in data["_unresolvedReasons"]["intermediate_extend_simplified"]
 
 
+class TestФинальныеАкты:
+    def _подобрать(self, gen, акты=("final_rtk_inclusion",), **поля):
+        data = данные(selectedActsIds=",".join(акты),
+                      selectedActsData=json.dumps(
+                          [{"id": a, "selected": True} for a in акты]),
+                      **поля)
+        шаблоны, нерешённые = подобрать(gen, data)
+        return шаблоны, нерешённые, data
+
+    def test_включение_из_папки_процедуры(self, gen):
+        шаблоны, нерешённые, _ = self._подобрать(gen)
+        assert нерешённые == []
+        путь = шаблоны["rtk_inclusion"]["path"]
+        assert "Реализация" in путь.parts, путь
+        assert "полный текст" in путь.name.lower()
+
+    def test_вариант_меняет_папку(self, gen):
+        шаблоны, _, _ = self._подобрать(gen, final_rtk_inclusion_variant="restructuring")
+        assert "Реструктуризация" in шаблоны["rtk_inclusion"]["path"].parts
+
+    def test_юрлицу_наблюдение_и_конкурсное(self, gen):
+        наблюдение, _, _ = self._подобрать(gen, selectedEntityType="legal")
+        конкурс, _, _ = self._подобрать(gen, selectedEntityType="legal",
+                                        selectedDebtorStatus="liquidation")
+        assert "Наблюдение" in наблюдение["rtk_inclusion"]["path"].parts
+        assert "Конкурсное" in конкурс["rtk_inclusion"]["path"].parts
+
+    def test_короткий_текст_резолютивка(self, gen):
+        шаблоны, нерешённые, _ = self._подобрать(gen, selectedShortText="true")
+        assert нерешённые == []
+        путь = шаблоны["short_text"]["path"]
+        assert "Банкротство" in путь.parts, путь
+        assert путь.is_file(), путь
+        assert "резолютив" in путь.name.lower()
+
+    def test_у_умершего_залог_различается_именем(self, gen):
+        # В папке «Умерший\Реализация» лежат оба вида актов сразу.
+        с_залогом, _, _ = self._подобрать(gen, selectedDebtorStatus="deceased",
+                                          selectedCollateralOption="collateral")
+        без_залога, _, _ = self._подобрать(gen, selectedDebtorStatus="deceased",
+                                           selectedCollateralOption="no_collateral")
+        путь_с = с_залогом["rtk_inclusion"]["path"]
+        путь_без = без_залога["rtk_inclusion"]["path"]
+        assert путь_с.parent == путь_без.parent, "оба лежат в одной папке"
+        assert "залог" in путь_с.name.lower()
+        assert "залог" not in путь_без.name.lower()
+
+    def test_без_залога_не_берётся_залоговый(self, gen):
+        шаблоны, _, _ = self._подобрать(gen, selectedCollateralOption="no_collateral")
+        assert "залог" not in шаблоны["rtk_inclusion"]["path"].name.lower()
+
+    def test_за_реестр_не_готов(self, gen):
+        _, нерешённые, data = self._подобрать(gen, final_rtk_inclusion_variant="registry")
+        assert нерешённые == ["final_rtk_inclusion"]
+        assert "За реестр" in data["_unresolvedReasons"]["final_rtk_inclusion"]
+
+
+class TestФинальныеФНС:
+    def _подобрать(self, gen, **поля):
+        акты = ["final_rtk_inclusion"]
+        data = данные(selectedActsIds=",".join(акты),
+                      selectedActsData=json.dumps([{"id": a, "selected": True} for a in акты]),
+                      creditorName="ФНС России",
+                      selectedCollateralOption="no_collateral",
+                      **поля)
+        шаблоны, нерешённые = подобрать(gen, data)
+        return шаблоны, нерешённые, data
+
+    def test_включение_это_резолютивка_по_очереди(self, gen):
+        шаблоны, нерешённые, _ = self._подобрать(gen)
+        assert нерешённые == []
+        путь = шаблоны["rtk_inclusion"]["path"]
+        assert "ФНС" in путь.parts
+        assert "резолютивка" in путь.name.lower()
+
+    @pytest.mark.parametrize("поля,начало", [
+        ({}, "3-я"),
+        ({"fnsQ2Total": "1000"}, "2-я_"),
+        ({"fnsQ2Total": "1000", "fnsQ3Total": "500"}, "2-я_3-я"),
+        ({"fnsQ3Arrears": "700"}, "3-я"),
+    ])
+    def test_очередь_по_суммам(self, gen, поля, начало):
+        шаблоны, _, _ = self._подобрать(gen, **поля)
+        assert шаблоны["rtk_inclusion"]["path"].name.startswith(начало), (
+            шаблоны["rtk_inclusion"]["path"].name)
+
+    def test_короткий_текст_не_добавляется(self, gen):
+        # Включение у ФНС само резолютивка — второй такой же акт не нужен.
+        шаблоны, _, _ = self._подобрать(gen, selectedShortText="true")
+        assert "short_text" not in шаблоны
+
+
 class TestИнициированиеНеТронуто:
     def test_другой_вид_заявления_идёт_прежним_путём(self, gen):
         # Инициирование подключаем следующим этапом: оси дерева не считаем.

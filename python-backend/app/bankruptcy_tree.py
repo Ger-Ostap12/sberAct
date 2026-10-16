@@ -26,6 +26,9 @@ ROLE_RULES = (
     ("return_no_duty", re.compile(r"возврат не?т? гп")),
     ("return_general", re.compile(r"общий возврат")),
     ("simplified_to_main", re.compile(r"переход из упрощенки")),
+    # Финальные. «Резолютивка», «резолютивная часть» и «(Резолютивка)» — одно и то же.
+    ("rtk_short", re.compile(r"резолютив")),
+    ("rtk_full", re.compile(r"вкл в ртк")),
 )
 
 # Имена не унифицированы: «реализация» и «реал», «конкурсное» и «конкурс», плюс
@@ -98,6 +101,14 @@ def file_role(name: str) -> Optional[str]:
     return None
 
 
+def file_is_collateral(name: str) -> bool:
+    """Залоговый ли акт по имени. «(без залога)» — беззалоговый, несмотря на слово."""
+    normalized = normalize_name(name)
+    if re.search(r"без\s+залог", normalized):
+        return False
+    return "залог" in normalized
+
+
 def file_procedures(name: str) -> frozenset:
     """Процедуры из имени. Пустое множество — файл годится любой процедуре."""
     normalized = normalize_name(name)
@@ -145,20 +156,25 @@ def section_folder(
         return Resolution(None, None, "нет папки лица %s в дереве" % entity_dir)
 
     if applicant == "fns":
-        # У ФНС нет ни статуса, ни залога: всегда ФНС\Незалог.
+        # У ФНС нет ни статуса, ни залога: всегда ФНС\Незалог. Резолютивки ВКЛ
+        # лежат прямо в ней, поэтому раздел бывает пустым.
         current = child_dir(current, "ФНС")
         current = child_dir(current, "Незалог") if current else None
-        current = child_dir(current, section) if current else None
-        return _folder_result(current, "ФНС/Незалог/%s" % section)
+        if section and current is not None:
+            current = child_dir(current, section)
+        return _folder_result(current, "ФНС/Незалог/%s" % section if section else "ФНС/Незалог")
 
     current = child_dir(current, "Кредиторы")
     if current is None:
         return Resolution(None, None, "нет папки Кредиторы у %s" % entity_dir)
 
     if status == "deceased":
-        # У умершего залог лежит ВНУТРИ раздела, а не перед ним.
+        # У умершего залог лежит ВНУТРИ раздела, а не перед ним. В папке процедуры
+        # подпапок залога нет вовсе — там акты различаются именем файла.
         current = child_dir(current, "Умерший")
         current = child_dir(current, section) if current else None
+        if section not in (SECTION_INITIAL, SECTION_INTERMEDIATE):
+            return _folder_result(current, "Умерший/%s" % section)
         current = child_dir(current, "залог" if collateral else "незалог") if current else None
         return _folder_result(current, "Умерший/%s/%s" % (section, "залог" if collateral else "незалог"))
 
@@ -186,7 +202,12 @@ def act_files(folder: Path) -> List[Path]:
     return sorted(p for p in folder.glob("*.docx") if not p.name.startswith("~$"))
 
 
-def pick_file(folder: Path, role: str, procedure: Optional[str] = None) -> Resolution:
+def pick_file(
+    folder: Path,
+    role: str,
+    procedure: Optional[str] = None,
+    collateral: Optional[bool] = None,
+) -> Resolution:
     """Файл нужной роли и процедуры. Несколько кандидатов — отказ, а не первый попавшийся."""
     by_role = [p for p in act_files(folder) if file_role(p.name) == role]
     if not by_role:
@@ -202,6 +223,58 @@ def pick_file(folder: Path, role: str, procedure: Optional[str] = None) -> Resol
     else:
         candidates = by_role
 
+    # У умершего залоговые и беззалоговые акты лежат в одной папке процедуры —
+    # различаем по имени. Там, где папка уже разделена, отбор ничего не меняет.
+    if collateral is not None and len(candidates) > 1:
+        по_залогу = [p for p in candidates if file_is_collateral(p.name) == collateral]
+        if по_залогу:
+            candidates = по_залогу
+
+    if len(candidates) > 1:
+        return Resolution(None, folder, "неоднозначно, подходят: %s"
+                          % ", ".join(p.name for p in candidates))
+    return Resolution(candidates[0], folder)
+
+
+# Имя папки процедуры в дереве.
+PROCEDURE_DIRS = {
+    "realization": "Реализация",
+    "restructuring": "Реструктуризация",
+    "observation": "Наблюдение",
+    "competition": "Конкурсное",
+}
+
+# Очередь требований ФНС по началу имени файла резолютивки.
+_FNS_QUEUE_RULES = (
+    ("2-3", re.compile(r"^2 я 3 я\b")),
+    ("2", re.compile(r"^2 я\b")),
+    ("3", re.compile(r"^3 я\b")),
+)
+
+
+def fns_queue_from_name(name: str) -> Optional[str]:
+    normalized = normalize_name(name).replace("-", " ")
+    normalized = re.sub(r"\s+", " ", normalized)
+    for queue, pattern in _FNS_QUEUE_RULES:
+        if pattern.search(normalized):
+            return queue
+    return None
+
+
+def fns_queue_for_case(has_second: bool, has_third: bool) -> str:
+    """Какой шаблон ФНС нужен: обе очереди, только вторая или только третья."""
+    if has_second and has_third:
+        return "2-3"
+    if has_second:
+        return "2"
+    return "3"
+
+
+def pick_fns_inclusion(folder: Path, queue: str) -> Resolution:
+    """Резолютивка ВКЛ у ФНС: полного текста нет, выбор идёт по очереди требований."""
+    candidates = [p for p in act_files(folder) if fns_queue_from_name(p.name) == queue]
+    if not candidates:
+        return Resolution(None, folder, "нет резолютивки ВКЛ для очереди «%s»" % queue)
     if len(candidates) > 1:
         return Resolution(None, folder, "неоднозначно, подходят: %s"
                           % ", ".join(p.name for p in candidates))
@@ -259,4 +332,31 @@ def resolve(
                             collateral=collateral, section=section)
     if folder.folder is None:
         return folder
-    return pick_file(folder.folder, role, procedure)
+    return pick_file(folder.folder, role, procedure, collateral=collateral)
+
+
+def resolve_final(
+    root: Path,
+    *,
+    entity: str,
+    role: str,
+    procedure: str,
+    applicant: str = "creditors",
+    status: str = "",
+    collateral: bool = False,
+    fns_queue: str = "3",
+) -> Resolution:
+    """Финальный акт: он лежит в папке процедуры, а у ФНС — в корне и по очереди."""
+    if applicant == "fns":
+        # У ФНС один финальный акт на оба вида: включение и есть резолютивка,
+        # выбирается по очереди требований.
+        folder = section_folder(root, entity=entity, applicant=applicant, section="")
+        if folder.folder is None:
+            return folder
+        return pick_fns_inclusion(folder.folder, fns_queue)
+
+    procedure_dir = PROCEDURE_DIRS.get(procedure)
+    if procedure_dir is None:
+        return Resolution(None, None, "неизвестная процедура: %s" % procedure)
+    return resolve(root, entity=entity, role=role, applicant=applicant, status=status,
+                   collateral=collateral, procedure=procedure, section=procedure_dir)

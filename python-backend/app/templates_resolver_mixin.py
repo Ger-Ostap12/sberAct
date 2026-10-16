@@ -41,6 +41,22 @@ class TemplatesResolverMixin:
             "simplified_to_main", "Переход из упрощёнки в основное производство"),
     }
 
+    @staticmethod
+    def _fns_sum_present(data: Dict[str, Any], queue: str) -> bool:
+        """Есть ли у ФНС ненулевые суммы названной очереди."""
+        def _num(v) -> float:
+            try:
+                return float(str(v).replace("\xa0", "").replace(" ", "").replace(",", ".") or 0)
+            except (TypeError, ValueError):
+                return 0.0
+        suffixes = ("Total", "Arrears", "Penalties", "Forfeit", "Ndfl",
+                    "Insurance", "LoanDebt", "LoanDuty", "Commission")
+        return any(_num(data.get(f"fnsQ{queue}{s}")) != 0 for s in suffixes)
+
+    def _fns_queue(self, data: Dict[str, Any]) -> str:
+        return bankruptcy_tree.fns_queue_for_case(
+            self._fns_sum_present(data, "2"), self._fns_sum_present(data, "3"))
+
     def _bankruptcy_tree_axes(
         self,
         data: Dict[str, Any],
@@ -1100,6 +1116,29 @@ class TemplatesResolverMixin:
                     bankruptcy_tree.ACTS_WITHOUT_TEMPLATE[act_id])
                 continue
 
+            # Включение в реестр лежит не в разделе, а в папке процедуры; у ФНС —
+            # в корне его папки и выбирается по очереди требований.
+            if tree_axes is not None and act_id == "final_rtk_inclusion":
+                if str(data.get("final_rtk_inclusion_variant") or "").strip().lower() == "registry":
+                    unresolved.append(act_id)
+                    data.setdefault("_unresolvedReasons", {})[act_id] = (
+                        "«За реестр»: такого акта в дереве нет")
+                    continue
+                resolution = bankruptcy_tree.resolve_final(
+                    self._templates_root(),
+                    role="rtk_full",
+                    fns_queue=self._fns_queue(data),
+                    **tree_axes,
+                )
+                if resolution.path is None:
+                    unresolved.append(act_id)
+                    data.setdefault("_unresolvedReasons", {})[act_id] = resolution.reason
+                    logger.warning(" Шаблон не готов: %s — %s", act_id, resolution.reason)
+                    continue
+                templates["rtk_inclusion"] = entry("Определение ВКЛ в РТК", resolution.path, order)
+                order += 1
+                continue
+
             if tree_axes is not None and act_id in bankruptcy_tree.ACT_ROLES:
                 resolution = bankruptcy_tree.resolve(
                     self._templates_root(),
@@ -1361,7 +1400,19 @@ class TemplatesResolverMixin:
         # включенка сама по себе является резолютивкой (генерится как final_rtk_inclusion) —
         # отдельный короткий текст не добавляем.
         want_short_text = bool(data.get("selectedShortText") or data.get("shortText"))
-        if want_short_text and not is_fns:
+        # У ФНС включение само по себе резолютивка, отдельный короткий текст не нужен.
+        if want_short_text and tree_axes is not None and not is_fns:
+            resolution = bankruptcy_tree.resolve_final(
+                self._templates_root(), role="rtk_short",
+                fns_queue=self._fns_queue(data), **tree_axes)
+            if resolution.path is None:
+                unresolved.append("short_text")
+                data.setdefault("_unresolvedReasons", {})["short_text"] = resolution.reason
+                logger.warning(" Шаблон не готов: короткий текст — %s", resolution.reason)
+            else:
+                templates["short_text"] = entry("Резолютивная часть", resolution.path, order)
+                order += 1
+        elif want_short_text and not is_fns:
             variant = data.get("final_rtk_inclusion_variant")
             if variant in ('realization', 'restructuring', 'competition', 'observation'):
                 procedure = variant

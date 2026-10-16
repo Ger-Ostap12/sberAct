@@ -16,6 +16,7 @@ from bankruptcy_tree import (  # noqa: E402
     SECTION_INTERMEDIATE,
     act_files,
     child_dir,
+    file_is_collateral,
     file_procedures,
     file_role,
     normalize_name,
@@ -59,9 +60,9 @@ class TestРольПоИмени:
         assert file_role("Определение БД нет ГП наблюдение.docx") == "no_motion_no_duty"
 
     def test_чужое_имя_без_роли(self):
-        # Акты включения в РТК — другой раздел, ролей у них пока нет.
-        assert file_role("Вкл в РТК реализация залог полный текст.docx") is None
-        assert file_role("Резолютивка ВКЛ реализация Залог.docx") is None
+        # Финальные акты инициирования — другая ветка дерева, ролей у них нет.
+        assert file_role("Решение реализ заемщик.docx") is None
+        assert file_role("О введении наблюдения.docx") is None
 
     @pytest.mark.parametrize("имя,роль", [
         ("Отложение рестр+реал.docx", "postponement"),
@@ -106,6 +107,20 @@ class TestПроцедураПоИмени:
     def test_файл_на_две_процедуры(self, имя, процедуры):
         # Сокращённые формы: «рестр», «реал», «наблюд», «конкурс».
         assert file_procedures(имя) == процедуры
+
+
+class TestЗалогПоИмени:
+    @pytest.mark.parametrize("имя,залоговый", [
+        ("Вкл в РТК реализация залог полный текст.docx", True),
+        ("Конкурсное ВКЛ в РТК Залог.docx", True),
+        ("Наблюдение ВКЛ в РТК  Залог.docx", True),
+        ("Вкл в РТК реализация полный текст.docx", False),
+        ("Наблюдение ВКЛ в РТК.docx", False),
+        # Слово «залог» есть, но акт беззалоговый.
+        ("Конкурсное_ВКЛ_в_РТК (без залога).docx", False),
+    ])
+    def test_опознаётся(self, имя, залоговый):
+        assert file_is_collateral(имя) is залоговый
 
 
 class TestНормализация:
