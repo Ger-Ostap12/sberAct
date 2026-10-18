@@ -470,7 +470,9 @@ def _default_converter_dir() -> Path:
 CONVERTER_DIR = Path(os.environ.get("CONVERTER_DIR", str(_default_converter_dir())))
 CONVERTER_PORT = os.environ.get("CONVERTER_PORT", "8008")
 CONVERTER_START_TIMEOUT_S = 180  # холодный старт с LLM — десятки секунд, с запасом
-CONVERTER_IDLE_TIMEOUT_S = int(os.environ.get("CONVERTER_IDLE_TIMEOUT_S", "300"))
+# 30 минут: подъём конвертера стоит ~15 с, и прежние 5 минут означали, что
+# юрист, отвлёкшийся на звонок, платил их заново.
+CONVERTER_IDLE_TIMEOUT_S = int(os.environ.get("CONVERTER_IDLE_TIMEOUT_S", "1800"))
 CONVERTER_IDLE_CHECK_S = 30  # как часто сторож смотрит на простой
 
 _converter_process: Optional["subprocess.Popen[bytes]"] = None

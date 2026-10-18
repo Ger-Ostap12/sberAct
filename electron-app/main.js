@@ -12,6 +12,7 @@ app.commandLine.appendSwitch('no-sandbox');
 const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
+const os = require('os');
 const isDev = require('electron-is-dev');
 const { initUpdater, shutdownUpdater } = require('./updater');
 
@@ -437,9 +438,36 @@ function createWindow() {
   console.log('[main] DevTools: F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+D, меню «Вид»');
 }
 
+// Конвертер весит ~3.5 ГБ, поэтому заранее греем его только там, где память
+// не в обрез. На 8 ГБ он поднимется по входу в раздел конвертации, как раньше.
+const WARM_CONVERTER_MIN_RAM_GB = 12;
+
+async function warmConverterIfRoomy() {
+  const ramGb = os.totalmem() / 1024 ** 3;
+  if (ramGb < WARM_CONVERTER_MIN_RAM_GB) {
+    console.log(`Конвертер не греем заранее: ОЗУ ${ramGb.toFixed(1)} ГБ`);
+    return;
+  }
+  // Ждём сам backend: он поднимается секунды, а на слабой машине и дольше.
+  for (let attempt = 0; attempt < 60; attempt++) {
+    try {
+      const res = await fetch('http://127.0.0.1:8000/health');
+      if (res.ok) break;
+    } catch (_) { /* ещё не поднялся */ }
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+  try {
+    await fetch('http://127.0.0.1:8000/converter/start', { method: 'POST' });
+    console.log('Конвертер прогрет заранее');
+  } catch (e) {
+    console.log('Прогрев конвертера не удался, поднимется по требованию:', e.message);
+  }
+}
+
 app.whenReady().then(() => {
   startPythonBackend();
   createWindow();
+  warmConverterIfRoomy();
 
   // Офлайн-обновление с флешки: конвертер лежит рядом с backend'ом в resources.
   initUpdater({
