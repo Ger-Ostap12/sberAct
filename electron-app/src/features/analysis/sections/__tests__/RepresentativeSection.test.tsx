@@ -21,7 +21,9 @@ describe('RepresentativeSection (истца)', () => {
         onFieldChange={onFieldChange}
       />,
     );
-    fireEvent.change(screen.getByDisplayValue('Иванов И.И.'), { target: { value: 'Петров П.П.' } });
+    const поле1 = screen.getByDisplayValue('Иванов И.И.');
+    fireEvent.change(поле1, { target: { value: 'Петров П.П.' } });
+    fireEvent.blur(поле1);
     expect(onFieldChange).toHaveBeenCalledWith('representativeName', 'Петров П.П.');
   });
 });
@@ -38,7 +40,9 @@ describe('RespondentRepresentativeSection (ответчика)', () => {
     const onFieldChange = jest.fn();
     render(<RespondentRepresentativeSection editedFields={{}} onFieldChange={onFieldChange} />);
     const input = screen.getByRole('textbox');
-    fireEvent.change(input, { target: { value: 'Сидоров С.С.' } });
+    const поле2 = input;
+    fireEvent.change(поле2, { target: { value: 'Сидоров С.С.' } });
+    fireEvent.blur(поле2);
     expect(onFieldChange).toHaveBeenCalledWith('respondentRepresentativeName', 'Сидоров С.С.');
   });
 });

@@ -45,6 +45,7 @@ describe('CreditorSection — почтовый адрес', () => {
     );
     const поле = screen.getByPlaceholderText('109052, г. Москва, ул. Смирновская, д. 10, стр. 22');
     fireEvent.change(поле, { target: { value: '344002, г. Ростов-на-Дону' } });
+    fireEvent.blur(поле);
     expect(изменения).toEqual([['creditorPostalAddress', '344002, г. Ростов-на-Дону']]);
   });
 

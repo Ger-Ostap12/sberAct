@@ -1,3 +1,4 @@
+import { FieldInput } from '../components/FieldInput';
 import React from 'react';
 import { Box, Typography, Grid, TextField } from '@mui/material';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';
@@ -33,10 +34,10 @@ const AbsentDebtorSection: React.FC<AbsentDebtorSectionProps> = ({ editedFields,
           <Grid item xs={12} key={key}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{label}</Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 value={value}
-                onChange={(e) => onFieldChange(key, maskDate(e.target.value))}
+                onChange={(значение) => onFieldChange(key, maskDate(значение))}
                 size="small"
                 margin="dense"
                 placeholder="дд.мм.гггг"

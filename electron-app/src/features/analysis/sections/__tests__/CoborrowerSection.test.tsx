@@ -54,9 +54,9 @@ describe('CoborrowerSection', () => {
         onRemove={() => {}}
       />,
     );
-    fireEvent.change(screen.getByDisplayValue('Иванов Иван Иванович'), {
-      target: { value: 'Петров Пётр' },
-    });
+    const поле = screen.getByDisplayValue('Иванов Иван Иванович');
+    fireEvent.change(поле, { target: { value: 'Петров Пётр' } });
+    fireEvent.blur(поле);
     expect(onUpdate).toHaveBeenCalledWith(0, 'name', 'Петров Пётр');
   });
 });

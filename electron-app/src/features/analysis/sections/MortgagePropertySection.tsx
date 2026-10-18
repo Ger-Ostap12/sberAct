@@ -1,5 +1,6 @@
 // Секция «Предмет ипотеки» (режим «Ипотека»): реквизиты заложенной недвижимости.
 // Объектов может быть несколько — карточки с добавлением/удалением (как «Третьи лица»).
+import { FieldInput } from '../components/FieldInput';
 import React from 'react';
 import { Box, Typography, Card, IconButton, Grid, TextField, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -57,11 +58,11 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Описание объекта:<LlmHintPending field={`mortgageProperties[${index}].description`} block="properties" /></Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 multiline
                 value={property.description || ''}
-                onChange={(e) => onUpdate(index, 'description', e.target.value)}
+                onChange={(значение) => onUpdate(index, 'description', значение)}
                 size="small"
                 margin="dense"
               />
@@ -72,10 +73,10 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Кадастровый номер:<LlmHintPending field={`mortgageProperties[${index}].cadastralNumber`} block="properties" /></Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 value={property.cadastralNumber || ''}
-                onChange={(e) => onUpdate(index, 'cadastralNumber', e.target.value)}
+                onChange={(значение) => onUpdate(index, 'cadastralNumber', значение)}
                 error={!isValidCadastralNumber(property.cadastralNumber)}
                 helperText={!isValidCadastralNumber(property.cadastralNumber) ? 'Формат: 23:50:7228765:587' : undefined}
                 size="small"
@@ -88,11 +89,11 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес объекта:<LlmHintPending field={`mortgageProperties[${index}].address`} block="properties" /></Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 multiline
                 value={property.address || ''}
-                onChange={(e) => onUpdate(index, 'address', e.target.value)}
+                onChange={(значение) => onUpdate(index, 'address', значение)}
                 size="small"
                 margin="dense"
               />
@@ -103,10 +104,10 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Стоимость (оценка):<LlmHintPending field={`mortgageProperties[${index}].value`} block="properties" /></Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 value={property.value || ''}
-                onChange={(e) => onUpdate(index, 'value', e.target.value)}
+                onChange={(значение) => onUpdate(index, 'value', значение)}
                 error={!isValidMoney(property.value)}
                 helperText={!isValidMoney(property.value) ? 'Только число' : undefined}
                 size="small"
@@ -119,10 +120,10 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Начальная продажная цена:<LlmHintPending field={`mortgageProperties[${index}].startingPrice`} block="properties" /></Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 value={property.startingPrice || ''}
-                onChange={(e) => onUpdate(index, 'startingPrice', e.target.value)}
+                onChange={(значение) => onUpdate(index, 'startingPrice', значение)}
                 error={!isValidMoney(property.startingPrice)}
                 helperText={!isValidMoney(property.startingPrice) ? 'Только число' : undefined}
                 size="small"
@@ -135,11 +136,11 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Стратегия определения НПЦ:<LlmHintPending field={`mortgageProperties[${index}].npcStrategy`} block="properties" /></Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 multiline
                 value={property.npcStrategy || ''}
-                onChange={(e) => onUpdate(index, 'npcStrategy', e.target.value)}
+                onChange={(значение) => onUpdate(index, 'npcStrategy', значение)}
                 size="small"
                 margin="dense"
               />
@@ -150,10 +151,10 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Запись в ЕГРН:<LlmHintPending field={`mortgageProperties[${index}].egrnRecord`} block="properties" /></Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 value={property.egrnRecord || ''}
-                onChange={(e) => onUpdate(index, 'egrnRecord', e.target.value)}
+                onChange={(значение) => onUpdate(index, 'egrnRecord', значение)}
                 error={!isValidEgrnRecord(property.egrnRecord)}
                 helperText={!isValidEgrnRecord(property.egrnRecord) ? 'Номер записи ЕГРН' : undefined}
                 size="small"
@@ -166,11 +167,11 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата записи ЕГРН:</Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 type="date"
                 value={toInputDate(property.egrnRecordDate)}
-                onChange={(e) => onUpdate(index, 'egrnRecordDate', fromInputDate(e.target.value))}
+                onChange={(значение) => onUpdate(index, 'egrnRecordDate', fromInputDate(значение))}
                 size="small"
                 margin="dense"
                 InputLabelProps={{ shrink: true }}
@@ -181,10 +182,10 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Отчёт об оценке:<LlmHintPending field={`mortgageProperties[${index}].appraisalReport`} block="properties" /></Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 value={property.appraisalReport || ''}
-                onChange={(e) => onUpdate(index, 'appraisalReport', e.target.value)}
+                onChange={(значение) => onUpdate(index, 'appraisalReport', значение)}
                 size="small"
                 margin="dense"
               />
@@ -197,10 +198,10 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Договор долевого участия:</Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 value={property.dduContract || ''}
-                onChange={(e) => onUpdate(index, 'dduContract', e.target.value)}
+                onChange={(значение) => onUpdate(index, 'dduContract', значение)}
                 size="small"
                 margin="dense"
               />
@@ -212,11 +213,11 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата ДДУ:</Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 type="date"
                 value={toInputDate(property.dduDate)}
-                onChange={(e) => onUpdate(index, 'dduDate', fromInputDate(e.target.value))}
+                onChange={(значение) => onUpdate(index, 'dduDate', fromInputDate(значение))}
                 size="small"
                 margin="dense"
                 InputLabelProps={{ shrink: true }}

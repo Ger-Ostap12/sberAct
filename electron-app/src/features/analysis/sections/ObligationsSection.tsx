@@ -1,3 +1,4 @@
+import { FieldInput } from '../components/FieldInput';
 import React from 'react';
 import {
   Box,
@@ -71,11 +72,11 @@ const ObligationsSection: React.FC<ObligationsSectionProps> = ({
             <Grid item xs={12}>
               <Box sx={LABEL_OVERLAP_BOX}>
                 <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Номер договора:</Typography>
-                <TextField
+                <FieldInput
                   fullWidth
                   value={obligation.contractNumber || ''}
                   multiline
-                  onChange={(e) => onUpdate(index, { contractNumber: e.target.value })}
+                  onChange={(значение) => onUpdate(index, { contractNumber: значение })}
                   size="small"
                   margin="dense"
                 />
@@ -84,11 +85,11 @@ const ObligationsSection: React.FC<ObligationsSectionProps> = ({
             <Grid item xs={12} sm={4}>
               <Box sx={LABEL_OVERLAP_BOX}>
                 <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата договора:</Typography>
-                <TextField
+                <FieldInput
                   fullWidth
                   type="date"
                   value={toInputDate(obligation.contractDate)}
-                  onChange={(e) => onUpdate(index, { contractDate: fromInputDate(e.target.value) })}
+                  onChange={(значение) => onUpdate(index, { contractDate: fromInputDate(значение) })}
                   size="small"
                   margin="dense"
                   InputLabelProps={{
@@ -100,11 +101,11 @@ const ObligationsSection: React.FC<ObligationsSectionProps> = ({
             <Grid item xs={12}>
               <Box sx={LABEL_OVERLAP_BOX}>
                 <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Тип обязательства:</Typography>
-                <TextField
+                <FieldInput
                   fullWidth
                   value={obligation.obligationType || ''}
                   multiline
-                  onChange={(e) => onUpdate(index, { obligationType: e.target.value })}
+                  onChange={(значение) => onUpdate(index, { obligationType: значение })}
                   size="small"
                   margin="dense"
                 />
@@ -116,11 +117,11 @@ const ObligationsSection: React.FC<ObligationsSectionProps> = ({
                 <Grid item xs={12} sm={4}>
                   <Box sx={LABEL_OVERLAP_BOX}>
                     <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Период взыскания с:</Typography>
-                    <TextField
+                    <FieldInput
                       fullWidth
                       type="date"
                       value={toInputDate(obligation.collectionPeriodFrom)}
-                      onChange={(e) => onUpdate(index, { collectionPeriodFrom: fromInputDate(e.target.value) })}
+                      onChange={(значение) => onUpdate(index, { collectionPeriodFrom: fromInputDate(значение) })}
                       size="small"
                       margin="dense"
                       InputLabelProps={{ shrink: true }}
@@ -130,11 +131,11 @@ const ObligationsSection: React.FC<ObligationsSectionProps> = ({
                 <Grid item xs={12} sm={4}>
                   <Box sx={LABEL_OVERLAP_BOX}>
                     <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Период взыскания по:</Typography>
-                    <TextField
+                    <FieldInput
                       fullWidth
                       type="date"
                       value={toInputDate(obligation.collectionPeriodTo)}
-                      onChange={(e) => onUpdate(index, { collectionPeriodTo: fromInputDate(e.target.value) })}
+                      onChange={(значение) => onUpdate(index, { collectionPeriodTo: fromInputDate(значение) })}
                       size="small"
                       margin="dense"
                       InputLabelProps={{ shrink: true }}

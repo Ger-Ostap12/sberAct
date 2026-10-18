@@ -1,3 +1,4 @@
+import { FieldInput } from '../components/FieldInput';
 import React from 'react';
 import { Box, Typography, Grid, TextField } from '@mui/material';
 import { toInputDate, fromInputDate } from '../../../shared/lib/dates';
@@ -26,10 +27,10 @@ const PriorCollectionSection: React.FC<PriorCollectionSectionProps> = ({
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Кем взыскано:</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             value={editedFields.priorCourtName || ''}
-            onChange={(e) => onFieldChange('priorCourtName', e.target.value)}
+            onChange={(значение) => onFieldChange('priorCourtName', значение)}
             size="small"
             margin="dense"
             placeholder="Ворошиловский районный суд г. Ростова-на-Дону"
@@ -39,10 +40,10 @@ const PriorCollectionSection: React.FC<PriorCollectionSectionProps> = ({
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Номер дела:</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             value={editedFields.priorCaseNumber || ''}
-            onChange={(e) => onFieldChange('priorCaseNumber', e.target.value)}
+            onChange={(значение) => onFieldChange('priorCaseNumber', значение)}
             size="small"
             margin="dense"
             placeholder="2-2523/2025"
@@ -52,10 +53,10 @@ const PriorCollectionSection: React.FC<PriorCollectionSectionProps> = ({
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Взысканная сумма:</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             value={editedFields.priorAmount || ''}
-            onChange={(e) => onFieldChange('priorAmount', rawAmount(e.target.value))}
+            onChange={(значение) => onFieldChange('priorAmount', rawAmount(значение))}
             size="small"
             margin="dense"
             placeholder="0.00"
@@ -65,11 +66,11 @@ const PriorCollectionSection: React.FC<PriorCollectionSectionProps> = ({
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата решения:</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             type="date"
             value={toInputDate(editedFields.priorDecisionDate)}
-            onChange={(e) => onFieldChange('priorDecisionDate', fromInputDate(e.target.value))}
+            onChange={(значение) => onFieldChange('priorDecisionDate', fromInputDate(значение))}
             size="small"
             margin="dense"
             InputLabelProps={{ shrink: true }}
@@ -79,10 +80,10 @@ const PriorCollectionSection: React.FC<PriorCollectionSectionProps> = ({
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Госпошлина:</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             value={editedFields.priorStateDuty || ''}
-            onChange={(e) => onFieldChange('priorStateDuty', rawAmount(e.target.value))}
+            onChange={(значение) => onFieldChange('priorStateDuty', rawAmount(значение))}
             size="small"
             margin="dense"
             placeholder="0.00"

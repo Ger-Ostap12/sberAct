@@ -25,6 +25,7 @@ import {
   analyzeDocument,
   analyzeText,
   convertAnalyze,
+  converterWarmup,
   convertDownload,
   convertNative,
   convertScan,
@@ -189,6 +190,9 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
         setDetectedMode(detected);
         setMode(detected);
         setDetectReason(typeof verdict.reason === 'string' ? verdict.reason : null);
+        // Скану нужен docling с torch — 15-40 с загрузки. Греем, пока юрист
+        // читает рекомендацию и выбирает режим. Нативному он не нужен вовсе.
+        if (detected === 'scan') void converterWarmup();
       } catch {
         // Классификация — удобство, не обязательность: даём выбрать руками
         if (!cancelled) setDetectedMode(null);

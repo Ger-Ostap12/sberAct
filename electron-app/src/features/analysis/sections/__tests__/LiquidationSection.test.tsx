@@ -28,7 +28,9 @@ describe('LiquidationSection', () => {
     render(<LiquidationSection editedFields={{}} onFieldChange={onFieldChange} />);
     // Поля по порядку: наименование ликвидатора, номер заявления, дата ликвидации.
     const input = screen.getAllByRole('textbox')[1];
-    fireEvent.change(input, { target: { value: '12a3-4' } });
+    const поле1 = input;
+    fireEvent.change(поле1, { target: { value: '12a3-4' } });
+    fireEvent.blur(поле1);
     expect(onFieldChange).toHaveBeenCalledWith('liquidationApplicationNumber', '1234');
   });
 
@@ -36,7 +38,9 @@ describe('LiquidationSection', () => {
     const onFieldChange = jest.fn();
     render(<LiquidationSection editedFields={{}} onFieldChange={onFieldChange} />);
     const input = screen.getAllByRole('textbox')[2];
-    fireEvent.change(input, { target: { value: '01062026' } });
+    const поле2 = input;
+    fireEvent.change(поле2, { target: { value: '01062026' } });
+    fireEvent.blur(поле2);
     expect(onFieldChange).toHaveBeenCalledWith('liquidationDate', '01.06.2026');
   });
 });

@@ -1,3 +1,4 @@
+import { FieldInput } from '../components/FieldInput';
 import React from 'react';
 import {
   Box,
@@ -71,14 +72,14 @@ const CollateralSection: React.FC<CollateralSectionProps> = ({
               <Grid item xs={12}>
                 <Box sx={LABEL_OVERLAP_BOX}>
                   <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Описание предмета залога:</Typography>
-                  <TextField
+                  <FieldInput
                     fullWidth
                     multiline
                     rows={4}
                     size="small"
                     margin="dense"
                     value={collateral.otherDescription || ''}
-                    onChange={(e) => onUpdate(index, 'otherDescription', e.target.value)}
+                    onChange={(значение) => onUpdate(index, 'otherDescription', значение)}
                     placeholder="Описание предмета залога"
                   />
                 </Box>
@@ -87,24 +88,24 @@ const CollateralSection: React.FC<CollateralSectionProps> = ({
             <Grid item xs={12}>
               <Box sx={LABEL_OVERLAP_BOX}>
                 <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Наименование объекта:</Typography>
-                <TextField
+                <FieldInput
                   fullWidth
                   size="small"
                   margin="dense"
                   value={collateral.objectName || ''}
-                  onChange={(e) => onUpdate(index, 'objectName', e.target.value)}
+                  onChange={(значение) => onUpdate(index, 'objectName', значение)}
                 />
               </Box>
             </Grid>
             <Grid item xs={12}>
               <Box sx={LABEL_OVERLAP_BOX}>
                 <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Залоговая стоимость:</Typography>
-                <TextField
+                <FieldInput
                   fullWidth
                   size="small"
                   margin="dense"
                   value={collateral.collateralValue || ''}
-                  onChange={(e) => onUpdate(index, 'collateralValue', e.target.value)}
+                  onChange={(значение) => onUpdate(index, 'collateralValue', значение)}
                   placeholder="0.00"
                 />
               </Box>
@@ -129,24 +130,24 @@ const CollateralSection: React.FC<CollateralSectionProps> = ({
                 <Grid item xs={12}>
                   <Box sx={LABEL_OVERLAP_BOX}>
                     <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Кадастровый номер:</Typography>
-                    <TextField
+                    <FieldInput
                       fullWidth
                       size="small"
                       margin="dense"
                       value={collateral.cadastralNumber || ''}
-                      onChange={(e) => onUpdate(index, 'cadastralNumber', e.target.value)}
+                      onChange={(значение) => onUpdate(index, 'cadastralNumber', значение)}
                     />
                   </Box>
                 </Grid>
                 <Grid item xs={12}>
                   <Box sx={LABEL_OVERLAP_BOX}>
                     <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес:</Typography>
-                    <TextField
+                    <FieldInput
                       fullWidth
                       size="small"
                       margin="dense"
                       value={collateral.address || ''}
-                      onChange={(e) => onUpdate(index, 'address', e.target.value)}
+                      onChange={(значение) => onUpdate(index, 'address', значение)}
                     />
                   </Box>
                 </Grid>
@@ -157,24 +158,24 @@ const CollateralSection: React.FC<CollateralSectionProps> = ({
                 <Grid item xs={12}>
                   <Box sx={LABEL_OVERLAP_BOX}>
                     <Typography variant="body2" sx={LABEL_OVERLAP_SX}>VIN:</Typography>
-                    <TextField
+                    <FieldInput
                       fullWidth
                       size="small"
                       margin="dense"
                       value={collateral.vin || ''}
-                      onChange={(e) => onUpdate(index, 'vin', e.target.value)}
+                      onChange={(значение) => onUpdate(index, 'vin', значение)}
                     />
                   </Box>
                 </Grid>
                 <Grid item xs={12}>
                   <Box sx={LABEL_OVERLAP_BOX}>
                     <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Марка / модель:</Typography>
-                    <TextField
+                    <FieldInput
                       fullWidth
                       size="small"
                       margin="dense"
                       value={collateral.brandModel || ''}
-                      onChange={(e) => onUpdate(index, 'brandModel', e.target.value)}
+                      onChange={(значение) => onUpdate(index, 'brandModel', значение)}
                     />
                   </Box>
                 </Grid>

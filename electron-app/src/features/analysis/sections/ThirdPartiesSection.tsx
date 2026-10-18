@@ -1,3 +1,4 @@
+import { FieldInput } from '../components/FieldInput';
 import React from 'react';
 import { Box, Typography, Card, IconButton, Grid, TextField, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -47,10 +48,10 @@ const ThirdPartiesSection: React.FC<ThirdPartiesSectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО/наименование :<LlmHintPending field={`thirdParties[${index}].name`} block="thirdParties" /></Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 value={thirdParty.name || ''}
-                onChange={(e) => onUpdate(index, 'name', e.target.value)}
+                onChange={(значение) => onUpdate(index, 'name', значение)}
                 size="small"
                 margin="dense"
               />
@@ -60,11 +61,11 @@ const ThirdPartiesSection: React.FC<ThirdPartiesSectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата рождения:</Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 type="date"
                 value={toInputDate(thirdParty.birthDate)}
-                onChange={(e) => onUpdate(index, 'birthDate', fromInputDate(e.target.value))}
+                onChange={(значение) => onUpdate(index, 'birthDate', fromInputDate(значение))}
                 size="small"
                 margin="dense"
                 InputLabelProps={{
@@ -76,11 +77,11 @@ const ThirdPartiesSection: React.FC<ThirdPartiesSectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес:<LlmHintPending field={`thirdParties[${index}].address`} block="thirdParties" /></Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 value={thirdParty.address || ''}
                 multiline
-                onChange={(e) => onUpdate(index, 'address', e.target.value)}
+                onChange={(значение) => onUpdate(index, 'address', значение)}
                 size="small"
                 margin="dense"
               />
@@ -90,10 +91,10 @@ const ThirdPartiesSection: React.FC<ThirdPartiesSectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ИНН:<LlmHintPending field={`thirdParties[${index}].inn`} block="thirdParties" /></Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 value={thirdParty.inn || ''}
-                onChange={(e) => onUpdate(index, 'inn', e.target.value)}
+                onChange={(значение) => onUpdate(index, 'inn', значение)}
                 size="small"
                 margin="dense"
               />
@@ -104,10 +105,10 @@ const ThirdPartiesSection: React.FC<ThirdPartiesSectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ОГРН:</Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 value={thirdParty.ogrn || ''}
-                onChange={(e) => onUpdate(index, 'ogrn', e.target.value)}
+                onChange={(значение) => onUpdate(index, 'ogrn', значение)}
                 size="small"
                 margin="dense"
               />
@@ -117,10 +118,10 @@ const ThirdPartiesSection: React.FC<ThirdPartiesSectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>СНИЛС:</Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 value={thirdParty.snils || ''}
-                onChange={(e) => onUpdate(index, 'snils', e.target.value)}
+                onChange={(значение) => onUpdate(index, 'snils', значение)}
                 size="small"
                 margin="dense"
               />

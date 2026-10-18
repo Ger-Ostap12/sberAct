@@ -27,7 +27,9 @@ describe('AbsentDebtorSection', () => {
   it('маскирует ввод в дд.мм.гггг', () => {
     const onFieldChange = jest.fn();
     render(<AbsentDebtorSection editedFields={{}} onFieldChange={onFieldChange} />);
-    fireEvent.change(screen.getAllByRole('textbox')[0], { target: { value: '25042024' } });
+    const поле1 = screen.getAllByRole('textbox')[0];
+    fireEvent.change(поле1, { target: { value: '25042024' } });
+    fireEvent.blur(поле1);
     expect(onFieldChange).toHaveBeenCalledWith('lastTaxReportDate', '25.04.2024');
   });
 

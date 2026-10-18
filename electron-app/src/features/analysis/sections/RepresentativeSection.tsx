@@ -1,5 +1,6 @@
 // Секция «Представитель истца» (режим «Ипотека»): ФИО + срок доверенности (с/по).
 // Плоские поля editedFields (representativeName / representativePoaFrom / …PoaTo).
+import { FieldInput } from '../components/FieldInput';
 import React from 'react';
 import { Box, Typography, Grid, TextField } from '@mui/material';
 import { toInputDate, fromInputDate } from '../../../shared/lib/dates';
@@ -24,10 +25,10 @@ const RepresentativeSection: React.FC<RepresentativeSectionProps> = ({
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО:<LlmHintPending field="representativeName" block="representative" /></Typography>
-          <TextField
+          <FieldInput
             fullWidth
             value={editedFields.representativeName || ''}
-            onChange={(e) => onFieldChange('representativeName', e.target.value)}
+            onChange={(значение) => onFieldChange('representativeName', значение)}
             size="small"
             margin="dense"
             error={!isValidFio(editedFields.representativeName)}
@@ -39,11 +40,11 @@ const RepresentativeSection: React.FC<RepresentativeSectionProps> = ({
       <Grid item xs={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Доверенность с:</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             type="date"
             value={toInputDate(editedFields.representativePoaFrom)}
-            onChange={(e) => onFieldChange('representativePoaFrom', fromInputDate(e.target.value))}
+            onChange={(значение) => onFieldChange('representativePoaFrom', fromInputDate(значение))}
             size="small"
             margin="dense"
             InputLabelProps={{ shrink: true }}
@@ -53,11 +54,11 @@ const RepresentativeSection: React.FC<RepresentativeSectionProps> = ({
       <Grid item xs={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Доверенность по:</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             type="date"
             value={toInputDate(editedFields.representativePoaTo)}
-            onChange={(e) => onFieldChange('representativePoaTo', fromInputDate(e.target.value))}
+            onChange={(значение) => onFieldChange('representativePoaTo', fromInputDate(значение))}
             size="small"
             margin="dense"
             InputLabelProps={{ shrink: true }}

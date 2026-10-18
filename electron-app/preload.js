@@ -226,6 +226,11 @@ try {
     return await response.json();
   },
 
+  // Просьба загрузить движок OCR заранее; нативному PDF он не нужен.
+  converterWarmup: async () => {
+    await fetchBackend('/convert/warmup', { method: 'POST' });
+  },
+
   convertScan: async (file, flags) => {
     const formData = new FormData();
     formData.append('file', file, file.name || 'document.pdf');

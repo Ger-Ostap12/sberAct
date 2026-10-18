@@ -66,7 +66,9 @@ describe('DocumentAnalysis — CRUD обязательств', () => {
     renderForm();
     // Поля свёрнутой карточки остаются в DOM (MUI Collapse не размонтирует контент).
     const numberInput = screen.getByDisplayValue('111');
-    fireEvent.change(numberInput, { target: { value: '222' } });
+    const поле1 = numberInput;
+    fireEvent.change(поле1, { target: { value: '222' } });
+    fireEvent.blur(поле1);
     expect(screen.getByDisplayValue('222')).toBeInTheDocument();
   });
 });
@@ -597,7 +599,9 @@ describe('DocumentAnalysis — режим «Ипотека»', () => {
   it('ввод «Ворошиловский районный суд» подставляет email и сайт по умолчанию', () => {
     renderMortgage();
     const courtInput = screen.getByPlaceholderText('Арбитражный суд Ростовской области');
-    fireEvent.change(courtInput, { target: { value: 'Ворошиловский районный суд г. Ростова-на-Дону' } });
+    const поле2 = courtInput;
+    fireEvent.change(поле2, { target: { value: 'Ворошиловский районный суд г. Ростова-на-Дону' } });
+    fireEvent.blur(поле2);
     expect(screen.getByDisplayValue('voroshilovsky.ros@sudrf.ru')).toBeInTheDocument();
     expect(screen.getByDisplayValue('https://voroshilovsky--ros.sudrf.ru/')).toBeInTheDocument();
   });

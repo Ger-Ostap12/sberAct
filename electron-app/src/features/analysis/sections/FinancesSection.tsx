@@ -1,3 +1,4 @@
+import { FieldInput } from '../components/FieldInput';
 import React from 'react';
 import {
   Box,
@@ -142,10 +143,10 @@ const FnsAmountField: React.FC<{
 }> = ({ label, field, editedFields, onFieldChange }) => (
   <Grid item xs={12} sm={6}>
     <Typography variant="body2" sx={FNS_FIELD_LABEL_SX}>{label}</Typography>
-    <TextField
+    <FieldInput
       fullWidth
       value={editedFields[field] || ''}
-      onChange={(e) => onFieldChange(field, rawAmount(e.target.value))}
+      onChange={(значение) => onFieldChange(field, rawAmount(значение))}
       size="small"
       margin="none"
       placeholder="0.00"
@@ -162,11 +163,11 @@ const FnsDateField: React.FC<{
 }> = ({ label, field, editedFields, onFieldChange }) => (
   <Grid item xs={12} sm={6}>
     <Typography variant="body2" sx={FNS_FIELD_LABEL_SX}>{label}</Typography>
-    <TextField
+    <FieldInput
       fullWidth
       type="date"
       value={toInputDate(editedFields[field])}
-      onChange={(e) => onFieldChange(field, fromInputDate(e.target.value))}
+      onChange={(значение) => onFieldChange(field, fromInputDate(значение))}
       size="small"
       margin="none"
       InputLabelProps={{ shrink: true }}
@@ -346,11 +347,11 @@ const CzzMilitaryFinances: React.FC<{
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Период начисления процентов с:</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             type="date"
             value={toInputDate(editedFields.milInterestPeriodFrom)}
-            onChange={(e) => onFieldChange('milInterestPeriodFrom', fromInputDate(e.target.value))}
+            onChange={(значение) => onFieldChange('milInterestPeriodFrom', fromInputDate(значение))}
             size="small"
             margin="dense"
             InputLabelProps={{ shrink: true }}
@@ -360,11 +361,11 @@ const CzzMilitaryFinances: React.FC<{
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Период начисления процентов по:</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             type="date"
             value={toInputDate(editedFields.milInterestPeriodTo)}
-            onChange={(e) => onFieldChange('milInterestPeriodTo', fromInputDate(e.target.value))}
+            onChange={(значение) => onFieldChange('milInterestPeriodTo', fromInputDate(значение))}
             size="small"
             margin="dense"
             InputLabelProps={{ shrink: true }}
@@ -442,10 +443,10 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
     isMortgage ? (
       <AmountField fullWidth size="small" margin="dense" placeholder="0,00" value={value} onValueChange={onSet} />
     ) : (
-      <TextField
+      <FieldInput
         fullWidth
         value={value}
-        onChange={(e) => onSet(rawAmount(e.target.value))}
+        onChange={(значение) => onSet(rawAmount(значение))}
         size="small"
         margin="dense"
         placeholder="0.00"
@@ -466,10 +467,10 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Номер кредитного договора:</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             value={editedFields.creditContractNumber || ''}
-            onChange={(e) => onFieldChange('creditContractNumber', e.target.value)}
+            onChange={(значение) => onFieldChange('creditContractNumber', значение)}
             size="small"
             margin="dense"
           />
@@ -480,11 +481,11 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата кредитного договора:</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             type="date"
             value={toInputDate(editedFields.creditContractDate)}
-            onChange={(e) => onFieldChange('creditContractDate', fromInputDate(e.target.value))}
+            onChange={(значение) => onFieldChange('creditContractDate', fromInputDate(значение))}
             size="small"
             margin="dense"
             InputLabelProps={{ shrink: true }}
@@ -496,11 +497,11 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Период задолженности с:</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             type="date"
             value={toInputDate(editedFields.creditPeriodFrom)}
-            onChange={(e) => onFieldChange('creditPeriodFrom', fromInputDate(e.target.value))}
+            onChange={(значение) => onFieldChange('creditPeriodFrom', fromInputDate(значение))}
             size="small"
             margin="dense"
             InputLabelProps={{ shrink: true }}
@@ -512,11 +513,11 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Период задолженности по:</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             type="date"
             value={toInputDate(editedFields.creditPeriodTo)}
-            onChange={(e) => onFieldChange('creditPeriodTo', fromInputDate(e.target.value))}
+            onChange={(значение) => onFieldChange('creditPeriodTo', fromInputDate(значение))}
             size="small"
             margin="dense"
             InputLabelProps={{ shrink: true }}
@@ -550,10 +551,10 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Штрафные санкции:</Typography>
           <BreakdownTip addends={brk?.penalties} total={editedFields.penalties}>
-          <TextField
+          <FieldInput
             fullWidth
             value={editedFields.penalties || ''}
-            onChange={(e) => onFieldChange('penalties', rawAmount(e.target.value))}
+            onChange={(значение) => onFieldChange('penalties', rawAmount(значение))}
             size="small"
             margin="dense"
             placeholder="0.00"
@@ -604,10 +605,10 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Ссудная госпошлина:</Typography>
           <BreakdownTip addends={brk?.loanStateDuty17} total={editedFields.loanStateDuty17}>
-          <TextField
+          <FieldInput
             fullWidth
             value={editedFields.loanStateDuty17 ?? ''}
-            onChange={(e) => onFieldChange('loanStateDuty17', rawAmount(e.target.value))}
+            onChange={(значение) => onFieldChange('loanStateDuty17', rawAmount(значение))}
             size="small"
             margin="dense"
             placeholder="0.00"
@@ -622,10 +623,10 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Комиссия Банка:</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             value={editedFields.bankCommission || ''}
-            onChange={(e) => onFieldChange('bankCommission', rawAmount(e.target.value))}
+            onChange={(значение) => onFieldChange('bankCommission', rawAmount(значение))}
             size="small"
             margin="dense"
             placeholder="0.00"
@@ -690,11 +691,11 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата ПП депозит:</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             type="date"
             value={toInputDate(editedFields.ppDepositDate80)}
-            onChange={(e) => onFieldChange('ppDepositDate80', fromInputDate(e.target.value))}
+            onChange={(значение) => onFieldChange('ppDepositDate80', fromInputDate(значение))}
             size="small"
             margin="dense"
             InputLabelProps={{
@@ -709,11 +710,11 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата ПП ГП:</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             type="date"
             value={toInputDate(editedFields.ppStateDutyDate81)}
-            onChange={(e) => onFieldChange('ppStateDutyDate81', fromInputDate(e.target.value))}
+            onChange={(значение) => onFieldChange('ppStateDutyDate81', fromInputDate(значение))}
             size="small"
             margin="dense"
             InputLabelProps={{

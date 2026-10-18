@@ -95,7 +95,9 @@ describe('MortgagePropertySection', () => {
         onRemove={() => {}}
       />,
     );
-    fireEvent.change(screen.getByDisplayValue('2 500 000'), { target: { value: '2 600 000' } });
+    const поле1 = screen.getByDisplayValue('2 500 000');
+    fireEvent.change(поле1, { target: { value: '2 600 000' } });
+    fireEvent.blur(поле1);
     expect(onUpdate).toHaveBeenCalledWith(1, 'startingPrice', '2 600 000');
   });
 

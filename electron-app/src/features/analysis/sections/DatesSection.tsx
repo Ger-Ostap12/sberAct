@@ -1,5 +1,6 @@
 // Секция «Даты и сроки» карточки анализа документа.
 // Даты принятия/направления/поступления и текстовые сроки (возражения, движение, заседание).
+import { FieldInput } from '../components/FieldInput';
 import React from 'react';
 import { Box, Grid, TextField, Typography, InputAdornment, IconButton, Tooltip } from '@mui/material';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -97,11 +98,11 @@ const DatesSection: React.FC<DatesSectionProps> = ({ editedFields, onFieldChange
                 <Grid item xs={12} sm={6}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{isMortgage ? 'Дата принятия решения:' : 'Дата принятия определения:'}</Typography>
-                  <TextField
+                  <FieldInput
                     fullWidth
                         type="date"
                         value={editedFields.date || ''}
-                        onChange={(e) => onFieldChange('date', clampNativeDate(e.target.value))}
+                        onChange={(значение) => onFieldChange('date', clampNativeDate(значение))}
                     size="small"
                     margin="dense"
                         InputLabelProps={{
@@ -114,11 +115,11 @@ const DatesSection: React.FC<DatesSectionProps> = ({ editedFields, onFieldChange
                   <Grid item xs={12} sm={6}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата направления в суд:</Typography>
-                      <TextField
+                      <FieldInput
                         fullWidth
                         type="date"
                         value={editedFields.courtSubmissionDate24 ?? ''}
-                        onChange={(e) => onFieldChange('courtSubmissionDate24', clampNativeDate(e.target.value))}
+                        onChange={(значение) => onFieldChange('courtSubmissionDate24', clampNativeDate(значение))}
                         size="small"
                         margin="dense"
                         InputLabelProps={{
@@ -132,11 +133,11 @@ const DatesSection: React.FC<DatesSectionProps> = ({ editedFields, onFieldChange
                 <Grid item xs={12} sm={6}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата извещения:</Typography>
-                  <TextField
+                  <FieldInput
                     fullWidth
                         type="date"
                         value={editedFields.noticeDate ?? ''}
-                        onChange={(e) => onFieldChange('noticeDate', clampNativeDate(e.target.value))}
+                        onChange={(значение) => onFieldChange('noticeDate', clampNativeDate(значение))}
                     size="small"
                     margin="dense"
                         InputLabelProps={{
@@ -150,11 +151,11 @@ const DatesSection: React.FC<DatesSectionProps> = ({ editedFields, onFieldChange
                 <Grid item xs={12} sm={6}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата поступления заявления в суд (согласно штампу):</Typography>
-                  <TextField
+                  <FieldInput
                     fullWidth
                         type="date"
                         value={editedFields.applicationReceiptDate23 ?? ''}
-                        onChange={(e) => onFieldChange('applicationReceiptDate23', clampNativeDate(e.target.value))}
+                        onChange={(значение) => onFieldChange('applicationReceiptDate23', clampNativeDate(значение))}
                     size="small"
                     margin="dense"
                         InputLabelProps={{
@@ -170,10 +171,10 @@ const DatesSection: React.FC<DatesSectionProps> = ({ editedFields, onFieldChange
                 <Grid item xs={12} sm={6}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Установка срока на предоставление возражений:</Typography>
-                  <TextField
+                  <FieldInput
                     fullWidth
                         value={editedFields.objectionsDeadline18 ?? ''}
-                        onChange={(e) => onFieldChange('objectionsDeadline18', maskDeadline(e.target.value))}
+                        onChange={(значение) => onFieldChange('objectionsDeadline18', maskDeadline(значение))}
                     size="small"
                     margin="dense"
                         placeholder="ДД.ММ.ГГГГ или текст"
@@ -195,10 +196,10 @@ const DatesSection: React.FC<DatesSectionProps> = ({ editedFields, onFieldChange
                 <Grid item xs={12} sm={6}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>На рассмотрение заявления в срок:</Typography>
-                  <TextField
+                  <FieldInput
                     fullWidth
                         value={editedFields.considerationDeadline19 ?? ''}
-                        onChange={(e) => onFieldChange('considerationDeadline19', maskDeadline(e.target.value))}
+                        onChange={(значение) => onFieldChange('considerationDeadline19', maskDeadline(значение))}
                     size="small"
                     margin="dense"
                         placeholder="ДД.ММ.ГГГГ или текст"
@@ -211,10 +212,10 @@ const DatesSection: React.FC<DatesSectionProps> = ({ editedFields, onFieldChange
                 <Grid item xs={12} sm={6}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Срок для оставления без движения:</Typography>
-                  <TextField
+                  <FieldInput
                     fullWidth
                         value={editedFields.withoutMovementDeadline20 ?? ''}
-                        onChange={(e) => onFieldChange('withoutMovementDeadline20', maskDeadline(e.target.value))}
+                        onChange={(значение) => onFieldChange('withoutMovementDeadline20', maskDeadline(значение))}
                     size="small"
                     margin="dense"
                         placeholder="ДД.ММ.ГГГГ или текст"
@@ -226,11 +227,11 @@ const DatesSection: React.FC<DatesSectionProps> = ({ editedFields, onFieldChange
                 <Grid item xs={12} sm={6}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата и время судебного заседания:</Typography>
-                  <TextField
+                  <FieldInput
                     fullWidth
                         type="datetime-local"
                         value={editedFields.courtHearingDateTime99 ?? ''}
-                        onChange={(e) => onFieldChange('courtHearingDateTime99', clampNativeDateTime(e.target.value))}
+                        onChange={(значение) => onFieldChange('courtHearingDateTime99', clampNativeDateTime(значение))}
                     size="small"
                     margin="dense"
                         InputLabelProps={{

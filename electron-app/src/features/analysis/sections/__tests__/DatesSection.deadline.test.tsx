@@ -7,14 +7,18 @@ describe('DatesSection — срок возражений', () => {
     const onFieldChange = jest.fn();
     render(<DatesSection editedFields={{}} onFieldChange={onFieldChange} mode="mortgage" />);
     const input = screen.getByPlaceholderText('ДД.ММ.ГГГГ или текст');
-    fireEvent.change(input, { target: { value: 'в течение 30 дней' } });
+    const поле1 = input;
+    fireEvent.change(поле1, { target: { value: 'в течение 30 дней' } });
+    fireEvent.blur(поле1);
     expect(onFieldChange).toHaveBeenCalledWith('objectionsDeadline18', 'в течение 30 дней');
   });
 
   it('цифры маскируются в ДД.ММ.ГГГГ', () => {
     const onFieldChange = jest.fn();
     render(<DatesSection editedFields={{}} onFieldChange={onFieldChange} mode="mortgage" />);
-    fireEvent.change(screen.getByPlaceholderText('ДД.ММ.ГГГГ или текст'), { target: { value: '10042026' } });
+    const поле2 = screen.getByPlaceholderText('ДД.ММ.ГГГГ или текст');
+    fireEvent.change(поле2, { target: { value: '10042026' } });
+    fireEvent.blur(поле2);
     expect(onFieldChange).toHaveBeenCalledWith('objectionsDeadline18', '10.04.2026');
   });
 
@@ -31,7 +35,9 @@ describe('DatesSection — срок возражений', () => {
     // В секции несколько input[type=date]; наш — скрытый, при поле срока.
     const picker = container.querySelector('input[type="date"][aria-hidden="true"]') as HTMLInputElement;
     expect(picker).toBeTruthy();
-    fireEvent.change(picker, { target: { value: '2026-04-10' } });
+    const поле3 = picker;
+    fireEvent.change(поле3, { target: { value: '2026-04-10' } });
+    fireEvent.blur(поле3);
     expect(onFieldChange).toHaveBeenCalledWith('objectionsDeadline18', '10.04.2026');
   });
 

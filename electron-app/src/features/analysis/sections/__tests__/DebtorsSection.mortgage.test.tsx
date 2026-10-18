@@ -64,7 +64,9 @@ describe('DebtorsSection — режим ипотеки (Ответчик)', () =
       />,
     );
     const seriesInput = screen.getByPlaceholderText('6018');
-    fireEvent.change(seriesInput, { target: { value: '60a1855' } });
+    const поле1 = seriesInput;
+    fireEvent.change(поле1, { target: { value: '60a1855' } });
+    fireEvent.blur(поле1);
     // Нецифры отброшены, обрезано до 4.
     expect(onUpdate).toHaveBeenCalledWith(0, 'passportSeries', '6018');
   });

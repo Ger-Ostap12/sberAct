@@ -1,3 +1,4 @@
+import { FieldInput } from '../components/FieldInput';
 import React from 'react';
 import { Box, Typography, Grid, TextField, Card, IconButton, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -50,10 +51,10 @@ const DeceasedSection: React.FC<DeceasedSectionProps> = ({
           <Grid item xs={12} key={key}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{label}</Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 value={editedFields[key] || ''}
-                onChange={(e) => onFieldChange(key, e.target.value)}
+                onChange={(значение) => onFieldChange(key, значение)}
                 size="small"
                 margin="dense"
               />
@@ -64,10 +65,10 @@ const DeceasedSection: React.FC<DeceasedSectionProps> = ({
         <Grid item xs={12}>
           <Box sx={LABEL_OVERLAP_BOX}>
             <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата смерти:</Typography>
-            <TextField
+            <FieldInput
               fullWidth
               value={deathDate}
-              onChange={(e) => onFieldChange('deathDate', maskDate(e.target.value))}
+              onChange={(значение) => onFieldChange('deathDate', maskDate(значение))}
               size="small"
               margin="dense"
               placeholder="дд.мм.гггг"
@@ -81,10 +82,10 @@ const DeceasedSection: React.FC<DeceasedSectionProps> = ({
         <Grid item xs={12}>
           <Box sx={LABEL_OVERLAP_BOX}>
             <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Свидетельство о смерти:</Typography>
-            <TextField
+            <FieldInput
               fullWidth
               value={certificate}
-              onChange={(e) => onFieldChange('deathCertificate', maskDeathCertificate(e.target.value))}
+              onChange={(значение) => onFieldChange('deathCertificate', maskDeathCertificate(значение))}
               size="small"
               margin="dense"
               placeholder="II-МЮ № 123456"
@@ -121,10 +122,10 @@ const DeceasedSection: React.FC<DeceasedSectionProps> = ({
             <Grid item xs={12}>
               <Box sx={LABEL_OVERLAP_BOX}>
                 <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО:</Typography>
-                <TextField
+                <FieldInput
                   fullWidth
                   value={heir.name || ''}
-                  onChange={(e) => onHeirUpdate(index, 'name', e.target.value)}
+                  onChange={(значение) => onHeirUpdate(index, 'name', значение)}
                   size="small"
                   margin="dense"
                 />
@@ -133,11 +134,11 @@ const DeceasedSection: React.FC<DeceasedSectionProps> = ({
             <Grid item xs={12}>
               <Box sx={LABEL_OVERLAP_BOX}>
                 <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес:</Typography>
-                <TextField
+                <FieldInput
                   fullWidth
                   value={heir.address || ''}
                   multiline
-                  onChange={(e) => onHeirUpdate(index, 'address', e.target.value)}
+                  onChange={(значение) => onHeirUpdate(index, 'address', значение)}
                   size="small"
                   margin="dense"
                 />

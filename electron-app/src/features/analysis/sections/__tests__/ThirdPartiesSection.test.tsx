@@ -46,7 +46,9 @@ describe('ThirdPartiesSection — ОГРН по режиму', () => {
         mode="mortgage"
       />,
     );
-    fireEvent.change(screen.getByDisplayValue('1027700132195'), { target: { value: '1234567890123' } });
+    const поле1 = screen.getByDisplayValue('1027700132195');
+    fireEvent.change(поле1, { target: { value: '1234567890123' } });
+    fireEvent.blur(поле1);
     expect(onUpdate).toHaveBeenCalledWith(0, 'ogrn', '1234567890123');
   });
 });

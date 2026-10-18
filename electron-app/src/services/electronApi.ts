@@ -164,6 +164,7 @@ export interface ElectronAPI {
   analyzeText: (text: string, pageCount?: number) => Promise<AnalysisResult>;
   /** Классификация PDF: скан или нативный. */
   convertAnalyze: (file: File) => Promise<ConvertClassifyResult>;
+  converterWarmup: () => Promise<void>;
   /** Конвертация скана (Docling+Tesseract+LLM), возвращает job_id. */
   convertScan: (file: File, flags?: ConvertScanFlags) => Promise<{ job_id: string }>;
   /** Конвертация нативного PDF (pdf2docx), возвращает job_id. */
@@ -319,6 +320,8 @@ export const analyzeText = (text: string, pageCount?: number): Promise<AnalysisR
 
 export const convertAnalyze = (file: File): Promise<ConvertClassifyResult> =>
   getApi().convertAnalyze(file);
+
+export const converterWarmup = (): Promise<void> => getApi().converterWarmup();
 
 export const convertScan = (
   file: File,

@@ -1,5 +1,6 @@
 // Секция «Представитель ответчика» (режим «Ипотека»): только ФИО.
 // Плоское поле editedFields.respondentRepresentativeName.
+import { FieldInput } from '../components/FieldInput';
 import React from 'react';
 import { Box, Typography, Grid, TextField } from '@mui/material';
 import { isValidFio } from '../../../shared/lib/validators';
@@ -22,10 +23,10 @@ const RespondentRepresentativeSection: React.FC<RespondentRepresentativeSectionP
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО:</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             value={editedFields.respondentRepresentativeName || ''}
-            onChange={(e) => onFieldChange('respondentRepresentativeName', e.target.value)}
+            onChange={(значение) => onFieldChange('respondentRepresentativeName', значение)}
             size="small"
             margin="dense"
             error={!isValidFio(editedFields.respondentRepresentativeName)}

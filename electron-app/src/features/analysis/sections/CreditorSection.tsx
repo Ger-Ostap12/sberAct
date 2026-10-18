@@ -1,3 +1,4 @@
+import { FieldInput } from '../components/FieldInput';
 import React from 'react';
 import { Box, Typography, Grid, TextField, FormControl, Select, MenuItem } from '@mui/material';
 import { Bank } from '../../../shared/constants/banks';
@@ -69,11 +70,11 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
           {!matchBankKey(editedFields.creditorName, banks) ? (
             <Box sx={{ mt: 1, ...LABEL_OVERLAP_BOX }}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{isMortgage ? 'Название истца:' : 'Название кредитора:'}</Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 value={editedFields.creditorName || ''}
                 multiline
-                onChange={(e) => onFieldChange('creditorName', e.target.value)}
+                onChange={(значение) => onFieldChange('creditorName', значение)}
                 size="small"
                 margin="dense"
                 placeholder="Введите название банка вручную"
@@ -87,11 +88,11 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{`Юридический адрес ${party}:`}</Typography>
           <FieldQualityMark quality={fieldQuality?.creditorAddress}>
-          <TextField
+          <FieldInput
             fullWidth
             value={editedFields.creditorAddress || ''}
             multiline
-            onChange={(e) => onFieldChange('creditorAddress', e.target.value)}
+            onChange={(значение) => onFieldChange('creditorAddress', значение)}
             size="small"
             margin="dense"
             placeholder="117312, г. Москва, ул. Вавилова, д. 19"
@@ -105,11 +106,11 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{`Почтовый адрес ${party}:`}</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             value={editedFields.creditorPostalAddress || ''}
             multiline
-            onChange={(e) => onFieldChange('creditorPostalAddress', e.target.value)}
+            onChange={(значение) => onFieldChange('creditorPostalAddress', значение)}
             size="small"
             margin="dense"
             placeholder="109052, г. Москва, ул. Смирновская, д. 10, стр. 22"
@@ -121,10 +122,10 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{`ОГРН ${party}:`}</Typography>
           <FieldQualityMark quality={fieldQuality?.creditorOgrn}>
-          <TextField
+          <FieldInput
             fullWidth
             value={editedFields.creditorOgrn || ''}
-            onChange={(e) => onFieldChange('creditorOgrn', e.target.value)}
+            onChange={(значение) => onFieldChange('creditorOgrn', значение)}
             size="small"
             margin="dense"
             placeholder="1027700132195"
@@ -137,10 +138,10 @@ const CreditorSection: React.FC<CreditorSectionProps> = ({
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>{`ИНН ${party}:`}</Typography>
           <FieldQualityMark quality={fieldQuality?.creditorInn}>
-          <TextField
+          <FieldInput
             fullWidth
             value={editedFields.creditorInn || ''}
-            onChange={(e) => onFieldChange('creditorInn', e.target.value)}
+            onChange={(значение) => onFieldChange('creditorInn', значение)}
             size="small"
             margin="dense"
             placeholder="7707083893"

@@ -65,7 +65,9 @@ describe('FinancesSection — кредитор ФНС', () => {
       />,
     );
     const input = screen.getByDisplayValue('745 735,35');
-    fireEvent.change(input, { target: { value: '1000,50' } });
+    const поле1 = input;
+    fireEvent.change(поле1, { target: { value: '1000,50' } });
+    fireEvent.blur(поле1);
     expect(onFieldChange).toHaveBeenCalledWith('fnsQ3LoanDebt', '1000.50');
   });
 

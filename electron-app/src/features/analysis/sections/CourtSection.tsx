@@ -1,5 +1,6 @@
 // Секция «Судебная информация» — перенесена из DocumentAnalysis 1:1.
 // Внешний <Grid item> остаётся в родителе; здесь только внутренний блок-бокс.
+import { FieldInput } from '../components/FieldInput';
 import React from 'react';
 import {
   Box,
@@ -46,10 +47,10 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>
                         Название суда:<LlmHintPending field="courtName" block="court" />
                       </Typography>
-                  <TextField
+                  <FieldInput
                     fullWidth
                         value={editedFields.courtName || ''}
-                        onChange={(e) => (onCourtNameChange || ((v: string) => onFieldChange('courtName', v)))(e.target.value)}
+                        onChange={(значение) => (onCourtNameChange || ((v: string) => onFieldChange('courtName', v)))(значение)}
                     size="small"
                     margin="dense"
                         placeholder="Арбитражный суд Ростовской области"
@@ -61,10 +62,10 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                 <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Номер дела:</Typography>
-                  <TextField
+                  <FieldInput
                     fullWidth
                         value={editedFields.caseNumber || ''}
-                        onChange={(e) => onFieldChange('caseNumber', e.target.value)}
+                        onChange={(v) => onFieldChange('caseNumber', v)}
                     size="small"
                     margin="dense"
                         error={isMortgage && !isValidCaseNumber(editedFields.caseNumber)}
@@ -80,10 +81,10 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                       {/* Ипотека: судью вводят вручную (по делу назначается позже) —
                           свободное поле. Банкротство: выбор из реестра судей. */}
                       {isMortgage ? (
-                        <TextField
+                        <FieldInput
                           fullWidth
                           value={editedFields.judge || ''}
-                          onChange={(e) => onFieldChange('judge', e.target.value)}
+                          onChange={(значение) => onFieldChange('judge', значение)}
                           size="small"
                           margin="dense"
                           placeholder="Фамилия Имя Отчество"
@@ -129,11 +130,11 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>
                         Адрес суда:<LlmHintPending field="courtAddress" block="court" />
                       </Typography>
-                      <TextField
+                      <FieldInput
                         fullWidth
                         multiline
                         value={editedFields.courtAddress || ''}
-                        onChange={(e) => onFieldChange('courtAddress', e.target.value)}
+                        onChange={(значение) => onFieldChange('courtAddress', значение)}
                         size="small"
                         margin="dense"
                       />
@@ -146,10 +147,10 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                   <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Эл. почта суда:</Typography>
-                      <TextField
+                      <FieldInput
                         fullWidth
                         value={editedFields.courtEmail || ''}
-                        onChange={(e) => onFieldChange('courtEmail', e.target.value)}
+                        onChange={(значение) => onFieldChange('courtEmail', значение)}
                         size="small"
                         margin="dense"
                         error={!isValidEmail(editedFields.courtEmail)}
@@ -164,10 +165,10 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                   <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес сайта суда:</Typography>
-                      <TextField
+                      <FieldInput
                         fullWidth
                         value={editedFields.courtSite || ''}
-                        onChange={(e) => onFieldChange('courtSite', e.target.value)}
+                        onChange={(значение) => onFieldChange('courtSite', значение)}
                         size="small"
                         margin="dense"
                         error={!isValidUrl(editedFields.courtSite)}
@@ -182,10 +183,10 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                   <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Вышестоящая инстанция:</Typography>
-                      <TextField
+                      <FieldInput
                         fullWidth
                         value={editedFields.higherCourt || ''}
-                        onChange={(e) => onFieldChange('higherCourt', e.target.value)}
+                        onChange={(значение) => onFieldChange('higherCourt', значение)}
                         size="small"
                         margin="dense"
                         placeholder="Апелляционный суд"
@@ -198,11 +199,11 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                   <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес вышестоящей инстанции:</Typography>
-                      <TextField
+                      <FieldInput
                         fullWidth
                         multiline
                         value={editedFields.higherCourtAddress || ''}
-                        onChange={(e) => onFieldChange('higherCourtAddress', e.target.value)}
+                        onChange={(значение) => onFieldChange('higherCourtAddress', значение)}
                         size="small"
                         margin="dense"
                       />
@@ -214,11 +215,11 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                   <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес почтовой корреспонденции вышестоящей инстанции:</Typography>
-                      <TextField
+                      <FieldInput
                         fullWidth
                         multiline
                         value={editedFields.higherCourtPostalAddress || ''}
-                        onChange={(e) => onFieldChange('higherCourtPostalAddress', e.target.value)}
+                        onChange={(значение) => onFieldChange('higherCourtPostalAddress', значение)}
                         size="small"
                         margin="dense"
                       />
@@ -252,10 +253,10 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                             ? 'ФИО помощника:'
                             : 'ФИО помощника/секретаря:'}
                       </Typography>
-                      <TextField
+                      <FieldInput
                         fullWidth
                         value={editedFields.authorName || ''}
-                        onChange={(e) => onFieldChange('authorName', e.target.value)}
+                        onChange={(значение) => onFieldChange('authorName', значение)}
                         size="small"
                         margin="dense"
                         error={isMortgage && !isValidFio(editedFields.authorName)}
@@ -269,10 +270,10 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                 <Grid item xs={12}>
                     <Box sx={LABEL_OVERLAP_BOX}>
                       <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Номер обособленного спора:</Typography>
-                  <TextField
+                  <FieldInput
                     fullWidth
                         value={editedFields.separateDisputeNumber22 ?? ''}
-                        onChange={(e) => onFieldChange('separateDisputeNumber22', e.target.value)}
+                        onChange={(значение) => onFieldChange('separateDisputeNumber22', значение)}
                     size="small"
                     margin="dense"
                   />

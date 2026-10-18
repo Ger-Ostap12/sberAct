@@ -1,3 +1,4 @@
+import { FieldInput } from '../components/FieldInput';
 import React from 'react';
 import { Box, Typography, Grid, TextField } from '@mui/material';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';
@@ -23,11 +24,11 @@ const LiquidationSection: React.FC<LiquidationSectionProps> = ({ editedFields, o
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Наименование ликвидатора:</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             value={editedFields.liquidatorName || ''}
             multiline
-            onChange={(e) => onFieldChange('liquidatorName', e.target.value)}
+            onChange={(значение) => onFieldChange('liquidatorName', значение)}
             size="small"
             margin="dense"
           />
@@ -36,10 +37,10 @@ const LiquidationSection: React.FC<LiquidationSectionProps> = ({ editedFields, o
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Номер заявления:</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             value={editedFields.liquidationApplicationNumber || ''}
-            onChange={(e) => onFieldChange('liquidationApplicationNumber', sanitizeNumber(e.target.value))}
+            onChange={(значение) => onFieldChange('liquidationApplicationNumber', sanitizeNumber(значение))}
             size="small"
             margin="dense"
             inputProps={{ inputMode: 'numeric' }}
@@ -49,10 +50,10 @@ const LiquidationSection: React.FC<LiquidationSectionProps> = ({ editedFields, o
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата ликвидации:</Typography>
-          <TextField
+          <FieldInput
             fullWidth
             value={editedFields.liquidationDate || ''}
-            onChange={(e) => onFieldChange('liquidationDate', maskDate(e.target.value))}
+            onChange={(значение) => onFieldChange('liquidationDate', maskDate(значение))}
             size="small"
             margin="dense"
             placeholder="дд.мм.гггг"

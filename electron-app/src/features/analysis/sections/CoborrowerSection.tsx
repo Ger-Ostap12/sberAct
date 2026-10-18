@@ -1,3 +1,4 @@
+import { FieldInput } from '../components/FieldInput';
 import React from 'react';
 import { Box, Typography, Card, IconButton, Grid, TextField, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -44,10 +45,10 @@ const CoborrowerSection: React.FC<CoborrowerSectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО:</Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 value={coborrower.name || ''}
-                onChange={(e) => onUpdate(index, 'name', e.target.value)}
+                onChange={(значение) => onUpdate(index, 'name', значение)}
                 size="small"
                 margin="dense"
                 error={!isValidFio(coborrower.name)}
@@ -58,10 +59,10 @@ const CoborrowerSection: React.FC<CoborrowerSectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ИНН:</Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 value={coborrower.inn || ''}
-                onChange={(e) => onUpdate(index, 'inn', e.target.value)}
+                onChange={(значение) => onUpdate(index, 'inn', значение)}
                 size="small"
                 margin="dense"
               />
@@ -70,11 +71,11 @@ const CoborrowerSection: React.FC<CoborrowerSectionProps> = ({
           <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес проживания:</Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 value={coborrower.address || ''}
                 multiline
-                onChange={(e) => onUpdate(index, 'address', e.target.value)}
+                onChange={(значение) => onUpdate(index, 'address', значение)}
                 size="small"
                 margin="dense"
               />

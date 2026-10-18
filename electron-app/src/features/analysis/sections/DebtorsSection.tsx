@@ -1,3 +1,4 @@
+import { FieldInput } from '../components/FieldInput';
 import React from 'react';
 import { Alert, Box, Typography, Card, IconButton, Grid, TextField, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -78,10 +79,10 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
                 {isMortgage ? 'ФИО:' : 'ФИО/наименование:'}
                 <LlmHintPending field={`debtors[${index}].name`} block="debtors" />
               </Typography>
-              <TextField
+              <FieldInput
                 fullWidth
                 value={debtor.name || ''}
-                onChange={(e) => onUpdate(index, 'name', e.target.value)}
+                onChange={(значение) => onUpdate(index, 'name', значение)}
                 size="small"
                 margin="dense"
               />
@@ -95,11 +96,11 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
                 <LlmHintPending field={`debtors[${index}].address`} block="debtors" />
               </Typography>
               <FieldQualityMark quality={fieldQuality?.[`debtors[${index}].address`]}>
-                <TextField
+                <FieldInput
                   fullWidth
                   value={debtor.address || ''}
                   multiline
-                  onChange={(e) => onUpdate(index, 'address', e.target.value)}
+                  onChange={(значение) => onUpdate(index, 'address', значение)}
                   size="small"
                   margin="dense"
                 />
@@ -113,10 +114,10 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
                 ИНН:<LlmHintPending field={`debtors[${index}].inn`} block="debtors" />
               </Typography>
               <FieldQualityMark quality={fieldQuality?.[`debtors[${index}].inn`]}>
-                <TextField
+                <FieldInput
                   fullWidth
                   value={debtor.inn || ''}
-                  onChange={(e) => onUpdate(index, 'inn', e.target.value)}
+                  onChange={(значение) => onUpdate(index, 'inn', значение)}
                   size="small"
                   margin="dense"
                 />
@@ -135,10 +136,10 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
                 <FieldQualityMark
                   quality={fieldQuality?.[`debtors[${index}].${entityType === 'ip' ? 'ogrnip' : 'ogrn'}`]}
                 >
-                  <TextField
+                  <FieldInput
                     fullWidth
                     value={(entityType === 'ip' ? debtor.ogrnip : debtor.ogrn) || ''}
-                    onChange={(e) => onUpdate(index, entityType === 'ip' ? 'ogrnip' : 'ogrn', e.target.value)}
+                    onChange={(значение) => onUpdate(index, entityType === 'ip' ? 'ogrnip' : 'ogrn', значение)}
                     size="small"
                     margin="dense"
                   />
@@ -151,11 +152,11 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
             <Grid item xs={12}>
               <Box sx={LABEL_OVERLAP_BOX}>
                 <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Город/место рождения:</Typography>
-                <TextField
+                <FieldInput
                   fullWidth
                   value={debtor.birthPlace ?? ''}
                   multiline
-                  onChange={(e) => onUpdate(index, 'birthPlace', e.target.value)}
+                  onChange={(значение) => onUpdate(index, 'birthPlace', значение)}
                   size="small"
                   margin="dense"
                   placeholder="например: г. Москва"
@@ -168,11 +169,11 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
             <Grid item xs={12}>
               <Box sx={LABEL_OVERLAP_BOX}>
                 <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата рождения:<LlmHintPending field={`debtors[${index}].birthDate`} block="debtors" /></Typography>
-                <TextField
+                <FieldInput
                   fullWidth
                   type="date"
                   value={toInputDate(debtor.birthDate)}
-                  onChange={(e) => onUpdate(index, 'birthDate', fromInputDate(e.target.value))}
+                  onChange={(значение) => onUpdate(index, 'birthDate', fromInputDate(значение))}
                   size="small"
                   margin="dense"
                   InputLabelProps={{ shrink: true }}
@@ -187,10 +188,10 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
               <Grid item xs={6}>
                 <Box sx={LABEL_OVERLAP_BOX}>
                   <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Паспорт (серия):</Typography>
-                  <TextField
+                  <FieldInput
                     fullWidth
                     value={debtor.passportSeries || ''}
-                    onChange={(e) => onUpdate(index, 'passportSeries', digitsOnly(e.target.value, 4))}
+                    onChange={(значение) => onUpdate(index, 'passportSeries', digitsOnly(значение, 4))}
                     size="small"
                     margin="dense"
                     inputProps={{ inputMode: 'numeric', maxLength: 4 }}
@@ -203,10 +204,10 @@ const DebtorsSection: React.FC<DebtorsSectionProps> = ({
               <Grid item xs={6}>
                 <Box sx={LABEL_OVERLAP_BOX}>
                   <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Паспорт (номер):</Typography>
-                  <TextField
+                  <FieldInput
                     fullWidth
                     value={debtor.passportNumber || ''}
-                    onChange={(e) => onUpdate(index, 'passportNumber', digitsOnly(e.target.value, 6))}
+                    onChange={(значение) => onUpdate(index, 'passportNumber', digitsOnly(значение, 6))}
                     size="small"
                     margin="dense"
                     inputProps={{ inputMode: 'numeric', maxLength: 6 }}

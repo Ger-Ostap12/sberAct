@@ -237,6 +237,11 @@ export const webApi: ElectronAPI = {
     return res.json();
   },
 
+  /** Просьба загрузить движок OCR заранее. Нативному PDF он не нужен. */
+  converterWarmup: async (): Promise<void> => {
+    await fetchBackend('/convert/warmup', { method: 'POST' });
+  },
+
   convertScan: async (file: File, flags?: ConvertScanFlags): Promise<{ job_id: string }> => {
     const formData = new FormData();
     formData.append('file', file, file.name);

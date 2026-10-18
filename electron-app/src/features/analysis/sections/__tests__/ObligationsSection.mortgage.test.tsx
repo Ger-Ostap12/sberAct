@@ -33,7 +33,9 @@ describe('ObligationsSection — период взыскания (ипотека
     // Первый date-инпут «Период взыскания с» (после «Дата договора»).
     const dateInputs = document.querySelectorAll('input[type="date"]');
     // индекс 1: [0]=Дата договора, [1]=Период взыскания с, [2]=по
-    fireEvent.change(dateInputs[1], { target: { value: '2023-01-15' } });
+    const поле1 = dateInputs[1];
+    fireEvent.change(поле1, { target: { value: '2023-01-15' } });
+    fireEvent.blur(поле1);
     expect(onUpdate).toHaveBeenCalledWith(0, { collectionPeriodFrom: '15.01.2023' });
   });
 });

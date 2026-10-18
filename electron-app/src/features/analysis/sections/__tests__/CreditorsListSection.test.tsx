@@ -71,7 +71,9 @@ describe('CreditorsListSection — список кредиторов самоб�
     );
     const поля = screen.getAllByRole('textbox');
     // Порядок полей в карточке: наименование, адрес, ИНН, ОГРН.
-    fireEvent.change(поля[4], { target: { value: 'АО «Тбанк»' } });
+    const поле1 = поля[4];
+    fireEvent.change(поле1, { target: { value: 'АО «Тбанк»' } });
+    fireEvent.blur(поле1);
     expect(onUpdate).toHaveBeenCalledWith(1, 'name', 'АО «Тбанк»');
   });
 

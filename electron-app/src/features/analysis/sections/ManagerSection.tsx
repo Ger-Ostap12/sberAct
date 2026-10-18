@@ -1,3 +1,4 @@
+import { FieldInput } from '../components/FieldInput';
 import React from 'react';
 import { Box, Typography, Grid, TextField } from '@mui/material';
 import { LABEL_OVERLAP_BOX, LABEL_OVERLAP_SX, BLOCK_BOX_SX } from '../../../shared/styles/formStyles';
@@ -24,10 +25,10 @@ const ManagerSection: React.FC<ManagerSectionProps> = ({ editedFields, onFieldCh
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
         <Typography variant="body2" sx={LABEL_OVERLAP_SX}>ФИО:</Typography>
-        <TextField
+        <FieldInput
           fullWidth
           value={editedFields.managerName || ''}
-          onChange={(e) => onFieldChange('managerName', e.target.value)}
+          onChange={(значение) => onFieldChange('managerName', значение)}
           size="small"
           margin="dense"
         />
@@ -37,11 +38,11 @@ const ManagerSection: React.FC<ManagerSectionProps> = ({ editedFields, onFieldCh
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
         <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Адрес:</Typography>
-        <TextField
+        <FieldInput
           fullWidth
           value={editedFields.managerAddress || ''}
           multiline
-          onChange={(e) => onFieldChange('managerAddress', e.target.value)}
+          onChange={(значение) => onFieldChange('managerAddress', значение)}
           size="small"
           margin="dense"
         />
@@ -51,11 +52,11 @@ const ManagerSection: React.FC<ManagerSectionProps> = ({ editedFields, onFieldCh
       <Grid item xs={12}>
         <Box sx={LABEL_OVERLAP_BOX}>
         <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Саморегулируемая организация:</Typography>
-        <TextField
+        <FieldInput
           fullWidth
           value={editedFields.sroName || ''}
           multiline
-          onChange={(e) => onFieldChange('sroName', e.target.value)}
+          onChange={(значение) => onFieldChange('sroName', значение)}
           size="small"
           margin="dense"
         />

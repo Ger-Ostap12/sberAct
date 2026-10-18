@@ -47,7 +47,9 @@ describe('DeceasedSection', () => {
   it('маскирует дату смерти в дд.мм.гггг', () => {
     const onFieldChange = jest.fn();
     renderSection({ onFieldChange });
-    fireEvent.change(screen.getByPlaceholderText('дд.мм.гггг'), { target: { value: '24022019' } });
+    const поле1 = screen.getByPlaceholderText('дд.мм.гггг');
+    fireEvent.change(поле1, { target: { value: '24022019' } });
+    fireEvent.blur(поле1);
     expect(onFieldChange).toHaveBeenCalledWith('deathDate', '24.02.2019');
   });
 
@@ -71,7 +73,9 @@ describe('DeceasedSection', () => {
   it('чистит недопустимые символы в свидетельстве', () => {
     const onFieldChange = jest.fn();
     renderSection({ onFieldChange });
-    fireEvent.change(screen.getByPlaceholderText('II-МЮ № 123456'), { target: { value: 'ii-мю № 123456!' } });
+    const поле2 = screen.getByPlaceholderText('II-МЮ № 123456');
+    fireEvent.change(поле2, { target: { value: 'ii-мю № 123456!' } });
+    fireEvent.blur(поле2);
     expect(onFieldChange).toHaveBeenCalledWith('deathCertificate', 'II-МЮ № 123456');
   });
 
@@ -115,7 +119,9 @@ describe('DeceasedSection', () => {
   it('правка наследника уходит с его индексом', () => {
     const onHeirUpdate = jest.fn();
     renderSection({ heirs, onHeirUpdate });
-    fireEvent.change(screen.getByDisplayValue('Ким Эмма Николаевна'), { target: { value: 'Ким Э. Н.' } });
+    const поле3 = screen.getByDisplayValue('Ким Эмма Николаевна');
+    fireEvent.change(поле3, { target: { value: 'Ким Э. Н.' } });
+    fireEvent.blur(поле3);
     expect(onHeirUpdate).toHaveBeenCalledWith(0, 'name', 'Ким Э. Н.');
   });
 
