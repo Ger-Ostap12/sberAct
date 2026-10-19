@@ -528,6 +528,8 @@ class ObligationsRenderMixin:
             for _ in range(10):  # несколько проходов для цепочек "по договору № от , по договору № от , ..."
                 self._replace_regex_in_doc(doc, r",\s*по\s+договору\s+№\s*от\s*\s*,", ",")
                 self._replace_regex_in_doc(doc, r"по\s+договору\s+№\s*от\s*\s*,", "")
+                # Последний пустой слот перед продолжением фразы: «…, по договору № от в размере».
+                self._replace_regex_in_doc(doc, r",\s*по\s+договору\s+№\s*от\s+(?=[а-яё])", " ")
                 self._replace_regex_in_doc(doc, r",\s*по\s+договору\s+№\s*\-?\s*", ",")
                 self._replace_regex_in_doc(doc, r"по\s+договору\s+№\s*\-?\s*", "")
 

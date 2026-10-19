@@ -33,6 +33,21 @@ _ORG_FULL_FORMS = (
 
 _ABBREV_RE = r"ооо|ао|пао|зао|оао|нао|акб|кб|мкк|мфо|пко|ип"
 
+# Полная форма -> сокращение для подстановки в акт. В акте название стоит в
+# любом падеже, а сокращение не склоняется: «заявлением ООО ПКО «ФИЛБЕРТ»».
+_FULL_FORM_TO_ABBREV = (
+    (re.compile(r"публич\w*\s+акционер\w*\s+обществ\w*", re.I), "ПАО"),
+    (re.compile(r"непублич\w*\s+акционер\w*\s+обществ\w*", re.I), "НАО"),
+    (re.compile(r"открыт\w*\s+акционер\w*\s+обществ\w*", re.I), "ОАО"),
+    (re.compile(r"закрыт\w*\s+акционер\w*\s+обществ\w*", re.I), "ЗАО"),
+    (re.compile(r"акционер\w*\s+обществ\w*", re.I), "АО"),
+    (re.compile(r"обществ\w*\s+с\s+ограниченн\w*\s+ответственност\w*", re.I), "ООО"),
+    (re.compile(r"профессиональн\w*\s+коллекторск\w*\s+организаци\w*", re.I), "ПКО"),
+    (re.compile(r"микрокредитн\w*\s+компани\w*", re.I), "МКК"),
+    (re.compile(r"микрофинансов\w*\s+компани\w*", re.I), "МФК"),
+)
+_LEADING_ABBREV_RE = re.compile(r"^\s*(?:ООО|ПАО|НАО|ОАО|ЗАО|АО|ПКО|МКК|МФК|АКБ|КБ)\b")
+
 
 def norm_org_key(value: str) -> str:
     """Канонический ключ организации: '<форма>:<базовое имя>' либо '<базовое имя>'.
@@ -65,6 +80,29 @@ def norm_org_key(value: str) -> str:
     s = re.sub(r"[-\s]+банк\w*\s*$", "", s, flags=re.I).strip()
     base = re.sub(r"\s+", " ", s).strip()
     return f"{abbrev}:{base}" if abbrev else base
+
+
+def abbreviate_org_name(value: str) -> str:
+    """Полные правовые формы до кавычек сокращаются: «Общество с ограниченной
+    ответственностью «Ромашка»» -> «ООО «Ромашка»». Закавыченное имя не трогаем."""
+    if not value:
+        return value
+    quote = next((i for i, c in enumerate(value) if c in "«\""), len(value))
+    head, tail = value[:quote], value[quote:]
+    for pattern, abbrev in _FULL_FORM_TO_ABBREV:
+        head = pattern.sub(abbrev, head)
+    head = re.sub(r"\s+", " ", head)
+    if tail and head and not head.endswith(" "):
+        head += " "
+    return (head + tail).strip()
+
+
+def has_own_legal_form(value: str) -> bool:
+    """В названии уже есть правовая форма или кавычки — шаблонные «» и ОПФ вокруг
+    маркера тогда лишние."""
+    if not value:
+        return False
+    return bool("«" in value or "\"" in value or _LEADING_ABBREV_RE.match(value))
 
 
 def base_org_name(value: str) -> str:

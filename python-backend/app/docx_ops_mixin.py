@@ -204,6 +204,120 @@ class DocxOpsMixin:
             changed = True
         return changed
 
+    def _replace_span_in_paragraph(self, par, start: int, end: int, text: str) -> bool:
+        """Заменяет срез [start, end) абзаца текстом; новый текст встаёт в run первого
+        символа среза, форматирование остальных run'ов не трогается."""
+        if end < start:
+            return False
+        offset = 0
+        placed = not text
+        changed = False
+        for node in par._element.iter(qn("w:t")):
+            value = node.text or ""
+            node_start, node_end = offset, offset + len(value)
+            offset = node_end
+            if not placed and node_start <= start <= node_end and (start < node_end or end == start):
+                local = start - node_start
+                rest = value[max(0, end - node_start):] if end <= node_end else ""
+                node.text = value[:local] + text + rest
+                node.set(qn("xml:space"), "preserve")
+                placed = changed = True
+                continue
+            if node_end <= start or node_start >= end:
+                continue
+            head = value[: max(0, start - node_start)]
+            tail = value[max(0, end - node_start):] if end < node_end else ""
+            node.text = head + tail
+            node.set(qn("xml:space"), "preserve")
+            changed = True
+        return changed
+
+    def _regex_sub_in_paragraphs(self, paragraphs, pattern: "re.Pattern", repl) -> int:
+        """Замена по регулярке в каждом абзаце без пересборки run'ов (в отличие от
+        `paragraph.text = …`, которое схлопывает абзац и теряет форматирование)."""
+        count = 0
+        for par in paragraphs:
+            text = self._paragraph_text(par)
+            matches = list(pattern.finditer(text))
+            for m in reversed(matches):
+                new = repl(m) if callable(repl) else m.expand(repl)
+                if new == m.group(0):
+                    continue
+                if self._replace_span_in_paragraph(par, m.start(), m.end(), new):
+                    count += 1
+        return count
+
+    # Порядок дочерних элементов w:rPr по схеме: w:highlight обязан стоять перед ними,
+    # иначе Word считает файл повреждённым.
+    _RPR_AFTER_HIGHLIGHT = ("u", "effect", "bdr", "shd", "fitText", "vertAlign", "rtl",
+                            "cs", "em", "lang", "eastAsianLayout", "specVanish", "oMath")
+
+    def _highlight_sentinel(self, doc: Document, sentinel: str, display: str, color: str) -> int:
+        """Каждое вхождение `sentinel` превращается в отдельный run с текстом `display`
+        и выделением цветом `color`. Вызывать последним шагом: замены через
+        `paragraph.text = …` после него сотрут выделение."""
+        roots = [doc.element.body]
+        for section in doc.sections:
+            for part in (section.header, section.footer, section.first_page_header,
+                         section.first_page_footer, section.even_page_header, section.even_page_footer):
+                try:
+                    roots.append(part._element)
+                except Exception:  # у секции может не быть отдельного колонтитула
+                    continue
+        count = 0
+        seen = set()
+        for root in roots:
+            for node in list(root.iter(qn("w:t"))):
+                if id(node) in seen or not node.text or sentinel not in node.text:
+                    continue
+                seen.add(id(node))
+                run = node.getparent()
+                if run is None or run.tag != qn("w:r"):
+                    node.text = node.text.replace(sentinel, display)
+                    continue
+                pieces = node.text.split(sentinel)
+                node.text = pieces[0]
+                node.set(qn("xml:space"), "preserve")
+                anchor = run
+                for piece in pieces[1:]:
+                    anchor = self._insert_run_after(anchor, run, display, color)
+                    count += 1
+                    if piece:
+                        anchor = self._insert_run_after(anchor, run, piece, None)
+        return count
+
+    def _insert_run_after(self, anchor, template_run, text: str, color: Optional[str]):
+        """Новый run с форматированием `template_run` и текстом `text` сразу после `anchor`."""
+        from copy import deepcopy
+        from docx.oxml import OxmlElement
+
+        new_run = OxmlElement("w:r")
+        rpr = template_run.find(qn("w:rPr"))
+        if rpr is not None:
+            new_rpr = deepcopy(rpr)
+            for old in new_rpr.findall(qn("w:highlight")):
+                new_rpr.remove(old)
+            new_run.append(new_rpr)
+        else:
+            new_rpr = None
+        if color:
+            if new_rpr is None:
+                new_rpr = OxmlElement("w:rPr")
+                new_run.append(new_rpr)
+            hl = OxmlElement("w:highlight")
+            hl.set(qn("w:val"), color)
+            following = next((c for c in new_rpr if c.tag in {qn(f"w:{t}") for t in self._RPR_AFTER_HIGHLIGHT}), None)
+            if following is not None:
+                following.addprevious(hl)
+            else:
+                new_rpr.append(hl)
+        t = OxmlElement("w:t")
+        t.text = text
+        t.set(qn("xml:space"), "preserve")
+        new_run.append(t)
+        anchor.addnext(new_run)
+        return new_run
+
     def _iter_all_paragraphs(self, doc: Document):
         """Абзацы тела, таблиц, врезок и колонтитулов — один проход без дублей."""
         seen = set()
@@ -318,6 +432,8 @@ class DocxOpsMixin:
             "2.4": [],
             # [3] - Дата рождения (широкий паттерн: любой текст между ключевой фразой и маркером)
             "3": [
+                # «([3] года рождения, место рождения: …)» — подпись стоит после маркера.
+                r"{MARKER}\s*года\s+рождения",
                 r"(?:дата\s+рождения|Дата\s+рождения|дата\s+рожд\.|Дата\s+рожд\.)[^\[\],.;()]{0,40}{MARKER}",
                 r"(?:дата\s+рождения|Дата\s+рождения)[\s:]*{MARKER}",
                 r"(?:дата\s+рожд\.|Дата\s+рожд\.)[\s:]*{MARKER}",

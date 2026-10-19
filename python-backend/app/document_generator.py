@@ -17,7 +17,7 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.shared import OxmlElement, qn
 # Локальный импорт анализатора без package-префикса, чтобы работать при запуске из app/
 from claim_resolution import CLAIM_RESOLUTION_TEXTS, PARTIAL, build_partial_denial
-from org_normalizer import is_org_name
+from org_normalizer import abbreviate_org_name, has_own_legal_form, is_org_name
 from hearing_datetime import format_hearing_datetime
 from text_case import normalize_address_case, normalize_name_case
 from official_name_case import (
@@ -261,6 +261,17 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 return name
         return None
 
+    @staticmethod
+    def _full_org_name(candidates: List[Optional[str]]) -> Optional[str]:
+        """Полное наименование организации для акта: первый кандидат с закавыченным
+        именем (канонический формат анализа), иначе первый непустой; длинная форма
+        сокращается."""
+        cleaned = [re.sub(r"\s+", " ", str(c)).strip() for c in candidates if c and str(c).strip()]
+        if not cleaned:
+            return None
+        quoted = next((c for c in cleaned if "«" in c or "\"" in c), cleaned[0])
+        return abbreviate_org_name(quoted)
+
     def clean_extracted_value(self, value: str) -> str:
         """Очищает извлеченное значение от звездочек и других маскирующих символов"""
         if not value:
@@ -307,16 +318,14 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         logger.info(f"Очищенные данные: {cleaned_data}")
         logger.info(f" Ключевые поля в cleaned_data: creditorName={cleaned_data.get('creditorName')}, inn={cleaned_data.get('inn')}, creditorAddress={cleaned_data.get('creditorAddress')}")
 
-        # Для ЮЛ используем короткое наименование в [2]/[2.1]/[2.2], чтобы не тянуть
-        # артефакты вроде "ИП Общества..." и некорректные ФИО-падежи.
+        # ЮЛ-должник в [2]/[2.x] — полное наименование с правовой формой, длинная
+        # форма сокращается («ООО «Ромашка»»): сокращение не склоняется, поэтому
+        # одно значение годится во все падежи.
         if (cleaned_data.get("entityType") or "").strip().lower() == "legal":
-            # Приоритет кандидатов: debtorName (канонический «…»-формат) впереди
-            # legalShortName, т.к. legalShortName иногда приходит кривым
-            # ('ОРГТЕХНИКА" (ООО "ОРГТЕХНИКА")') и ломает извлечение «(ооо».
-            legal_name = self._extract_org_short_name([
+            legal_name = self._full_org_name([
                 cleaned_data.get("debtorName"),
-                cleaned_data.get("legalShortName"),
                 cleaned_data.get("applicantName"),
+                cleaned_data.get("legalShortName"),
             ])
             if legal_name:
                 cleaned_data["applicantName"] = legal_name
@@ -343,10 +352,10 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     cleaned_data["creditorName"] = inspection
                     logger.info(f"ФНС: в [989] подставим инспекцию: {inspection}")
             else:
-                normalized_creditor_name = self._extract_org_short_name([creditor_name]) or creditor_name
+                normalized_creditor_name = abbreviate_org_name(creditor_name)
                 if normalized_creditor_name and normalized_creditor_name != creditor_name:
                     cleaned_data["creditorName"] = normalized_creditor_name
-                    logger.info(f"Для кредитора-ЮЛ нормализовано название: {normalized_creditor_name}")
+                    logger.info(f"Название кредитора сокращено: {normalized_creditor_name}")
 
         # Адрес должника/заявителя не должен совпадать с адресом кредитора (частая ошибка извлечения)
         applicant_addr = (cleaned_data.get("applicantAddress") or "").strip()
@@ -1474,11 +1483,6 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # Приоритет публикации ЕФРСБ/«Коммерсантъ» — до замены маркеров, пока текст ещё содержит [9]/[11]/[67]/[68]
         self._apply_efrsb_kommersant_priority(doc, cleaned_data)
 
-        # Неустойка: если в заявлении её не было — убираем маркер [15] вместе с контекстом
-        # ("руб. - неустойка" и т.п.), пока текст ещё содержит [13]/[14]/[15] в исходном виде
-        self._apply_penalty_removal(doc, cleaned_data)
-
-
         if cleaned_data.get("_fnsCreditor"):
             self._apply_fns_third_queue_total(doc, cleaned_data)
 
@@ -1487,6 +1491,14 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         is_mortgage_document = (cleaned_data.get("sourceDocumentType") or "").lower() == "mortgage_claim"
         is_ip_collateral = (cleaned_data.get("sourceDocumentType") or "").lower() == "ip_enforcement_statement_collateral"
         is_physical_collateral = (cleaned_data.get("sourceDocumentType") or "").lower() in ["physical_realization_collateral", "physical_restructuring_collateral", "observation_collateral", "competition_collateral"]
+
+        if is_mortgage_document:
+            # Неустойка: если в заявлении её не было — убираем маркер [15] вместе с контекстом.
+            self._apply_penalty_removal(doc, cleaned_data)
+        else:
+            self._apply_empty_amounts_removal(doc, cleaned_data, field_mapping, is_ip or is_physical_collateral)
+            self._unwrap_org_name_markers(doc, cleaned_data)
+            self._normalize_case_number_markers(doc)
 
         field_mapping = self._apply_debtor_name_field_mapping(cleaned_data, field_mapping, is_mortgage_document)
 
@@ -1618,6 +1630,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
 
         # Удаляем все пустые маркеры, для которых нет значений
         self._remove_empty_placeholders(doc, cleaned_data, field_mapping, doc_type=data.get("_current_doc_type"))
+        if not is_mortgage_document:
+            self._tidy_after_empty_markers(doc)
 
         # ФНС: если компонент очереди (штрафы/пени/недоимка) пуст — после удаления
         # маркера остаётся осиротевшее ", руб. – штрафы". Подчищаем такие хвосты.
@@ -1634,6 +1648,10 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
 
         
         self._postprocess_document_formatting(doc, cleaned_data)
+
+        # Последним: замены через paragraph.text после этого шага стёрли бы выделение.
+        if not is_mortgage_document:
+            self._highlight_empty_markers(doc)
 
     def _apply_efrsb_kommersant_priority(self, doc: DocxDocument, cleaned_data: Dict[str, Any]) -> None:
         """В части актов рядом упомянуты обе публикации — ЕФРСБ (обёрнута в
@@ -1657,6 +1675,180 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 return inner[1:-1].strip() + " "
             self._replace_regex_in_doc(doc, efrsb_block_pattern, _strip_brackets)
             self._replace_regex_in_doc(doc, kommersant_block_pattern, "")
+
+    # Правовая форма, которую шаблон пишет перед «[маркер]» сам (под Сбербанк и ООО).
+    _TEMPLATE_OPF = (
+        r"(?:(?:(?:публичн|непубличн|открыт|закрыт)\w*\s+)?акционерн\w*\s+обществ\w*"
+        r"|обществ\w*\s+(?:с\s+)?ограниченн\w*\s+ответственност\w*"
+        r"|ООО|ПАО|НАО|ЗАО|ОАО|АО)"
+    )
+
+    def _unwrap_org_name_markers(self, doc: DocxDocument, cleaned_data: Dict[str, Any]) -> None:
+        """Если в названии организации уже есть правовая форма или кавычки, шаблонные
+        «» и ОПФ вокруг маркера убираются: иначе «ООО «ООО ПКО «ФИЛБЕРТ»»»."""
+        markers = []
+        if not cleaned_data.get("_fnsCreditor") and has_own_legal_form(str(cleaned_data.get("creditorName") or "")):
+            markers.append("989")
+        if (cleaned_data.get("entityType") or "").strip().lower() == "legal" and \
+                has_own_legal_form(str(cleaned_data.get("applicantName") or "")):
+            markers += ["2", "2.1", "2.2", "2.3", "2.4"]
+        sro = str(cleaned_data.get("sroName") or "").strip()
+        if sro:
+            # Название СРО начинает самостоятельное наименование: «Саморегулируемой
+            # организации …», а не «саморегулируемой».
+            cleaned_data["sroName"] = sro[:1].upper() + sro[1:]
+            if "«" in sro or "\"" in sro:
+                markers.append("987")
+        if not markers:
+            return
+        paragraphs = list(self._iter_all_paragraphs(doc))
+        for number in markers:
+            escaped = re.escape(f"[{number}]")
+            opf = self._TEMPLATE_OPF if number != "987" else r"(?!)"
+            pattern = re.compile(rf"(?:\b{opf}\s*)?«\s*{escaped}\s*»", re.IGNORECASE)
+            self._regex_sub_in_paragraphs(paragraphs, pattern, lambda m, n=number: f"[{n}]")
+
+    def _normalize_case_number_markers(self, doc: DocxDocument) -> None:
+        """«Дело № А53-[1]/[22]» и «[1]-[22]»: в [1] приходит полный номер дела вместе
+        с обособленным спором, поэтому приставка суда и [22] рядом с ним лишние."""
+        pattern = re.compile(r"(?:[АA]\d{2}\s*-\s*)?\[1\](?:\s*[/-]\s*\[22\])?")
+        self._regex_sub_in_paragraphs(list(self._iter_all_paragraphs(doc)), pattern, lambda m: "[1]")
+
+    # Суммы, у которых ноль равен отсутствию: строка перечня с ними вырезается.
+    _AMOUNT_MARKERS = ("13", "14", "15", "16", "17", "35", "36", "37", "0007", "0071")
+    _AMOUNT_LABELS = (
+        r"штраф\w*,\s*пени,\s*неустойк\w*|пени,\s*штраф\w*,\s*неустойк\w*"
+        r"|(?:просроченн\w+\s+)?основн\w+\s+долг\w*|(?:просроченн\w+\s+)?процент\w*"
+        r"|неустойк\w*|пени|штраф\w*|дополнительн\w+\s+услуг\w*"
+        r"|плата\s+за\s+использование\s+лимита|государственн\w+\s+пошлин\w*|гос\.\s*пошлин\w*"
+    )
+    _AMOUNT_GENITIVE = r"основного\s+долга|(?:просроченных\s+)?процентов|неустойки"
+
+    @staticmethod
+    def _is_zero_amount(value: Any) -> bool:
+        """Пусто или ноль: «0», «0,00», «0 руб.»."""
+        text = str(value or "").strip().lower()
+        if not text or text in ("не указано", "не указана", "none", "null"):
+            return True
+        digits = re.sub(r"[\s ]|руб\w*\.?", "", text).replace(",", ".")
+        try:
+            return float(digits) == 0
+        except ValueError:
+            return False
+
+    def _marker_value(self, cleaned_data: Dict[str, Any], field_mapping: Dict[str, str],
+                      number: str, priority: Dict[str, str]) -> Any:
+        """Значение, которое подстановка положит в маркер: приоритетное поле, иначе
+        первое непустое поле этого маркера в порядке данных (как в подстановке)."""
+        for field, marker in priority.items():
+            if marker == number and str(cleaned_data.get(field) or "").strip():
+                return cleaned_data[field]
+        for field, value in cleaned_data.items():
+            if field_mapping.get(field) == number and value:
+                return value
+        return None
+
+    def _apply_empty_amounts_removal(self, doc: DocxDocument, cleaned_data: Dict[str, Any],
+                                     field_mapping: Dict[str, str], has_priority: bool) -> None:
+        """Пустые и нулевые суммы уходят из перечней вместе с подписью: «из них: 100 руб.
+        – основной долг, 0 руб. – неустойка» -> «из них: 100 руб. – основной долг».
+        Вызывать до подстановки, пока в тексте стоят маркеры."""
+        priority = {"stateDuty16": "16", "ipCollateralClaimAmount": "0007", "penalty0071": "0071"} if has_priority else {}
+        empty = [n for n in self._AMOUNT_MARKERS
+                 if self._is_zero_amount(self._marker_value(cleaned_data, field_mapping, n, priority))]
+        if not empty:
+            return
+        # Ноль дальше не печатается нигде: поля маркера обнуляются, зачистка пустых
+        # маркеров снимет оставшиеся вхождения.
+        for field, marker in field_mapping.items():
+            if marker in empty and field in cleaned_data:
+                cleaned_data[field] = ""
+
+        rub = r"(?:\s*руб(?:\.|л\w*)?)?"
+        dash = r"\s*[–—-]\s*"
+        paragraphs = list(self._iter_all_paragraphs(doc))
+        for number in empty:
+            m_ = re.escape(f"[{number}]")
+            items = [
+                rf"{m_}{rub}{dash}(?:{self._AMOUNT_LABELS})",
+                rf"{m_}{rub}\s+(?:{self._AMOUNT_GENITIVE})",
+                rf"(?:{self._AMOUNT_GENITIVE})\s+в\s+размере\s*{m_}{rub}",
+            ]
+            if number == "0007":
+                items = [
+                    rf",?\s*из\s+них:?\s*{m_}{rub}{dash}?как\s+обеспеченн\w+\s+залогом\s+имущества\s+должника",
+                    rf",?\s*из\s+них:?\s*как\s+обеспеченн\w+\s+залогом{dash}{m_}{rub}",
+                ] + items
+            if number == "0071":
+                items = [rf",?\s*в\s+том\s+числе\s+неустойка{dash}{m_}{rub}"] + items
+            if number == "16":
+                items = [rf"о\s+взыскании\s+с\s+должника\s+государственной\s+пошлины\s+в\s+размере\s*{m_}{rub}"] + items
+            for item in items:
+                pattern = re.compile(
+                    # Левый контекст: разделитель перечня или его начало.
+                    rf"(?P<left>,\s*|;\s*|(?:из\s+(?:них|которых)\s*:?|в\s+размере)\s*)?"
+                    rf"(?P<item>{item})(?P<right>\s*[,;]\s*)?",
+                    re.IGNORECASE,
+                )
+                self._regex_sub_in_paragraphs(paragraphs, pattern, self._drop_amount_item)
+            # «требования об установлении [15] руб. неустойки учесть отдельно…» —
+            # без суммы всё предложение теряет смысл.
+            if number in ("15", "0071"):
+                anchor = re.compile(rf"требовани\w+\s+об\s+установлении\s+(?:неустойки\s+в\s+сумме\s*)?{m_}",
+                                    re.IGNORECASE)
+                for par in paragraphs:
+                    text = self._paragraph_text(par)
+                    found = anchor.search(text)
+                    if found:
+                        start, end = self._whole_sentence_bounds(text, found.start(), found.end())
+                        self._replace_span_in_paragraph(par, start, end, "")
+            # Госпошлина вне перечня — отдельное предложение о судебных расходах:
+            # без суммы оно целиком лишнее.
+            if number in ("16", "17"):
+                for par in paragraphs:
+                    text = self._paragraph_text(par)
+                    pos = text.find(f"[{number}]")
+                    if pos >= 0:
+                        start, end = self._whole_sentence_bounds(text, pos, pos + len(number) + 2)
+                        self._replace_span_in_paragraph(par, start, end, "")
+
+        # Опустевший перечень «, из них:» перед концом предложения.
+        tidy = re.compile(r",?\s*из\s+(?:них|которых)\s*:?\s*(?=[.;]|$)", re.IGNORECASE)
+        self._regex_sub_in_paragraphs(paragraphs, tidy, lambda m: "")
+
+    # Конец предложения: точка, за которой пробел и заглавная (или конец абзаца).
+    # Точки в датах («26.10.2002») и сокращениях («п. 3», «ст. 137») сюда не попадают.
+    _SENTENCE_STOP = re.compile(r"\.(?=\s+[А-ЯЁA-Z«]|\s*$)")
+
+    def _whole_sentence_bounds(self, text: str, start: int, end: int) -> tuple:
+        """Границы целого предложения вокруг [start, end) вместе с хвостовыми пробелами."""
+        left = 0
+        for m in self._SENTENCE_STOP.finditer(text, 0, start):
+            left = m.end()
+        stop = self._SENTENCE_STOP.search(text, end)
+        right = stop.end() if stop else len(text)
+        while left < start and text[left].isspace():
+            left += 1
+        while right < len(text) and text[right].isspace():
+            right += 1
+        return left, right
+
+    @staticmethod
+    def _drop_amount_item(m: "re.Match") -> str:
+        left, right = m.group("left") or "", m.group("right") or ""
+        # Точка «руб.» в конце статьи — она же конец предложения.
+        stop = "." if not right and m.group("item").endswith(".") else ""
+        if left.strip() in (",", ";"):
+            # Середина или конец перечня: уходит разделитель слева, правый остаётся.
+            return right or stop
+        if left:
+            # Начало перечня («из них:», «в размере»): уходит разделитель справа.
+            # Если справа не другая статья, а конец предложения — статья была
+            # единственной, и вырезать подпись без суммы нельзя: оставляем зачистке.
+            if not right:
+                return m.group(0) if left.strip().lower().startswith("в размере") else left + stop
+            return left
+        return m.group(0)
 
     def _apply_penalty_removal(self, doc: DocxDocument, cleaned_data: Dict[str, Any]) -> None:
         """Если в заявлении не было данных о неустойке — маркер [15] убирается вместе
@@ -1976,6 +2168,69 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         else:
             self._replace_regex_in_doc(doc, r"\bсекретар[её]м\b", _make_sub("помощником"))
 
+    # Пустой маркер в акте банкротства: временная метка, в конце обработки она
+    # становится «******» на ярко-зелёном фоне (см. _highlight_empty_markers).
+    EMPTY_MARK_SENTINEL = ""
+    EMPTY_MARK_TEXT = "******"
+    EMPTY_MARK_COLOR = "brightGreen"
+
+    # Необязательные по смыслу маркеры: пустой уходит вместе с подписью.
+    # Дата рождения [3] — только в своих подписях («[3] года рождения», «дата
+    # рождения: [3]»); у ЮЛ [3] — это ОГРН, пустой помечается звёздочками.
+    # Сумма залога [0007] и неустойка по нему [0071] вырезаются только как статья
+    # перечня (см. _apply_empty_amounts_removal); в отдельной фразе они нужны.
+    _REMOVABLE_MARKERS = frozenset(
+        ["3.1", "5", "9", "11", "67", "68", "23", "24", "25", "85", "86", "87", "992",
+         "13", "14", "15", "16", "17", "26", "27", "34.1", "34.2", "34.3", "35", "36", "37"]
+        + [str(n) for n in range(100, 106)] + [str(n) for n in range(110, 116)]
+    )
+    # Слоты заинтересованных лиц: лишние слоты должны исчезать.
+    _REMOVABLE_SLOT_RE = re.compile(r"^(?:25|52|53|54)\.\d+$")
+    # Пары «одно из двух»: вырезаются, только если заполнен хотя бы один источник.
+    # Пусты оба — сведения нужны, маркеры помечаются звёздочками.
+    _EITHER_OR_MARKERS = (
+        (("9", "11", "67", "68"), ("messageNumber", "efirsbPublicationDate", "kommersantNumber", "kommersantDate")),
+        (("23", "24"), ("applicationReceiptDate23", "courtSubmissionDate24")),
+    )
+
+    def _is_removable_marker(self, placeholder: str, cleaned_data: Optional[Dict[str, Any]] = None) -> bool:
+        number = placeholder.strip("[]")
+        for markers, fields in self._EITHER_OR_MARKERS:
+            if number in markers and cleaned_data is not None:
+                return any(str(cleaned_data.get(f) or "").strip() for f in fields)
+        return number in self._REMOVABLE_MARKERS or bool(self._REMOVABLE_SLOT_RE.match(number))
+
+    def _remove_birth_date_contexts(self, doc: DocxDocument) -> None:
+        """Пустая дата рождения уходит вместе с подписью и запятой после неё."""
+        paragraphs = list(self._iter_all_paragraphs(doc))
+        for pattern in (r"\[3\]\s*года\s+рождения\s*,?\s*",
+                        r"дата\s+рожд(?:ения|\.)\s*:?\s*\[3\]\s*,?\s*"):
+            self._regex_sub_in_paragraphs(paragraphs, re.compile(pattern, re.IGNORECASE), lambda m: "")
+
+    def _tidy_after_empty_markers(self, doc: DocxDocument) -> None:
+        """Пунктуация на месте вырезанных реквизитов: «, ,», «( ,», «, )», «()»."""
+        paragraphs = list(self._iter_all_paragraphs(doc))
+        mark = re.escape(self.EMPTY_MARK_SENTINEL)
+        rules = (
+            # «судьи Ерёмина Ф.Ф..,» — точка шаблона после инициалов.
+            (r"(\b[А-ЯЁ]\.\s?[А-ЯЁ]\.)\.", r"\1"),
+            # «[29].,» в шаблоне: после звёздочек точка лишняя.
+            (rf"({mark})\.(?=\s*,)", r"\1"),
+            (r",\s*,", ","),
+            (r"руб\.\.(?!\.)", "руб."),
+            (r"\(\s*,\s*", "("),
+            (r"\s*,\s*\)", ")"),
+            (r"\s*\(\s*\)", ""),
+            (r"[ \t]{2,}", " "),
+        )
+        for pattern, repl in rules:
+            self._regex_sub_in_paragraphs(paragraphs, re.compile(pattern), lambda m, r=repl: m.expand(r))
+
+    def _highlight_empty_markers(self, doc: DocxDocument) -> None:
+        count = self._highlight_sentinel(doc, self.EMPTY_MARK_SENTINEL, self.EMPTY_MARK_TEXT, self.EMPTY_MARK_COLOR)
+        if count:
+            logger.info(f"Пустых маркеров помечено звёздочками: {count}")
+
     def _remove_empty_placeholders(self, doc: DocxDocument, cleaned_data: Dict[str, Any], field_mapping: Dict[str, str], doc_type: Optional[str] = None):
         """
         Удаляет из документа все маркеры, для которых нет значений в данных.
@@ -2003,7 +2258,17 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         elif is_mortgage:
             drop_placeholder = self._remove_placeholder_phrase
         else:
-            drop_placeholder = self._remove_placeholder_with_context
+            # Банкротство: необязательные по смыслу маркеры уходят с подписью,
+            # остальные пустые помечаются звёздочками — юрист допишет руками.
+            def drop_placeholder(document, ph):
+                if ph == "[3]":
+                    self._remove_birth_date_contexts(document)
+                    if ph not in self._collect_placeholders(document):
+                        return
+                if self._is_removable_marker(ph, cleaned_data):
+                    self._remove_placeholder_with_context(document, ph)
+                else:
+                    self._replace_placeholder_in_doc(document, ph, self.EMPTY_MARK_SENTINEL)
 
         # Создаем обратный маппинг: номер маркера -> список полей
         marker_to_fields = {}
