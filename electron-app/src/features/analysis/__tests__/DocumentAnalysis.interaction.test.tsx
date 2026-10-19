@@ -200,6 +200,22 @@ describe('DocumentAnalysis — самобанкротство', () => {
     expect(screen.getByText('Информация о кредиторе')).toBeInTheDocument();
   });
 
+  // Депозит и госпошлина платятся при подаче заявления о банкротстве: при включении
+  // в РТК платёжных поручений нет вовсе.
+  it('«Платёжные поручения» только при инициировании, при РТК блок скрыт', () => {
+    renderSelf();
+    fireEvent.click(screen.getByRole('radio', { name: 'Инициирование' }));
+    expect(screen.getByText('Платёжные поручения')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Включение в РТК' }));
+    expect(screen.queryByText('Платёжные поручения')).not.toBeInTheDocument();
+    expect(screen.queryByText('Дата ПП депозит:')).not.toBeInTheDocument();
+    expect(screen.queryByText('Дата ПП ГП:')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Инициирование' }));
+    expect(screen.getByText('Платёжные поручения')).toBeInTheDocument();
+  });
+
   it('возврат на «Инициирование» открывает чекбокс, но сам его не ставит', () => {
     renderSelf();
     fireEvent.click(screen.getByRole('radio', { name: 'Физ.лицо' }));

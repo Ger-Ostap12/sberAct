@@ -1542,8 +1542,10 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
 
                 {/* Платёжные поручения — отдельно от финансов: у самобанкрота блок
                     финансов скрыт, а даты ПП депозит/ГП нужны при любом заявителе.
-                    В ипотеке платёжных поручений нет. */}
-                {!isMortgage && (
+                    Платёжные поручения бывают только при инициировании: депозит
+                    и госпошлина платятся при подаче заявления о банкротстве,
+                    при включении в РТК их нет. В ипотеке тоже нет. */}
+                {!isMortgage && !rtkInclusion && (
                 <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
               <PaymentOrdersSection editedFields={editedFields} onFieldChange={handleFieldChange} />
                 </Grid>
