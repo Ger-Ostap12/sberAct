@@ -132,6 +132,9 @@ temp/
 
 # Generated documents
 python-backend/generated/
+# Корневая папка: туда пишет собранное приложение. Её .docx прежде ловило
+# общее правило ниже, а подписи актов (<uuid>.json) всплывали как новые файлы.
+/generated/
 *.docx
 *.pdf
 !Templates/**
