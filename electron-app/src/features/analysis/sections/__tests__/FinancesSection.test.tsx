@@ -209,15 +209,17 @@ describe('FinancesSection — итоговая сумма (ипотека)', () 
     expect(screen.queryByText('Ссудная госпошлина:')).not.toBeInTheDocument();
   });
 
-  it('ипотека: даты ПП депозит/ГП скрыты; банкротство — показаны', () => {
+  it('даты ПП депозит/ГП здесь не живут — их блок «Платёжные поручения»', () => {
     const { rerender } = render(
       <FinancesSection editedFields={{ creditorName: 'ПАО Сбербанк' }} onFieldChange={() => {}} />,
     );
-    expect(screen.getByText('Дата ПП депозит:')).toBeInTheDocument();
-    expect(screen.getByText('Дата ПП ГП:')).toBeInTheDocument();
+    expect(screen.queryByText('Дата ПП депозит:')).not.toBeInTheDocument();
+    expect(screen.queryByText('Дата ПП ГП:')).not.toBeInTheDocument();
+    // И в ФНС-раскладке тоже: раньше они лежали в «Общей информации».
     rerender(
-      <FinancesSection editedFields={{ creditorName: 'ПАО Сбербанк' }} onFieldChange={() => {}} mode="mortgage" />,
+      <FinancesSection editedFields={{ creditorName: 'ФНС России' }} onFieldChange={() => {}} />,
     );
+    expect(screen.getByText('Общая информация')).toBeInTheDocument();
     expect(screen.queryByText('Дата ПП депозит:')).not.toBeInTheDocument();
     expect(screen.queryByText('Дата ПП ГП:')).not.toBeInTheDocument();
   });

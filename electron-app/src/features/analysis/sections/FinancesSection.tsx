@@ -154,27 +154,6 @@ const FnsAmountField: React.FC<{
   </Grid>
 );
 
-/** Ячейка даты (полуширина) — переиспользуется в ФНС-раскладке. */
-const FnsDateField: React.FC<{
-  label: string;
-  field: string;
-  editedFields: Record<string, string>;
-  onFieldChange: (field: string, value: string) => void;
-}> = ({ label, field, editedFields, onFieldChange }) => (
-  <Grid item xs={12} sm={6}>
-    <Typography variant="body2" sx={FNS_FIELD_LABEL_SX}>{label}</Typography>
-    <FieldInput
-      fullWidth
-      type="date"
-      value={toInputDate(editedFields[field])}
-      onChange={(значение) => onFieldChange(field, fromInputDate(значение))}
-      size="small"
-      margin="none"
-      InputLabelProps={{ shrink: true }}
-    />
-  </Grid>
-);
-
 /**
  * ФНС-раскладка «Финансовых данных»: 4 подблока (Общая информация + 1/2/3 очередь).
  * Задолженность уполномоченного органа структурирована по очередям реестра требований
@@ -203,8 +182,7 @@ const FnsFinances: React.FC<FinancesSectionProps> = ({ editedFields, onFieldChan
               </Typography>
             </Grid>
           )}
-          <FnsDateField label="Дата ПП депозит:" field="ppDepositDate80" editedFields={editedFields} onFieldChange={onFieldChange} />
-          <FnsDateField label="Дата ПП ГП:" field="ppStateDutyDate81" editedFields={editedFields} onFieldChange={onFieldChange} />
+          {/* Даты ПП депозит/ГП — в блоке «Платёжные поручения». */}
           {/* Сверка: Общая сумма долга = Σ подытогов трёх очередей. */}
           <FnsReconcile
             label="Общая сумма долга"
@@ -686,44 +664,8 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
       </Grid>
       )}
 
-      {/* Даты платёжных поручений (депозит/ГП) — банкротные, в ипотеке скрыты. */}
-      {!isMortgage && (
-      <Grid item xs={12} sm={6}>
-        <Box sx={LABEL_OVERLAP_BOX}>
-          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата ПП депозит:</Typography>
-          <FieldInput
-            fullWidth
-            type="date"
-            value={toInputDate(editedFields.ppDepositDate80)}
-            onChange={(значение) => onFieldChange('ppDepositDate80', fromInputDate(значение))}
-            size="small"
-            margin="dense"
-            InputLabelProps={{
-              shrink: true,
-            }}
-          />
-        </Box>
-      </Grid>
-      )}
-
-      {!isMortgage && (
-      <Grid item xs={12} sm={6}>
-        <Box sx={LABEL_OVERLAP_BOX}>
-          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Дата ПП ГП:</Typography>
-          <FieldInput
-            fullWidth
-            type="date"
-            value={toInputDate(editedFields.ppStateDutyDate81)}
-            onChange={(значение) => onFieldChange('ppStateDutyDate81', fromInputDate(значение))}
-            size="small"
-            margin="dense"
-            InputLabelProps={{
-              shrink: true,
-            }}
-          />
-        </Box>
-      </Grid>
-      )}
+      {/* Даты ПП депозит/ГП — в блоке «Платёжные поручения»: он виден и у
+          самобанкрота, у которого финансы скрыты. */}
     </Grid>
   </Box>
   );

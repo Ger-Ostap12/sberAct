@@ -175,6 +175,10 @@ describe('DocumentAnalysis — самобанкротство', () => {
     // Шаблоны Templates/самобанкротство/ не содержат финансовых маркеров
     // ([12]-[17]) — суммы в акт не попадают, выверять их юристу незачем.
     expect(screen.queryByText('Финансовые данные')).not.toBeInTheDocument();
+    // Даты ПП депозит/ГП в акт попадают и у самобанкрота — их блок остаётся.
+    expect(screen.getByText('Платёжные поручения')).toBeInTheDocument();
+    expect(screen.getByText('Дата ПП депозит:')).toBeInTheDocument();
+    expect(screen.getByText('Дата ПП ГП:')).toBeInTheDocument();
 
     // Возврат — снятием того же чекбокса.
     fireEvent.click(screen.getByRole('checkbox', { name: 'Самобанкрот' }));

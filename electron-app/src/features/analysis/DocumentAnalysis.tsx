@@ -63,6 +63,7 @@ import CreditorsListSection from './sections/CreditorsListSection';
 import DebtorsSection from './sections/DebtorsSection';
 import CreditorSection from './sections/CreditorSection';
 import FinancesSection from './sections/FinancesSection';
+import PaymentOrdersSection from './sections/PaymentOrdersSection';
 import PriorCollectionSection from './sections/PriorCollectionSection';
 import ActSelectionSection from './sections/ActSelectionSection';
 import CoborrowerSection from './sections/CoborrowerSection';
@@ -1536,6 +1537,15 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 {!isSelf && !isFnsCreditor(editedFields.creditorName) && (
                 <Grid item xs={12} md={isMortgage && mortgageKind === 'military' ? 12 : 6} sx={{ display: 'flex', minWidth: 0 }}>
               <FinancesSection editedFields={editedFields} onFieldChange={handleFieldChange} financeBreakdown={analysisResult?.financeBreakdown} mode={mode} mortgageKind={mortgageKind} />
+                </Grid>
+                )}
+
+                {/* Платёжные поручения — отдельно от финансов: у самобанкрота блок
+                    финансов скрыт, а даты ПП депозит/ГП нужны при любом заявителе.
+                    В ипотеке платёжных поручений нет. */}
+                {!isMortgage && (
+                <Grid item xs={12} md={6} sx={{ display: 'flex', minWidth: 0 }}>
+              <PaymentOrdersSection editedFields={editedFields} onFieldChange={handleFieldChange} />
                 </Grid>
                 )}
 

@@ -3323,6 +3323,23 @@ exports[`DocumentAnalysis — снапшот формы рендерит фор�
                         ⚠ Не сходится: Σ компонентов = 105 000,00, Общая сумма = 108 000,00 (расхождение 3 000,00). Проверьте числа или документ.
                       </p>
                     </div>
+                  </div>
+                </div>
+              </div>
+              <div
+                class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 MuiGrid-grid-md-6 css-49l7kw-MuiGrid-root"
+              >
+                <div
+                  class="MuiBox-root css-u6op5p"
+                >
+                  <h6
+                    class="MuiTypography-root MuiTypography-h6 MuiTypography-gutterBottom css-6i3x38-MuiTypography-root"
+                  >
+                    Платёжные поручения
+                  </h6>
+                  <div
+                    class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-2 css-mhc70k-MuiGrid-root"
+                  >
                     <div
                       class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 MuiGrid-grid-sm-6 css-1b3l6lk-MuiGrid-root"
                     >
