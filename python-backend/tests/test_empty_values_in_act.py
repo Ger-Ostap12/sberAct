@@ -160,7 +160,8 @@ class TestЗвёздочки:
         assert "до ****** включительно" in текст(doc)
         assert выделенные(doc) == ["******"]
         hl = next(doc.element.body.iter(qn("w:highlight")))
-        assert hl.get(qn("w:val")) == "brightGreen"
+        # «brightGreen» вне ST_HighlightColor: Word просит восстановление и снимает выделение.
+        assert hl.get(qn("w:val")) == "green"
 
     def test_публикация_пустая_целиком_помечается(self, gen):
         doc = акт(gen, ["опубликованы [на сайте ЕФРСБ №[9] от [11]] в газете «Коммерсантъ» № [67] от [68]."])

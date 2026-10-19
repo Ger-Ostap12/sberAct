@@ -2172,7 +2172,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
     # становится «******» на ярко-зелёном фоне (см. _highlight_empty_markers).
     EMPTY_MARK_SENTINEL = ""
     EMPTY_MARK_TEXT = "******"
-    EMPTY_MARK_COLOR = "brightGreen"
+    # Ярко-зелёный Word в OOXML называется «green»; иное значение Word считает повреждением.
+    EMPTY_MARK_COLOR = "green"
 
     # Необязательные по смыслу маркеры: пустой уходит вместе с подписью.
     # Дата рождения [3] — только в своих подписях («[3] года рождения», «дата
