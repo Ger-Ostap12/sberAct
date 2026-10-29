@@ -289,6 +289,16 @@ try {
     return await response.json();
   },
 
+  convertHealth: async () => {
+    const response = await fetchBackend('/convert/health');
+    return await response.json();
+  },
+
+  convertProfile: async () => {
+    const response = await fetchBackend('/convert/profile');
+    return await response.json();
+  },
+
   // Отмена идемпотентна по смыслу: повторная просьба остановить ничего не ломает.
   convertCancel: async (jobId) => {
     const response = await fetchBackend(

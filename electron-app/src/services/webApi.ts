@@ -285,6 +285,16 @@ export const webApi: ElectronAPI = {
     return res.json();
   },
 
+  convertHealth: async () => {
+    const res = await fetchBackend('/convert/health');
+    return res.json();
+  },
+
+  convertProfile: async () => {
+    const res = await fetchBackend('/convert/profile');
+    return res.json();
+  },
+
   // Отмена идемпотентна по смыслу: повторная просьба остановить ничего не ломает.
   convertCancel: async (jobId: string) => {
     const res = await fetchBackend(

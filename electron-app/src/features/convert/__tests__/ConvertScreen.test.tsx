@@ -10,7 +10,9 @@ jest.mock('../../../services/electronApi', () => ({
   convertAnalyze: jest.fn(),
   convertCancel: jest.fn(),
   convertDownload: jest.fn(),
+  convertHealth: jest.fn(),
   convertLog: jest.fn(),
+  convertProfile: jest.fn(),
   convertNative: jest.fn(),
   convertScan: jest.fn(),
   convertStatus: jest.fn(),
@@ -29,8 +31,10 @@ import {
   convertAnalyze,
   convertCancel,
   convertDownload,
+  convertHealth,
   convertLog,
   convertNative,
+  convertProfile,
   convertScan,
   convertStatus,
   converterStart,
@@ -52,10 +56,22 @@ const pdfFile = new File([new Uint8Array([1, 2, 3])], 'скан.pdf', {
   type: 'application/pdf',
 });
 
+// Галочки настроек распознавания завёрнуты в Tooltip, и он перетягивает на
+// себя доступное имя — ищем по подписи и берём вход внутри её label.
+const findFlagCheckbox = async (title: RegExp): Promise<HTMLInputElement> => {
+  const label = await screen.findByText(title);
+  const input = label.closest('label')?.querySelector('input[type="checkbox"]');
+  if (!input) throw new Error(`Не найдена галочка «${title}»`);
+  return input as HTMLInputElement;
+};
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockStart.mockResolvedValue({ ok: true });
   mockStop.mockResolvedValue({ ok: true });
+  // Окружение готово и профиль обычный — иначе каждый тест ловил бы плашку.
+  (convertHealth as jest.Mock).mockResolvedValue({ ready: true, items: [], problems: [] });
+  (convertProfile as jest.Mock).mockResolvedValue({ profile: 'full', llm_default: true });
 });
 
 // Слив микрозадач. Цепочка промисов внутри эффекта разрешается вне реакции
@@ -151,6 +167,127 @@ describe('ConvertScreen', () => {
     expect(await screen.findByText('OCR упал', {}, { timeout: 7000 })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Повторить' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Пропустить конвертацию/ })).toBeInTheDocument();
+  }, 15000);
+
+  // ── Готовность окружения ──
+
+  it('окружение не готово: плашка с причинами и кнопкой «Проверить снова»', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    (convertHealth as jest.Mock).mockResolvedValue({
+      ready: false,
+      problems: ['Нет русского языка Tesseract'],
+      items: [
+        { name: 'tesseract', critical: true, ok: false, detail: 'нет языка rus' },
+        { name: 'LLM-модель (gguf)', critical: false, ok: false, detail: 'не найдена' },
+        { name: 'свободный диск', critical: true, ok: true, detail: '218 ГБ' },
+      ],
+    });
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+
+    expect(await screen.findByText('Конвертер не готов к работе')).toBeInTheDocument();
+    expect(screen.getByText('Нет русского языка Tesseract')).toBeInTheDocument();
+    expect(screen.getByText(/tesseract: нет языка rus/)).toBeInTheDocument();
+    // Некритичные и исправные строки в плашку не попадают — это не проблемы.
+    expect(screen.queryByText(/LLM-модель/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/218 ГБ/)).not.toBeInTheDocument();
+    // Конвертировать всё равно разрешаем: решать пользователю.
+    expect(screen.getByRole('button', { name: 'Конвертировать' })).toBeInTheDocument();
+  }, 15000);
+
+  it('окружение готово: плашки нет', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await screen.findByRole('button', { name: 'Конвертировать' });
+
+    expect(screen.queryByText('Конвертер не готов к работе')).not.toBeInTheDocument();
+  }, 15000);
+
+  it('«Проверить снова» перезапрашивает готовность', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    (convertHealth as jest.Mock)
+      .mockResolvedValueOnce({ ready: false, problems: ['Нет языка rus'], items: [] })
+      .mockResolvedValue({ ready: true, problems: [], items: [] });
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await screen.findByText('Конвертер не готов к работе');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Проверить снова' }));
+
+    await waitFor(() =>
+      expect(screen.queryByText('Конвертер не готов к работе')).not.toBeInTheDocument()
+    );
+    expect(convertHealth).toHaveBeenCalledTimes(2);
+  }, 15000);
+
+  it('отказ /convert/health работу не блокирует', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    (convertHealth as jest.Mock).mockRejectedValue(new TypeError('Failed to fetch'));
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+
+    expect(await screen.findByRole('button', { name: 'Конвертировать' })).toBeInTheDocument();
+    expect(screen.queryByText(/Сервер конвертера не отвечает/)).not.toBeInTheDocument();
+  }, 15000);
+
+  // ── Профиль: дефолт доочистки ──
+
+  it('llm_default: false — галочка доочистки снята, и флаг уходит выключенным', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    (convertProfile as jest.Mock).mockResolvedValue({ profile: 'lean', llm_default: false });
+    mockScan.mockResolvedValue({ job_id: 'jd1' });
+    mockStatus.mockResolvedValue({ job_id: 'jd1', status: 'running', progress: 0.1, stage: 'OCR' });
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    expect(await findFlagCheckbox(/Улучшать текст нейросетью/)).not.toBeChecked();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Конвертировать' }));
+    expect(mockScan.mock.calls[0][1]).toMatchObject({ iim: false });
+  }, 15000);
+
+  it('llm_default: true — галочка стоит (дефолт родного фронта сохранён)', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+
+    expect(await findFlagCheckbox(/Улучшать текст нейросетью/)).toBeChecked();
+  }, 15000);
+
+  // ── Предупреждения сервера ──
+
+  it('warning из ответа scan показывается, но работу не прерывает', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    mockScan.mockResolvedValue({
+      job_id: 'jw1',
+      warning: 'В файле есть текстовый слой — возможно, подойдёт нативный режим.',
+    });
+    mockStatus.mockResolvedValue({ job_id: 'jw1', status: 'running', progress: 0.2, stage: 'OCR' });
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Конвертировать' }));
+
+    expect(await screen.findByText(/есть текстовый слой/)).toBeInTheDocument();
+    expect(screen.getByText('Конвертируем документ…')).toBeInTheDocument();
+  }, 15000);
+
+  it('warning из статуса задачи тоже доходит', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    mockScan.mockResolvedValue({ job_id: 'jw2' });
+    mockStatus.mockResolvedValue({
+      job_id: 'jw2',
+      status: 'running',
+      progress: 0.5,
+      stage: 'OCR',
+      warning: 'Мало свободной памяти под этот файл.',
+    });
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Конвертировать' }));
+
+    expect(
+      await screen.findByText('Мало свободной памяти под этот файл.', {}, { timeout: 7000 })
+    ).toBeInTheDocument();
   }, 15000);
 
   // ── Отмена задачи ──

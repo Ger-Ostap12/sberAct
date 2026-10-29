@@ -115,6 +115,41 @@ export interface ConvertJobStatus {
   polish_fixed?: number | null;
 }
 
+/** Строка проверки окружения конвертера (tesseract, модели, память, диск). */
+export interface ConvertHealthItem {
+  name: string;
+  /** Без этого конвертер работать не сможет. */
+  critical?: boolean;
+  ok: boolean;
+  detail?: string;
+}
+
+/** Ответ GET /convert/health. Всегда 200 — смотреть надо поле ready. */
+export interface ConvertHealthResult {
+  ready: boolean;
+  items?: ConvertHealthItem[];
+  problems?: string[];
+  profile?: ConvertProfile;
+  /** cold | warming | ready — состояние прогрева моделей. */
+  warmup?: string;
+}
+
+/** Ответ GET /convert/profile: что определило железо и что применится. */
+export interface ConvertProfile {
+  profile: 'auto' | 'lean' | 'balanced' | 'full' | string;
+  /** Почему выбран такой профиль («рабочая станция: больше 12 ГБ ОЗУ…»). */
+  note?: string;
+  /** Включать ли доочистку нейросетью по умолчанию: на слабой машине — нет. */
+  llm_default?: boolean;
+  /** auto — профиль определён железом, иначе выбран пользователем или задан средой. */
+  source?: string;
+  ocr_workers?: number;
+  num_threads?: number;
+  cores?: number;
+  ram_gb?: number;
+  free_gb?: number;
+}
+
 /** Ответ POST /convert/cancel: снята из очереди или останавливается на ходу. */
 export interface ConvertCancelResult {
   job_id: string;
@@ -194,6 +229,10 @@ export interface ElectronAPI {
   ) => Promise<{ job_id: string; reused?: boolean; warning?: string | null }>;
   /** Поллинг статуса задачи конвертации. */
   convertStatus: (jobId: string) => Promise<ConvertJobStatus>;
+  /** Готовность окружения конвертера одним ответом (всегда 200, смотреть ready). */
+  convertHealth: () => Promise<ConvertHealthResult>;
+  /** Действующий ресурсный профиль и дефолт доочистки. */
+  convertProfile: () => Promise<ConvertProfile>;
   /** Отмена задачи. 200 — снята из очереди, 202 — остановится на ближайшей проверке. */
   convertCancel: (jobId: string) => Promise<ConvertCancelResult>;
   /** Лог задачи (хвост) — диагностика для кнопки «Подробнее». */
@@ -365,6 +404,10 @@ export const convertNative = (
 
 export const convertStatus = (jobId: string): Promise<ConvertJobStatus> =>
   getApi().convertStatus(jobId);
+
+export const convertHealth = (): Promise<ConvertHealthResult> => getApi().convertHealth();
+
+export const convertProfile = (): Promise<ConvertProfile> => getApi().convertProfile();
 
 export const convertCancel = (jobId: string): Promise<ConvertCancelResult> =>
   getApi().convertCancel(jobId);

@@ -29,8 +29,11 @@ import {
   convertCancel,
   converterWarmup,
   convertDownload,
+  convertHealth,
+  ConvertHealthResult,
   convertLog,
   convertNative,
+  convertProfile,
   convertScan,
   convertStatus,
   converterStart,
@@ -149,6 +152,10 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
   const [jobId, setJobId] = useState<string | null>(null);
   const [log, setLog] = useState<string | null>(null);
   const [logBusy, setLogBusy] = useState(false);
+  // Готовность окружения конвертера. Показываем только когда не готово:
+  // иначе юрист узнаёт об отсутствии языков Tesseract лишь через минуту ожидания.
+  const [health, setHealth] = useState<ConvertHealthResult | null>(null);
+  const [healthBusy, setHealthBusy] = useState(false);
   // Следующий опрос. Таймауты, а не интервал: тик планируется только после
   // ответа предыдущего, поэтому два тика не могут увидеть done разом и оба
   // скачать документ, и пауза между ними может расти после обрыва.
@@ -199,6 +206,23 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
         return;
       }
       setPhase('classify');
+      // Готовность и профиль — удобство, а не обязательность: их отказ не
+      // мешает конвертировать, поэтому молча пропускаем.
+      try {
+        const [state, profile] = await Promise.all([
+          convertHealth().catch(() => null),
+          convertProfile().catch(() => null),
+        ]);
+        if (cancelled) return;
+        if (state) setHealth(state);
+        // Доочистка нейросетью стоит 1,6 ГБ и минуты: на слабой машине
+        // конвертер сам выключает её по умолчанию.
+        if (profile && typeof profile.llm_default === 'boolean') {
+          setScanFlags((prev) => ({ ...prev, iim: profile.llm_default }));
+        }
+      } catch {
+        /* окружение не опрошено — работаем без плашки */
+      }
       try {
         const verdict = await convertAnalyze(file);
         if (cancelled) return;
@@ -252,10 +276,14 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
       // ту же задачу. «Повторить» после ошибки даёт новый ключ — это уже
       // осознанная вторая попытка.
       const key = newJobKey();
-      const { job_id: jobId } =
+      const started =
         mode === 'native'
           ? await convertNative(file, key)
           : await convertScan(file, scanFlags, key);
+      const jobId = started.job_id;
+      // Предупреждение сервера: текстовый слой в скан-режиме или мало памяти
+      // под этот файл. Работу не запрещает.
+      if (started.warning) setNotice(started.warning);
       activeJob.current = jobId;
       setJobId(jobId);
 
@@ -271,6 +299,7 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
           failures = 0;
           setProgress(status.progress ?? 0);
           setStage(status.stage || '');
+          if (status.warning) setNotice(status.warning);
           if (status.status === 'done') {
             stopPolling();
             const blob = await convertDownload(jobId);
@@ -341,6 +370,17 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
       setNotice(failure.message);
     }
   }, [failWith, finishCancelled]);
+
+  const handleRecheckHealth = useCallback(async () => {
+    setHealthBusy(true);
+    try {
+      setHealth(await convertHealth());
+    } catch (e) {
+      setNotice(parseBackendError(e, 'Не удалось проверить готовность конвертера').message);
+    } finally {
+      setHealthBusy(false);
+    }
+  }, []);
 
   // Лог задачи — диагностика для разработчика, не сообщение пользователю.
   const handleShowLog = useCallback(async () => {
@@ -536,6 +576,34 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
           {phase === 'ready' && (
             <Stack spacing={2}>
               {notice && <Alert severity="info">{notice}</Alert>}
+              {/* Окружение не готово: показываем, чего не хватает, до того как
+                  пользователь потратит минуту на распознавание. */}
+              {health && health.ready === false && (
+                <Alert
+                  severity="warning"
+                  action={
+                    <Button color="inherit" size="small" onClick={handleRecheckHealth} disabled={healthBusy}>
+                      {healthBusy ? 'Проверяем…' : 'Проверить снова'}
+                    </Button>
+                  }
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    Конвертер не готов к работе
+                  </Typography>
+                  {(health.problems || []).map((problem) => (
+                    <Typography key={problem} variant="body2">
+                      {problem}
+                    </Typography>
+                  ))}
+                  {(health.items || [])
+                    .filter((item) => item.critical && !item.ok)
+                    .map((item) => (
+                      <Typography key={item.name} variant="body2" color="text.secondary">
+                        {item.name}: {item.detail || 'недоступно'}
+                      </Typography>
+                    ))}
+                </Alert>
+              )}
               {detectedMode && (
                 <Alert severity="info">
                   {detectReason ||
