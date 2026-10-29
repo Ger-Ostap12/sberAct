@@ -8,7 +8,9 @@ jest.mock('../../../services/electronApi', () => ({
   analyzeDocument: jest.fn(),
   analyzeText: jest.fn(),
   convertAnalyze: jest.fn(),
+  convertCancel: jest.fn(),
   convertDownload: jest.fn(),
+  convertLog: jest.fn(),
   convertNative: jest.fn(),
   convertScan: jest.fn(),
   convertStatus: jest.fn(),
@@ -25,7 +27,9 @@ import {
   analyzeDocument,
   analyzeText,
   convertAnalyze,
+  convertCancel,
   convertDownload,
+  convertLog,
   convertNative,
   convertScan,
   convertStatus,
@@ -149,6 +153,143 @@ describe('ConvertScreen', () => {
     expect(screen.getByRole('button', { name: /Пропустить конвертацию/ })).toBeInTheDocument();
   }, 15000);
 
+  // ── Отмена задачи ──
+
+  it('отмена из очереди (200 cancelled): возврат к выбору режима с пометкой', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    mockScan.mockResolvedValue({ job_id: 'jc1' });
+    mockStatus.mockResolvedValue({ job_id: 'jc1', status: 'running', progress: 0.2, stage: 'OCR' });
+    (convertCancel as jest.Mock).mockResolvedValue({ job_id: 'jc1', state: 'cancelled' });
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Конвертировать' }));
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Отменить' }));
+
+    expect(await screen.findByText('Конвертация отменена.')).toBeInTheDocument();
+    expect(convertCancel).toHaveBeenCalledWith('jc1');
+    // Экран ошибки не показываем: отмена — не сбой.
+    expect(screen.queryByRole('button', { name: 'Повторить' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Конвертировать' })).toBeInTheDocument();
+  }, 15000);
+
+  it('отмена на ходу (202): кнопка ждёт, итог приходит опросом с кодом CANCELLED', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    mockScan.mockResolvedValue({ job_id: 'jc2' });
+    mockStatus
+      .mockResolvedValueOnce({ job_id: 'jc2', status: 'running', progress: 0.3, stage: 'OCR' })
+      .mockResolvedValue({
+        job_id: 'jc2',
+        status: 'error',
+        error: 'Отменено пользователем',
+        error_code: 'CANCELLED',
+      });
+    (convertCancel as jest.Mock).mockResolvedValue({ job_id: 'jc2', state: 'cancelling' });
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Конвертировать' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Отменить' }));
+
+    expect(await screen.findByRole('button', { name: 'Останавливаем…' })).toBeInTheDocument();
+    expect(await screen.findByText('Конвертация отменена.', {}, { timeout: 7000 })).toBeInTheDocument();
+    expect(screen.queryByText('Отменено пользователем')).not.toBeInTheDocument();
+  }, 15000);
+
+  it('прервать нечем (409): предупреждение, работа продолжается', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'native' });
+    (convertNative as jest.Mock).mockResolvedValue({ job_id: 'jc3' });
+    mockStatus.mockResolvedValue({ job_id: 'jc3', status: 'running', progress: 0.4, stage: 'pdf2docx' });
+    (convertCancel as jest.Mock).mockRejectedValue(
+      new Error('HTTP 409: {"detail": "Эту работу нельзя прервать на ходу: нативный режим идёт внутри pdf2docx."}')
+    );
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Конвертировать' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Отменить' }));
+
+    expect(await screen.findByText(/нельзя прервать на ходу/)).toBeInTheDocument();
+    // Это предупреждение, а не экран ошибки: прогресс остаётся на месте.
+    expect(screen.getByText('Конвертируем документ…')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Отменить' })).toBeInTheDocument();
+  }, 15000);
+
+  // ── Лог задачи ──
+
+  it('«Подробнее» показывает лог задачи', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    mockScan.mockResolvedValue({ job_id: 'jl1' });
+    mockStatus.mockResolvedValue({
+      job_id: 'jl1',
+      status: 'error',
+      error: 'Не хватило памяти.',
+      error_code: 'OUT_OF_MEMORY',
+      error_hint: 'Закройте другие программы и попробуйте снова.',
+    });
+    (convertLog as jest.Mock).mockResolvedValue({ job_id: 'jl1', text: '12:04:31 ocr: страница 3/14' });
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Конвертировать' }));
+
+    // Причина и подсказка из статуса задачи — обе на экране.
+    expect(await screen.findByText('Не хватило памяти.', {}, { timeout: 7000 })).toBeInTheDocument();
+    expect(screen.getByText('Закройте другие программы и попробуйте снова.')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Подробнее' }));
+    expect(await screen.findByTestId('job-log')).toHaveTextContent('ocr: страница 3/14');
+    expect(convertLog).toHaveBeenCalledWith('jl1', 16384);
+  }, 15000);
+
+  it('INTERRUPTED объясняется перезапуском, если сервер не дал подсказки', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    mockScan.mockResolvedValue({ job_id: 'jl2' });
+    mockStatus.mockResolvedValue({
+      job_id: 'jl2',
+      status: 'error',
+      error: 'Работа прервана.',
+      error_code: 'INTERRUPTED',
+    });
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Конвертировать' }));
+
+    expect(await screen.findByText('Работа прервана.', {}, { timeout: 7000 })).toBeInTheDocument();
+    expect(screen.getByText(/перезапускался во время работы/)).toBeInTheDocument();
+  }, 15000);
+
+  // ── Терпимость опроса к обрывам ──
+
+  it('обрыв опроса не роняет задачу: следующий тик забирает результат', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    mockScan.mockResolvedValue({ job_id: 'jp1' });
+    mockStatus
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValue({ job_id: 'jp1', status: 'done', progress: 1 });
+    mockDownload.mockResolvedValue(new Blob(['docx']));
+    mockDocxText.mockResolvedValue({ text: 'Текст после обрывов', sections: [] });
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Конвертировать' }));
+
+    expect(
+      await screen.findByTestId('text-editor', {}, { timeout: 12000 })
+    ).toHaveValue('Текст после обрывов');
+    expect(screen.queryByText(/Сервер конвертера не отвечает/)).not.toBeInTheDocument();
+  }, 20000);
+
+  it('404 на опросе не терпим: задачи нет — сразу ошибка', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    mockScan.mockResolvedValue({ job_id: 'jp2' });
+    mockStatus.mockRejectedValue(new Error('HTTP 404: {"detail": "Задача не найдена."}'));
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Конвертировать' }));
+
+    expect(await screen.findByText('Задача не найдена.', {}, { timeout: 7000 })).toBeInTheDocument();
+    // Ровно одна попытка: повторять нечего.
+    expect(mockStatus).toHaveBeenCalledTimes(1);
+  }, 15000);
+
   // Ключ идемпотентности: одно нажатие — один ключ, повтор после ошибки — новый.
   it('«Конвертировать» шлёт ключ задачи, «Повторить» — уже другой', async () => {
     mockAnalyze.mockResolvedValue({ suggested: 'scan' });
@@ -210,10 +351,9 @@ describe('ConvertScreen', () => {
     expect(screen.queryByText(/\[object Object\]/)).not.toBeInTheDocument();
   }, 15000);
 
-  it('пропал конвертер на опросе: вместо «Failed to fetch» — внятный текст', async () => {
+  it('конвертер не отвечает на запуске: вместо «Failed to fetch» — внятный текст', async () => {
     mockAnalyze.mockResolvedValue({ suggested: 'scan' });
-    mockScan.mockResolvedValue({ job_id: 'j3' });
-    mockStatus.mockRejectedValue(new TypeError('Failed to fetch'));
+    mockScan.mockRejectedValue(new TypeError('Failed to fetch'));
 
     render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
     await userEvent.click(await screen.findByRole('button', { name: 'Конвертировать' }));
@@ -223,6 +363,30 @@ describe('ConvertScreen', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/Failed to fetch/)).not.toBeInTheDocument();
   }, 15000);
+
+  it('терпение опроса не бесконечно: после шести обрывов — ошибка', async () => {
+    // Настоящими таймерами тест ждал бы ~48 секунд (пауза растёт), поэтому
+    // крутим подставные. Порядок как в тесте выше: сперва слить микрозадачи,
+    // чтобы тик успел встать в очередь, и только потом двигать время.
+    jest.useFakeTimers();
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    mockScan.mockResolvedValue({ job_id: 'jp3' });
+    mockStatus.mockRejectedValue(new TypeError('Failed to fetch'));
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await flush();
+    fireEvent.click(screen.getByRole('button', { name: 'Конвертировать' }));
+
+    for (let attempt = 0; attempt <= 6; attempt++) {
+      // eslint-disable-next-line no-await-in-loop
+      await flush();
+      jest.advanceTimersByTime(60000);
+    }
+    await flush();
+
+    expect(screen.getByText(/Сервер конвертера не отвечает/)).toBeInTheDocument();
+    expect(mockStatus).toHaveBeenCalledTimes(6);
+  }, 20000);
 
   it('конвертер не поднялся → ошибка со скип-фолбэком', async () => {
     // Экран НЕ показывает ошибку с первой неудачи: холодный старт конвертера

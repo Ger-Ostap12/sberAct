@@ -7,6 +7,7 @@ import {
   CardContent,
   Checkbox,
   CircularProgress,
+  Collapse,
   FormControlLabel,
   FormGroup,
   LinearProgress,
@@ -25,8 +26,10 @@ import {
   analyzeDocument,
   analyzeText,
   convertAnalyze,
+  convertCancel,
   converterWarmup,
   convertDownload,
+  convertLog,
   convertNative,
   convertScan,
   convertStatus,
@@ -53,6 +56,12 @@ type Phase =
 type ConvertMode = 'scan' | 'native';
 
 const POLL_INTERVAL_MS = 1500;
+
+// Задача идёт на сервере, и один обрыв keep-alive не повод её «ронять»:
+// терпим до шести подряд неудачных опросов с нарастающей паузой. 404 —
+// исключение: задачи нет, повторять нечего.
+const POLL_MAX_FAILURES = 6;
+const POLL_BACKOFF = 1.7;
 
 // Дефолты скан-режима — РОВНО как у родного фронта конвертера
 // (converter/frontend/src/ScanConverter.tsx DEFAULT_FLAGS). Критично:
@@ -133,11 +142,17 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
   const [editedText, setEditedText] = useState('');
   const [sections, setSections] = useState<DocxSection[]>([]);
   const [scanFlags, setScanFlags] = useState<ConvertScanFlags>(SCAN_DEFAULT_FLAGS);
-  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Тик поллинга ещё в полёте. setInterval предыдущий колбэк не ждёт, а под
-  // OCR-нагрузкой /convert/status отвечает дольше интервала — без флага два
-  // тика увидели бы done и оба скачали документ.
-  const pollBusy = useRef(false);
+  // Нейтральное сообщение: отмена, предупреждение сервера, «прервать нечем».
+  // Это не ошибка — экран ошибки с ним не показывается.
+  const [notice, setNotice] = useState<string | null>(null);
+  const [cancelState, setCancelState] = useState<'idle' | 'stopping'>('idle');
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [log, setLog] = useState<string | null>(null);
+  const [logBusy, setLogBusy] = useState(false);
+  // Следующий опрос. Таймауты, а не интервал: тик планируется только после
+  // ответа предыдущего, поэтому два тика не могут увидеть done разом и оба
+  // скачать документ, и пауза между ними может расти после обрыва.
+  const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Задача, чей результат нам ещё нужен. Тик, начатый до смены файла или ухода
   // с шага, ничего не пишет в состояние — иначе в предпросмотр попадал текст
   // чужого документа.
@@ -145,10 +160,9 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
 
   const stopPolling = useCallback(() => {
     if (pollTimer.current) {
-      clearInterval(pollTimer.current);
+      clearTimeout(pollTimer.current);
       pollTimer.current = null;
     }
-    pollBusy.current = false;
   }, []);
 
   // Гасим и при размонтировании, и при СМЕНЕ ФАЙЛА: пользователь может вернуться
@@ -217,11 +231,22 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
     [stopPolling]
   );
 
+  // Отмена пользователем — не ошибка: возвращаем на выбор режима с пометкой.
+  const finishCancelled = useCallback(() => {
+    stopPolling();
+    setCancelState('idle');
+    setNotice('Конвертация отменена.');
+    setPhase('ready');
+  }, [stopPolling]);
+
   const handleConvert = useCallback(async () => {
     setPhase('converting');
     setProgress(0);
     setStage('Отправляем документ…');
     setError(null);
+    setNotice(null);
+    setLog(null);
+    setCancelState('idle');
     try {
       // Ключ на одно нажатие: сетевой сбой повторит запрос, а конвертер отдаст
       // ту же задачу. «Повторить» после ошибки даёт новый ключ — это уже
@@ -232,12 +257,18 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
           ? await convertNative(file, key)
           : await convertScan(file, scanFlags, key);
       activeJob.current = jobId;
-      pollTimer.current = setInterval(async () => {
-        if (pollBusy.current) return; // предыдущий тик ещё не ответил
-        pollBusy.current = true;
+      setJobId(jobId);
+
+      // Подряд неудачных опросов. Сбрасывается любым успешным ответом.
+      let failures = 0;
+      const schedule = (delay: number) => {
+        pollTimer.current = setTimeout(tick, delay);
+      };
+      const tick = async () => {
         try {
           const status = await convertStatus(jobId);
           if (activeJob.current !== jobId) return;
+          failures = 0;
           setProgress(status.progress ?? 0);
           setStage(status.stage || '');
           if (status.status === 'done') {
@@ -251,19 +282,79 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
             setSections(extracted.sections || []);
             setPhase('preview');
           } else if (status.status === 'error') {
-            failWith(status.error, 'Ошибка конвертации');
+            // Отмена приходит обычной ошибкой задачи — это не сбой.
+            if (status.error_code === 'CANCELLED') {
+              finishCancelled();
+              return;
+            }
+            stopPolling();
+            setError({
+              message: status.error || 'Ошибка конвертации',
+              hint:
+                status.error_hint ||
+                (status.error_code === 'INTERRUPTED'
+                  ? 'Конвертер перезапускался во время работы. Нажмите «Повторить».'
+                  : undefined),
+              code: status.error_code || undefined,
+              kind: 'http',
+            });
+            setPhase('error');
+          } else {
+            schedule(POLL_INTERVAL_MS);
           }
         } catch (e) {
           if (activeJob.current !== jobId) return;
-          failWith(e, 'Потеряна связь с конвертером');
-        } finally {
-          pollBusy.current = false;
+          const failure = parseBackendError(e, 'Потеряна связь с конвертером');
+          failures += 1;
+          // Задачи нет — ждать нечего; остальное терпим: работа идёт на сервере.
+          if (failure.kind === 'notfound' || failures >= POLL_MAX_FAILURES) {
+            failWith(failure, 'Потеряна связь с конвертером');
+            return;
+          }
+          schedule(POLL_INTERVAL_MS * POLL_BACKOFF ** failures);
         }
-      }, POLL_INTERVAL_MS);
+      };
+      schedule(POLL_INTERVAL_MS);
     } catch (e) {
       failWith(e, 'Не удалось запустить конвертацию');
     }
-  }, [file, mode, failWith, stopPolling]);
+  }, [file, mode, scanFlags, failWith, stopPolling, finishCancelled]);
+
+  // Отмена: 200 — снята из очереди, 202 — остановится на ближайшей проверке
+  // (итог придёт обычным опросом), 409 — прервать нечем, 404 — задачи нет.
+  const handleCancel = useCallback(async () => {
+    const id = activeJob.current;
+    if (!id) return;
+    setCancelState('stopping');
+    setStage('Останавливаем…');
+    try {
+      const res = await convertCancel(id);
+      if (res.state === 'cancelled') finishCancelled();
+    } catch (e) {
+      const failure = parseBackendError(e, 'Не удалось отменить конвертацию');
+      setCancelState('idle');
+      if (failure.kind === 'notfound') {
+        failWith(failure, 'Не удалось отменить конвертацию');
+        return;
+      }
+      // 409 «прервать нечем» — не ошибка: работа продолжается, просто сообщаем.
+      setNotice(failure.message);
+    }
+  }, [failWith, finishCancelled]);
+
+  // Лог задачи — диагностика для разработчика, не сообщение пользователю.
+  const handleShowLog = useCallback(async () => {
+    if (!jobId) return;
+    setLogBusy(true);
+    try {
+      const res = await convertLog(jobId, 16384);
+      setLog(res.text || 'Лог пуст.');
+    } catch (e) {
+      setLog(parseBackendError(e, 'Лог задачи недоступен').message);
+    } finally {
+      setLogBusy(false);
+    }
+  }, [jobId]);
 
   // Старый путь без конвертера: pypdf вытащит текст нативного PDF
   const handleSkip = useCallback(async () => {
@@ -444,6 +535,7 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
 
           {phase === 'ready' && (
             <Stack spacing={2}>
+              {notice && <Alert severity="info">{notice}</Alert>}
               {detectedMode && (
                 <Alert severity="info">
                   {detectReason ||
@@ -522,9 +614,19 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
                 value={Math.round(progress * 100)}
                 sx={{ mb: 1 }}
               />
-              <Typography variant="body2" color="text.secondary">
-                {stage || 'Распознавание может занять несколько минут'}
-              </Typography>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1 }}>
+                  {stage || 'Распознавание может занять несколько минут'}
+                </Typography>
+                <Button size="small" onClick={handleCancel} disabled={cancelState === 'stopping'}>
+                  {cancelState === 'stopping' ? 'Останавливаем…' : 'Отменить'}
+                </Button>
+              </Stack>
+              {notice && (
+                <Alert severity="warning" sx={{ mt: 1 }}>
+                  {notice}
+                </Alert>
+              )}
             </Box>
           )}
 
@@ -549,12 +651,34 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
                 <Button variant="contained" onClick={handleConvert}>
                   Повторить
                 </Button>
+                {jobId && (
+                  <Button onClick={handleShowLog} disabled={logBusy}>
+                    {logBusy ? 'Читаем…' : 'Подробнее'}
+                  </Button>
+                )}
                 <Button startIcon={<SkipIcon />} onClick={handleSkip}>
                   Пропустить конвертацию
                 </Button>
                 <Box sx={{ flexGrow: 1 }} />
                 <Button onClick={handleBack}>Назад</Button>
               </Stack>
+              {/* Лог задачи: что именно делал конвертер перед сбоем. */}
+              <Collapse in={Boolean(log)} unmountOnExit>
+                <Box
+                  data-testid="job-log"
+                  sx={{
+                    maxHeight: 240,
+                    overflow: 'auto',
+                    backgroundColor: 'grey.100',
+                    p: 1,
+                    fontFamily: 'Consolas, "Courier New", monospace',
+                    fontSize: '0.75rem',
+                    whiteSpace: 'pre-wrap',
+                  }}
+                >
+                  {log}
+                </Box>
+              </Collapse>
             </Stack>
           )}
         </CardContent>

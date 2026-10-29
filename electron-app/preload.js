@@ -289,6 +289,22 @@ try {
     return await response.json();
   },
 
+  // Отмена идемпотентна по смыслу: повторная просьба остановить ничего не ломает.
+  convertCancel: async (jobId) => {
+    const response = await fetchBackend(
+      `/convert/cancel/${encodeURIComponent(jobId)}`,
+      { method: 'POST' },
+      { idempotent: true }
+    );
+    return await response.json();
+  },
+
+  convertLog: async (jobId, tail) => {
+    const query = tail ? `?tail=${tail}` : '';
+    const response = await fetchBackend(`/convert/log/${encodeURIComponent(jobId)}${query}`);
+    return await response.json();
+  },
+
   convertDownload: async (jobId) => {
     const response = await fetchBackend(`/convert/download/${encodeURIComponent(jobId)}`);
     return await response.blob();

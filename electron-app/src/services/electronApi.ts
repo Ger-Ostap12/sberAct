@@ -103,6 +103,22 @@ export interface ConvertJobStatus {
   progress?: number;
   filename?: string;
   error?: string | null;
+  /** Машинный код причины: CANCELLED, INTERRUPTED, OUT_OF_MEMORY и прочие. */
+  error_code?: string | null;
+  /** Что делать — текст для пользователя, не для разбора. */
+  error_hint?: string | null;
+  /** Предупреждение, не запрещающее работу (текстовый слой, нехватка памяти). */
+  warning?: string | null;
+  mode?: 'scan' | 'native';
+  /** Доочистка LLM по этому документу уже прогонялась. */
+  polished?: boolean;
+  polish_fixed?: number | null;
+}
+
+/** Ответ POST /convert/cancel: снята из очереди или останавливается на ходу. */
+export interface ConvertCancelResult {
+  job_id: string;
+  state: 'cancelled' | 'cancelling';
 }
 
 /** Результат запуска sidecar-процесса конвертера. */
@@ -178,6 +194,10 @@ export interface ElectronAPI {
   ) => Promise<{ job_id: string; reused?: boolean; warning?: string | null }>;
   /** Поллинг статуса задачи конвертации. */
   convertStatus: (jobId: string) => Promise<ConvertJobStatus>;
+  /** Отмена задачи. 200 — снята из очереди, 202 — остановится на ближайшей проверке. */
+  convertCancel: (jobId: string) => Promise<ConvertCancelResult>;
+  /** Лог задачи (хвост) — диагностика для кнопки «Подробнее». */
+  convertLog: (jobId: string, tail?: number) => Promise<{ job_id: string; text: string }>;
   /** Готовый DOCX задачи (оригинальная вёрстка; «Скачать DOCX»). */
   convertDownload: (jobId: string) => Promise<Blob>;
   /** Текст DOCX тем же экстрактором, что анализ (+ секции для предпросмотра). */
@@ -345,6 +365,14 @@ export const convertNative = (
 
 export const convertStatus = (jobId: string): Promise<ConvertJobStatus> =>
   getApi().convertStatus(jobId);
+
+export const convertCancel = (jobId: string): Promise<ConvertCancelResult> =>
+  getApi().convertCancel(jobId);
+
+export const convertLog = (
+  jobId: string,
+  tail?: number
+): Promise<{ job_id: string; text: string }> => getApi().convertLog(jobId, tail);
 
 export const convertDownload = (jobId: string): Promise<Blob> =>
   getApi().convertDownload(jobId);

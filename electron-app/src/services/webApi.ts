@@ -285,6 +285,22 @@ export const webApi: ElectronAPI = {
     return res.json();
   },
 
+  // Отмена идемпотентна по смыслу: повторная просьба остановить ничего не ломает.
+  convertCancel: async (jobId: string) => {
+    const res = await fetchBackend(
+      `/convert/cancel/${encodeURIComponent(jobId)}`,
+      { method: 'POST' },
+      { idempotent: true }
+    );
+    return res.json();
+  },
+
+  convertLog: async (jobId: string, tail?: number) => {
+    const query = tail ? `?tail=${tail}` : '';
+    const res = await fetchBackend(`/convert/log/${encodeURIComponent(jobId)}${query}`);
+    return res.json();
+  },
+
   convertDownload: async (jobId: string): Promise<Blob> => {
     const res = await fetchBackend(`/convert/download/${encodeURIComponent(jobId)}`);
     return res.blob();
