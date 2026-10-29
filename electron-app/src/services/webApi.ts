@@ -324,6 +324,17 @@ export const webApi: ElectronAPI = {
     return res.json();
   },
 
+  // Повторный запуск доочистки конвертер отклоняет сам (409), так что ретрай
+  // после сетевого сбоя второй прогон модели не создаст.
+  convertPolish: async (jobId: string) => {
+    const res = await fetchBackend(
+      `/convert/polish/${encodeURIComponent(jobId)}`,
+      { method: 'POST' },
+      { idempotent: true }
+    );
+    return res.json();
+  },
+
   convertLog: async (jobId: string, tail?: number) => {
     const query = tail ? `?tail=${tail}` : '';
     const res = await fetchBackend(`/convert/log/${encodeURIComponent(jobId)}${query}`);

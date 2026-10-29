@@ -8,6 +8,10 @@ import {
   Checkbox,
   CircularProgress,
   Collapse,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControlLabel,
   FormGroup,
   LinearProgress,
@@ -32,7 +36,9 @@ import {
   convertHealth,
   ConvertHealthResult,
   convertLog,
+  ConvertJobStatus,
   convertNative,
+  convertPolish,
   convertProfile,
   convertScan,
   convertStatus,
@@ -44,6 +50,7 @@ import {
 } from '../../services/electronApi';
 import { BackendFailure, parseBackendError } from '../../shared/lib/convertErrors';
 import { newJobKey } from '../../shared/lib/jobKey';
+import { getConverterLlm, getConverterProfile } from '../settings/settingsStore';
 import PdfPanel from './PdfPanel';
 import SectionedEditor from './SectionedEditor';
 
@@ -156,6 +163,12 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
   // иначе юрист узнаёт об отсутствии языков Tesseract лишь через минуту ожидания.
   const [health, setHealth] = useState<ConvertHealthResult | null>(null);
   const [healthBusy, setHealthBusy] = useState(false);
+  // Итоговый статус задачи: по нему видно, скан это и доочищен ли документ.
+  const [jobInfo, setJobInfo] = useState<ConvertJobStatus | null>(null);
+  const [polishing, setPolishing] = useState(false);
+  const [confirmPolish, setConfirmPolish] = useState(false);
+  // Текст, каким его отдал конвертер: по нему видно, правил ли юрист документ.
+  const pristineText = useRef('');
   // Следующий опрос. Таймауты, а не интервал: тик планируется только после
   // ответа предыдущего, поэтому два тика не могут увидеть done разом и оба
   // скачать документ, и пауза между ними может расти после обрыва.
@@ -215,9 +228,12 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
         ]);
         if (cancelled) return;
         if (state) setHealth(state);
-        // Доочистка нейросетью стоит 1,6 ГБ и минуты: на слабой машине
-        // конвертер сам выключает её по умолчанию.
-        if (profile && typeof profile.llm_default === 'boolean') {
+        // Доочистка нейросетью стоит 1,6 ГБ и минуты. Выбор юриста в настройках
+        // старше того, что конвертер решил по этой машине.
+        const chosen = getConverterLlm();
+        if (chosen !== 'auto') {
+          setScanFlags((prev) => ({ ...prev, iim: chosen === 'on' }));
+        } else if (profile && typeof profile.llm_default === 'boolean') {
           setScanFlags((prev) => ({ ...prev, iim: profile.llm_default }));
         }
       } catch {
@@ -276,10 +292,15 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
       // ту же задачу. «Повторить» после ошибки даёт новый ключ — это уже
       // осознанная вторая попытка.
       const key = newJobKey();
+      // Профиль идёт полем запроса, а не настройкой сайдкара: он перезапускается
+      // сторожем простоя, а наш выбор должен действовать всегда.
+      const chosenProfile = getConverterProfile();
+      const flags: ConvertScanFlags =
+        chosenProfile === 'auto' ? scanFlags : { ...scanFlags, profile: chosenProfile };
       const started =
         mode === 'native'
           ? await convertNative(file, key)
-          : await convertScan(file, scanFlags, key);
+          : await convertScan(file, flags, key);
       const jobId = started.job_id;
       // Предупреждение сервера: текстовый слой в скан-режиме или мало памяти
       // под этот файл. Работу не запрещает.
@@ -308,7 +329,9 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
             if (activeJob.current !== jobId) return;
             setDocxBlob(blob);
             setEditedText(extracted.text || '');
+            pristineText.current = extracted.text || '';
             setSections(extracted.sections || []);
+            setJobInfo(status);
             setPhase('preview');
           } else if (status.status === 'error') {
             // Отмена приходит обычной ошибкой задачи — это не сбой.
@@ -370,6 +393,64 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
       setNotice(failure.message);
     }
   }, [failWith, finishCancelled]);
+
+  // Ожидание конца задачи для доочистки: своя петля, потому что основной опрос
+  // живёт внутри handleConvert и завязан на переход фаз.
+  const waitForJob = useCallback(async (id: string): Promise<ConvertJobStatus> => {
+    let failures = 0;
+    for (;;) {
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+      if (activeJob.current !== id) throw new Error('Задача больше не актуальна');
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const status = await convertStatus(id);
+        failures = 0;
+        setStage(status.stage || '');
+        if (status.status === 'done' || status.status === 'error') return status;
+      } catch (e) {
+        const failure = parseBackendError(e, 'Потеряна связь с конвертером');
+        failures += 1;
+        if (failure.kind === 'notfound' || failures >= POLL_MAX_FAILURES) throw e;
+      }
+    }
+  }, []);
+
+  // Доочистка: модель стоит ~1,6 ГБ и минуты, поэтому её запускают по кнопке —
+  // юрист сначала смотрит жёлтые подсветки и сам решает, платить ли за неё.
+  const runPolish = useCallback(async () => {
+    if (!jobId) return;
+    setConfirmPolish(false);
+    setPolishing(true);
+    setNotice(null);
+    try {
+      await convertPolish(jobId);
+      const final = await waitForJob(jobId);
+      const blob = await convertDownload(jobId);
+      const extracted = await docxText(blob);
+      setDocxBlob(blob);
+      setEditedText(extracted.text || '');
+      pristineText.current = extracted.text || '';
+      setSections(extracted.sections || []);
+      setJobInfo(final);
+      // Сломавшаяся доочистка оставляет документ целым: это предупреждение,
+      // а не ошибка — поэтому остаёмся в предпросмотре.
+      setNotice(final.error || final.stage || 'Текст доочищен.');
+    } catch (e) {
+      setNotice(parseBackendError(e, 'Доочистка не удалась').message);
+    } finally {
+      setPolishing(false);
+    }
+  }, [jobId, waitForJob]);
+
+  // Доочистка перезаписывает текст целиком, поэтому о правках спрашиваем.
+  const handlePolishClick = useCallback(() => {
+    if (editedText !== pristineText.current) {
+      setConfirmPolish(true);
+      return;
+    }
+    void runPolish();
+  }, [editedText, runPolish]);
 
   const handleRecheckHealth = useCallback(async () => {
     setHealthBusy(true);
@@ -469,6 +550,12 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
               (слева — исходный PDF, справа — текст с возможностью правки)
             </Typography>
           </Typography>
+          {/* Только для скана и только если доочистка ещё не прогонялась. */}
+          {jobInfo?.mode === 'scan' && jobInfo?.polished === false && (
+            <Button size="small" onClick={handlePolishClick} disabled={polishing}>
+              {polishing ? 'Доочищаем…' : 'Доочистить текст'}
+            </Button>
+          )}
           <Button size="small" startIcon={<DownloadIcon />} onClick={handleDownloadOriginal}>
             Скачать DOCX
           </Button>
@@ -492,6 +579,35 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
             )}
           </Alert>
         )}
+        {notice && (
+          <Alert severity="info" sx={{ mb: 1 }} onClose={() => setNotice(null)}>
+            {notice}
+          </Alert>
+        )}
+        {polishing && (
+          <Box sx={{ mb: 1 }}>
+            <LinearProgress />
+            <Typography variant="body2" color="text.secondary">
+              {stage || 'Доочистка текста нейросетью…'}
+            </Typography>
+          </Box>
+        )}
+        {/* Доочистка перезаписывает текст: о несохранённых правках предупреждаем. */}
+        <Dialog open={confirmPolish} onClose={() => setConfirmPolish(false)}>
+          <DialogTitle>Доочистить текст?</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2">
+              Нейросеть перепроверит распознанный текст и заменит его целиком — ваши правки в
+              этом окне потеряются. Скачанные файлы не меняются.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setConfirmPolish(false)}>Отмена</Button>
+            <Button variant="contained" onClick={runPolish}>
+              Доочистить
+            </Button>
+          </DialogActions>
+        </Dialog>
         <Box sx={{ display: 'flex', gap: 1, flexGrow: 1, minHeight: 0 }}>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <PdfPanel file={file} />

@@ -328,6 +328,17 @@ try {
     return await response.json();
   },
 
+  // Повторный запуск доочистки конвертер отклоняет сам (409), так что ретрай
+  // после сетевого сбоя второй прогон модели не создаст.
+  convertPolish: async (jobId) => {
+    const response = await fetchBackend(
+      `/convert/polish/${encodeURIComponent(jobId)}`,
+      { method: 'POST' },
+      { idempotent: true }
+    );
+    return await response.json();
+  },
+
   convertLog: async (jobId, tail) => {
     const query = tail ? `?tail=${tail}` : '';
     const response = await fetchBackend(`/convert/log/${encodeURIComponent(jobId)}${query}`);

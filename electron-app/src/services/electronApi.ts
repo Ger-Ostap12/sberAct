@@ -57,6 +57,8 @@ export interface ConvertScanFlags {
   iim?: boolean;
   ink_bold?: boolean;
   ocr_preprocess?: boolean;
+  /** Разовое переопределение ресурсного профиля (auto|lean|balanced|full). */
+  profile?: string;
 }
 
 
@@ -264,6 +266,8 @@ export interface ElectronAPI {
   convertSaveSettings: (patch: ConvertSettingsPatch) => Promise<ConvertSettings>;
   /** Отмена задачи. 200 — снята из очереди, 202 — остановится на ближайшей проверке. */
   convertCancel: (jobId: string) => Promise<ConvertCancelResult>;
+  /** Доочистка готового DOCX нейросетью по кнопке; прогресс — обычным статусом. */
+  convertPolish: (jobId: string) => Promise<{ job_id: string; status: string }>;
   /** Лог задачи (хвост) — диагностика для кнопки «Подробнее». */
   convertLog: (jobId: string, tail?: number) => Promise<{ job_id: string; text: string }>;
   /** Готовый DOCX задачи (оригинальная вёрстка; «Скачать DOCX»). */
@@ -445,6 +449,9 @@ export const convertSaveSettings = (patch: ConvertSettingsPatch): Promise<Conver
 
 export const convertCancel = (jobId: string): Promise<ConvertCancelResult> =>
   getApi().convertCancel(jobId);
+
+export const convertPolish = (jobId: string): Promise<{ job_id: string; status: string }> =>
+  getApi().convertPolish(jobId);
 
 export const convertLog = (
   jobId: string,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ConvertScreen from '../ConvertScreen';
 
@@ -12,6 +12,7 @@ jest.mock('../../../services/electronApi', () => ({
   convertDownload: jest.fn(),
   convertHealth: jest.fn(),
   convertLog: jest.fn(),
+  convertPolish: jest.fn(),
   convertProfile: jest.fn(),
   convertNative: jest.fn(),
   convertScan: jest.fn(),
@@ -34,6 +35,7 @@ import {
   convertHealth,
   convertLog,
   convertNative,
+  convertPolish,
   convertProfile,
   convertScan,
   convertStatus,
@@ -66,6 +68,7 @@ const findFlagCheckbox = async (title: RegExp): Promise<HTMLInputElement> => {
 };
 
 beforeEach(() => {
+  window.localStorage.clear(); // профиль и дефолт доочистки берутся оттуда
   jest.clearAllMocks();
   mockStart.mockResolvedValue({ ok: true });
   mockStop.mockResolvedValue({ ok: true });
@@ -254,6 +257,44 @@ describe('ConvertScreen', () => {
     expect(await findFlagCheckbox(/Улучшать текст нейросетью/)).toBeChecked();
   }, 15000);
 
+  // ── Профиль из настроек приложения ──
+
+  it('выбранный в настройках режим уходит полем profile', async () => {
+    // Сайдкар перезапускается сторожем простоя, поэтому выбор передаётся при
+    // каждом запуске, а не хранится в его настройках.
+    window.localStorage.setItem('sberact.converter.profile', 'lean');
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    mockScan.mockResolvedValue({ job_id: 'jpr1' });
+    mockStatus.mockResolvedValue({ job_id: 'jpr1', status: 'running', progress: 0.1, stage: 'OCR' });
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Конвертировать' }));
+
+    expect(mockScan.mock.calls[0][1]).toMatchObject({ profile: 'lean' });
+  }, 15000);
+
+  it('«Автоматически» поле profile не шлёт — решает конвертер', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    mockScan.mockResolvedValue({ job_id: 'jpr2' });
+    mockStatus.mockResolvedValue({ job_id: 'jpr2', status: 'running', progress: 0.1, stage: 'OCR' });
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Конвертировать' }));
+
+    expect(mockScan.mock.calls[0][1]).not.toHaveProperty('profile');
+  }, 15000);
+
+  it('выбор доочистки в настройках старше решения конвертера', async () => {
+    // Конвертер на этой машине включил бы доочистку, но юрист выключил её.
+    window.localStorage.setItem('sberact.converter.llmDefault', 'off');
+    (convertProfile as jest.Mock).mockResolvedValue({ profile: 'full', llm_default: true });
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+
+    expect(await findFlagCheckbox(/Улучшать текст нейросетью/)).not.toBeChecked();
+  }, 15000);
+
   // ── Предупреждения сервера ──
 
   it('warning из ответа scan показывается, но работу не прерывает', async () => {
@@ -289,6 +330,122 @@ describe('ConvertScreen', () => {
       await screen.findByText('Мало свободной памяти под этот файл.', {}, { timeout: 7000 })
     ).toBeInTheDocument();
   }, 15000);
+
+  // ── Доочистка по кнопке ──
+
+  // Подводит задачу к предпросмотру: скан готов, доочистка ещё не прогонялась.
+  const renderPolishable = async (over?: Record<string, unknown>) => {
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    mockScan.mockResolvedValue({ job_id: 'jpo1' });
+    mockStatus.mockResolvedValue({
+      job_id: 'jpo1',
+      status: 'done',
+      progress: 1,
+      mode: 'scan',
+      polished: false,
+      ...over,
+    });
+    mockDownload.mockResolvedValue(new Blob(['docx']));
+    mockDocxText.mockResolvedValue({ text: 'Распознанный текст', sections: [] });
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Конвертировать' }));
+    await screen.findByTestId('text-editor', {}, { timeout: 7000 });
+  };
+
+  it('«Доочистить текст»: текст заменяется результатом, кнопка уходит', async () => {
+    await renderPolishable();
+    (convertPolish as jest.Mock).mockResolvedValue({ job_id: 'jpo1', status: 'queued' });
+    mockStatus.mockResolvedValue({
+      job_id: 'jpo1',
+      status: 'done',
+      progress: 1,
+      mode: 'scan',
+      polished: true,
+      stage: 'Доочистка: исправлено 7',
+    });
+    mockDocxText.mockResolvedValue({ text: 'Доочищенный текст', sections: [] });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Доочистить текст' }));
+
+    expect(await screen.findByText('Доочистка: исправлено 7', {}, { timeout: 7000 })).toBeInTheDocument();
+    expect(screen.getByTestId('text-editor')).toHaveValue('Доочищенный текст');
+    expect(convertPolish).toHaveBeenCalledWith('jpo1');
+    // Второй раз доочищать нечего.
+    expect(screen.queryByRole('button', { name: 'Доочистить текст' })).not.toBeInTheDocument();
+  }, 20000);
+
+  it('кнопки нет у нативного режима и у уже доочищенного документа', async () => {
+    await renderPolishable({ mode: 'native' });
+    expect(screen.queryByRole('button', { name: 'Доочистить текст' })).not.toBeInTheDocument();
+
+    cleanup();
+    await renderPolishable({ polished: true });
+    expect(screen.queryByRole('button', { name: 'Доочистить текст' })).not.toBeInTheDocument();
+  }, 20000);
+
+  it('правки в тексте: спрашиваем до перезаписи', async () => {
+    await renderPolishable();
+    (convertPolish as jest.Mock).mockResolvedValue({ job_id: 'jpo1', status: 'queued' });
+
+    const editor = screen.getByTestId('text-editor');
+    await userEvent.clear(editor);
+    await userEvent.type(editor, 'Моя правка');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Доочистить текст' }));
+
+    expect(await screen.findByText('Доочистить текст?')).toBeInTheDocument();
+    expect(convertPolish).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Отмена' }));
+    expect(convertPolish).not.toHaveBeenCalled();
+    expect(screen.getByTestId('text-editor')).toHaveValue('Моя правка');
+  }, 20000);
+
+  it('без правок спрашивать не о чем — доочистка идёт сразу', async () => {
+    await renderPolishable();
+    (convertPolish as jest.Mock).mockResolvedValue({ job_id: 'jpo1', status: 'queued' });
+    mockStatus.mockResolvedValue({ job_id: 'jpo1', status: 'done', mode: 'scan', polished: true, stage: 'Готово' });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Доочистить текст' }));
+
+    await waitFor(() => expect(convertPolish).toHaveBeenCalledWith('jpo1'));
+    expect(screen.queryByText('Доочистить текст?')).not.toBeInTheDocument();
+  }, 20000);
+
+  it('доочистка сломалась: документ цел, это предупреждение, а не ошибка', async () => {
+    await renderPolishable();
+    (convertPolish as jest.Mock).mockResolvedValue({ job_id: 'jpo1', status: 'queued' });
+    // Конвертер оставляет задачу в done: сломалась доочистка, не результат.
+    mockStatus.mockResolvedValue({
+      job_id: 'jpo1',
+      status: 'done',
+      mode: 'scan',
+      polished: false,
+      stage: 'Доочистка не удалась',
+      error: 'Доочистка не загрузилась.',
+      error_code: 'LLM_UNAVAILABLE',
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Доочистить текст' }));
+
+    expect(await screen.findByText('Доочистка не загрузилась.', {}, { timeout: 7000 })).toBeInTheDocument();
+    // Остаёмся в предпросмотре, экрана ошибки нет.
+    expect(screen.getByTestId('text-editor')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Повторить' })).not.toBeInTheDocument();
+  }, 20000);
+
+  it('отказ запуска доочистки (409) показывается плашкой', async () => {
+    await renderPolishable();
+    (convertPolish as jest.Mock).mockRejectedValue(
+      new Error('HTTP 409: {"detail": "Этот документ уже доочищен."}')
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Доочистить текст' }));
+
+    expect(await screen.findByText('Этот документ уже доочищен.')).toBeInTheDocument();
+    expect(screen.getByTestId('text-editor')).toHaveValue('Распознанный текст');
+  }, 20000);
 
   // ── Отмена задачи ──
 

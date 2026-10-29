@@ -1,90 +1,86 @@
-// Настройки конвертера PDF: ресурсный профиль и дефолт доочистки нейросетью.
-// Живут в самом конвертере (его файл настроек), поэтому читаются и пишутся
-// по сети и доступны только при запущенном сайдкаре.
+// Настройки конвертера PDF: ресурсный профиль и доочистка нейросетью.
+//
+// Выбор хранится в настройках приложения, а не в файле конвертера: сайдкар
+// живёт только на шаге конвертации, и в диалоге настроек его обычно нет.
+// Профиль уходит полем `profile` при запуске конвертации (конвертер принимает
+// его как разовое переопределение), поэтому выбор действует всегда.
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Box, Button, MenuItem, Stack, Switch, TextField, Typography } from '@mui/material';
+import { Alert, Box, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { ConvertSettings, convertSaveSettings, convertSettings } from '../../services/electronApi';
 import {
-  ConvertSettings,
-  convertSaveSettings,
-  convertSettings,
-  converterStart,
-} from '../../services/electronApi';
-import { parseBackendError } from '../../shared/lib/convertErrors';
+  ConverterLlmChoice,
+  ConverterProfileChoice,
+  getConverterLlm,
+  getConverterProfile,
+  setConverterLlm,
+  setConverterProfile,
+} from './settingsStore';
 
 /** Подписи профилей. Замеры на корпусе из 8 сканов — в INTEGRATION.md конвертера. */
-const PROFILE_LABELS: Record<string, string> = {
-  auto: 'Автоматически',
-  lean: 'Экономный',
-  balanced: 'Средний',
-  full: 'Полный',
-};
+const PROFILES: { value: ConverterProfileChoice; label: string; note: string }[] = [
+  {
+    value: 'auto',
+    label: 'Автоматически',
+    note: 'Конвертер сам смотрит на память и число ядер этого компьютера.',
+  },
+  { value: 'lean', label: 'Экономный', note: 'Меньше всего памяти, работает чуть дольше.' },
+  { value: 'balanced', label: 'Средний', note: 'Середина между скоростью и памятью.' },
+  { value: 'full', label: 'Полный', note: 'Быстрее всего, но памяти нужно больше.' },
+];
 
-const PROFILE_NOTES: Record<string, string> = {
-  auto: 'Конвертер сам смотрит на память и число ядер этого компьютера.',
-  lean: 'Меньше всего памяти, работает чуть дольше.',
-  balanced: 'Середина между скоростью и памятью.',
-  full: 'Быстрее всего, но памяти нужно больше.',
-};
+const LLM_CHOICES: { value: ConverterLlmChoice; label: string }[] = [
+  { value: 'auto', label: 'Как решит режим' },
+  { value: 'on', label: 'Всегда включать' },
+  { value: 'off', label: 'Всегда выключать' },
+];
+
+const PROFILE_LABELS: Record<string, string> = Object.fromEntries(
+  PROFILES.map((p) => [p.value, p.label])
+);
 
 const ConverterSettings: React.FC<{ open: boolean }> = ({ open }) => {
-  const [settings, setSettings] = useState<ConvertSettings | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const load = useCallback(async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      setSettings(await convertSettings());
-    } catch (e) {
-      setSettings(null);
-      setError(parseBackendError(e, 'Настройки конвертера недоступны').message);
-    } finally {
-      setBusy(false);
-    }
-  }, []);
+  const [profile, setProfile] = useState<ConverterProfileChoice>('auto');
+  const [llm, setLlm] = useState<ConverterLlmChoice>('auto');
+  // Вердикт конвертера о машине — только пояснение. Нет сайдкара — нет строки.
+  const [remote, setRemote] = useState<ConvertSettings | null>(null);
 
   useEffect(() => {
-    if (open) void load();
-  }, [open, load]);
+    if (!open) return;
+    setProfile(getConverterProfile());
+    setLlm(getConverterLlm());
+    // Сайдкар может быть не запущен — это нормально, молча обходимся без него.
+    convertSettings()
+      .then(setRemote)
+      .catch(() => setRemote(null));
+  }, [open]);
 
-  const save = useCallback(
-    async (patch: Parameters<typeof convertSaveSettings>[0]) => {
-      setBusy(true);
-      setError(null);
-      try {
-        setSettings(await convertSaveSettings(patch));
-      } catch (e) {
-        setError(parseBackendError(e, 'Не удалось сохранить настройку').message);
-      } finally {
-        setBusy(false);
-      }
+  // Конвертеру выбор тоже отдаём, если он на связи: тогда его собственный
+  // llm_default совпадёт с выбранным и не будет спорить с интерфейсом.
+  const pushToConverter = useCallback(
+    (patch: Parameters<typeof convertSaveSettings>[0]) => {
+      convertSaveSettings(patch)
+        .then(setRemote)
+        .catch(() => {
+          /* сайдкара нет — настройка всё равно применится полем запроса */
+        });
     },
     []
   );
 
-  // Сайдкар поднимается только на шаге конвертации, поэтому из настроек его
-  // приходится запускать вручную — иначе выбор профиля недоступен в принципе.
-  const startConverter = useCallback(async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const started = await converterStart();
-      if (!started.ok) {
-        setError(parseBackendError(started.error, 'Конвертер не запустился').message);
-        return;
-      }
-      await load();
-    } finally {
-      setBusy(false);
-    }
-  }, [load]);
+  const changeProfile = (value: ConverterProfileChoice) => {
+    setProfile(value);
+    setConverterProfile(value);
+    pushToConverter({ profile: value });
+  };
 
-  const choices = settings?.choices?.length ? settings.choices : ['auto', 'lean', 'balanced', 'full'];
-  const selected = settings?.override?.profile || 'auto';
-  const locked = settings?.locked_by_env === true;
-  const llmOn = settings?.effective?.llm_default === true;
-  const llmOverridden = settings?.override?.llm_default !== null && settings?.override?.llm_default !== undefined;
+  const changeLlm = (value: ConverterLlmChoice) => {
+    setLlm(value);
+    setConverterLlm(value);
+    pushToConverter(value === 'auto' ? { clear_llm_default: true } : { llm_default: value === 'on' });
+  };
+
+  const locked = remote?.locked_by_env === true;
+  const note = PROFILES.find((p) => p.value === profile)?.note || '';
 
   return (
     <Box sx={{ mt: 3 }}>
@@ -92,90 +88,61 @@ const ConverterSettings: React.FC<{ open: boolean }> = ({ open }) => {
         Конвертация PDF
       </Typography>
 
-      {!settings && (
-        <Box sx={{ mt: 1 }}>
+      <Stack spacing={1} sx={{ mt: 1 }}>
+        <TextField
+          select
+          size="small"
+          label="Режим использования ресурсов"
+          value={profile}
+          disabled={locked}
+          onChange={(e) => changeProfile(e.target.value as ConverterProfileChoice)}
+          sx={{ maxWidth: 320 }}
+        >
+          {PROFILES.map((p) => (
+            <MenuItem key={p.value} value={p.value}>
+              {p.label}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        <Typography variant="body2" color="text.secondary">
+          {note}
+        </Typography>
+
+        {locked && (
+          <Alert severity="info">
+            Режим задан при установке приложения (переменная окружения CONVERTER_PROFILE) и
+            выбор здесь не применится.
+          </Alert>
+        )}
+
+        {remote?.auto?.profile && (
           <Typography variant="body2" color="text.secondary">
-            {error
-              ? 'Настройки распознавания хранит сам конвертер. Он запускается на шаге конвертации — либо запустите его сейчас.'
-              : 'Читаем настройки конвертера…'}
+            Определено по компьютеру: {PROFILE_LABELS[remote.auto.profile] || remote.auto.profile}
+            {remote.auto.note ? ` — ${remote.auto.note}` : ''}
           </Typography>
-          {error && (
-            <Button size="small" onClick={startConverter} disabled={busy} sx={{ mt: 1 }}>
-              {busy ? 'Запускаем…' : 'Запустить конвертер'}
-            </Button>
-          )}
-        </Box>
-      )}
+        )}
 
-      {settings && (
-        <Stack spacing={1} sx={{ mt: 1 }}>
-          <TextField
-            select
-            size="small"
-            label="Режим использования ресурсов"
-            value={selected}
-            disabled={locked || busy}
-            onChange={(e) => save({ profile: e.target.value })}
-            sx={{ maxWidth: 320 }}
-          >
-            {choices.map((name) => (
-              <MenuItem key={name} value={name}>
-                {PROFILE_LABELS[name] || name}
-              </MenuItem>
-            ))}
-          </TextField>
+        <TextField
+          select
+          size="small"
+          label="Улучшать текст нейросетью"
+          value={llm}
+          onChange={(e) => changeLlm(e.target.value as ConverterLlmChoice)}
+          sx={{ maxWidth: 320, mt: 1 }}
+        >
+          {LLM_CHOICES.map((c) => (
+            <MenuItem key={c.value} value={c.value}>
+              {c.label}
+            </MenuItem>
+          ))}
+        </TextField>
 
-          <Typography variant="body2" color="text.secondary">
-            {PROFILE_NOTES[selected] || ''}
-          </Typography>
-
-          {locked && (
-            <Alert severity="info">
-              Режим задан при установке приложения (переменная окружения CONVERTER_PROFILE) и
-              выбор здесь не применится.
-            </Alert>
-          )}
-
-          {settings.auto?.profile && (
-            <Typography variant="body2" color="text.secondary">
-              Определено по компьютеру: {PROFILE_LABELS[settings.auto.profile] || settings.auto.profile}
-              {settings.auto.note ? ` — ${settings.auto.note}` : ''}
-            </Typography>
-          )}
-
-          <Box>
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              <Switch
-                checked={llmOn}
-                disabled={busy}
-                onChange={(e) => save({ llm_default: e.target.checked })}
-                inputProps={{ 'aria-label': 'Улучшать текст нейросетью по умолчанию' }}
-              />
-              <Typography variant="body2">Улучшать текст нейросетью по умолчанию</Typography>
-            </Stack>
-            <Typography variant="body2" color="text.secondary" sx={{ ml: 6 }}>
-              Исправляет ошибки распознавания, но добавляет минуты работы и около 1,6 ГБ
-              памяти. На шаге конвертации это можно менять для каждого файла.
-            </Typography>
-            {llmOverridden && (
-              <Button
-                size="small"
-                onClick={() => save({ clear_llm_default: true })}
-                disabled={busy}
-                sx={{ ml: 5 }}
-              >
-                Вернуть как у режима
-              </Button>
-            )}
-          </Box>
-        </Stack>
-      )}
-
-      {settings && error && (
-        <Alert severity="error" sx={{ mt: 1 }}>
-          {error}
-        </Alert>
-      )}
+        <Typography variant="body2" color="text.secondary">
+          Исправляет ошибки распознавания, но добавляет минуты работы и около 1,6 ГБ памяти.
+          На шаге конвертации это можно менять для каждого файла.
+        </Typography>
+      </Stack>
     </Box>
   );
 };
