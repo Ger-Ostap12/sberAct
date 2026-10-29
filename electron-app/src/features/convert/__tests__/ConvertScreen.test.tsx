@@ -147,6 +147,48 @@ describe('ConvertScreen', () => {
     expect(screen.getByRole('button', { name: /Пропустить конвертацию/ })).toBeInTheDocument();
   }, 15000);
 
+  // Отказ конвертера приходит структурным detail, а preload кладёт тело прямо
+  // в текст ошибки. Юрист должен увидеть причину и что делать, а не «HTTP 400».
+  it('структурный отказ: показываются причина и подсказка, а не HTTP-строка', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    mockScan.mockRejectedValue(
+      new Error(
+        'HTTP 400: ' +
+          JSON.stringify({
+            detail: {
+              code: 'PDF_ENCRYPTED',
+              message: 'PDF защищён паролем.',
+              hint: 'Снимите пароль в любой программе для работы с PDF и попробуйте снова.',
+            },
+          })
+      )
+    );
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Конвертировать' }));
+
+    expect(await screen.findByText('PDF защищён паролем.', {}, { timeout: 7000 })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Снимите пароль в любой программе для работы с PDF/)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/HTTP 400/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\[object Object\]/)).not.toBeInTheDocument();
+  }, 15000);
+
+  it('пропал конвертер на опросе: вместо «Failed to fetch» — внятный текст', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    mockScan.mockResolvedValue({ job_id: 'j3' });
+    mockStatus.mockRejectedValue(new TypeError('Failed to fetch'));
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Конвертировать' }));
+
+    expect(
+      await screen.findByText(/Сервер конвертера не отвечает/, {}, { timeout: 7000 })
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Failed to fetch/)).not.toBeInTheDocument();
+  }, 15000);
+
   it('конвертер не поднялся → ошибка со скип-фолбэком', async () => {
     // Экран НЕ показывает ошибку с первой неудачи: холодный старт конвертера
     // занимает до минуты, поэтому запуск тихо повторяется 5 раз с паузой 3 с,

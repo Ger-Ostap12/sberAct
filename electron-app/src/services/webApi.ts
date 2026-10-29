@@ -13,6 +13,7 @@ import {
   DocxTextResult,
   LlmHintsStatus,
 } from './electronApi';
+import { backendError } from '../shared/lib/convertErrors';
 
 // Веб-реализация того же контракта, что и мост Electron (preload). Позволяет
 // открывать приложение в обычном браузере: все операции идут прямыми fetch к
@@ -114,7 +115,9 @@ async function fetchBackend(pathname: string, options?: RequestInit): Promise<Re
       lastContactAt = Date.now();
       if (!res.ok) {
         const text = await res.text().catch(() => '');
-        throw new Error(`HTTP ${res.status}: ${text}`);
+        // Структурный detail конвертера ({code, message, hint}) разбираем здесь,
+        // пока ответ в руках: иначе наружу уедет «[object Object]».
+        throw backendError(res.status, text, `Запрос ${pathname} не удался`);
       }
       return res;
     }

@@ -36,6 +36,7 @@ import {
   docxApplyEdits,
   docxText,
 } from '../../services/electronApi';
+import { BackendFailure, parseBackendError } from '../../shared/lib/convertErrors';
 import PdfPanel from './PdfPanel';
 import SectionedEditor from './SectionedEditor';
 
@@ -126,7 +127,7 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
   const [detectReason, setDetectReason] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [stage, setStage] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<BackendFailure | null>(null);
   const [docxBlob, setDocxBlob] = useState<Blob | null>(null);
   const [editedText, setEditedText] = useState('');
   const [sections, setSections] = useState<DocxSection[]>([]);
@@ -178,7 +179,7 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
       }
       if (cancelled) return;
       if (!started.ok) {
-        setError(started.error || 'Конвертер недоступен');
+        setError(parseBackendError(started.error, 'Конвертер недоступен'));
         setPhase('error');
         return;
       }
@@ -205,10 +206,11 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
     };
   }, [file]);
 
+  // Принимает что угодно из catch: строку, Error, структурный отказ конвертера.
   const failWith = useCallback(
-    (message: string) => {
+    (cause: unknown, fallback: string) => {
       stopPolling();
-      setError(message);
+      setError(parseBackendError(cause, fallback));
       setPhase('error');
     },
     [stopPolling]
@@ -244,17 +246,17 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
             setSections(extracted.sections || []);
             setPhase('preview');
           } else if (status.status === 'error') {
-            failWith(status.error || 'Ошибка конвертации');
+            failWith(status.error, 'Ошибка конвертации');
           }
         } catch (e) {
           if (activeJob.current !== jobId) return;
-          failWith(e instanceof Error ? e.message : 'Потеряна связь с конвертером');
+          failWith(e, 'Потеряна связь с конвертером');
         } finally {
           pollBusy.current = false;
         }
       }, POLL_INTERVAL_MS);
     } catch (e) {
-      failWith(e instanceof Error ? e.message : 'Не удалось запустить конвертацию');
+      failWith(e, 'Не удалось запустить конвертацию');
     }
   }, [file, mode, failWith, stopPolling]);
 
@@ -266,11 +268,7 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
       const result = await analyzeDocument(file);
       onComplete(result);
     } catch (e) {
-      failWith(
-        e instanceof Error
-          ? `Анализ без конвертации не удался: ${e.message}`
-          : 'Анализ без конвертации не удался'
-      );
+      failWith(e, 'Анализ без конвертации не удался');
     }
   }, [file, onComplete, failWith]);
 
@@ -281,7 +279,7 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
       const result = await analyzeText(editedText);
       onComplete(result);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Ошибка анализа текста');
+      setError(parseBackendError(e, 'Ошибка анализа текста'));
       setPhase('preview');
     }
   }, [editedText, onComplete]);
@@ -310,7 +308,7 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
       const blob = await docxApplyEdits(docxBlob, editedText);
       triggerDownload(blob, `${baseName} (правки).docx`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось собрать DOCX с правками');
+      setError(parseBackendError(e, 'Не удалось собрать DOCX с правками'));
     }
   }, [docxBlob, editedText, baseName, triggerDownload]);
 
@@ -350,7 +348,12 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
         </Stack>
         {error && (
           <Alert severity="error" sx={{ mb: 1 }}>
-            {error}
+            {error.message}
+            {error.hint && (
+              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                {error.hint}
+              </Typography>
+            )}
           </Alert>
         )}
         <Box sx={{ display: 'flex', gap: 1, flexGrow: 1, minHeight: 0 }}>
@@ -529,7 +532,14 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
 
           {phase === 'error' && (
             <Stack spacing={2}>
-              <Alert severity="error">{error || 'Что-то пошло не так'}</Alert>
+              <Alert severity="error">
+                {error?.message || 'Что-то пошло не так'}
+                {error?.hint && (
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    {error.hint}
+                  </Typography>
+                )}
+              </Alert>
               <Stack direction="row" spacing={1}>
                 <Button variant="contained" onClick={handleConvert}>
                   Повторить
