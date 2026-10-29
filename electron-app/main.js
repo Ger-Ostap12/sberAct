@@ -15,6 +15,24 @@ const fs = require('fs');
 const os = require('os');
 const isDev = require('electron-is-dev');
 const { initUpdater, shutdownUpdater } = require('./updater');
+const { createServiceLog } = require('./serviceLog');
+
+// Логи сервисов — по одному на сервис, создаются при первом обращении.
+const serviceLogs = new Map();
+
+/** Лог сервиса в папке логов приложения (её же показывает «Открыть логи»). */
+function serviceLog(name) {
+  if (!serviceLogs.has(name)) {
+    let dir;
+    try {
+      dir = app.getPath('logs');
+    } catch (_) {
+      dir = path.join(app.getPath('userData'), 'logs');
+    }
+    serviceLogs.set(name, createServiceLog(name, dir));
+  }
+  return serviceLogs.get(name);
+}
 
 // Linux: Chromium SUID-песочница требует setuid-root chrome-sandbox, а Ubuntu 24.04
 // по умолчанию режет и unprivileged-namespace-песочницу. Из AppImage приложение
@@ -132,17 +150,23 @@ class ManagedService {
       return { ok: false, error: `${this.name}: не найдена команда запуска (сервис не установлен?)` };
     }
 
+    const log = serviceLog(this.name);
     console.log(`[${this.name}] starting: ${cmd.command} ${(cmd.args || []).join(' ')}`);
+    log.line(`starting: ${cmd.command} ${(cmd.args || []).join(' ')} (cwd ${cmd.cwd})`);
     this.external = false;
     this.process = spawn(cmd.command, cmd.args || [], {
       cwd: cmd.cwd,
       env: { ...process.env, ...(cmd.env || {}) },
       detached: SPAWN_DETACHED
     });
-    this.process.stdout.on('data', (d) => console.log(`[${this.name}] ${d}`));
-    this.process.stderr.on('data', (d) => console.error(`[${this.name}] ${d}`));
-    this.process.on('error', (e) => console.error(`[${this.name}] spawn error:`, e));
+    this.process.stdout.on('data', (d) => { log.write(d); console.log(`[${this.name}] ${d}`); });
+    this.process.stderr.on('data', (d) => { log.write(d); console.error(`[${this.name}] ${d}`); });
+    this.process.on('error', (e) => {
+      log.line(`spawn error: ${e && e.message ? e.message : e}`);
+      console.error(`[${this.name}] spawn error:`, e);
+    });
     this.process.on('close', (code) => {
+      log.line(`exited with code ${code}`);
       console.log(`[${this.name}] exited with code ${code}`);
       this.process = null;
     });
@@ -155,11 +179,14 @@ class ManagedService {
         return { ok: false, error: `${this.name}: процесс завершился до готовности` };
       }
       if (await this.isHealthy()) {
+        log.line('healthy');
         console.log(`[${this.name}] healthy`);
         return { ok: true, external: false };
       }
       await new Promise((r) => setTimeout(r, this.healthIntervalMs));
     }
+    // Именно этот случай и не удавалось разобрать на машине пользователя.
+    log.line(`НЕ ПОДНЯЛСЯ за ${Math.round(this.startTimeoutMs / 1000)} с, ${this.healthUrl} молчит`);
     this.stop();
     return { ok: false, error: `${this.name}: не поднялся за ${Math.round(this.startTimeoutMs / 1000)} с` };
   }
@@ -315,22 +342,34 @@ async function startPythonBackend() {
       }
     });
 
+    const log = serviceLog('backend');
+    log.line(`starting: ${backend.command} ${(backend.args || []).join(' ')} (cwd ${backend.cwd})`);
+
     pythonProcess.stdout.on('data', (data) => {
+      log.write(data);
       console.log(`Python stdout: ${data}`);
     });
 
     pythonProcess.stderr.on('data', (data) => {
+      log.write(data);
       console.error(`Python stderr: ${data}`);
     });
 
     pythonProcess.on('error', (error) => {
+      log.line(`spawn error: ${error && error.message ? error.message : error}`);
       console.error('Failed to start Python backend:', error);
     });
 
     pythonProcess.on('close', (code) => {
+      log.line(`exited with code ${code}`);
       console.log(`Python backend exited with code ${code}`);
     });
   } catch (error) {
+    try {
+      serviceLog('backend').line(`не удалось запустить: ${error && error.message ? error.message : error}`);
+    } catch (_) {
+      /* лог недоступен — остаётся консоль */
+    }
     console.error('Unexpected error in startPythonBackend:', error);
   }
 }
@@ -465,6 +504,7 @@ async function warmConverterIfRoomy() {
 }
 
 app.whenReady().then(() => {
+  console.log(`[logs] ${path.dirname(serviceLog('backend').file)}`);
   startPythonBackend();
   createWindow();
   warmConverterIfRoomy();
