@@ -295,6 +295,25 @@ export const webApi: ElectronAPI = {
     return res.json();
   },
 
+  convertSettings: async () => {
+    const res = await fetchBackend('/convert/settings');
+    return res.json();
+  },
+
+  // Сохранение той же настройки дважды ничего не меняет — повтор безопасен.
+  convertSaveSettings: async (patch) => {
+    const formData = new FormData();
+    Object.entries(patch).forEach(([key, value]) => {
+      if (value !== undefined) formData.append(key, String(value));
+    });
+    const res = await fetchBackend(
+      '/convert/settings',
+      { method: 'POST', body: formData },
+      { idempotent: true }
+    );
+    return res.json();
+  },
+
   // Отмена идемпотентна по смыслу: повторная просьба остановить ничего не ломает.
   convertCancel: async (jobId: string) => {
     const res = await fetchBackend(

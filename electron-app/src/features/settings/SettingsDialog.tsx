@@ -4,6 +4,7 @@ import {
   Button, FormControlLabel, Switch, Typography, Box,
 } from '@mui/material';
 import { isLlmHintsEnabled, setLlmHintsEnabled } from './settingsStore';
+import ConverterSettings from './ConverterSettings';
 
 interface SettingsDialogProps {
   open: boolean;
@@ -56,6 +57,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose }) => {
             слабых компьютерах проверку лучше отключить.
           </Typography>
         </Box>
+        <ConverterSettings open={open} />
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Закрыть</Button>

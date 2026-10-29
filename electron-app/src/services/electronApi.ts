@@ -150,6 +150,31 @@ export interface ConvertProfile {
   free_gb?: number;
 }
 
+/**
+ * Ответ GET/POST /convert/settings: что решило железо (auto), что выбрал
+ * пользователь (override) и что применится (effective) — старшинство считает
+ * конвертер, интерфейс его не повторяет.
+ */
+export interface ConvertSettings {
+  auto?: { profile: string; note?: string };
+  override?: { profile: string | null; llm_default: boolean | null };
+  effective?: ConvertProfile;
+  machine?: { cores?: number; ram_gb?: number; free_gb?: number };
+  choices?: string[];
+  source?: string;
+  /** Профиль задан переменной окружения — выбор пользователя не применится. */
+  locked_by_env?: boolean;
+  path?: string;
+}
+
+/** Что меняем в настройках конвертера (поля необязательны по одному). */
+export interface ConvertSettingsPatch {
+  profile?: string;
+  llm_default?: boolean;
+  /** Вернуть дефолт доочистки к «как решит профиль». */
+  clear_llm_default?: boolean;
+}
+
 /** Ответ POST /convert/cancel: снята из очереди или останавливается на ходу. */
 export interface ConvertCancelResult {
   job_id: string;
@@ -233,6 +258,10 @@ export interface ElectronAPI {
   convertHealth: () => Promise<ConvertHealthResult>;
   /** Действующий ресурсный профиль и дефолт доочистки. */
   convertProfile: () => Promise<ConvertProfile>;
+  /** Настройки конвертера для диалога настроек. */
+  convertSettings: () => Promise<ConvertSettings>;
+  /** Сохранение выбора пользователя (POST: прокси не пропускает PUT). */
+  convertSaveSettings: (patch: ConvertSettingsPatch) => Promise<ConvertSettings>;
   /** Отмена задачи. 200 — снята из очереди, 202 — остановится на ближайшей проверке. */
   convertCancel: (jobId: string) => Promise<ConvertCancelResult>;
   /** Лог задачи (хвост) — диагностика для кнопки «Подробнее». */
@@ -408,6 +437,11 @@ export const convertStatus = (jobId: string): Promise<ConvertJobStatus> =>
 export const convertHealth = (): Promise<ConvertHealthResult> => getApi().convertHealth();
 
 export const convertProfile = (): Promise<ConvertProfile> => getApi().convertProfile();
+
+export const convertSettings = (): Promise<ConvertSettings> => getApi().convertSettings();
+
+export const convertSaveSettings = (patch: ConvertSettingsPatch): Promise<ConvertSettings> =>
+  getApi().convertSaveSettings(patch);
 
 export const convertCancel = (jobId: string): Promise<ConvertCancelResult> =>
   getApi().convertCancel(jobId);

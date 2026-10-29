@@ -299,6 +299,25 @@ try {
     return await response.json();
   },
 
+  convertSettings: async () => {
+    const response = await fetchBackend('/convert/settings');
+    return await response.json();
+  },
+
+  // Сохранение той же настройки дважды ничего не меняет — повтор безопасен.
+  convertSaveSettings: async (patch) => {
+    const formData = new FormData();
+    Object.entries(patch || {}).forEach(([key, value]) => {
+      if (value !== undefined) formData.append(key, String(value));
+    });
+    const response = await fetchBackend(
+      '/convert/settings',
+      { method: 'POST', body: formData },
+      { idempotent: true }
+    );
+    return await response.json();
+  },
+
   // Отмена идемпотентна по смыслу: повторная просьба остановить ничего не ломает.
   convertCancel: async (jobId) => {
     const response = await fetchBackend(
