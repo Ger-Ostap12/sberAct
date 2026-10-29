@@ -166,9 +166,16 @@ export interface ElectronAPI {
   convertAnalyze: (file: File) => Promise<ConvertClassifyResult>;
   converterWarmup: () => Promise<void>;
   /** Конвертация скана (Docling+Tesseract+LLM), возвращает job_id. */
-  convertScan: (file: File, flags?: ConvertScanFlags) => Promise<{ job_id: string }>;
+  convertScan: (
+    file: File,
+    flags?: ConvertScanFlags,
+    jobKey?: string
+  ) => Promise<{ job_id: string; reused?: boolean; warning?: string | null }>;
   /** Конвертация нативного PDF (pdf2docx), возвращает job_id. */
-  convertNative: (file: File) => Promise<{ job_id: string }>;
+  convertNative: (
+    file: File,
+    jobKey?: string
+  ) => Promise<{ job_id: string; reused?: boolean; warning?: string | null }>;
   /** Поллинг статуса задачи конвертации. */
   convertStatus: (jobId: string) => Promise<ConvertJobStatus>;
   /** Готовый DOCX задачи (оригинальная вёрстка; «Скачать DOCX»). */
@@ -325,11 +332,16 @@ export const converterWarmup = (): Promise<void> => getApi().converterWarmup();
 
 export const convertScan = (
   file: File,
-  flags?: ConvertScanFlags
-): Promise<{ job_id: string }> => getApi().convertScan(file, flags);
+  flags?: ConvertScanFlags,
+  jobKey?: string
+): Promise<{ job_id: string; reused?: boolean; warning?: string | null }> =>
+  getApi().convertScan(file, flags, jobKey);
 
-export const convertNative = (file: File): Promise<{ job_id: string }> =>
-  getApi().convertNative(file);
+export const convertNative = (
+  file: File,
+  jobKey?: string
+): Promise<{ job_id: string; reused?: boolean; warning?: string | null }> =>
+  getApi().convertNative(file, jobKey);
 
 export const convertStatus = (jobId: string): Promise<ConvertJobStatus> =>
   getApi().convertStatus(jobId);

@@ -2,29 +2,55 @@ const { contextBridge, ipcRenderer } = require('electron');
 const fs = require('fs');
 console.log('[preload] loaded');
 
-// Вспомогательная функция: пробуем несколько хостов (WSL/Windows)
-async function fetchBackend(pathname, options) {
-  const baseUrls = [
-    'http://wsl.localhost:8000',  // WSL localhost
-    'http://127.0.0.1:8000',
-    'http://localhost:8000'
-  ];
+// Хосты бэкенда. 127.0.0.1 первым: у юристов WSL нет, а его резолв стоит
+// десятки миллисекунд на КАЖДОМ запросе.
+const BASE_URLS = [
+  'http://127.0.0.1:8000',
+  'http://localhost:8000',
+  'http://wsl.localhost:8000'
+];
+
+/** Хост, который уже отвечал: проверять остальные на каждом запросе незачем. */
+let liveBase = null;
+
+/**
+ * Запрос к бэкенду с переходом на следующий хост, если текущий молчит.
+ *
+ * Два правила, без которых перебор вредит:
+ *   HTTP-отказ (4xx/5xx) — это ОТВЕТ, запрос дошёл. Перебор прекращаем, иначе
+ *   наружу уедет ошибка последнего хоста вместо настоящей причины, а POST
+ *   выполнится на сервере столько раз, сколько хостов в списке.
+ *   Сетевой сбой на POST без ключа идемпотентности не повторяем на других
+ *   хостах: запрос мог дойти и уже выполняться (см. shared/lib/jobKey.ts).
+ */
+async function fetchBackend(pathname, options, opts) {
+  const method = ((options && options.method) || 'GET').toUpperCase();
+  const retriable =
+    method === 'GET' || method === 'HEAD' || (opts && opts.idempotent === true);
+  const ordered = liveBase
+    ? [liveBase, ...BASE_URLS.filter((b) => b !== liveBase)]
+    : [...BASE_URLS];
   let lastError;
-  for (const base of baseUrls) {
+  for (const base of ordered) {
     const url = `${base}${pathname}`;
+    let res;
     try {
-      console.log(`[preload] fetch ${url}`);
-      const res = await fetch(url, options);
-      if (!res.ok) {
-        let text = '';
-        try { text = await res.text(); } catch (_) {}
-        throw new Error(`HTTP ${res.status}: ${text}`);
-      }
-      return res;
+      res = await fetch(url, options);
     } catch (e) {
       lastError = e;
       console.warn('[preload] fetch failed for', url, e.message || e);
+      if (base === liveBase) liveBase = null;
+      if (!retriable) break; // запрос мог дойти — вторая попытка создаст дубль
+      continue;
     }
+    liveBase = base;
+    if (!res.ok) {
+      let text = '';
+      try { text = await res.text(); } catch (_) {}
+      // Тело кладём в текст: разбирает shared/lib/convertErrors.
+      throw new Error(`HTTP ${res.status}: ${text}`);
+    }
+    return res;
   }
   throw lastError || new Error('All backend hosts failed');
 }
@@ -231,20 +257,30 @@ try {
     await fetchBackend('/convert/warmup', { method: 'POST' });
   },
 
-  convertScan: async (file, flags) => {
+  convertScan: async (file, flags, jobKey) => {
     const formData = new FormData();
     formData.append('file', file, file.name || 'document.pdf');
     Object.entries(flags || {}).forEach(([key, value]) => {
       if (value !== undefined) formData.append(key, String(value));
     });
-    const response = await fetchBackend('/convert/scan', { method: 'POST', body: formData });
+    if (jobKey) formData.append('job_key', jobKey);
+    const response = await fetchBackend(
+      '/convert/scan',
+      { method: 'POST', body: formData },
+      { idempotent: Boolean(jobKey) }
+    );
     return await response.json();
   },
 
-  convertNative: async (file) => {
+  convertNative: async (file, jobKey) => {
     const formData = new FormData();
     formData.append('file', file, file.name || 'document.pdf');
-    const response = await fetchBackend('/convert/native', { method: 'POST', body: formData });
+    if (jobKey) formData.append('job_key', jobKey);
+    const response = await fetchBackend(
+      '/convert/native',
+      { method: 'POST', body: formData },
+      { idempotent: Boolean(jobKey) }
+    );
     return await response.json();
   },
 

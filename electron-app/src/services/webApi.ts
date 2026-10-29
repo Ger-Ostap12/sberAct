@@ -76,14 +76,20 @@ async function warmConnection(): Promise<void> {
  * fetch сериализует тело заново), но семантически — нет: см.
  * `IDEMPOTENT_POST_PATHS`.
  */
-async function fetchBackend(pathname: string, options?: RequestInit): Promise<Response> {
+async function fetchBackend(
+  pathname: string,
+  options?: RequestInit,
+  opts?: { idempotent?: boolean }
+): Promise<Response> {
   const method = (options?.method ?? 'GET').toUpperCase();
-  // GET/HEAD/DELETE идемпотентны по семантике HTTP; из POST — только явный список.
+  // GET/HEAD/DELETE идемпотентны по семантике HTTP; из POST — явный список и
+  // запросы с ключом идемпотентности (job_key конвертера).
   const retriable =
     method === 'GET' ||
     method === 'HEAD' ||
     method === 'DELETE' ||
-    IDEMPOTENT_POST_PATHS.has(pathname);
+    IDEMPOTENT_POST_PATHS.has(pathname) ||
+    opts?.idempotent === true;
 
   // Первый запрос после простоя рискует попасть на протухший сокет. Для
   // повторяемых это лечит вторая попытка, для остальных — прогрев.
@@ -245,21 +251,32 @@ export const webApi: ElectronAPI = {
     await fetchBackend('/convert/warmup', { method: 'POST' });
   },
 
-  convertScan: async (file: File, flags?: ConvertScanFlags): Promise<{ job_id: string }> => {
+  convertScan: async (file: File, flags?: ConvertScanFlags, jobKey?: string) => {
     const formData = new FormData();
     formData.append('file', file, file.name);
     // Флаги — form-поля конвертера; шлём только явно заданные (дефолты — его)
     Object.entries(flags ?? {}).forEach(([key, value]) => {
       if (value !== undefined) formData.append(key, String(value));
     });
-    const res = await fetchBackend('/convert/scan', { method: 'POST', body: formData });
+    if (jobKey) formData.append('job_key', jobKey);
+    // Повтор допустим только с ключом: иначе он запустит вторую конвертацию.
+    const res = await fetchBackend(
+      '/convert/scan',
+      { method: 'POST', body: formData },
+      { idempotent: Boolean(jobKey) }
+    );
     return res.json();
   },
 
-  convertNative: async (file: File): Promise<{ job_id: string }> => {
+  convertNative: async (file: File, jobKey?: string) => {
     const formData = new FormData();
     formData.append('file', file, file.name);
-    const res = await fetchBackend('/convert/native', { method: 'POST', body: formData });
+    if (jobKey) formData.append('job_key', jobKey);
+    const res = await fetchBackend(
+      '/convert/native',
+      { method: 'POST', body: formData },
+      { idempotent: Boolean(jobKey) }
+    );
     return res.json();
   },
 

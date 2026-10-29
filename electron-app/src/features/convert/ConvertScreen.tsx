@@ -37,6 +37,7 @@ import {
   docxText,
 } from '../../services/electronApi';
 import { BackendFailure, parseBackendError } from '../../shared/lib/convertErrors';
+import { newJobKey } from '../../shared/lib/jobKey';
 import PdfPanel from './PdfPanel';
 import SectionedEditor from './SectionedEditor';
 
@@ -222,10 +223,14 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
     setStage('Отправляем документ…');
     setError(null);
     try {
+      // Ключ на одно нажатие: сетевой сбой повторит запрос, а конвертер отдаст
+      // ту же задачу. «Повторить» после ошибки даёт новый ключ — это уже
+      // осознанная вторая попытка.
+      const key = newJobKey();
       const { job_id: jobId } =
         mode === 'native'
-          ? await convertNative(file)
-          : await convertScan(file, scanFlags);
+          ? await convertNative(file, key)
+          : await convertScan(file, scanFlags, key);
       activeJob.current = jobId;
       pollTimer.current = setInterval(async () => {
         if (pollBusy.current) return; // предыдущий тик ещё не ответил

@@ -26,6 +26,7 @@ import {
   analyzeText,
   convertAnalyze,
   convertDownload,
+  convertNative,
   convertScan,
   convertStatus,
   converterStart,
@@ -100,7 +101,8 @@ describe('ConvertScreen', () => {
     // no_highlight=true отключал LLM-доочистку — качество падало (баг Андрея)
     expect(mockScan).toHaveBeenCalledWith(
       pdfFile,
-      expect.objectContaining({ no_highlight: false, iim: true })
+      expect.objectContaining({ no_highlight: false, iim: true }),
+      expect.any(String) // третий аргумент — ключ идемпотентности
     );
 
     // Поллинг каждые 1.5 с: ждём предпросмотра (running → done → download → текст)
@@ -145,6 +147,39 @@ describe('ConvertScreen', () => {
     expect(await screen.findByText('OCR упал', {}, { timeout: 7000 })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Повторить' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Пропустить конвертацию/ })).toBeInTheDocument();
+  }, 15000);
+
+  // Ключ идемпотентности: одно нажатие — один ключ, повтор после ошибки — новый.
+  it('«Конвертировать» шлёт ключ задачи, «Повторить» — уже другой', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'scan' });
+    mockScan.mockResolvedValue({ job_id: 'j9' });
+    mockStatus.mockResolvedValue({ job_id: 'j9', status: 'error', error: 'OCR упал' });
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Конвертировать' }));
+    await screen.findByText('OCR упал', {}, { timeout: 7000 });
+
+    const firstKey = mockScan.mock.calls[0][2];
+    expect(typeof firstKey).toBe('string');
+    expect(firstKey).toBeTruthy();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Повторить' }));
+    await waitFor(() => expect(mockScan).toHaveBeenCalledTimes(2));
+    expect(mockScan.mock.calls[1][2]).toBeTruthy();
+    expect(mockScan.mock.calls[1][2]).not.toBe(firstKey);
+  }, 15000);
+
+  it('нативный режим тоже идёт с ключом', async () => {
+    mockAnalyze.mockResolvedValue({ suggested: 'native' });
+    const mockNative = convertNative as jest.Mock;
+    mockNative.mockResolvedValue({ job_id: 'n1' });
+    mockStatus.mockResolvedValue({ job_id: 'n1', status: 'running', progress: 0.1, stage: 'Идём' });
+
+    render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Конвертировать' }));
+
+    await waitFor(() => expect(mockNative).toHaveBeenCalled());
+    expect(mockNative.mock.calls[0][1]).toBeTruthy();
   }, 15000);
 
   // Отказ конвертера приходит структурным detail, а preload кладёт тело прямо

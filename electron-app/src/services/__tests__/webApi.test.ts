@@ -242,6 +242,55 @@ describe('fetchBackend — что можно повторять', () => {
   });
 });
 
+// Ключ идемпотентности: конвертер по тому же ключу отдаёт ту же задачу
+// (reused: true), поэтому повтор запроса перестаёт быть опасным.
+describe('job_key — повтор без второй конвертации', () => {
+  const FIRST = 'http://127.0.0.1:8000';
+  const netFail = () => Promise.reject(new TypeError('Failed to fetch'));
+  const pdf = () => new File(['x'], 'скан.pdf', { type: 'application/pdf' });
+  const bodyOf = (call: unknown[]) => (call[1] as RequestInit).body as FormData;
+
+  it('ключ уходит в теле запроса /convert/scan', async () => {
+    const fetchMock = jest.fn(async () => okJson({ job_id: 'j1' }));
+    (global as any).fetch = fetchMock;
+
+    await webApi.convertScan(pdf(), { iim: true }, 'key-123');
+    expect(bodyOf(fetchMock.mock.calls[0]).get('job_key')).toBe('key-123');
+  });
+
+  it('ключ уходит в теле запроса /convert/native', async () => {
+    const fetchMock = jest.fn(async () => okJson({ job_id: 'j2' }));
+    (global as any).fetch = fetchMock;
+
+    await webApi.convertNative(pdf(), 'key-456');
+    expect(bodyOf(fetchMock.mock.calls[0]).get('job_key')).toBe('key-456');
+  });
+
+  it('С ключом сорвавшийся POST повторяется на тот же хост', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockImplementationOnce(netFail)
+      .mockImplementationOnce(async () => okJson({ job_id: 'j3', reused: true }));
+    (global as any).fetch = fetchMock;
+
+    await expect(webApi.convertScan(pdf(), undefined, 'key-789')).resolves.toEqual({
+      job_id: 'j3',
+      reused: true,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[1][0])).toContain(FIRST);
+  });
+
+  it('БЕЗ ключа повтора на тот же хост нет — одна попытка на хост', async () => {
+    // Та же защита, что была: без ключа повтор означает вторую OCR-задачу.
+    const fetchMock = jest.fn(netFail);
+    (global as any).fetch = fetchMock;
+
+    await expect(webApi.convertScan(pdf())).rejects.toThrow(/Failed to fetch/);
+    expect(fetchMock).toHaveBeenCalledTimes(3); // 3 базы × 1, а не × 2
+  });
+});
+
 // Имя архива считает бэкенд и кладёт в Content-Disposition двумя полями.
 describe('fileNameFromResponse', () => {
   const ответ = (cd: string | null) =>
