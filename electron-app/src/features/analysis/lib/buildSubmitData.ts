@@ -9,6 +9,7 @@ import {
   MortgageKind,
 } from '../../../types';
 import { formatJudgeName } from '../../../shared/lib/judges';
+import { withCivilMortgageAwards } from './mortgageAwards';
 
 export interface SubmitDataInput {
   analysisResult: ExtractedData;
@@ -127,6 +128,10 @@ export const buildSubmitData = (input: SubmitDataInput): ExtractedData => {
     if (f.stateDuty16 && !f.stateDuty) {
       f.stateDuty = f.stateDuty16;
     }
+  }
+
+  if (documentCategory === 'mortgage' && (mortgageKind || analysisResult.mortgageKind || 'civil') === 'civil') {
+    updatedData.fields = withCivilMortgageAwards(updatedData.fields);
   }
 
   return updatedData;

@@ -16,7 +16,11 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.shared import OxmlElement, qn
 # Локальный импорт анализатора без package-префикса, чтобы работать при запуске из app/
-from claim_resolution import CLAIM_RESOLUTION_TEXTS, PARTIAL, build_partial_denial
+from claim_resolution import CLAIM_RESOLUTION_TEXTS, CIVIL_DENIAL_TEXT, DENY, PARTIAL, build_partial_denial
+from mortgage_awards import (
+    AWARD_BOOKMARKS, DEBT_CLAUSE, DUTY_CLAUSE, TOTAL_CLAUSE,
+    partial_awards, prepare_partial_awards,
+)
 from org_normalizer import abbreviate_org_name, has_own_legal_form, is_org_name
 from hearing_datetime import format_hearing_datetime
 from text_case import normalize_address_case, normalize_name_case
@@ -1041,6 +1045,20 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 inst = (cleaned_data.get("applicantNameInstrumental") or "")
                 if not inst or "суд" in inst.lower():
                     cleaned_data["applicantNameInstrumental"] = _decline_multi(best_name, "ablt")
+            if self._is_civil_mortgage_decision(cleaned_data):
+                debtors = cleaned_data.get("debtors") or (cleaned_data.get("fields") or {}).get("debtors") or []
+                names = [str(debtor.get("name") or "").strip() for debtor in debtors
+                         if isinstance(debtor, dict) and str(debtor.get("name") or "").strip()]
+                if len(names) > 1:
+                    # Поле первого ответчика не должно затирать список из формы.
+                    for field, grammeme, marker in (
+                        ("mortgageDebtorNameDative", "datv", "2.2"),
+                        ("applicantNameInstrumental", "ablt", "2.3"),
+                    ):
+                        cleaned_data[field] = ", ".join(
+                            self._decline_person_name(name, grammeme) for name in names
+                        )
+                        field_mapping[field] = marker
         return field_mapping
 
     def _court_name_to_case(self, name: str, grammeme: str, agree_gender: str = None) -> str:
@@ -1326,6 +1344,135 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         }
         return field_mapping
 
+    MORTGAGE_AWARDS_BOOKMARK = "MortgageAwards"
+    MORTGAGE_AWARD_PARAGRAPHS = 4
+
+    def _is_civil_mortgage_decision(self, data: Dict[str, Any]) -> bool:
+        """Правка относится только к резолютивке обычной ипотеки."""
+        return (
+            data.get("sourceDocumentType") == "mortgage_claim"
+            and data.get("_current_doc_type") == "mortgage_decision"
+            and self._mortgage_selection(data)["kind"] == "civil"
+        )
+
+    def _apply_civil_mortgage_awards(self, doc: DocxDocument, data: Dict[str, Any]) -> None:
+        """Применяет исход иска к выделенным требованиям обычной ипотеки."""
+        if not self._is_civil_mortgage_decision(data):
+            return
+        resolution = str(data.get("claimResolution") or "").strip().lower()
+        if resolution not in CLAIM_RESOLUTION_TEXTS:
+            return
+
+        selected = partial_awards(data)
+        body = doc.element.body
+        starts = [
+            node for node in body.iter(qn("w:bookmarkStart"))
+            if node.get(qn("w:name")) == self.MORTGAGE_AWARDS_BOOKMARK
+        ]
+        if len(starts) != 1:
+            raise ValueError("В резолютивке должна быть одна закладка MortgageAwards")
+        start = starts[0]
+        ends = [
+            node for node in body.iter(qn("w:bookmarkEnd"))
+            if node.get(qn("w:id")) == start.get(qn("w:id"))
+        ]
+        if len(ends) != 1:
+            raise ValueError("Не найдена единственная граница MortgageAwards")
+        end = ends[0]
+        nodes = list(body.iter())
+        if nodes.index(start) >= nodes.index(end):
+            raise ValueError("Перепутаны границы MortgageAwards")
+
+        def body_child(node):
+            while node.getparent() is not body:
+                node = node.getparent()
+            return node
+
+        first, last = body_child(start), body_child(end)
+        children = list(body)
+        left = children.index(first) + (first is start)
+        right = children.index(last) + (last is not end)
+        block = children[left:right]
+        if any(node.tag != qn("w:p") for node in block):
+            raise ValueError("MortgageAwards должна охватывать только абзацы")
+        texts = ["".join(t.text or "" for t in node.iter(qn("w:t"))) for node in block]
+        if (sum(bool(text.strip()) for text in texts) != self.MORTGAGE_AWARD_PARAGRAPHS
+                or any(marker in text for text in texts for marker in ("[888]", "[889]"))):
+            raise ValueError("MortgageAwards должна охватывать четыре абзаца без [888]/[889]")
+        for container, boundary, before in ((first, start, True), (last, end, False)):
+            if container is boundary:
+                continue
+            content = list(container.iter())
+            at = content.index(boundary)
+            outside = content[:at] if before else content[at + 1:]
+            if any(node.tag == qn("w:t") and (node.text or "").strip() for node in outside):
+                raise ValueError("MortgageAwards должна охватывать абзацы целиком")
+
+        paragraphs = [node for node, text in zip(block, texts) if text.strip()]
+        boundaries = [start, end]
+        for name, paragraph in zip(AWARD_BOOKMARKS, paragraphs):
+            inner_starts = [node for node in body.iter(qn("w:bookmarkStart"))
+                            if node.get(qn("w:name")) == name]
+            if not inner_starts and selected is None:
+                continue
+            if len(inner_starts) != 1:
+                raise ValueError(f"В шаблоне должна быть одна закладка {name}")
+            inner_start = inner_starts[0]
+            inner_ends = [node for node in body.iter(qn("w:bookmarkEnd"))
+                          if node.get(qn("w:id")) == inner_start.get(qn("w:id"))]
+            if len(inner_ends) != 1:
+                raise ValueError(f"Не найдена граница {name}")
+            inner_end = inner_ends[0]
+            if not (nodes.index(start) < nodes.index(inner_start) < nodes.index(inner_end) < nodes.index(end)):
+                raise ValueError(f"Закладка {name} должна находиться внутри MortgageAwards")
+            if body_child(inner_start) is not paragraph or body_child(inner_end) is not paragraph:
+                raise ValueError(f"Закладка {name} должна охватывать свой абзац")
+            content = list(paragraph.iter())
+            outside = content[:content.index(inner_start)] + content[content.index(inner_end) + 1:]
+            if any(node.tag == qn("w:t") and (node.text or "").strip() for node in outside):
+                raise ValueError(f"Закладка {name} должна охватывать абзац целиком")
+            boundaries.extend((inner_start, inner_end))
+
+        recovery_edits = []
+        if selected is not None:
+            if not selected["debt"] and selected["duty"]:
+                recovery_edits = [DEBT_CLAUSE, TOTAL_CLAUSE]
+            elif selected["debt"] and not selected["duty"]:
+                recovery_edits = [DUTY_CLAUSE]
+            recovery_text = texts[block.index(paragraphs[1])]
+            if any(len(list(pattern.finditer(recovery_text))) != 1 for pattern in recovery_edits):
+                raise ValueError("В MortgageDebt не найдены границы задолженности и госпошлины")
+            recovery = next(p for p in doc.paragraphs if p._p is paragraphs[1])
+            for pattern in recovery_edits:
+                self._regex_sub_in_paragraphs([recovery], pattern, "")
+            if not selected["termination"]:
+                body.remove(paragraphs[0])
+            if not selected["debt"] and not selected["duty"]:
+                body.remove(paragraphs[1])
+            if not selected["foreclosure"]:
+                body.remove(paragraphs[2])
+                body.remove(paragraphs[3])
+
+        if resolution == DENY:
+            outcome_paragraphs = [
+                paragraph for paragraph in doc.paragraphs
+                if "[888]" in self._paragraph_text(paragraph)
+            ]
+            self._regex_sub_in_paragraphs(
+                outcome_paragraphs, re.compile(r"^Исковые требования\b"),
+                "В удовлетворении исковых требований",
+            )
+            self._regex_sub_in_paragraphs(
+                outcome_paragraphs, re.compile(r",\s*(?=\[888\])"), " — ",
+            )
+            for node in block:
+                body.remove(node)
+        # Подстановки могут пересобрать run'ы; обе границы убираются заранее.
+        for boundary in boundaries:
+            boundary.getparent().remove(boundary)
+        if resolution != PARTIAL:
+            self._remove_placeholder_phrase(doc, "[889]")
+
     def _apply_claim_resolution(self, cleaned_data: Dict[str, Any]) -> None:
         """Готовит тексты [888] и [889] из выбора «Удовлетворение иска».
 
@@ -1335,6 +1482,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         Незаполненная радиогруппа — норма для не-ипотечных актов: там маркеров
         [888]/[889] в шаблоне нет, а если есть — их снимет зачистка пустых.
         """
+        if self._is_civil_mortgage_decision(cleaned_data):
+            cleaned_data.pop("claimResolutionText", None)
+            cleaned_data.pop("claimPartialDenialText", None)
         resolution = str(cleaned_data.get("claimResolution") or "").strip().lower()
         if not resolution:
             return
@@ -1346,6 +1496,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             logger.warning(f"⚠️ Неизвестный claimResolution: {resolution!r}, [888]/[889] не заполняем")
             return
 
+        if resolution == DENY and self._is_civil_mortgage_decision(cleaned_data):
+            text = CIVIL_DENIAL_TEXT
         cleaned_data["claimResolutionText"] = text
         logger.info(f" Исход по иску [888]: {text}")
 
@@ -1476,6 +1628,12 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             doc: Документ для замены
             data: Данные для замены
         """
+        if self._is_civil_mortgage_decision(data):
+            original = data
+            data = prepare_partial_awards(data)
+            if data is not original:
+                data["totalWithDuty1360"] = self._format_amount_value(data["totalWithDuty1360"])
+        self._apply_civil_mortgage_awards(doc, data)
         cleaned_data = self._prepare_replacement_data(doc, data)
         # is_ip нужен ниже по методу; пролог его не возвращает — пересчёт из cleaned_data
         is_ip = "ip_enforcement" in (cleaned_data.get("sourceDocumentType") or "").lower()
@@ -1861,9 +2019,14 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         оставлять их как есть (2026-07-17, п.5). Должно вызываться до замены маркеров
         [13]/[14]/[15] на значения.
         """
-        has_penalty = bool(str(
-            cleaned_data.get("forfeit15") or cleaned_data.get("forfeit") or cleaned_data.get("penalties") or ""
-        ).strip())
+        civil_decision = self._is_civil_mortgage_decision(cleaned_data)
+        if civil_decision:
+            value = self._marker_value(cleaned_data, self._base_field_mapping(), "15", {})
+            has_penalty = not self._is_zero_amount(value)
+        else:
+            has_penalty = bool(str(
+                cleaned_data.get("forfeit15") or cleaned_data.get("forfeit") or cleaned_data.get("penalties") or ""
+            ).strip())
         if has_penalty:
             return
 
@@ -1887,11 +2050,14 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
 
         def process_paragraphs(paragraphs):
             for paragraph in paragraphs:
-                text = paragraph.text
+                text = self._paragraph_text(paragraph) if civil_decision else paragraph.text
                 if not marker_pattern.search(text):
                     continue
                 if not any(marker in text for marker in context_markers):
                     # Отдельное предложение про неустойку без [13]/[14] рядом — не трогаем.
+                    continue
+                if civil_decision:
+                    self._regex_sub_in_paragraphs([paragraph], clause_pattern, "")
                     continue
                 new_text = clause_pattern.sub("", text)
                 if new_text == text:

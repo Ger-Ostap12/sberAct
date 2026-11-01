@@ -73,6 +73,7 @@ import RepresentativeSection from './sections/RepresentativeSection';
 import RespondentRepresentativeSection from './sections/RespondentRepresentativeSection';
 import MortgageKindSection from './sections/MortgageKindSection';
 import ClaimResolutionSection from './sections/ClaimResolutionSection';
+import { civilMortgageAwardError } from './lib/mortgageAwards';
 import SolidaryLiabilitySection from './sections/SolidaryLiabilitySection';
 import { findCourtDefaults } from '../../shared/lib/courts';
 
@@ -1109,8 +1110,10 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     );
   };
 
+  const mortgageAwardError = isMortgage ? civilMortgageAwardError(editedFields, mortgageKind) : null;
+
   const handleContinue = () => {
-    if (!analysisResult) return;
+    if (!analysisResult || mortgageAwardError) return;
     const пустые = kindsWithoutCards(collateralKinds, analysisResult.collaterals || []);
     if (пустые.length > 0) {
       setCollateralNotice(
@@ -1343,7 +1346,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
                 {/* Удовлетворение иска — только в ипотеке, полностью ручной выбор. */}
                 {isMortgage && (
                 <Grid item xs={12} sx={{ display: 'flex', minWidth: 0 }}>
-              <ClaimResolutionSection editedFields={editedFields} onFieldChange={handleFieldChange} />
+              <ClaimResolutionSection editedFields={editedFields} onFieldChange={handleFieldChange} mortgageKind={mortgageKind} />
                 </Grid>
                 )}
 
@@ -1601,7 +1604,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           onClick={handleContinue}
           startIcon={<CheckIcon />}
           sx={{ px: 4 }}
-          disabled={!entityType || !collateralOption || selectedActs.filter(a => a.selected).length === 0}
+          disabled={!entityType || !collateralOption || selectedActs.filter(a => a.selected).length === 0 || Boolean(mortgageAwardError)}
         >
           Продолжить
         </Button>

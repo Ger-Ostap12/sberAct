@@ -32,6 +32,8 @@ CLAIM_RESOLUTION_TEXTS = {
 _PARTIAL_DENIAL = "В удовлетворении остальной части заявленных исковых требований {creditor} – отказать."
 
 PARTIAL = "partial"
+DENY = "deny"
+CIVIL_DENIAL_TEXT = "отказать"
 
 
 def build_partial_denial(creditor_name: Optional[str]) -> str:
