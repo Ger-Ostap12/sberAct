@@ -57,7 +57,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
     return extractedData.fields[fieldName] || 'Не указано';
   };
 
-  // Ипотека не пользуется каталогом актов: пакет фиксированный (5 штук), а
+  // Ипотека не пользуется каталогом актов: пакет фиксированный (6 штук), а
   // selectedActsData заполняет только банкротный ActSelectionSection. Без этой
   // ветки предпросмотр показывал чужие акты либо пустоту.
   const isMortgage = (extractedData.fields as any)?.documentCategory === 'mortgage';
@@ -204,7 +204,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
 
               <Paper sx={{ p: 3, backgroundColor: 'grey.50', border: '1px solid', borderColor: 'grey.300' }}>
                 <Grid container spacing={2}>
-                  {/* Ипотека: фиксированный пакет из 5 актов */}
+                  {/* Ипотека: фиксированный пакет из 6 актов */}
                   {isMortgage && (
                     <Grid item xs={12}>
                       <Card variant="outlined" sx={{ backgroundColor: 'common.white', width: '100%' }}>
@@ -307,11 +307,11 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
                   {generationResult.count ? 'Все документы готовы к скачиванию' : 'Судебный акт готов к скачиванию'}
                 </Typography>
 
-                {/* Выбранные акты, которые сгенерировать не удалось (нет шаблона/ветки маппинга) */}
+                {/* Замечания к результату генерации */}
                 {generationResult.warnings && generationResult.warnings.length > 0 && (
                   <Alert severity="warning" sx={{ mb: 3, textAlign: 'left' }}>
                     <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
-                      Сгенерированы не все выбранные акты:
+                      Замечания к генерации:
                     </Typography>
                     {generationResult.warnings.map((warning) => (
                       <Typography key={warning} variant="body2" component="div">

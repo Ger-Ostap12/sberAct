@@ -18,7 +18,7 @@ COMMANDS = ("Расторгнуть кредитный договор", "Взы�
 
 
 def mortgage_data(representatives=False, solidary=False, outcome="full", penalty="50"):
-    """Синтетическое дело с заполненными реквизитами всех пяти документов."""
+    """Синтетическое дело с заполненными реквизитами всех шести документов."""
     fields = {
         "selectedMortgageKind": "civil",
         "solidaryLiability": "true" if solidary else "",
@@ -161,11 +161,15 @@ def test_real_packages(generator, representatives, solidary, outcome):
     data = mortgage_data(representatives, solidary, outcome)
     result = generator.generate("mortgage", deepcopy(data))
     assert result["success"], result
-    assert result["count"] == 5
-    assert not result.get("warnings")
+    assert result["count"] == 6
+    if outcome in ("partial", "deny"):
+        assert len(result.get("warnings", [])) == 1
+        assert "Полное решение" in result["warnings"][0]
+    else:
+        assert not result.get("warnings")
     assert set(result["documents"]) == {
         "mortgage_summons", "mortgage_acceptance_short",
-        "mortgage_acceptance_long", "mortgage_notice", "mortgage_decision",
+        "mortgage_acceptance_long", "mortgage_notice", "mortgage_decision", "mortgage_full_decision",
     }
     doc = Document(result["documents"]["mortgage_decision"]["file_path"])
     output = text(doc)

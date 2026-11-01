@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Пакет ипотечной генерации: всегда 5 актов, пятый зависит от настроек формы.
-
-Четыре акта одинаковы при любом выборе; «Решение резолютивка» ветвится по виду
-ипотеки, солидарности и наличию представителей. Проверяем все 9 сочетаний и то,
-что каждый выбранный файл реально лежит на диске — опечатка в имени иначе
-всплывёт только у юриста при генерации.
-"""
+"""Пакет ипотеки: четыре общих акта, резолютивка и полное решение."""
 import os
 import sys
 
@@ -39,11 +33,12 @@ def _data(kind=None, solidary=None, representative=None, respondent_representati
 # --- состав пакета ----------------------------------------------------------
 @pytest.mark.parametrize("kind", ["civil", "military", "ddu"])
 @pytest.mark.parametrize("solidary", [None, "true"])
-def test_always_five_acts(gen, kind, solidary):
+def test_always_six_acts(gen, kind, solidary):
     templates = gen._get_mortgage_templates(_data(kind=kind, solidary=solidary))
-    assert len(templates) == 5
+    assert len(templates) == 6
     assert set(ALWAYS).issubset(templates)
     assert "mortgage_decision" in templates
+    assert "mortgage_full_decision" in templates
 
 
 def test_four_acts_are_the_same_regardless_of_settings(gen):
@@ -54,7 +49,7 @@ def test_four_acts_are_the_same_regardless_of_settings(gen):
 
 
 def test_all_template_files_exist(gen):
-    """Каждый из 13 файлов пакета лежит на диске под тем именем, что в резолвере."""
+    """Каждый из 16 файлов пакета лежит на диске под тем именем, что в резолвере."""
     seen = set()
     for kind in ("civil", "military", "ddu"):
         for solidary in (None, "true"):
@@ -63,7 +58,7 @@ def test_all_template_files_exist(gen):
                 for key, tpl in templates.items():
                     seen.add(tpl["path"])
                     assert tpl["path"].exists(), f"нет файла для {key}: {tpl['path']}"
-    assert len(seen) == 13
+    assert len(seen) == 16
 
 
 # --- ветвление решения-резолютивки ------------------------------------------

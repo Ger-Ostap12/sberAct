@@ -573,7 +573,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                         "fnsQ1Arrears", "fnsQ2Arrears", "fnsQ3Arrears",
                         "fnsQ3Penalties", "fnsQ3Forfeit", "fnsQ3LoanDebt",
                         "fnsQ1Total", "fnsQ2Total", "fnsQ3Total"]
-        if self._is_ddu_mortgage_decision(cleaned_data):
+        if self._is_ddu_mortgage_decision(cleaned_data) or self._is_full_mortgage_decision(cleaned_data):
             amount_fields.append("forfeitInterest1362")
         for field in amount_fields:
             if field in cleaned_data and cleaned_data[field]:
@@ -1049,7 +1049,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 inst = (cleaned_data.get("applicantNameInstrumental") or "")
                 if not inst or "суд" in inst.lower():
                     cleaned_data["applicantNameInstrumental"] = _decline_multi(best_name, "ablt")
-            if self._is_award_mortgage_decision(cleaned_data):
+            if self._is_award_mortgage_decision(cleaned_data) or self._is_full_mortgage_decision(cleaned_data):
                 debtors = cleaned_data.get("debtors") or (cleaned_data.get("fields") or {}).get("debtors") or []
                 names = [str(debtor.get("name") or "").strip() for debtor in debtors
                          if isinstance(debtor, dict) and str(debtor.get("name") or "").strip()]
@@ -1350,6 +1350,14 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
 
     MORTGAGE_AWARDS_BOOKMARK = "MortgageAwards"
     MORTGAGE_AWARD_PARAGRAPHS = 4
+
+    @staticmethod
+    def _is_full_mortgage_decision(data: Dict[str, Any]) -> bool:
+        """Полные ипотечные решения обрабатываются отдельно от резолютивок."""
+        return (
+            data.get("sourceDocumentType") == "mortgage_claim"
+            and data.get("_current_doc_type") == "mortgage_full_decision"
+        )
 
     def _is_civil_mortgage_decision(self, data: Dict[str, Any]) -> bool:
         """Правка относится только к резолютивке обычной ипотеки."""
@@ -2050,18 +2058,25 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         оставлять их как есть (2026-07-17, п.5). Должно вызываться до замены маркеров
         [13]/[14]/[15] на значения.
         """
-        if self._is_ddu_mortgage_decision(cleaned_data):
+        full_decision = self._is_full_mortgage_decision(cleaned_data)
+        if self._is_ddu_mortgage_decision(cleaned_data) or full_decision:
             mapping = self._base_field_mapping()
+            paragraphs = list(doc.paragraphs)
+            for table in doc.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        paragraphs.extend(cell.paragraphs)
             for marker, pattern in DDU_PENALTY_CLAUSES.items():
                 value = (cleaned_data.get("forfeitInterest1362") if marker == "1362"
                          else self._marker_value(cleaned_data, mapping, marker, {}))
                 if self._is_zero_amount(value):
-                    paragraphs = list(doc.paragraphs)
-                    for table in doc.tables:
-                        for row in table.rows:
-                            for cell in row.cells:
-                                paragraphs.extend(cell.paragraphs)
                     self._regex_sub_in_paragraphs(paragraphs, pattern, "")
+            if full_decision:
+                # Валюту к этим маркерам добавляет общая подстановка.
+                self._regex_sub_in_paragraphs(
+                    paragraphs, re.compile(r"(\[(?:15|16|1222|1225)\])\s*руб(?:лей|ля)?\.*"),
+                    r"\1",
+                )
             return
         civil_decision = self._is_civil_mortgage_decision(cleaned_data)
         if civil_decision:
@@ -3115,7 +3130,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
 
                 # Акт выбран пользователем — резолвим строго, без подмены произвольным .docx
                 template_path = self._resolve_template_path(
-                    template_info['path'], allow_any_docx_fallback=not can_use_selected_acts
+                    template_info['path'],
+                    allow_any_docx_fallback=not can_use_selected_acts and doc_type != "mortgage_full_decision"
                 )
                 logger.info(f"Путь к шаблону: {template_path.absolute()}")
                 logger.info(f"Шаблон существует: {template_path.exists()}")
@@ -3127,15 +3143,18 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     )
                     continue
 
-                doc = Document(str(template_path))
-                logger.info(f"Загружен шаблон: {template_path}")
-
-                self.set_times_new_roman_11(doc)
-
-                # Заменяем данные в документе. Тип акта нужен _remove_empty_placeholders,
-                # чтобы извещение чистило маркеры мягко (без вырезания предложений/абзацев).
-                data["_current_doc_type"] = doc_type
-                self.replace_document_data(doc, data)
+                try:
+                    doc = Document(str(template_path))
+                    logger.info(f"Загружен шаблон: {template_path}")
+                    self.set_times_new_roman_11(doc)
+                    data["_current_doc_type"] = doc_type
+                    self.replace_document_data(doc, data)
+                except Exception as error:
+                    if doc_type != "mortgage_full_decision":
+                        raise
+                    logger.exception("Не удалось сформировать полное ипотечное решение")
+                    warnings.append(f"«{template_info['name']}» — не удалось сформировать: {error}")
+                    continue
 
                 document_id = str(uuid.uuid4())
                 document_ids.append(document_id)
@@ -3163,6 +3182,15 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
 
                 logger.info(f" Документ '{template_info['name']}' успешно сгенерирован: {file_path}")
 
+            if "mortgage_full_decision" in generated_documents:
+                resolution = str(data.get("claimResolution") or fields.get("claimResolution") or "").strip().lower()
+                if resolution in (PARTIAL, DENY):
+                    outcome = CLAIM_RESOLUTION_TEXTS[resolution]
+                    warnings.append(
+                        f"Полное решение содержит исходный текст шаблона. "
+                        f"Для исхода «{outcome}» вручную исправьте его мотивировку, требования и суммы."
+                    )
+
             logger.info(f" Сгенерировано документов: {len(generated_documents)}")
 
             if len(generated_documents) == 0:
@@ -3185,7 +3213,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 "count": len(generated_documents)
             }
             if warnings:
-                logger.warning(" Сгенерированы не все выбранные акты: " + "; ".join(warnings))
+                logger.warning(" Замечания к генерации: " + "; ".join(warnings))
                 result["warnings"] = warnings
             return result
 

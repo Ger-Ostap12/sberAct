@@ -3,7 +3,7 @@
 // Генерация ипотеки не спрашивает каталог актов (тот — банкротный, лежит в
 // selectedActsData): пакет всегда фиксированный — 4 акта одинаковых плюс
 // решение-резолютивка, которая ветвится по виду ипотеки, солидарности и
-// наличию представителей.
+// наличию представителей. Шестой акт — полное решение по виду ипотеки.
 //
 // Ветвление ДУБЛИРУЕТ бэкенд (templates_resolver_mixin._mortgage_decision_file).
 // Здесь только имя для показа юристу; файл выбирает бэкенд. Если правишь
@@ -25,6 +25,7 @@ const ALWAYS: MortgagePackageAct[] = [
 const KIND_LABEL: Record<string, string> = {
   civil: 'обычная ипотека',
   ddu: 'ДДУ',
+  military: 'военная ипотека',
 };
 
 export interface MortgagePackageInput {
@@ -34,10 +35,15 @@ export interface MortgagePackageInput {
 
 export const buildMortgagePackage = ({ mortgageKind, fields }: MortgagePackageInput): MortgagePackageAct[] => {
   const f = fields || {};
-  const kind = mortgageKind || 'civil';
+  const requestedKind = (f.selectedMortgageKind || mortgageKind || f.mortgageKind || 'civil').trim().toLowerCase();
+  const kind: MortgageKind = requestedKind === 'ddu' || requestedKind === 'military' ? requestedKind : 'civil';
+  const full: MortgagePackageAct = {
+    id: 'mortgage_full_decision',
+    name: `Решение (полный текст, ${KIND_LABEL[kind] || KIND_LABEL.civil})`,
+  };
 
   if (kind === 'military') {
-    return [...ALWAYS, { id: 'mortgage_decision', name: 'Решение-резолютивка (военная ипотека)' }];
+    return [...ALWAYS, { id: 'mortgage_decision', name: 'Решение-резолютивка (военная ипотека)' }, full];
   }
 
   const solidary = f.solidaryLiability === 'true';
@@ -49,5 +55,5 @@ export const buildMortgagePackage = ({ mortgageKind, fields }: MortgagePackageIn
     representatives ? 'представители' : 'должник',
     solidary ? 'солидарное' : 'не солидарное',
   ];
-  return [...ALWAYS, { id: 'mortgage_decision', name: `Решение-резолютивка (${parts.join(', ')})` }];
+  return [...ALWAYS, { id: 'mortgage_decision', name: `Решение-резолютивка (${parts.join(', ')})` }, full];
 };

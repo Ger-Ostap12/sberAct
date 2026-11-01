@@ -44,7 +44,7 @@ export const useGenerateDocument = (
         sourceDocumentType: isMortgageTemplate
           ? 'mortgage_claim'
           : extractedData.fields.sourceDocumentType || extractedData.documentType,
-        // Ипотека — фиксированный пакет из 5 актов. Выбранные акты (банкротный блок)
+        // Ипотека — фиксированный пакет из 6 актов. Выбранные акты (банкротный блок)
         // не применяем: их наличие уводит бэкенд в ветку «выбранных актов» и
         // ипотечный пакет не собирается. Гасим ключи только для ипотеки.
         ...(isMortgageTemplate ? { selectedActsIds: undefined, selectedActsData: undefined } : {}),

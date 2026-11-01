@@ -1,9 +1,9 @@
 import { buildMortgagePackage } from '../lib/mortgagePackage';
 
 describe('buildMortgagePackage', () => {
-  it('всегда 5 актов, четыре из них постоянные', () => {
+  it('всегда 6 актов, четыре из них постоянные', () => {
     const acts = buildMortgagePackage({ mortgageKind: 'civil', fields: {} });
-    expect(acts).toHaveLength(5);
+    expect(acts).toHaveLength(6);
     expect(acts.slice(0, 4).map((a) => a.id)).toEqual([
       'mortgage_summons',
       'mortgage_acceptance_short',
@@ -11,6 +11,7 @@ describe('buildMortgagePackage', () => {
       'mortgage_notice',
     ]);
     expect(acts[4].id).toBe('mortgage_decision');
+    expect(acts[5].id).toBe('mortgage_full_decision');
   });
 
   it('военная ипотека — без ветвлений', () => {
@@ -51,4 +52,28 @@ describe('buildMortgagePackage', () => {
     const acts = buildMortgagePackage({ mortgageKind: 'civil', fields: { solidaryLiability: '' } });
     expect(acts[4].name).toContain('не солидарное');
   });
+});
+
+
+it.each([
+  ['civil', 'обычная ипотека'],
+  ['ddu', 'ДДУ'],
+  ['military', 'военная ипотека'],
+] as const)('шестой акт — полное решение: %s', (kind, label) => {
+  const acts = buildMortgagePackage({ mortgageKind: kind, fields: {} });
+  expect(acts).toHaveLength(6);
+  expect(acts.map((act) => act.id)).toEqual([
+    'mortgage_summons', 'mortgage_acceptance_short', 'mortgage_acceptance_long',
+    'mortgage_notice', 'mortgage_decision', 'mortgage_full_decision',
+  ]);
+  expect(acts[5].name).toBe(`Решение (полный текст, ${label})`);
+});
+
+
+it('выбор юриста определяет вид обоих решений вместо вида анализатора', () => {
+  const acts = buildMortgagePackage({
+    mortgageKind: 'military', fields: { selectedMortgageKind: 'ddu' },
+  });
+  expect(acts[4].name).toContain('ДДУ');
+  expect(acts[5].name).toBe('Решение (полный текст, ДДУ)');
 });

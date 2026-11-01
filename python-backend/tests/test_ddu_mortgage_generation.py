@@ -58,7 +58,7 @@ def render(generator, monkeypatch, data):
     monkeypatch.setattr(generator, "_save_document_meta", lambda *args, **kwargs: None)
     result = generator.generate("mortgage", deepcopy(data))
     assert result["success"], result
-    assert result["count"] == 5
+    assert result["count"] == 6
     return {act: saved[entry["file_path"]] for act, entry in result["documents"].items()}
 
 

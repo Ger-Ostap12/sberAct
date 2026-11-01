@@ -908,11 +908,7 @@ class TemplatesResolverMixin:
         return table[(selection["kind"], selection["representatives"], selection["solidary"])]
 
     def _get_mortgage_templates(self, data: Optional[Dict[str, Any]] = None) -> Dict[str, Dict[str, Any]]:
-        """Пакет ипотечной генерации — ВСЕГДА ровно 5 актов.
-
-        Четыре одинаковы при любых настройках; пятый («Решение резолютивка»)
-        выбирается по виду ипотеки, солидарности и наличию представителей.
-        """
+        """Шесть актов: четыре общих, резолютивка и полное решение по виду ипотеки."""
         root_dir = self._templates_root()
         # Папка названа с заглавной: на Astra регистр имени значим.
         base_dir = root_dir / "Ипотека"
@@ -936,6 +932,14 @@ class TemplatesResolverMixin:
         )
         templates["mortgage_decision"] = entry(
             "Решение резолютивка", self._mortgage_decision_file(selection), 5
+        )
+        full_files = {
+            "civil": "Решение ипотека длинный текст.docx",
+            "ddu": "Решение ДДУ длинный текст.docx",
+            "military": "Решение военнаяипотека длинный текст.docx",
+        }
+        templates["mortgage_full_decision"] = entry(
+            "Решение (полный текст)", full_files[selection["kind"]], 6
         )
         return templates
 
