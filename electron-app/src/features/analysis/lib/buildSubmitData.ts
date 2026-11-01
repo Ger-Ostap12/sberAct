@@ -9,7 +9,7 @@ import {
   MortgageKind,
 } from '../../../types';
 import { formatJudgeName } from '../../../shared/lib/judges';
-import { withCivilMortgageAwards } from './mortgageAwards';
+import { withMortgageAwards } from './mortgageAwards';
 
 export interface SubmitDataInput {
   analysisResult: ExtractedData;
@@ -130,8 +130,18 @@ export const buildSubmitData = (input: SubmitDataInput): ExtractedData => {
     }
   }
 
-  if (documentCategory === 'mortgage' && (mortgageKind || analysisResult.mortgageKind || 'civil') === 'civil') {
-    updatedData.fields = withCivilMortgageAwards(updatedData.fields);
+  const selectedKind = mortgageKind || analysisResult.mortgageKind || 'civil';
+  if (documentCategory === 'mortgage' && selectedKind !== 'military') {
+    if (selectedKind === 'ddu') {
+      // Для ДДУ подставляем показанные значения, даже если старый алиас заполнен.
+      f.forfeit = editedFields.forfeit ?? f.forfeit ?? f.forfeit15 ?? '';
+      f.forfeit15 = f.forfeit;
+      f.interest = editedFields.interest ?? f.interest ?? f.interest14 ?? '';
+      f.interest14 = f.interest;
+      f.stateDuty16 = editedFields.stateDuty16 ?? editedFields.stateDuty ?? f.stateDuty16 ?? f.stateDuty ?? '';
+      f.stateDuty = f.stateDuty16;
+    }
+    updatedData.fields = withMortgageAwards(updatedData.fields, selectedKind);
   }
 
   return updatedData;

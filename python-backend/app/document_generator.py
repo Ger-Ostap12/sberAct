@@ -17,8 +17,10 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.shared import OxmlElement, qn
 # Локальный импорт анализатора без package-префикса, чтобы работать при запуске из app/
 from claim_resolution import CLAIM_RESOLUTION_TEXTS, CIVIL_DENIAL_TEXT, DENY, PARTIAL, build_partial_denial
+from mortgage_properties import expand_property_blocks
 from mortgage_awards import (
     AWARD_BOOKMARKS, DEBT_CLAUSE, DUTY_CLAUSE, TOTAL_CLAUSE,
+    DDU_DEBT_CLAUSE, DDU_DUTY_CLAUSE, DDU_TOTAL_CLAUSE, DDU_PENALTY_CLAUSES,
     partial_awards, prepare_partial_awards,
 )
 from org_normalizer import abbreviate_org_name, has_own_legal_form, is_org_name
@@ -571,6 +573,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                         "fnsQ1Arrears", "fnsQ2Arrears", "fnsQ3Arrears",
                         "fnsQ3Penalties", "fnsQ3Forfeit", "fnsQ3LoanDebt",
                         "fnsQ1Total", "fnsQ2Total", "fnsQ3Total"]
+        if self._is_ddu_mortgage_decision(cleaned_data):
+            amount_fields.append("forfeitInterest1362")
         for field in amount_fields:
             if field in cleaned_data and cleaned_data[field]:
                 raw = str(cleaned_data[field]).strip()
@@ -1045,7 +1049,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 inst = (cleaned_data.get("applicantNameInstrumental") or "")
                 if not inst or "суд" in inst.lower():
                     cleaned_data["applicantNameInstrumental"] = _decline_multi(best_name, "ablt")
-            if self._is_civil_mortgage_decision(cleaned_data):
+            if self._is_award_mortgage_decision(cleaned_data):
                 debtors = cleaned_data.get("debtors") or (cleaned_data.get("fields") or {}).get("debtors") or []
                 names = [str(debtor.get("name") or "").strip() for debtor in debtors
                          if isinstance(debtor, dict) and str(debtor.get("name") or "").strip()]
@@ -1355,15 +1359,32 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             and self._mortgage_selection(data)["kind"] == "civil"
         )
 
+    def _is_ddu_mortgage_decision(self, data: Dict[str, Any]) -> bool:
+        """ДДУ обрабатывается отдельно от общих актов и военной ипотеки."""
+        return (
+            data.get("sourceDocumentType") == "mortgage_claim"
+            and data.get("_current_doc_type") == "mortgage_decision"
+            and self._mortgage_selection(data)["kind"] == "ddu"
+        )
+
+    def _is_award_mortgage_decision(self, data: Dict[str, Any]) -> bool:
+        return self._is_civil_mortgage_decision(data) or self._is_ddu_mortgage_decision(data)
+
     def _apply_civil_mortgage_awards(self, doc: DocxDocument, data: Dict[str, Any]) -> None:
-        """Применяет исход иска к выделенным требованиям обычной ипотеки."""
-        if not self._is_civil_mortgage_decision(data):
+        """Совместимый вход для обработки обычной ипотеки."""
+        if self._is_civil_mortgage_decision(data):
+            self._apply_mortgage_awards(doc, data)
+
+    def _apply_mortgage_awards(self, doc: DocxDocument, data: Dict[str, Any]) -> None:
+        """Применяет исход иска к выделенным требованиям обычной ипотеки и ДДУ."""
+        if not self._is_award_mortgage_decision(data):
             return
         resolution = str(data.get("claimResolution") or "").strip().lower()
         if resolution not in CLAIM_RESOLUTION_TEXTS:
             return
 
-        selected = partial_awards(data)
+        kind = self._mortgage_selection(data)["kind"]
+        selected = partial_awards(data, kind)
         body = doc.element.body
         starts = [
             node for node in body.iter(qn("w:bookmarkStart"))
@@ -1423,8 +1444,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             if len(inner_ends) != 1:
                 raise ValueError(f"Не найдена граница {name}")
             inner_end = inner_ends[0]
-            if not (nodes.index(start) < nodes.index(inner_start) < nodes.index(inner_end) < nodes.index(end)):
-                raise ValueError(f"Закладка {name} должна находиться внутри MortgageAwards")
+            # Word переставляет совпадающие границы; далее проверяются сам абзац и весь его текст.
+            if nodes.index(inner_start) >= nodes.index(inner_end):
+                raise ValueError(f"Перепутаны границы {name}")
             if body_child(inner_start) is not paragraph or body_child(inner_end) is not paragraph:
                 raise ValueError(f"Закладка {name} должна охватывать свой абзац")
             content = list(paragraph.iter())
@@ -1433,12 +1455,16 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 raise ValueError(f"Закладка {name} должна охватывать абзац целиком")
             boundaries.extend((inner_start, inner_end))
 
+        debt_clause, duty_clause, total_clause = (
+            (DDU_DEBT_CLAUSE, DDU_DUTY_CLAUSE, DDU_TOTAL_CLAUSE)
+            if kind == "ddu" else (DEBT_CLAUSE, DUTY_CLAUSE, TOTAL_CLAUSE)
+        )
         recovery_edits = []
         if selected is not None:
             if not selected["debt"] and selected["duty"]:
-                recovery_edits = [DEBT_CLAUSE, TOTAL_CLAUSE]
+                recovery_edits = [debt_clause, total_clause]
             elif selected["debt"] and not selected["duty"]:
-                recovery_edits = [DUTY_CLAUSE]
+                recovery_edits = [duty_clause]
             recovery_text = texts[block.index(paragraphs[1])]
             if any(len(list(pattern.finditer(recovery_text))) != 1 for pattern in recovery_edits):
                 raise ValueError("В MortgageDebt не найдены границы задолженности и госпошлины")
@@ -1482,7 +1508,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         Незаполненная радиогруппа — норма для не-ипотечных актов: там маркеров
         [888]/[889] в шаблоне нет, а если есть — их снимет зачистка пустых.
         """
-        if self._is_civil_mortgage_decision(cleaned_data):
+        if self._is_award_mortgage_decision(cleaned_data):
             cleaned_data.pop("claimResolutionText", None)
             cleaned_data.pop("claimPartialDenialText", None)
         resolution = str(cleaned_data.get("claimResolution") or "").strip().lower()
@@ -1496,7 +1522,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             logger.warning(f"⚠️ Неизвестный claimResolution: {resolution!r}, [888]/[889] не заполняем")
             return
 
-        if resolution == DENY and self._is_civil_mortgage_decision(cleaned_data):
+        if resolution == DENY and self._is_award_mortgage_decision(cleaned_data):
             text = CIVIL_DENIAL_TEXT
         cleaned_data["claimResolutionText"] = text
         logger.info(f" Исход по иску [888]: {text}")
@@ -1560,7 +1586,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     continue
 
                 # Форматируем суммы с "руб" для ипотеки и залога
-                if field_number in ["15", "16", "1222", "1225", "0071"]:
+                if (field_number in ["15", "16", "1222", "1225", "0071"]
+                        or (field_number == "1362" and self._is_ddu_mortgage_decision(cleaned_data))):
                     value_str = str(field_value).strip()
                     if "руб" not in value_str.lower() and value_str:
                         formatted_value = f"{value_str} руб."
@@ -1628,12 +1655,16 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             doc: Документ для замены
             data: Данные для замены
         """
-        if self._is_civil_mortgage_decision(data):
+        if self._is_award_mortgage_decision(data):
             original = data
-            data = prepare_partial_awards(data)
+            data = prepare_partial_awards(data, self._mortgage_selection(data)["kind"])
             if data is not original:
                 data["totalWithDuty1360"] = self._format_amount_value(data["totalWithDuty1360"])
-        self._apply_civil_mortgage_awards(doc, data)
+        self._apply_mortgage_awards(doc, data)
+        expand_property_blocks(
+            doc, data, self._replace_span_in_paragraph,
+            self._format_amount_value, self._normalize_date_format,
+        )
         cleaned_data = self._prepare_replacement_data(doc, data)
         # is_ip нужен ниже по методу; пролог его не возвращает — пересчёт из cleaned_data
         is_ip = "ip_enforcement" in (cleaned_data.get("sourceDocumentType") or "").lower()
@@ -2019,6 +2050,19 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         оставлять их как есть (2026-07-17, п.5). Должно вызываться до замены маркеров
         [13]/[14]/[15] на значения.
         """
+        if self._is_ddu_mortgage_decision(cleaned_data):
+            mapping = self._base_field_mapping()
+            for marker, pattern in DDU_PENALTY_CLAUSES.items():
+                value = (cleaned_data.get("forfeitInterest1362") if marker == "1362"
+                         else self._marker_value(cleaned_data, mapping, marker, {}))
+                if self._is_zero_amount(value):
+                    paragraphs = list(doc.paragraphs)
+                    for table in doc.tables:
+                        for row in table.rows:
+                            for cell in row.cells:
+                                paragraphs.extend(cell.paragraphs)
+                    self._regex_sub_in_paragraphs(paragraphs, pattern, "")
+            return
         civil_decision = self._is_civil_mortgage_decision(cleaned_data)
         if civil_decision:
             value = self._marker_value(cleaned_data, self._base_field_mapping(), "15", {})

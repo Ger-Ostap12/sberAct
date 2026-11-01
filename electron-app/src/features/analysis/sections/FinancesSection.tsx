@@ -395,6 +395,9 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
     return <FnsFinances editedFields={editedFields} onFieldChange={onFieldChange} />;
   }
   const isMortgage = mode === 'mortgage';
+  const isDdu = isMortgage && mortgageKind === 'ddu';
+  const interestValue = isDdu ? editedFields.interest ?? editedFields.interest14 ?? '' : editedFields.interest || '';
+  const penaltyValue = isDdu ? editedFields.forfeit ?? editedFields.forfeit15 ?? '' : editedFields.forfeit || '';
   // Военная ипотека: финблок из ДВУХ частей — «Задолженность по кредитному
   // договору» (поля обычной ипотеки, из заявления) + «Взыскание в пользу
   // Росвоенипотеки» (ЦЖЗ, вводит пользователь; отдельные mil*-ключи + формула).
@@ -517,7 +520,7 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
           <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Проценты:</Typography>
           <BreakdownTip addends={brk?.interest} total={editedFields.interest}>
           <FieldQualityMark quality={q('interest')}>
-          {money(editedFields.interest || '', (v) => onFieldChange('interest', v))}
+          {money(interestValue, (v) => onFieldChange('interest', v))}
           </FieldQualityMark>
           </BreakdownTip>
         </Box>
@@ -542,16 +545,32 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
       </Grid>
       )}
 
-      <Grid item xs={12} sm={6}>
+      <Grid item xs={12} sm={isDdu ? 12 : 6}>
         <Box sx={LABEL_OVERLAP_BOX}>
-          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Неустойка:</Typography>
+          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>
+            {isDdu ? 'Неустойка за просроченный основной долг:' : 'Неустойка:'}
+          </Typography>
           <BreakdownTip addends={brk?.forfeit} total={editedFields.forfeit}>
           <FieldQualityMark quality={q('forfeit')}>
-          {money(editedFields.forfeit || '', (v) => onFieldChange('forfeit', v))}
+          {money(penaltyValue, (v) => onFieldChange('forfeit', v))}
           </FieldQualityMark>
           </BreakdownTip>
         </Box>
       </Grid>
+
+      {isDdu && (
+      <Grid item xs={12}>
+        <Box sx={LABEL_OVERLAP_BOX}>
+          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Неустойка за просроченные проценты:</Typography>
+          <AmountField
+            fullWidth size="small" margin="dense" placeholder="0,00"
+            inputProps={{ 'aria-label': 'Неустойка за просроченные проценты' }}
+            value={editedFields.forfeitInterest1362 ?? ''}
+            onValueChange={(value) => onFieldChange('forfeitInterest1362', value)}
+          />
+        </Box>
+      </Grid>
+      )}
 
       <Grid item xs={12} sm={6}>
         <Box sx={LABEL_OVERLAP_BOX}>
@@ -620,8 +639,9 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
         {(() => {
           const num = (v?: string) => parseFloat((v ?? '').toString().replace(/\s/g, '').replace(',', '.')) || 0;
           const sum = num(editedFields.principalDebt || editedFields.loanDebt)
-            + num(editedFields.interest)
-            + num(editedFields.forfeit)
+            + num(interestValue)
+            + num(penaltyValue)
+            + (isDdu ? num(editedFields.forfeitInterest1362) : 0)
             + (isMortgage ? 0 : num(editedFields.penalties))
             + (isMortgage ? 0 : num(editedFields.loanStateDuty17))
             + (isMortgage ? 0 : num(editedFields.bankCommission));

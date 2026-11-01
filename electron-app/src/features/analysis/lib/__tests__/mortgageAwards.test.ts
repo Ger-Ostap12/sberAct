@@ -83,7 +83,7 @@ it('передаёт флаги и отдельные суммы в генера
   expect(result.totalDebt).toBeUndefined();
 });
 
-it.each(['ddu', 'military'] as const)('не добавляет значения по умолчанию для %s', (kind) => {
+it.each(['military'] as const)('не добавляет значения по умолчанию для %s', (kind) => {
   expect(submit(kind)).not.toHaveProperty('mortgageAwardDebt');
 });
 

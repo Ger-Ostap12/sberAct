@@ -5,8 +5,8 @@ import {
 import { BLOCK_BOX_SX } from '../../../shared/styles/formStyles';
 import { MortgageKind } from '../../../types';
 import {
-  AWARD_AMOUNTS, AWARD_OPTIONS, awardChecked, awardNumber, awardTotal, awardValue,
-  civilMortgageAwardError,
+  awardAmounts, AWARD_OPTIONS, awardChecked, awardNumber, awardTotal, awardValue,
+  mortgageAwardsError,
 } from '../lib/mortgageAwards';
 
 interface ClaimResolutionSectionProps {
@@ -18,10 +18,10 @@ interface ClaimResolutionSectionProps {
 const ClaimResolutionSection: React.FC<ClaimResolutionSectionProps> = ({
   editedFields, onFieldChange, mortgageKind = 'civil',
 }) => {
-  const partial = mortgageKind === 'civil' && editedFields.claimResolution === 'partial';
+  const partial = mortgageKind !== 'military' && editedFields.claimResolution === 'partial';
   const debt = awardChecked(editedFields, 'mortgageAwardDebt');
-  const error = civilMortgageAwardError(editedFields, mortgageKind);
-  const total = partial ? awardTotal(editedFields) : null;
+  const error = mortgageAwardsError(editedFields, mortgageKind);
+  const total = partial ? awardTotal(editedFields, mortgageKind) : null;
 
   return (
     <Box sx={{ ...BLOCK_BOX_SX, mb: 3 }}>
@@ -56,15 +56,15 @@ const ClaimResolutionSection: React.FC<ClaimResolutionSectionProps> = ({
             Продажа залога и начальная цена включаются вместе с обращением взыскания.
           </Typography>
           <Grid container spacing={2}>
-            {AWARD_AMOUNTS.filter(({ key }) => debt || key === 'mortgageAwardDuty')
+            {awardAmounts(mortgageKind).filter(({ key }) => debt || key === 'mortgageAwardDuty')
               .map(({ key, label }) => (
-                <Grid item xs={12} sm={6} key={key}>
+                <Grid item xs={12} sm={mortgageKind === 'ddu' && key.includes('Penalty') ? 12 : 6} key={key}>
                   <TextField
                     fullWidth size="small" label={label}
-                    value={awardValue(editedFields, key)}
+                    value={awardValue(editedFields, key, mortgageKind)}
                     onChange={(event) => onFieldChange(key, event.target.value)}
                     inputProps={{ inputMode: 'decimal' }}
-                    error={awardNumber(awardValue(editedFields, key)) === null}
+                    error={awardNumber(awardValue(editedFields, key, mortgageKind)) === null}
                     placeholder="0,00"
                   />
                 </Grid>

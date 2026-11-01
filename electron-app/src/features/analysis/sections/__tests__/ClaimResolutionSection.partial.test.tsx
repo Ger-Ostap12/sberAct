@@ -53,7 +53,7 @@ it('показывает ошибку при отклонении всех тр�
   expect(screen.getByRole('alert')).toHaveTextContent('Все требования отклонены');
 });
 
-it.each(['ddu', 'military'] as const)('не рисует секцию для %s', (kind) => {
+it.each(['military'] as const)('не рисует секцию для %s', (kind) => {
   render(<Form kind={kind} />);
   fireEvent.click(screen.getByRole('radio', { name: 'Удовлетворить частично' }));
   expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();

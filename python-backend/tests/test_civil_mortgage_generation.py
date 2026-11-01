@@ -352,7 +352,7 @@ def test_all_civil_debtors_reach_dative_and_instrumental(generator, count):
 
 
 @pytest.mark.parametrize("kind,doc_type", [
-    ("ddu", "mortgage_decision"), ("military", "mortgage_decision"),
+    ("military", "mortgage_decision"),
     ("civil", "mortgage_summons"), ("civil", "mortgage_notice"),
     ("civil", "mortgage_acceptance_short"), ("civil", "mortgage_acceptance_long"),
 ])
@@ -370,11 +370,11 @@ def test_other_documents_keep_existing_debtor_cases(generator, kind, doc_type):
 
 @pytest.mark.parametrize("kind,doc_type,expected", [
     ("civil", "mortgage_decision", "отказать"),
-    ("ddu", "mortgage_decision", "отказать в удовлетворении"),
+    ("ddu", "mortgage_decision", "отказать"),
     ("military", "mortgage_decision", "отказать в удовлетворении"),
     ("civil", "mortgage_notice", "отказать в удовлетворении"),
 ])
-def test_denial_wording_changes_only_civil_decision(generator, kind, doc_type, expected):
+def test_denial_wording_changes_supported_mortgage_decisions(generator, kind, doc_type, expected):
     data = scope(selectedMortgageKind=kind, _current_doc_type=doc_type, claimResolution="deny")
     generator._apply_claim_resolution(data)
     assert data["claimResolutionText"] == expected

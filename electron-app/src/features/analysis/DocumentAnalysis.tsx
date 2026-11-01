@@ -73,7 +73,7 @@ import RepresentativeSection from './sections/RepresentativeSection';
 import RespondentRepresentativeSection from './sections/RespondentRepresentativeSection';
 import MortgageKindSection from './sections/MortgageKindSection';
 import ClaimResolutionSection from './sections/ClaimResolutionSection';
-import { civilMortgageAwardError } from './lib/mortgageAwards';
+import { mortgageAwardsError } from './lib/mortgageAwards';
 import SolidaryLiabilitySection from './sections/SolidaryLiabilitySection';
 import { findCourtDefaults } from '../../shared/lib/courts';
 
@@ -1110,7 +1110,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     );
   };
 
-  const mortgageAwardError = isMortgage ? civilMortgageAwardError(editedFields, mortgageKind) : null;
+  const mortgageAwardError = isMortgage ? mortgageAwardsError(editedFields, mortgageKind) : null;
 
   const handleContinue = () => {
     if (!analysisResult || mortgageAwardError) return;
