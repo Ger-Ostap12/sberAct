@@ -1,3 +1,4 @@
+import { MILITARY_AMOUNTS, militaryValue, militaryTotal, militaryError, withMilitaryAwards } from './militaryMortgageAwards';
 import { MortgageKind } from '../../../types';
 
 export const AWARD_OPTIONS = [
@@ -19,6 +20,7 @@ export interface AwardAmount {
 }
 
 export const awardAmounts = (kind: MortgageKind = 'civil'): readonly AwardAmount[] => {
+  if (kind === 'military') return MILITARY_AMOUNTS;
   if (kind !== 'ddu') return AWARD_AMOUNTS;
   const amounts: AwardAmount[] = AWARD_AMOUNTS.map((item) => ({ ...item }));
   const at = amounts.findIndex(({ key }) => key === 'mortgageAwardPenalty');
@@ -43,6 +45,7 @@ export const awardChecked = (fields: Record<string, string | undefined>, key: st
 export const awardValue = (
   fields: Record<string, string | undefined>, key: string, kind: MortgageKind = 'civil',
 ): string => {
+  if (kind === 'military') return militaryValue(fields, key);
   if (fields[key] !== undefined) return fields[key] ?? '';
   if (kind === 'ddu') {
     const values: Record<string, string | undefined> = {
@@ -69,6 +72,7 @@ export const awardNumber = (value: string): number | null => {
 export const awardTotal = (
   fields: Record<string, string | undefined>, kind: MortgageKind = 'civil',
 ): number | null => {
+  if (kind === 'military') return militaryTotal(fields);
   const debt = awardChecked(fields, 'mortgageAwardDebt');
   const values = awardAmounts(kind)
     .filter(({ key }) => debt || key === 'mortgageAwardDuty')
@@ -80,7 +84,8 @@ export const awardTotal = (
 export const mortgageAwardsError = (
   fields: Record<string, string | undefined>, kind: MortgageKind,
 ): string | null => {
-  if (kind === 'military' || fields.claimResolution !== 'partial') return null;
+  if (kind === 'military') return militaryError(fields);
+  if (fields.claimResolution !== 'partial') return null;
   if (!AWARD_OPTIONS.some(({ key }) => awardChecked(fields, key))) {
     return 'Все требования отклонены. Выберите «Отказать в удовлетворении».';
   }
@@ -98,7 +103,8 @@ export const mortgageAwardsError = (
 export const withMortgageAwards = (
   fields: Record<string, string | undefined>, kind: MortgageKind = 'civil',
 ): Record<string, string | undefined> => {
-  if (kind === 'military' || fields.claimResolution !== 'partial') return fields;
+  if (kind === 'military') return withMilitaryAwards(fields);
+  if (fields.claimResolution !== 'partial') return fields;
   const result = { ...fields };
   AWARD_OPTIONS.forEach(({ key }) => { result[key] = awardChecked(fields, key) ? 'true' : 'false'; });
   awardAmounts(kind).forEach(({ key }) => { result[key] = awardValue(fields, key, kind); });

@@ -318,6 +318,20 @@ const CzzMilitaryFinances: React.FC<{
       Взыскание в пользу ФГКУ «Росвоенипотека» (ЦЖЗ)
     </Typography>
     <Grid container spacing={2}>
+      {[
+        ['cjzClaimant1381', 'Взыскатель по ЦЖЗ', false],
+        ['milCzzContractNumber', 'Номер договора ЦЖЗ', false],
+        ['milCzzContractDate', 'Дата договора ЦЖЗ', true],
+        ['milFutureInterestFrom', 'Дата начала будущих процентов', true],
+      ].map(([field, label, isDate]) => (
+        <Grid item xs={12} sm={6} key={String(field)}>
+          <FieldInput fullWidth size="small" label={String(label)} type={isDate ? 'date' : 'text'}
+            value={isDate ? toInputDate(editedFields[String(field)]) : editedFields[String(field)] || ''}
+            onChange={(value) => onFieldChange(String(field), isDate ? fromInputDate(value) : value)}
+            InputLabelProps={isDate ? { shrink: true } : undefined} />
+        </Grid>
+      ))}
+      <MilAmountField label="Госпошлина в доход местного бюджета:" field="stateDutyLocalBudget1363" editedFields={editedFields} onFieldChange={onFieldChange} />
       <MilAmountField label="Основной долг по ЦЖЗ:" field="milPrincipalCzz" editedFields={editedFields} onFieldChange={onFieldChange} />
       <MilAmountField label="Процентная ставка (%):" field="milInterestRate" editedFields={editedFields} onFieldChange={onFieldChange} />
       <MilAmountField label="Ставка пени (%):" field="milPenaltyRate" editedFields={editedFields} onFieldChange={onFieldChange} />
@@ -395,7 +409,7 @@ const FinancesSection: React.FC<FinancesSectionProps> = ({
     return <FnsFinances editedFields={editedFields} onFieldChange={onFieldChange} />;
   }
   const isMortgage = mode === 'mortgage';
-  const isDdu = isMortgage && mortgageKind === 'ddu';
+  const isDdu = isMortgage && (mortgageKind === 'ddu' || mortgageKind === 'military');
   const interestValue = isDdu ? editedFields.interest ?? editedFields.interest14 ?? '' : editedFields.interest || '';
   const penaltyValue = isDdu ? editedFields.forfeit ?? editedFields.forfeit15 ?? '' : editedFields.forfeit || '';
   // Военная ипотека: финблок из ДВУХ частей — «Задолженность по кредитному

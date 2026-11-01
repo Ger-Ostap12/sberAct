@@ -52,7 +52,7 @@ it('в финансовом блоке ДДУ вторая неустойка у
   expect(screen.getByText(/Не сходится/)).toBeInTheDocument();
 });
 
-it.each(['civil', 'military'] as const)('в финансовом блоке %s вторая неустойка не используется', (kind) => {
+it.each(['civil'] as const)('в финансовом блоке %s вторая неустойка не используется', (kind) => {
   render(<FinancesSection mode="mortgage" mortgageKind={kind}
     editedFields={{ ...values, totalDebt: '1250' }} onFieldChange={() => {}} />);
   expect(screen.queryByLabelText('Неустойка за просроченные проценты')).not.toBeInTheDocument();

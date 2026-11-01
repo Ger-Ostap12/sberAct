@@ -1,3 +1,4 @@
+import { MILITARY_FLAGS, militaryAmountActive } from '../lib/militaryMortgageAwards';
 import React from 'react';
 import {
   Alert, Box, Checkbox, FormControlLabel, Grid, Radio, RadioGroup, TextField, Typography,
@@ -18,7 +19,7 @@ interface ClaimResolutionSectionProps {
 const ClaimResolutionSection: React.FC<ClaimResolutionSectionProps> = ({
   editedFields, onFieldChange, mortgageKind = 'civil',
 }) => {
-  const partial = mortgageKind !== 'military' && editedFields.claimResolution === 'partial';
+  const partial = editedFields.claimResolution === 'partial';
   const debt = awardChecked(editedFields, 'mortgageAwardDebt');
   const error = mortgageAwardsError(editedFields, mortgageKind);
   const total = partial ? awardTotal(editedFields, mortgageKind) : null;
@@ -42,7 +43,7 @@ const ClaimResolutionSection: React.FC<ClaimResolutionSectionProps> = ({
           <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
             Какие требования удовлетворены
           </Typography>
-          {AWARD_OPTIONS.map(({ key, label }) => (
+          {(mortgageKind === 'military' ? MILITARY_FLAGS : AWARD_OPTIONS).map(({ key, label }) => (
             <FormControlLabel
               key={key}
               sx={{ display: 'flex', ml: 0 }}
@@ -56,7 +57,8 @@ const ClaimResolutionSection: React.FC<ClaimResolutionSectionProps> = ({
             Продажа залога и начальная цена включаются вместе с обращением взыскания.
           </Typography>
           <Grid container spacing={2}>
-            {awardAmounts(mortgageKind).filter(({ key }) => debt || key === 'mortgageAwardDuty')
+            {awardAmounts(mortgageKind).filter(({ key }) => mortgageKind === 'military'
+              ? militaryAmountActive(editedFields, key) : debt || key === 'mortgageAwardDuty')
               .map(({ key, label }) => (
                 <Grid item xs={12} sm={mortgageKind === 'ddu' && key.includes('Penalty') ? 12 : 6} key={key}>
                   <TextField

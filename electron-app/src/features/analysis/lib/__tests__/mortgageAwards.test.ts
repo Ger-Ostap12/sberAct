@@ -83,8 +83,9 @@ it('передаёт флаги и отдельные суммы в генера
   expect(result.totalDebt).toBeUndefined();
 });
 
-it.each(['military'] as const)('не добавляет значения по умолчанию для %s', (kind) => {
-  expect(submit(kind)).not.toHaveProperty('mortgageAwardDebt');
+it.each(['military'] as const)('добавляет отдельные значения присуждений для %s', (kind) => {
+  expect(submit(kind).mortgageAwardDebt).toBe('true');
+  expect(submit(kind).militaryAwardCzzDebt).toBe('true');
 });
 
 it('не добавляет новые настройки в банкротство', () => {

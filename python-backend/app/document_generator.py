@@ -1663,6 +1663,12 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             doc: Документ для замены
             data: Данные для замены
         """
+        if (data.get("sourceDocumentType") == "mortgage_claim"
+                and data.get("_current_doc_type") == "mortgage_decision"
+                and self._mortgage_selection(data)["kind"] == "military"):
+            from military_mortgage import render_military_decision
+            render_military_decision(doc, data, self)
+            return
         if self._is_award_mortgage_decision(data):
             original = data
             data = prepare_partial_awards(data, self._mortgage_selection(data)["kind"])
@@ -3126,12 +3132,15 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             ]
 
             for doc_type, template_info in templates.items():
+                military_short = (doc_type == "mortgage_decision"
+                                  and self._mortgage_selection(data)["kind"] == "military")
+                isolated_mortgage_act = doc_type == "mortgage_full_decision" or military_short
                 logger.info(f" Генерируем документ: {template_info['name']}")
 
                 # Акт выбран пользователем — резолвим строго, без подмены произвольным .docx
                 template_path = self._resolve_template_path(
                     template_info['path'],
-                    allow_any_docx_fallback=not can_use_selected_acts and doc_type != "mortgage_full_decision"
+                    allow_any_docx_fallback=not can_use_selected_acts and not isolated_mortgage_act
                 )
                 logger.info(f"Путь к шаблону: {template_path.absolute()}")
                 logger.info(f"Шаблон существует: {template_path.exists()}")
@@ -3150,9 +3159,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     data["_current_doc_type"] = doc_type
                     self.replace_document_data(doc, data)
                 except Exception as error:
-                    if doc_type != "mortgage_full_decision":
+                    if not isolated_mortgage_act:
                         raise
-                    logger.exception("Не удалось сформировать полное ипотечное решение")
+                    logger.exception("Не удалось сформировать ипотечное решение")
                     warnings.append(f"«{template_info['name']}» — не удалось сформировать: {error}")
                     continue
 

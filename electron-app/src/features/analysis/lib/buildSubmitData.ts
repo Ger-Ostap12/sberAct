@@ -131,8 +131,8 @@ export const buildSubmitData = (input: SubmitDataInput): ExtractedData => {
   }
 
   const selectedKind = mortgageKind || analysisResult.mortgageKind || 'civil';
-  if (documentCategory === 'mortgage' && selectedKind !== 'military') {
-    if (selectedKind === 'ddu') {
+  if (documentCategory === 'mortgage') {
+    if (selectedKind === 'ddu' || selectedKind === 'military') {
       // Для ДДУ подставляем показанные значения, даже если старый алиас заполнен.
       f.forfeit = editedFields.forfeit ?? f.forfeit ?? f.forfeit15 ?? '';
       f.forfeit15 = f.forfeit;
