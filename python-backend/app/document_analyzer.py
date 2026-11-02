@@ -1020,6 +1020,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
     
             self._fix_org_case_forms(extracted_fields)
+            for reason in self._refresh_debtor_case_forms(extracted_fields):
+                issue = field_contract.Issue("applicantName", reason,
+                                             extracted_fields.get("applicantName"), cleared=False)
+                contract_issues.append(issue)
+                field_issues.append(issue.as_dict())
 
             # Формируем результат
             result = {

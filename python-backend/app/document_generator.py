@@ -1752,8 +1752,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 cleaned_data["mortgageRespNom1400_2"] = sole_respondent
                 logger.info("Один ответчик — слот [1400.2] заполнен из [1400.1]")
 
-        # Коррекция падежей для женщин и восстановление обрезанной фамилии (ФЛ)
-        self._correct_female_applicant_cases(cleaned_data)
+        # Сырые падежные поля могут принадлежать суду или другому участнику.
+        self._correct_applicant_cases(cleaned_data)
 
         # Нормализуем регистр перед заменой в документе: в заявлениях поля
         # приходят капсом или целиком строчными, в акте нужен обычный регистр.
@@ -3172,6 +3172,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                 else f"Акт «{act_id}» не поддерживается генерацией"
                 for act_id in unresolved_act_ids
             ]
+
+            from morph_utils import get_name_morph, refresh_debtor_case_forms
+            warnings.extend(refresh_debtor_case_forms(dict(data), get_name_morph()))
 
             for doc_type, template_info in templates.items():
                 isolated_short = (doc_type == "mortgage_decision"

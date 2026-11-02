@@ -1,9 +1,5 @@
-"""Падежи/регистр ФИО для генератора (вынос без изменения поведения).
+"""Регистр ФИО и подключение общего механизма склонения к генератору."""
 
-Капитализация и склонение ФИО заявителя-женщины в род./дат. падеж,
-нормализация регистра имени. Группа самодостаточна (внешних self-вызовов нет;
-внутри — только взаимные _female_*). Поведение 1-в-1 под gen-golden.
-"""
 import logging
 import re
 from typing import Any, Dict
@@ -12,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 class GeneratorInflectionMixin:
-
     def _capitalize_full_name(self, full_name: str) -> str:
         if not full_name:
             return full_name
@@ -27,175 +22,30 @@ class GeneratorInflectionMixin:
         tokens = [token for token in re.split(r"\s+", full_name.strip()) if token]
         return " ".join(_capitalize_token(token) for token in tokens)
 
-    def _female_surname_to_genitive_dative(self, surname: str) -> tuple:
-        """Женская фамилия: (родительный, дательный). Калугина -> (Калугиной, Калугиной)."""
-        s = surname.strip()
-        if not s:
-            return ("", "")
-        low = s.lower()
-        if low.endswith("ова"):
-            base = s[:-3]
-            return (base + "овой", base + "овой")
-        if low.endswith("ева") or low.endswith("ёва"):
-            base = s[:-3]
-            return (base + "евой", base + "евой")
-        if low.endswith("ина"):
-            base = s[:-3]
-            return (base + "иной", base + "иной")
-        if low.endswith("а"):
-            base = s[:-1]
-            return (base + "ой", base + "ой")
-        if low.endswith("я"):
-            base = s[:-1]
-            return (base + "и", base + "е")
-        return (s, s)
-
-    def _female_name_to_genitive_dative(self, name: str) -> tuple:
-        """Женское имя: (родительный, дательный). Наталья -> (Натальи, Наталье)."""
-        n = name.strip()
-        if not n:
-            return ("", "")
-        low = n.lower()
-        if low.endswith("ья"):
-            base = n[:-2]
-            return (base + "ьи", base + "ье")
-        if low.endswith("ия"):
-            base = n[:-2]
-            return (base + "ии", base + "ии")
-        if low.endswith("я"):
-            base = n[:-1]
-            return (base + "и", base + "е")
-        if low.endswith("а"):
-            base = n[:-1]
-            return (base + "ы", base + "е")
-        return (n, n)
-
-    def _female_patronymic_to_genitive_dative(self, patronymic: str) -> tuple:
-        """Женское отчество: (родительный, дательный). Юрьевна -> (Юрьевны, Юрьевне)."""
-        p = patronymic.strip()
-        if not p:
-            return ("", "")
-        low = p.lower()
-        if low.endswith("овна"):
-            base = p[:-4]
-            return (base + "овны", base + "овне")
-        if low.endswith("евна") or low.endswith("ёвна"):
-            base = p[:-4]
-            return (base + "евны", base + "евне")
-        if low.endswith("ична"):
-            base = p[:-4]
-            return (base + "ичны", base + "ичне")
-        if low.endswith("инична"):
-            base = p[:-6]
-            return (base + "иничны", base + "иничне")
-        if low.endswith("а"):
-            base = p[:-1]
-            return (base + "ы", base + "е")
-        return (p, p)
-
-    def _is_female_by_patronymic(self, patronymic: str) -> bool:
-        """Женщина по отчеству: женские отчества оканчиваются на «-на»
-        (Валидиновна, Викторовна, Кузьминична); мужские — на «-ич»/«-вич»."""
-        return (patronymic or "").strip().lower().endswith("на")
-
-    def _female_full_name_instrumental(self, surname: str, name: str, patronymic: str) -> str:
-        """Женское ФИО в творительном падеже (Нуриева Елена Валидиновна ->
-        Нуриевой Еленой Валидиновной). Для типовых фамилий (-ова/-ева/-ина)
-        творительный совпадает с дательным."""
-        s = self._female_surname_to_genitive_dative(surname)[1]  # -овой/-евой/-иной/-ой/-ей
-        low = name.strip().lower()
-        if low.endswith("ия"):
-            given = name[:-2] + "ией"
-        elif low.endswith("ья"):
-            given = name[:-2] + "ьей"
-        elif low.endswith("я"):
-            given = name[:-1] + "ей"
-        elif low.endswith("а"):
-            given = name[:-1] + "ой"
-        else:
-            given = name
-        plow = patronymic.strip().lower()
-        if plow.endswith("овна"):
-            patr = patronymic[:-4] + "овной"
-        elif plow.endswith("евна") or plow.endswith("ёвна"):
-            patr = patronymic[:-4] + "евной"
-        elif plow.endswith("ична"):
-            patr = patronymic[:-4] + "ичной"
-        elif plow.endswith("а"):
-            patr = patronymic[:-1] + "ой"
-        else:
-            patr = patronymic
-        return f"{s} {given} {patr}".strip()
-
     def _decline_person_name(self, name: str, case: str) -> str:
-        """ФИО (Ф И О) в родительный ('gent'), дательный ('datv') или творительный
-        ('ablt') падеж.
+        """Склонение отдельного ФИО через общий с анализатором механизм."""
+        from morph_utils import get_name_morph, inflect_full_name, looks_like_fio
 
-        Наивный пословный pymorphy (`parse[0]`) склоняет женскую фамилию по
-        мужскому типу (Нуриева -> Нуриеву), поэтому для женщин (определяем по
-        отчеству) берём фамильные/именные/отчественные хелперы; для мужчин и
-        нестандартных ФИО — пословный pymorphy. Регистр — корректный."""
         src = self._capitalize_full_name((name or "").strip())
-        words = [w for w in src.split() if w]
-        if len(words) == 3 and self._is_female_by_patronymic(words[2]):
-            if case == "ablt":
-                return self._female_full_name_instrumental(words[0], words[1], words[2])
-            idx = 0 if case == "gent" else 1
-            surname = self._female_surname_to_genitive_dative(words[0])[idx]
-            given = self._female_name_to_genitive_dative(words[1])[idx]
-            patr = self._female_patronymic_to_genitive_dative(words[2])[idx]
-            return f"{surname} {given} {patr}".strip()
-        from pymorphy3 import MorphAnalyzer
-        morph = MorphAnalyzer()
+        if not src:
+            return src
+        morph = get_name_morph()
+        if morph is None:
+            return src
+        if looks_like_fio(src.split()) or " в лице законного представителя " in src.lower():
+            return inflect_full_name(morph, src, case)
         out = []
-        for word in words:
+        for word in src.split():
             inflected = morph.parse(word)[0].inflect({case})
             out.append(inflected.word if inflected else word)
         return self._capitalize_full_name(" ".join(out))
 
-    def _correct_female_applicant_cases(self, cleaned_data: Dict[str, Any]) -> None:
-        """
-        Для ФЛ-женщин пересчитывает applicantNameDative и applicantNameGenitive из applicantName,
-        исправляет дательный (Калугину -> Калугиной) и восстанавливает обрезанную фамилию в родительном (Лугиной -> Калугиной).
-        """
-        # Для юридических лиц падежи ФИО не применяются.
-        entity_type = (cleaned_data.get("entityType") or "").strip().lower()
-        if entity_type == "legal":
-            return
+    def _correct_applicant_cases(self, cleaned_data: Dict[str, Any]) -> None:
+        """Падежи должника пересчитываются из актуального исходного ФИО."""
+        from morph_utils import get_name_morph, refresh_debtor_case_forms
 
-        applicant_name = (cleaned_data.get("applicantName") or "").strip()
-        if not applicant_name:
-            return
-        # Несколько должников склеены через запятую — единичное склонение неприменимо
-        # (падежи уже посчитаны и склеены в _combine_debtors).
-        if "," in applicant_name:
-            return
-        parts = [w for w in re.split(r"\s+", applicant_name) if w]
-        if len(parts) < 3:
-            return
-        surname_nom, name_nom, patronymic_nom = parts[0], parts[1], parts[2]
-        name_low = name_nom.lower()
-        # Женские окончания имени
-        if not (name_low.endswith("а") or name_low.endswith("я") or name_low.endswith("ия") or name_low.endswith("ья")):
-            return
-
-        gen_surname, dat_surname = self._female_surname_to_genitive_dative(surname_nom)
-        gen_name, dat_name = self._female_name_to_genitive_dative(name_nom)
-        gen_patr, dat_patr = self._female_patronymic_to_genitive_dative(patronymic_nom)
-
-        new_genitive = f"{gen_surname} {gen_name} {gen_patr}".strip()
-        new_dative = f"{dat_surname} {dat_name} {dat_patr}".strip()
-
-        current_gen = (cleaned_data.get("applicantNameGenitive") or "").strip()
-        current_dat = (cleaned_data.get("applicantNameDative") or "").strip()
-
-        cleaned_data["applicantNameGenitive"] = new_genitive
-        cleaned_data["applicantNameDative"] = new_dative
-
-        if current_gen != new_genitive:
-            logger.info(f" Исправлен родительный падеж (жен.):'{current_gen}' ->'{new_genitive}'")
-        if current_dat != new_dative:
-            logger.info(f" Исправлен дательный падеж для женщины:'{current_dat}' ->'{new_dative}'")
+        for warning in refresh_debtor_case_forms(cleaned_data, get_name_morph()):
+            logger.warning(warning)
 
     def _normalize_name_case(self, name: str) -> str:
         """
@@ -216,7 +66,7 @@ class GeneratorInflectionMixin:
         remaining_name = name
 
         # Ищем префикс "ИП" в начале строки (может быть с пробелом или без)
-        ip_match = re.match(r'^(ИП|ип|Ип)\s*(.+)$', name, re.IGNORECASE)
+        ip_match = re.match(r"^(ИП|ип|Ип)\s*(.+)$", name, re.IGNORECASE)
         if ip_match:
             ip_prefix = "ИП"  # Всегда заглавными
             remaining_name = ip_match.group(2).strip()
@@ -256,4 +106,3 @@ class GeneratorInflectionMixin:
             return f"{ip_prefix} {normalized_name}"
 
         return normalized_name
-

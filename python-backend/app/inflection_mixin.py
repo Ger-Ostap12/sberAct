@@ -2,7 +2,14 @@ import logging
 import re
 from typing import TYPE_CHECKING, Optional
 
-from morph_utils import detect_gender, inflect_given_name, inflect_surname, looks_like_fio
+from morph_utils import (
+    detect_gender,
+    inflect_full_name,
+    inflect_given_name,
+    inflect_surname,
+    looks_like_fio,
+    refresh_debtor_case_forms,
+)
 from org_normalizer import is_org_name, org_case_form
 
 if TYPE_CHECKING:
@@ -17,7 +24,6 @@ logger = logging.getLogger(__name__)
 
 
 class InflectionMixin:
-
     def _ensure_morph(self) -> "Optional[MorphAnalyzer]":
         if _MorphAnalyzerCls is None:
             return None
@@ -43,10 +49,10 @@ class InflectionMixin:
         if not morph or not word:
             return word
 
-        if '-' in word:
-            parts = word.split('-')
+        if "-" in word:
+            parts = word.split("-")
             inflected_parts = [self._inflect_word(part, target_case) for part in parts]
-            return '-'.join(inflected_parts)
+            return "-".join(inflected_parts)
 
         parsed = morph.parse(word)[0]
         inflected = parsed.inflect({target_case})
@@ -54,13 +60,7 @@ class InflectionMixin:
         return self._match_original_case(word, new_value)
 
     def _inflect_full_name(self, full_name: str, case: str) -> Optional[str]:
-        """Просклонять ФИО в падеж `case` (gent/datv/ablt/accs).
-
-        Единый путь для всех падежей (маркеры [2.1]–[2.4]):
-        фамилия (первый токен) — через morph_utils.inflect_surname (учёт рода +
-        предпочтение Surn-разбора + ручной суффиксный fallback); имя/отчество —
-        через существующий _inflect_word (для винительного — одушевлённая форма).
-        """
+        """ФИО склоняется общим механизмом; организации — отдельным."""
         if not full_name:
             return None
         # Организация — не ФИО: здесь первый токен считается фамилией, и
@@ -74,24 +74,23 @@ class InflectionMixin:
         if not tokens:
             return None
 
-        gender = detect_gender(tokens)
-        строгий = looks_like_fio(tokens)
-        inflected_tokens = []
-        for idx, token in enumerate(tokens):
-            try:
-                if idx == 0:
-                    inflected_tokens.append(inflect_surname(morph, token, case, gender))
-                else:
-                    inflected_tokens.append(self._inflect_name_token(token, case, gender, строгий))
-            except Exception as e:
-                logger.warning(f"Ошибка при склонении слова '{token}' в падеж {case}: {e}")
-                inflected_tokens.append(token)
+        if looks_like_fio(tokens) or " в лице законного представителя " in full_name.lower():
+            return inflect_full_name(morph, full_name, case) or None
+        gender = detect_gender(tokens, morph)
+        return (
+            " ".join(
+                inflect_surname(morph, token, case, gender)
+                if idx == 0
+                else self._inflect_name_token(token, case, gender, False)
+                for idx, token in enumerate(tokens)
+            )
+            or None
+        )
 
-        result = " ".join(inflected_tokens).strip()
-        return result or None
+    def _refresh_debtor_case_forms(self, fields):
+        return refresh_debtor_case_forms(fields, self._ensure_morph())
 
-    def _inflect_name_token(self, token: str, case: str, gender: Optional[str] = None,
-                            strict: bool = True) -> str:
+    def _inflect_name_token(self, token: str, case: str, gender: Optional[str] = None, strict: bool = True) -> str:
         """Склонение имени/отчества. Для винительного — одушевлённая форма (кого?).
 
         Род важен и здесь, а не только у фамилии: без него редкое женское имя
@@ -127,11 +126,11 @@ class InflectionMixin:
         if not word:
             return word
 
-        segments = word.split('-')
+        segments = word.split("-")
         capitalized_segments = []
         for segment in segments:
             if not segment:
                 capitalized_segments.append(segment)
                 continue
             capitalized_segments.append(segment[:1].upper() + segment[1:].lower())
-        return '-'.join(capitalized_segments)
+        return "-".join(capitalized_segments)

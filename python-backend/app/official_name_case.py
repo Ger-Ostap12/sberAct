@@ -4,7 +4,7 @@ import logging
 import re
 from typing import Optional
 
-from morph_utils import detect_gender, inflect_given_name, inflect_surname
+from morph_utils import detect_gender, inflect_full_name
 
 try:
     from pymorphy3 import MorphAnalyzer as _MorphAnalyzerCls
@@ -25,6 +25,7 @@ def _get_morph():
         except Exception as exc:
             logger.warning("pymorphy3 не загружен: %s", exc)
     return _морф
+
 
 # Падеж задаёт слово перед маркером. У судьи это «судьи»/«судьёй»/«Судья»,
 # у ведущего протокол — «секретарем»/«помощником» либо «при секретаре».
@@ -118,8 +119,4 @@ def inflect_person_name(value: str, case: str, gender: Optional[str] = None) -> 
     if род is None:
         return value
     morph = _get_morph()
-    итог = [inflect_surname(morph, части[0], case, род)]
-    for часть in части[1:]:
-        итог.append(часть if _ИНИЦИАЛ.match(часть)
-                    else inflect_given_name(morph, часть, case, род))
-    return " ".join(итог)
+    return inflect_full_name(morph, value, case, род)
