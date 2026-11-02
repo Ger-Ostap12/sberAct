@@ -20,10 +20,7 @@ class AmountsMixin:
     # сходит склейка соседних чисел таблицы («221 487,12 446 340,73») и любая
     # цифровая строка, из которой нормализатор выбрасывает разделители
     # (номер дела «А47-7950/2011» -> 4 779 502 011,00).
-    _MONEY_TOKEN_RE = re.compile(
-        r"\d{1,3}(?:[   ]\d{3})+(?:[.,]\d{1,2})?(?!\d)"
-        r"|\d+(?:[.,]\d{1,2})?(?!\d)"
-    )
+    _MONEY_TOKEN_RE = re.compile(MONEY_NUM)
     # Буква в захвате денежного поля — верный признак, что поймано не число
     # («А47-7950/2011», «Кому выдана», «руб.» отрезаем отдельно).
     _MONEY_LETTERS_RE = re.compile(r"[^\W\d_]", re.UNICODE)
@@ -52,6 +49,15 @@ class AmountsMixin:
         """
         if not value:
             return value
+
+        from money_utils import decimal_amount
+
+        amount = decimal_amount(value)
+        if amount is not None:
+            return format(amount, ",.2f").replace(",", " ").replace(".", ",")
+
+        if re.fullmatch(r"\d{1,2}[.,]\d{1,2}[.,]\d{4}", str(value).strip()):
+            return ""
 
         cleaned = value.replace("\u202f", " ").replace("\xa0", " ")
         cleaned = re.sub(r'(?:руб(?:\.|лей)?|₽|р\.?)', "", cleaned, flags=re.IGNORECASE)
@@ -95,14 +101,16 @@ class AmountsMixin:
         """Суммы из блока «ПРОСИТ СУД» (rtk_application): основной долг, проценты, неустойка, госпошлина, публикация. Вынесено из extract_fields."""
         # --- Неустойки ([15]) из блока "ПРОСИТ СУД" ---
         forfeit15_sum_values = []
-        claim_start = re.search(r"ПРОСИТ\s+СУД", text, re.IGNORECASE)
+        claim_start = re.search(r"(?:ПРОСИТ\s+СУД\b|(?:ПРОСИТ|ПРОШУ)\s*:)", text, re.IGNORECASE)
         claim_block = ""
         if claim_start:
             start_pos = claim_start.start()
             claim_block = text[start_pos : start_pos + 5000]
         search_text = claim_block if claim_block else text
+        # Несколько слагаемых в абзаце обрабатываем как отдельные финансовые записи.
+        search_text = re.sub(patterns_mod.FINANCE_CLAUSE_BREAK, "\\n", search_text, flags=re.IGNORECASE)
 
-        money_pattern = r"\d[\d\u00a0\u202f\s]*[.,]\d{2}"
+        money_pattern = MONEY_NUM + r"(?=[ \t  ]*(?i:руб|₽))"
 
         # Основной долг [13] и проценты [14] из блока "ПРОСИТ СУД": построчный
         # разбор, чтобы проценты не подменялись суммой основного долга.
@@ -446,7 +454,9 @@ class AmountsMixin:
                 # Захват `[0-9\s,]+` тянется через переводы строк и склеивает
                 # соседние числа таблицы в одно — берём из него первый корректный
                 # денежный токен, а не всё подряд.
-                match_value = self.money_token_from_capture(match_value) or match_value
+                match_value = self.money_token_from_capture(match_value)
+                if not match_value:
+                    continue
                 normalized_amount = self.normalize_amount_value(match_value)
                 if normalized_amount:
                     pattern_values.append(normalized_amount)
@@ -647,7 +657,7 @@ class AmountsMixin:
     _ОТРЕЗОК_ИТОГО = re.compile(
         r"итого\s*:?\s*(\d[\d\s  ]*(?:[.,]\d{1,2})?)", re.IGNORECASE)
 
-    def _apply_prayer_finances(self, fields: Dict[str, Any], text: str) -> None:
+    def _apply_prayer_finances(self, fields: Dict[str, Any], text: str, prefer_prayer=True):
         """Финансы из ПРОСИТЕЛЬНОЙ части: суммирует разбивки долга по категориям
         (осн.долг/проценты/неустойка/ссудная госпошлина), итог = их сумма.
 
@@ -661,6 +671,14 @@ class AmountsMixin:
         """
         if not text:
             return
+        if prefer_prayer:
+            marker = re.search(r"(?:ПРОСИТ\s+СУД\b|(?:ПРОСИТ|ПРОШУ|ПРОСИМ)\s*:)", text, re.IGNORECASE)
+            if marker and re.search(patterns_mod.RTK_PRAYER_CONTEXT, text[marker.end():], re.IGNORECASE):
+                candidate = dict(fields)
+                if self._apply_prayer_finances(candidate, text[marker.end():], prefer_prayer=False):
+                    fields.clear()
+                    fields.update(candidate)
+                    return True
         text = text.replace("	", " ")  # табы внутри чисел («5 100 	000») -> пробел
         # Пробел после запятой в копейках («15 952 445, 85» -> «15 952 445,85»),
         # иначе «85» парсится как отдельная сумма и ломает разбивку.
@@ -719,7 +737,8 @@ class AmountsMixin:
 
 
         _ГРАНИЦА_ПУНКТА = re.compile(
-            r"(?:\s\d{1,2}\s*[.)]\s|[.;]\s+(?=[А-ЯЁA-Z\d])|[Бб]ез\s+[Уу]ч[её]т)")
+            r"(?:\s\d{1,2}\s*[.)]\s|[.;]\s+(?=[А-ЯЁA-Z\d])|[Бб]ез\s+[Уу]ч[её]т)"
+            r"|" + patterns_mod.FINANCE_CLAUSE_BREAK, re.IGNORECASE)
 
         def обрезать_справа(окно):
             м = _ГРАНИЦА_ПУНКТА.search(окно)
@@ -1050,7 +1069,7 @@ class AmountsMixin:
             fields["debtAmount"] = fields["totalDebt"]
             logger.info("PRAYER: \u0442\u043e\u043b\u044c\u043a\u043e \u0441\u043b\u0438\u0442\u043d\u044b\u0439 \u0438\u0442\u043e\u0433 %s, \u0440\u0430\u0437\u0431\u0438\u0432\u043a\u0443 \u043d\u0435 \u0442\u0440\u043e\u0433\u0430\u0435\u043c",
                         fields["totalDebt"])
-            return
+            return True
 
         if principal > 0:
             fields["principalDebt"] = self._fin_fmt(principal)
@@ -1117,6 +1136,8 @@ class AmountsMixin:
         )
 
 
+        return True
+
     _FNS_AMT_RE = re.compile(
         r"(\d[\d\s  ]*(?:[.,]\d{1,2})?)\s*(?:руб\w*|рублей|py6\w*|р\.|лей)",
         re.IGNORECASE,
@@ -1164,6 +1185,7 @@ class AmountsMixin:
     )
 
     _FNS_QUEUE_DEFAULT_SUF = "LoanDebt"
+
 
     def _fns_amount(self, s: str) -> float:
         """Денежная строка ФНС float. Знак игнорируем: минус в ФНС-заявлениях
@@ -1940,6 +1962,12 @@ class AmountsMixin:
     # требований не входит — по заявлению о включении в РТК её вовсе нет
     # («уплата госпошлины не предусмотрена НК РФ» прямо в шапке).
     _CLAIM_DUTY_RES = (
+        re.compile(
+            r"(?:расход\w*\s+по\s+оплате\s+)?(?:гос)?пошлин\w*[^\d\n]{0,30}"
+            r"(?P<duty>" + MONEY_NUM + r")\s*руб\w*[\s.,;]*"
+            r"ИТОГО\s*[:—–-]?\s*(?P<total>" + MONEY_NUM + r")\s*руб",
+            re.IGNORECASE,
+        ),
         re.compile(
             r"(?:в\s+сумме|в\s+размере)\s*(?P<total>" + MONEY_NUM + r")\s*руб\w*[\s.,]*"
             r"в\s+том\s+числе[\s\S]{0,80}?пошлин\w*[^\d]{0,30}(?P<duty>" + MONEY_NUM + r")",

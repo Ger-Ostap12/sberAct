@@ -1762,12 +1762,20 @@ class PartiesMixin:
     def _fix_debtor_name(self, text: str, fields: Dict[str, Any]) -> None:
         """Заменяет некорректное ФИО должника на позиционно извлечённое и пересчитывает падежи.
 
-        Срабатывает ТОЛЬКО если текущее applicantName/debtorName не похоже на ФИО
-        физлица (организации и валидные имена не трогаем). Падежные формы
+        Явная метка должника приоритетнее общего поиска по шапке.
+        Без надёжной метки сохраняем уже распознанное ФИО. Падежные формы
         пересчитываются лишь для тех ключей, что уже присутствовали.
         """
         current = fields.get("applicantName") or fields.get("debtorName")
-        candidate = extract_debtor_name(text)
+        from fio_detector import explicit_debtor_name
+
+        explicit = explicit_debtor_name(text)
+        candidate = explicit.name if explicit else extract_debtor_name(text)
+        debtor = (fields.get("debtorName") or "").strip()
+        if not explicit and debtor != current and is_person_name(debtor):
+            candidate = debtor
+        if current and candidate and current.casefold() == candidate.casefold():
+            return
         _strip_ip = lambda s: re.sub(r"^\s*ип\s+", "", (s or ""), flags=re.IGNORECASE).strip()
 
         # Если блок «Должник:» даёт ТО ЖЕ лицо в иной (как-написано, именительной)
@@ -1780,9 +1788,9 @@ class PartiesMixin:
                 same_person_other_form = True
                 candidate = _strip_ip(candidate)  # «ИП» восстановит шаг 6
 
-        # Если уже валидное ФИО или это организация (детектор вернёт None) — выходим
-        # (кроме случая, когда нашли ту же фамилию в иной форме из блока «Должник:»).
-        if current and is_person_name(current) and not same_person_other_form:
+        # Запасной поиск не заменяет валидное имя другого лица.
+        # Явная метка и уточнение формы того же имени имеют больший приоритет.
+        if current and is_person_name(current) and not same_person_other_form and not explicit:
             return
 
         if not candidate or not is_person_name(candidate):

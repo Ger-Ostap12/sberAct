@@ -583,6 +583,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             raw_text = text
             text = self._mask_attachment_list_amounts(text)
             text = self._normalize_whitespace_for_matching(text)
+            from money_utils import canonical_money_text
+
+            text = canonical_money_text(text)
             # Канонизация метки — ДО подъёма значения на строку метки: тот работает
             # по реестру и должен видеть уже приведённое написание.
             text = self._normalize_labels_for_matching(text)
@@ -1632,6 +1635,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
     def _extract_creditor_name_from_text(self, text: str) -> Optional[str]:
         if not text:
             return None
+        from party_name_parser import explicit_creditor_name
+
+        candidate = explicit_creditor_name(text)
+        if candidate:
+            return candidate.name
         # Приоритет: полное название организации после "Истец:"
         patterns = [
             r"Истец[:\s]*\n\s*((?:ООО|ОАО|ПАО|ЗАО|АО|Обществ[ао]\s+с\s+ограниченной\s+ответственностью|Публичное\s+акционерное\s+общество)[^,\n\\[\\]]+)",  # Истец:\nПАО Сбербанк
@@ -2644,7 +2652,13 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         """Имя кредитора, обрезанное переносом строки внутри названия
         («Публичное Акционерное Общество "МТС-\\nБанк"»), дотягиваем по тексту до
         закрывающей кавычки."""
+        from party_name_parser import completes_creditor_name, explicit_creditor_name
+
+        candidate = explicit_creditor_name(text)
         name = fields.get("creditorName")
+        if candidate and completes_creditor_name(name, candidate.name):
+            fields["creditorName"] = candidate.name
+            return
         if not name or not text:
             return
         base = name.rstrip()
@@ -4716,6 +4730,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                         if not cleaned_value:
                             # Захват пустой или отбракован очисткой — пробуем следующий
                             # паттерн, а не сохраняем чужое значение.
+                            continue
+                        if pattern_info.get("type") == "date" and not self._normalize_obl_date(cleaned_value):
                             continue
                         # Денежное поле обязано содержать денежный токен: иначе в
                         # сумму уезжают номера дел, ИНН и даты (см. money_token_from_capture).
@@ -7399,7 +7415,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
         if field_type == "date":
             date_pattern = r'^\d{1,2}[.,]\d{1,2}[.,]\d{4}$'
-            return bool(re.match(date_pattern, value))
+            return bool(re.match(date_pattern, value) and self._normalize_obl_date(value))
 
         elif field_type == "amount":
             amount_pattern = r'^\d+$'

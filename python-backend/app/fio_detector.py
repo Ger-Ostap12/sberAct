@@ -12,6 +12,7 @@ NER ненадёжна, поэтому она вторична.
 """
 import re
 import logging
+from functools import lru_cache
 from typing import Any, Optional, Tuple
 
 logger = logging.getLogger(__name__)
@@ -35,10 +36,15 @@ _NAME_TOKEN_RE = re.compile(r"^[А-ЯЁ][А-ЯЁа-яё]*(?:-[А-ЯЁ][А-ЯЁа
 _PAREN_TOKEN_RE = re.compile(r"^\([А-ЯЁ][А-ЯЁа-яё\-]*\)$")
 
 
+@lru_cache(maxsize=2048)
 def _looks_like_fio(line: str) -> bool:
     """Проверяет, что строка похожа на ФИО физлица (2–5 слов, без цифр/стоп-слов)."""
     line = line.strip().strip(",")
     if not line or any(ch.isdigit() for ch in line):
+        return False
+    from org_normalizer import is_org_name
+
+    if is_org_name(line):
         return False
     tokens = line.split()
     if not (2 <= len(tokens) <= 5):
@@ -48,6 +54,20 @@ def _looks_like_fio(line: str) -> bool:
         return False
     for tok in tokens:
         if not (_NAME_TOKEN_RE.match(tok) or _PAREN_TOKEN_RE.match(tok)):
+            return False
+    # Обычные словарные слова без признаков имени не образуют ФИО.
+    # Неизвестные словарю иностранные имена остаются допустимыми.
+    from morph_utils import get_name_morph
+
+    morph = get_name_morph()
+    if morph:
+        words = [t.strip("()") for t in tokens]
+        parses = [morph.parse(word) for word in words]
+        personal = any(
+            p.is_known and {"Name", "Surn", "Patr"} & set(p.tag.grammemes) for variants in parses for p in variants
+        )
+        known_words = sum(morph.word_is_known(word) for word in words)
+        if not personal and known_words >= max(2, len(words) - 1):
             return False
     return True
 
@@ -95,6 +115,46 @@ def _normalize_fio(line: str) -> str:
 def _titlecase_word(word: str) -> str:
     """Каждую часть слова (через дефис) с заглавной, остальное строчными."""
     return "-".join(p.capitalize() for p in word.split("-"))
+
+
+def _person_name_prefix(line):
+    """Отделяет реквизиты строки, не удаляя девичью фамилию."""
+    candidate = re.sub(
+        r"\s*\((?=[^)]*(?:дата\s+рождения|место\s+рождения|\bИНН\b|"
+        r"\bСНИЛС\b|\bОГРН\w*|паспорт)).*$",
+        "",
+        line,
+        flags=re.IGNORECASE,
+    )
+    return re.split(
+        r",|\t|\s{2,}|\bИНН\b|\bСНИЛС\b|\bОГРН\w*|\d",
+        candidate,
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )[0].strip()
+
+
+def explicit_debtor_name(text):
+    """Единственное ФИО из явной метки надёжнее имени из общей шапки."""
+    from party_name_parser import PartyNameCandidate, labelled_blocks
+    from label_synonyms import DEBTOR_HEADER_LABELS
+
+    candidates = []
+    for label, block in labelled_blocks(text, DEBTOR_HEADER_LABELS):
+        # Множественных ответчиков собирает отдельный парсер карточек.
+        first = next((line.strip() for line in block.splitlines() if line.strip()), "")
+        candidate = _person_name_prefix(first)
+        # Усечённое имя из двух слов и приписка к ФИО не дают высокой уверенности.
+        plain = re.sub(r"\([^)]*\)", "", candidate).split()
+        if len(plain) != 3 or not _looks_like_fio(candidate):
+            continue
+        # Не сворачиваем блок с несколькими физлицами к первому имени.
+        if any(_looks_like_fio(_person_name_prefix(line.strip())) for line in block.splitlines()[1:]):
+            continue
+        name = _normalize_fio(candidate)
+        candidates.append(PartyNameCandidate(name, f"header:{label}"))
+    names = {candidate.name for candidate in candidates}
+    return candidates[0] if len(names) == 1 else None
 
 
 def extract_debtor_name(text: str):

@@ -550,28 +550,30 @@ class ObligationsMixin:
         """«21 сентября 2023 г.» / «17.02.2023» «17.02.2023» (или None)."""
         if not s:
             return None
+        import calendar
+
         s = s.strip()
         # ISO: «договор займа № 107977878 ОТ 2024-08-10 года» — так пишет часть
         # МФО. Паттерн основания (`claim_basis.CONTRACT_DATE`) этот вид ловит,
         # а нормализация его не знала, и дата карточки уходила как «Не указана»
         # (свежие-33, свежие-34).
-        m = re.match(r"(\d{4})-(\d{1,2})-(\d{1,2})", s)
+        m = re.match(r"(\d{4})-(\d{1,2})-(\d{1,2})(?!\d|[.,]\d)", s)
         if m:
             y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
-            if 1 <= d <= 31 and 1 <= mo <= 12 and 1900 <= y <= 2100:
+            if 1 <= mo <= 12 and 1900 <= y <= 2100 and 1 <= d <= calendar.monthrange(y, mo)[1]:
                 return f"{d:02d}.{mo:02d}.{y}"
             return None
-        m = re.match(r"(\d{1,2})[.,](\d{1,2})[.,](\d{4})", s)
+        m = re.match(r"(\d{1,2})[.,](\d{1,2})[.,](\d{4})(?!\d|[.,]\d)", s)
         if m:
             d, mo, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
-            if 1 <= d <= 31 and 1 <= mo <= 12 and 1900 <= y <= 2100:
+            if 1 <= mo <= 12 and 1900 <= y <= 2100 and 1 <= d <= calendar.monthrange(y, mo)[1]:
                 return f"{d:02d}.{mo:02d}.{y}"
             return None
-        m = re.match(r'[«"“]?\s*(\d{1,2})\s*[»"”]?\s+([а-яё]+)\s+(\d{4})', s, re.IGNORECASE)
+        m = re.match(r'[«"“]?\s*(\d{1,2})\s*[»"”]?\s+([а-яё]+)\s+(\d{4})(?!\d|[.,]\d)', s, re.IGNORECASE)
         if m:
             d, word, y = int(m.group(1)), m.group(2).lower(), int(m.group(3))
             mo = next((v for k, v in self._RU_MONTHS.items() if word.startswith(k)), None)
-            if mo and 1 <= d <= 31 and 1900 <= y <= 2100:
+            if mo and 1900 <= y <= 2100 and 1 <= d <= calendar.monthrange(y, mo)[1]:
                 return f"{d:02d}.{mo:02d}.{y}"
         return None
 
