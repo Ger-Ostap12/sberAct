@@ -2740,11 +2740,12 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                             logger.info(f"Заменен СНИЛС поручителя: {field_value}")
 
     def _resolve_standard_templates(self, data: Dict[str, Any], normalized_template: str, source_document_type: str, source_document_type_for_routing: str, is_kfh: bool):
-        """Стандартный роутинг: по template_type / sourceDocumentType / процедуре
-        выбирает набор шаблонов и procedure_type. Возвращает (templates, procedure_type).
-        Может выставлять data['_skip_obligation_blocks']. Вынесено из generate
-        без изменения поведения (gen-golden).
-        """
+        """Стандартный комплект по типу документа и признакам дела."""
+        initiation = self._initiation_default_templates(
+            data, normalized_template or source_document_type_for_routing,
+        )
+        if initiation is not None:
+            return initiation
         # Стандартная логика (для обратной совместимости и для явного выбора template_type)
         if normalized_template in {"observation_single", "observation_multiple"}:
             normalized_template = "observation"
@@ -3056,6 +3057,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             selected_acts_data_str = data.get("selectedActsData") or fields.get("selectedActsData")
             selected_entity_type = data.get("selectedEntityType") or fields.get("selectedEntityType")
             selected_collateral_option = data.get("selectedCollateralOption") or fields.get("selectedCollateralOption")
+            if selected_entity_type == "kfh":
+                data["isKfh"] = True
+                fields["isKfh"] = True
 
             normalized_template = (template_type or "").lower()
             source_document_type = (data.get("sourceDocumentType") or fields.get("sourceDocumentType") or "").lower()
@@ -3138,7 +3142,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                         + ", ".join(unresolved_act_ids or [selected_acts_ids])
                     )
                     logger.error(f" {error_message}")
-                    return {"success": False, "error": error_message}
+                    return {"success": False, "error": error_message, "error_code": "templates_unavailable",
+                            "unresolved_act_ids": unresolved_act_ids}
 
                 logger.info(f" Найдено {len(templates)} шаблонов для выбранных актов")
                 procedure_type = "custom_selected_acts"
@@ -3150,6 +3155,14 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     data, normalized_template, source_document_type,
                     source_document_type_for_routing, is_kfh,
                 )
+                unresolved_act_ids = data.pop("_default_unresolved_act_ids", [])
+                if not templates:
+                    return {
+                        "success": False,
+                        "error": "Шаблоны выбранной ветки инициирования пока отсутствуют",
+                        "error_code": "templates_unavailable",
+                        "unresolved_act_ids": unresolved_act_ids,
+                    }
             # Если templates не был установлен выше (стандартная логика), он должен быть установлен в блоке else
             if 'templates' not in locals() or templates is None:
                 logger.error(" Не удалось определить шаблоны для генерации")

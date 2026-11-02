@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Резолверы шаблонов document_generator (вынос без изменения поведения).
-
-Все методы _get_*_templates и _map_selected_acts_to_templates по входным
-признакам (процедура, тип лица, залог, выбранные акты) возвращают набор
-{логическое_имя: {"name", "path", "order"}}. Единственная внешняя зависимость —
-self._templates_root() (остаётся в DocumentGenerator). Поведение 1-в-1 под gen-golden.
-"""
+"""Выбор шаблонов по процедуре, типу должника и выбранным актам."""
 import logging
 import zipfile
 from pathlib import Path
@@ -35,11 +29,14 @@ class TemplatesResolverMixin:
         "intermediate_postponement_third_party": (
             "postponement_third_party", "Отложение 3 лицо"),
         "intermediate_extend_no_motion": ("extend_no_motion", "Продление Б/Д"),
+        "intermediate_extend_simplified": ("extend_simplified", "Продление упрощённого производства"),
         "intermediate_return_general": ("return_general", "Общий возврат"),
         "intermediate_return_no_duty": ("return_no_duty", "Возврат нет ГП"),
         "intermediate_simplified_to_main": (
             "simplified_to_main", "Переход из упрощёнки в основное производство"),
         "final_realization": ("final_realization", "Решение Реализация"),
+        "final_observation": ("final_observation", "Определение о введении наблюдения"),
+        "final_competition": ("final_competition", "Решение о введении конкурсного производства"),
         "final_restructuring": (
             "final_restructuring", "Определение о введении реструктуризации"),
     }
@@ -75,12 +72,10 @@ class TemplatesResolverMixin:
         if kind == "rtk":
             branch, applicant = bankruptcy_tree.BRANCH_RTK, (
                 "fns" if self._is_fns_creditor(data) else "creditors")
-        elif kind in ("other", "self", "self_bankruptcy") and entity == "individual":
-            # Из инициирования подключена только папка ФЛ; у ФНС её там нет.
-            if kind == "other" and self._is_fns_creditor(data):
-                return None
+        elif kind in ("other", "self", "self_bankruptcy"):
             branch = bankruptcy_tree.BRANCH_INITIATION
-            applicant = "creditors" if kind == "other" else "self"
+            applicant = ("self" if kind != "other" else
+                         "fns" if self._is_fns_creditor(data) else "creditors")
         else:
             return None
 
@@ -99,6 +94,42 @@ class TemplatesResolverMixin:
             "procedure": procedure,
             "branch": branch,
         }
+
+    def _initiation_default_templates(self, data: Dict[str, Any], template: str):
+        """Комплект без явного выбора актов берём из того же дерева."""
+        fields = data.get("fields") or {}
+        routing = {**fields, **data}
+        source = str(routing.get("sourceDocumentType") or "")
+        if template == "mortgage" or source == "mortgage_claim" or "collection" in template or "collection" in source:
+            return None
+        kind = str(routing.get("selectedApplicationKind") or routing.get("applicationKind") or "")
+        if kind not in ("other", "self", "self_bankruptcy") and not template.startswith("initiation_"):
+            return None
+        if kind not in ("other", "self", "self_bankruptcy"):
+            routing["selectedApplicationKind"] = "other"
+        entity = routing.get("selectedEntityType") or routing.get("entityType")
+        if not entity:
+            entity = "legal" if template.startswith("initiation_legal") else "individual"
+        if routing.get("isKfh"):
+            entity = "kfh"
+        if template.endswith("_absent"):
+            routing["selectedDebtorStatus"] = "absent"
+        elif template.endswith("_liquidation"):
+            routing["selectedDebtorStatus"] = "liquidation"
+        status = routing.get("selectedDebtorStatus") or routing.get("debtorStatus")
+        if entity in ("legal", "kfh"):
+            finals = ["final_competition"] if status in ("absent", "liquidation") else ["final_observation"]
+        else:
+            finals = ["final_realization"]
+            if status != "deceased":
+                finals.append("final_restructuring")
+        templates, missing = self._map_selected_acts_to_templates(
+            ",".join(["acceptance_definition", *finals]), entity,
+            routing.get("selectedCollateralOption") or "no_collateral", routing,
+        )
+        data["_unresolvedReasons"] = routing.get("_unresolvedReasons", {})
+        data["_default_unresolved_act_ids"] = missing
+        return templates, "initiation"
 
     @staticmethod
     def _is_fns_creditor(data: Dict[str, Any]) -> bool:
@@ -1123,12 +1154,17 @@ class TemplatesResolverMixin:
         is_self = self._is_self_bankruptcy(data)
         is_deceased = str(data.get("selectedDebtorStatus") or data.get("debtorStatus") or "").strip().lower() == "deceased"
 
-        # Первоначальные акты включения в РТК берём из нового дерева «Банкротство».
-        # Остальные разделы и инициирование пока по старым путям (§S.64).
+        # Банкротные акты выбираем строго из своей ветки нового дерева.
         tree_axes = self._bankruptcy_tree_axes(data, entity_type, collateral_option, act_ids)
 
         for act_id in act_ids:
             templates_before = len(templates)
+
+            if (tree_axes is not None and tree_axes["branch"] == bankruptcy_tree.BRANCH_INITIATION
+                    and act_id in ("intermediate_extend_simplified", "intermediate_simplified_to_main")):
+                unresolved.append(act_id)
+                data.setdefault("_unresolvedReasons", {})[act_id] = "акт упрощённого производства доступен только для включения в РТК"
+                continue
 
             if tree_axes is not None and act_id in bankruptcy_tree.ACTS_WITHOUT_TEMPLATE:
                 unresolved.append(act_id)
@@ -1192,6 +1228,9 @@ class TemplatesResolverMixin:
                     unresolved.append(act_id)
                     data.setdefault("_unresolvedReasons", {})[act_id] = resolution.reason
                     logger.warning(" Шаблон не готов: %s — %s", act_id, resolution.reason)
+                    continue
+                # Два названия галки Б/Д могут указывать на единственный файл.
+                if any(item["path"] == resolution.path for item in templates.values()):
                     continue
                 key, label = self._TREE_ACT_LABELS[act_id]
                 templates[key] = entry(label, resolution.path, order)
@@ -1443,9 +1482,8 @@ class TemplatesResolverMixin:
         # отдельный короткий текст не добавляем.
         want_short_text = bool(data.get("selectedShortText") or data.get("shortText"))
         # У ФНС включение само по себе резолютивка, отдельный короткий текст не нужен.
-        # В инициировании резолютивок нет: короткий текст там идёт по старому пути.
-        if (want_short_text and tree_axes is not None and not is_fns
-                and tree_axes["branch"] == bankruptcy_tree.BRANCH_RTK):
+        # Инициирование тоже проверяем в своей папке, без подмены резолютивкой РТК.
+        if want_short_text and tree_axes is not None and not is_fns:
             resolution = bankruptcy_tree.resolve_final(
                 self._templates_root(), role="rtk_short",
                 fns_queue=self._fns_queue(data), **tree_axes)

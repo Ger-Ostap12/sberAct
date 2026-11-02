@@ -797,8 +797,10 @@ async def generate_document(request_data: Dict[str, Any]):
                     "file_path": result["file_path"]
                 }
         else:
-            raise HTTPException(status_code=500, detail=result["error"])
+            raise HTTPException(status_code=422 if result.get("error_code") == "templates_unavailable" else 500, detail=result["error"])
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при генерации документа: {str(e)}")
 

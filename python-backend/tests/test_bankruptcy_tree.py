@@ -71,7 +71,7 @@ class TestРольПоИмени:
         assert file_role("Реструктуризация долгов гражданина.docx") is None
 
     def test_чужое_имя_без_роли(self):
-        assert file_role("О введении наблюдения.docx") is None
+        assert file_role("О введении наблюдения.docx") == "introduce_observation"
         assert file_role("Справка по делу.docx") is None
 
     @pytest.mark.parametrize("имя,роль", [

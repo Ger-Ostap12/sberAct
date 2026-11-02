@@ -193,14 +193,16 @@ class TestПромежуточные:
         assert нерешённые == ["intermediate_return_no_duty"]
         assert data["_unresolvedReasons"]["intermediate_return_no_duty"]
 
-    def test_продление_упрощёнки_не_готово_всегда(self, gen):
+    def test_продление_упрощёнки_берётся_из_своей_ветки(self, gen):
         акты = ["intermediate_extend_simplified"]
         data = данные(selectedActsIds=",".join(акты),
                       selectedActsData=json.dumps([{"id": a, "selected": True} for a in акты]))
         шаблоны, нерешённые = подобрать(gen, data)
-        assert шаблоны == {}
-        assert нерешённые == акты
-        assert "в дереве нет" in data["_unresolvedReasons"]["intermediate_extend_simplified"]
+        assert нерешённые == []
+        assert len(шаблоны) == 1
+        path = шаблоны["extend_simplified"]["path"]
+        assert "Включение в РТК" in path.parts
+        assert "продление упрощ" in path.name.lower()
 
 
 class TestФинальныеАкты:

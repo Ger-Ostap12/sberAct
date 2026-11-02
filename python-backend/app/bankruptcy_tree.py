@@ -1,6 +1,6 @@
 """Выбор файла шаблона в дереве «Банкротство»: папка по осям дела, роль по имени файла.
 
-Покрыты «Включение в РТК» целиком и «Инициирование» для ФЛ.
+Покрыты включение в РТК и инициирование по всем типам должника.
 """
 
 import re
@@ -17,12 +17,13 @@ SECTION_INTERMEDIATE = "Промежуточные"
 ROLE_RULES = (
     ("acceptance_after_no_motion", re.compile(r"о принятии после бд|принятие после бд")),
     ("acceptance", re.compile(r"о принятии|принятие заявления|принятие иниц")),
-    ("no_motion_no_duty_collateral", re.compile(r"бд не?т? гп залог")),
+    ("no_motion_no_duty_collateral", re.compile(r"бд не?т? гп.*\bзалог")),
     ("no_motion_no_duty", re.compile(r"бд не?т? гп")),
     ("no_motion_other", re.compile(r"бд иное")),
     # Промежуточные. «Отложение 3 лицо» — отдельный акт, проверяем раньше общего.
     ("postponement_third_party", re.compile(r"отложение 3 лицо")),
     ("postponement", re.compile(r"отложение")),
+    ("extend_simplified", re.compile(r"продление упрощ")),
     ("extend_no_motion", re.compile(r"продление бд")),
     ("return_no_duty", re.compile(r"возврат не?т? гп")),
     ("return_general", re.compile(r"общий возврат")),
@@ -33,6 +34,8 @@ ROLE_RULES = (
     # Финальные РТК. «Резолютивка», «резолютивная часть» и «(Резолютивка)» — одно и то же.
     # Идут раньше финальных инициирования: «Вкл в РТК реализация полный текст»
     # иначе попал бы в решение о банкротстве.
+    ("introduce_observation", re.compile(r"о введении наблюден|наблюдение (?:юрлицо|кфх)")),
+    ("decision_competition", re.compile(r"о введении конкурс|решение.*конкурс")),
     ("rtk_short", re.compile(r"резолютив")),
     ("rtk_full", re.compile(r"вкл в ртк")),
     # Финальные акты инициирования: решение о банкротстве и введение реструктуризации.
@@ -50,7 +53,7 @@ PROCEDURE_RULES = (
     ("competition", re.compile(r"конкурс|кокнурс")),
 )
 
-# Акт на форме (галка) → роль файла. Пока только раздел «Первоначальные».
+# Акт на форме → роль файла в разделе «Первоначальные».
 INITIAL_ACT_ROLES = {
     "acceptance_definition": "acceptance",
     "acceptance_after_no_motion": "acceptance_after_no_motion",
@@ -67,24 +70,27 @@ INTERMEDIATE_ACT_ROLES = {
     "intermediate_return_general": "return_general",
     "intermediate_return_no_duty": "return_no_duty",
     "intermediate_simplified_to_main": "simplified_to_main",
+    "intermediate_extend_simplified": "extend_simplified",
 }
 
 # Финальные акты инициирования. Лежат в папке процедуры, как и включение в РТК.
 # Процедуру задаёт сам акт, а не дело: юрист может выбрать оба.
 INITIATION_FINAL_ROLES = {
     "final_realization": "decision_realization",
+    "final_observation": "introduce_observation",
+    "final_competition": "decision_competition",
     "final_restructuring": "introduce_restructuring",
 }
 
 INITIATION_FINAL_PROCEDURES = {
     "final_realization": "realization",
+    "final_observation": "observation",
+    "final_competition": "competition",
     "final_restructuring": "restructuring",
 }
 
-# Галка на форме есть, файла в дереве нет ни у одной оси — «шаблон не готов».
-ACTS_WITHOUT_TEMPLATE = {
-    "intermediate_extend_simplified": "продление упрощёнки: такого акта в дереве нет",
-}
+# Резерв исключений для актов, которых пока нет ни в одной ветке.
+ACTS_WITHOUT_TEMPLATE = {}
 
 ACT_SECTIONS = {
     **{act_id: SECTION_INITIAL for act_id in INITIAL_ACT_ROLES},
@@ -366,7 +372,19 @@ def resolve(
                             collateral=collateral, section=section, branch=branch)
     if folder.folder is None:
         return folder
-    return pick_file(folder.folder, role, procedure, collateral=collateral)
+    selected = pick_file(folder.folder, role, procedure, collateral=collateral)
+    if (branch == BRANCH_INITIATION and selected.path is None
+            and not selected.reason.startswith("неоднозначно")):
+        if role == "no_motion_no_duty":
+            return pick_file(folder.folder, "no_motion_no_duty_collateral", procedure, collateral=collateral)
+        if role == "extend_no_motion" and section == SECTION_INTERMEDIATE:
+            initial = section_folder(root, entity=entity, applicant=applicant, status=status,
+                                     collateral=collateral, section=SECTION_INITIAL, branch=branch)
+            if initial.folder is not None:
+                alternative = pick_file(initial.folder, role, procedure, collateral=collateral)
+                if alternative.path is not None:
+                    return alternative
+    return selected
 
 
 def resolve_final(
@@ -394,6 +412,15 @@ def resolve_final(
     procedure_dir = PROCEDURE_DIRS.get(procedure)
     if procedure_dir is None:
         return Resolution(None, None, "неизвестная процедура: %s" % procedure)
-    return resolve(root, entity=entity, role=role, applicant=applicant, status=status,
-                   collateral=collateral, procedure=procedure, section=procedure_dir,
-                   branch=branch)
+    result = resolve(root, entity=entity, role=role, applicant=applicant, status=status,
+                     collateral=collateral, procedure=procedure, section=procedure_dir,
+                     branch=branch)
+    if (result.path is None and branch == BRANCH_INITIATION
+            and applicant == "self" and entity in ("legal", "kfh")
+            and not result.reason.startswith("неоднозначно")):
+        folder = section_folder(root, entity=entity, applicant=applicant, section="", branch=branch)
+        if folder.folder is not None:
+            alternative = pick_file(folder.folder, role, procedure)
+            if alternative.path is not None:
+                return alternative
+    return result

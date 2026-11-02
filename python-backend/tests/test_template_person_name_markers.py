@@ -27,6 +27,8 @@ CONTEXTS = [
         "gent",
     ),
     ("recognize", re.compile(r"\bПризнать\s+" + MARKER, re.I), "[2.4]", "accs"),
+    ("possession", re.compile(r"\bналичи[ея]\s+у\s+(?:Глав[аы]\s+КФХ\s+)?"
+                             + MARKER, re.I), "[2.1]", "gent"),
     (
         "subject",
         re.compile(r"\[989\]\s+и\s+(?:ИП\s+)?" + MARKER + r"(?=\s*\(далее\s*[–-]\s*должник\)\s+заключили)", re.I),

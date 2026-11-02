@@ -44,6 +44,14 @@ class GeneratorInflectionMixin:
         """Падежи должника пересчитываются из актуального исходного ФИО."""
         from morph_utils import get_name_morph, refresh_debtor_case_forms
 
+        from org_normalizer import is_org_name, org_case_form
+
+        name = str(cleaned_data.get("applicantName") or cleaned_data.get("debtorName") or "").strip()
+        if is_org_name(name) and not cleaned_data.get("isKfh"):
+            for field, case in (("applicantNameGenitive", "gent"), ("applicantNameDative", "datv"),
+                                ("applicantNameInstrumental", "ablt"), ("applicantNameAccusative", "accs")):
+                cleaned_data[field] = org_case_form(name, case)
+            return
         for warning in refresh_debtor_case_forms(cleaned_data, get_name_morph()):
             logger.warning(warning)
 

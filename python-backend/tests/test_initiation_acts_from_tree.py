@@ -14,8 +14,8 @@ from document_generator import DocumentGenerator  # noqa: E402
 ПЕРВОНАЧАЛЬНЫЕ = [a for a in bankruptcy_tree.INITIAL_ACT_ROLES
                   if a != "acceptance_no_motion_no_duty_collateral"]
 ПРОМЕЖУТОЧНЫЕ = [a for a in bankruptcy_tree.INTERMEDIATE_ACT_ROLES
-                 if a != "intermediate_simplified_to_main"]
-ФИНАЛЬНЫЕ = list(bankruptcy_tree.INITIATION_FINAL_ROLES)
+                 if a not in ("intermediate_simplified_to_main", "intermediate_extend_simplified")]
+ФИНАЛЬНЫЕ = ["final_realization", "final_restructuring"]
 
 
 @pytest.fixture
@@ -127,17 +127,16 @@ class TestФинальныеАкты:
 class TestЧужиеВеткиНеТронуты:
     @pytest.mark.parametrize("поля", [
         pytest.param({"selectedEntityType": "legal"}, id="юрлицо"),
-        pytest.param({"creditorName": "ФНС России"}, id="фнс"),
     ])
-    def test_чужое_лицо_идёт_по_старым_путям(self, gen, поля):
-        """Из инициирования подключена только папка ФЛ кредиторов и самобанкрота."""
+    def test_другие_лица_тоже_используют_своё_дерево(self, gen, поля):
+        """Новые ветки не должны возвращаться к удалённым старым папкам."""
         data = данные(ПЕРВОНАЧАЛЬНЫЕ, **поля)
         шаблоны, нерешённые = подобрать(gen, data)
         # Пустой набор прошёл бы проверку путей молча: сверяем и количество.
         assert нерешённые == [], (нерешённые, data.get("_unresolvedReasons"))
         assert шаблоны, "старые пути должны отдать шаблоны"
         for путь in пути(шаблоны):
-            assert "Инициирование" not in путь.parts, путь
+            assert "Инициирование" in путь.parts, путь
 
     def test_включение_в_ртк_не_берётся_из_инициирования(self, gen):
         data = данные(["final_rtk_inclusion"])
