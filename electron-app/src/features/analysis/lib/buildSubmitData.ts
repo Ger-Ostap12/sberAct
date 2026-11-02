@@ -90,6 +90,19 @@ export const buildSubmitData = (input: SubmitDataInput): ExtractedData => {
     updatedData.fields.judge = formatJudgeName(updatedData.fields.judge);
   }
 
+  if (updatedData.fields) {
+    const fields = updatedData.fields;
+    if (documentCategory !== 'mortgage' && editedFields.judgeSubstitutionEnabled === 'true') {
+      fields.judgeSubstitutionEnabled = 'true';
+      fields.substituteJudgeFullName = editedFields.substituteJudge || '';
+      fields.substituteJudge = formatJudgeName(editedFields.substituteJudge || '');
+    } else {
+      delete fields.judgeSubstitutionEnabled;
+      delete fields.substituteJudge;
+      delete fields.substituteJudgeFullName;
+    }
+  }
+
   // Синхронизация полей сумм (перенесено 1:1)
   const f = updatedData.fields;
   if (f) {

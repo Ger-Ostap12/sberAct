@@ -1155,7 +1155,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         "mortgageRepresentative22", "respondentRepresentativeName", "thirdPartyName25",
         # Судья и ведущий протокол: оба попадают под склонение по контексту
         # маркера, поэтому регистр правим до него.
-        "judge", "judgeFullName", "authorName",
+        "judge", "judgeFullName", "substituteJudge", "substituteJudgeFullName", "authorName",
     )
     _CASE_ORG_FIELDS = ("legalShortName", "sroName")
     _CASE_ADDRESS_FIELDS = (
@@ -1276,6 +1276,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             "applicationReceiptDate23": "23",  # [23] - Дата поступления заявления в суд (согласно штампу)
             "courtSubmissionDate24": "24",     # [24] - Дата направления в суд
             "courtHearingDateTime99": "99",    # [99] - Дата и время судебного заседания
+            "substituteJudge": "416",
             "judge": "415",              # [415] - Судья
             "date": "DATE",              # [DATE] - Дата (пользовательская)
             "mortgagePeriodStart120": "120",   # [120] - Начало расчетного периода (ипотека)
@@ -1683,6 +1684,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             doc: Документ для замены
             data: Данные для замены
         """
+        from judge_substitution import apply_judge_substitution
+        apply_judge_substitution(doc, data, self)
         if (data.get("sourceDocumentType") == "mortgage_claim"
                 and data.get("_current_doc_type") == "mortgage_decision"
                 and self._mortgage_selection(data)["kind"] == "military"):
@@ -1875,6 +1878,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # Последним: замены через paragraph.text после этого шага стёрли бы выделение.
         if not is_mortgage_document:
             self._highlight_empty_markers(doc)
+
+        from judge_substitution import finalize_judge_substitution
+        finalize_judge_substitution(doc, data)
 
     def _apply_efrsb_kommersant_priority(self, doc: DocxDocument, cleaned_data: Dict[str, Any]) -> None:
         """В части актов рядом упомянуты обе публикации — ЕФРСБ (обёрнута в
@@ -2364,12 +2370,16 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         секретаре» — предложный. Род судьи берём из полного ФИО справочника,
         у секретаря его неоткуда взять — идём по окончанию фамилии.
         """
-        judge = str(cleaned_data.get("judge") or "").strip()
-        if judge:
-            род = gender_from_full_name(cleaned_data.get("judgeFullName"))
-            self._replace_regex_in_doc(
-                doc, r"(.{0,80})\[415\]",
-                lambda m: m.group(1) + inflect_person_name(judge, judge_case(m.group(1)), род))
+        for field, full_field, marker in (
+            ("judge", "judgeFullName", "415"),
+            ("substituteJudge", "substituteJudgeFullName", "416"),
+        ):
+            judge = str(cleaned_data.get(field) or "").strip()
+            if judge:
+                род = gender_from_full_name(cleaned_data.get(full_field))
+                self._replace_regex_in_doc(
+                    doc, rf"(.{{0,80}})\[{marker}\]",
+                    lambda m: m.group(1) + inflect_person_name(judge, judge_case(m.group(1)), род))
 
         author = str(cleaned_data.get("authorName") or "").strip()
         if author:
@@ -2924,6 +2934,11 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             Словарь с результатом генерации
         """
         try:
+            from judge_substitution import substitution_error
+            substitution_problem = substitution_error(data)
+            if substitution_problem:
+                return {"success": False, "error": substitution_problem}
+
             # Проверяем, есть ли выбранные пользователем акты (могут быть в data или в data.fields)
             fields = data.get("fields") or {}
             source = data.get("sourceDocumentType") or fields.get("sourceDocumentType")
@@ -3184,6 +3199,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     logger.info(f"Загружен шаблон: {template_path}")
                     self.set_times_new_roman_11(doc)
                     data["_current_doc_type"] = doc_type
+                    from judge_substitution import is_initial_bankruptcy_template
+                    data["_judge_substitution_initial"] = is_initial_bankruptcy_template(template_path)
                     self.replace_document_data(doc, data)
                 except Exception as error:
                     if not isolated_mortgage_act:

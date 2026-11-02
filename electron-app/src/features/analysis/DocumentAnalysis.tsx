@@ -1,3 +1,4 @@
+import { judgeSubstitutionError, resetJudgeSubstitution } from './lib/judgeSubstitution';
 import { mortgageChoicesError, resetMortgageChoices } from './lib/mortgageChoices';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
@@ -658,7 +659,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
             if (!cleanFields.mortgageCourtNameGenitive) cleanFields.mortgageCourtNameGenitive = courtDefaults.genitive;
           }
         }
-        setEditedFields(isMortgage ? resetMortgageChoices(cleanFields) : cleanFields);
+        setEditedFields(isMortgage ? resetMortgageChoices(resetJudgeSubstitution(cleanFields)) : resetJudgeSubstitution(cleanFields));
         setIsAnalyzing(false);
       } else {
         // Fallback: получаем данные из electronAPI
@@ -676,7 +677,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           });
           // courtName берётся из извлечённых данных (без хардкода)
           // creditorName берется из извлеченных данных (маркер [987])
-          setEditedFields(isMortgage ? resetMortgageChoices(cleanFields) : cleanFields);
+          setEditedFields(isMortgage ? resetMortgageChoices(resetJudgeSubstitution(cleanFields)) : resetJudgeSubstitution(cleanFields));
         } else {
         }
         setIsAnalyzing(false);
@@ -1116,8 +1117,10 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   const mortgageAwardError = isMortgage
     ? mortgageChoicesError(editedFields) || mortgageAwardsError(editedFields, mortgageKind) : null;
 
+  const substitutionError = isMortgage ? '' : judgeSubstitutionError(editedFields);
+
   const handleContinue = () => {
-    if (!analysisResult || mortgageAwardError) return;
+    if (!analysisResult || mortgageAwardError || substitutionError) return;
     const пустые = kindsWithoutCards(collateralKinds, analysisResult.collaterals || []);
     if (пустые.length > 0) {
       setCollateralNotice(
@@ -1602,6 +1605,9 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
 
 
       <Box sx={{ textAlign: 'center', mt: 4 }}>
+        {substitutionError && (
+          <Typography role="status" color="error" sx={{ mb: 1 }}>{substitutionError}</Typography>
+        )}
         {isMortgage && mortgageChoicesError(editedFields) && (
           <Typography role="status" color="error" sx={{ mb: 1 }}>{mortgageChoicesError(editedFields)}</Typography>
         )}
@@ -1611,7 +1617,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           onClick={handleContinue}
           startIcon={<CheckIcon />}
           sx={{ px: 4 }}
-          disabled={!entityType || !collateralOption || selectedActs.filter(a => a.selected).length === 0 || Boolean(mortgageAwardError)}
+          disabled={!entityType || !collateralOption || selectedActs.filter(a => a.selected).length === 0 || Boolean(mortgageAwardError) || Boolean(substitutionError)}
         >
           Продолжить
         </Button>

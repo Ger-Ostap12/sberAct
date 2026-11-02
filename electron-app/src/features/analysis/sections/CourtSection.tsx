@@ -4,6 +4,8 @@ import { FieldInput } from '../components/FieldInput';
 import React from 'react';
 import {
   Box,
+  Button,
+  FormHelperText,
   Typography,
   Grid,
   TextField,
@@ -34,8 +36,36 @@ interface CourtSectionProps {
   onCourtNameChange?: (value: string) => void;
 }
 
+interface JudgeSelectProps {
+  value: string;
+  label: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+}
+
+const JudgeSelect: React.FC<JudgeSelectProps> = ({ value, label, onChange, required }) => (
+  <FormControl fullWidth size="small" margin="dense" error={Boolean(required && !value)}>
+    <Select
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      inputProps={{ 'aria-label': label }}
+      displayEmpty
+      renderValue={(selected) => !selected
+        ? <em>Выберите судью</em>
+        : selected.includes('.') ? selected : formatJudgeName(selected)}
+    >
+      <MenuItem value=""><em>Выберите судью</em></MenuItem>
+      {JUDGES.map((judge) => (
+        <MenuItem key={judge} value={judge}>{formatJudgeName(judge)}</MenuItem>
+      ))}
+    </Select>
+    {required && !value && <FormHelperText>Выберите {label === 'Судья' ? 'основного судью' : 'судью по взаимозамене'}</FormHelperText>}
+  </FormControl>
+);
+
 const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange, mode = 'bankruptcy', onCourtNameChange }) => {
   const isMortgage = mode === 'mortgage';
+  const substitutionEnabled = !isMortgage && editedFields.judgeSubstitutionEnabled === 'true';
   return (
               <Box sx={{ ...BLOCK_BOX_SX, mb: 3 }}>
                 <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'primary.main' }}>
@@ -76,51 +106,57 @@ const CourtSection: React.FC<CourtSectionProps> = ({ editedFields, onFieldChange
                 </Grid>
 
                   <Grid item xs={12}>
-                    <Box sx={LABEL_OVERLAP_BOX}>
-                      <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Судья:</Typography>
-                      {/* Ипотека: судью вводят вручную (по делу назначается позже) —
-                          свободное поле. Банкротство: выбор из реестра судей. */}
-                      {isMortgage ? (
-                        <FieldInput
-                          fullWidth
-                          value={editedFields.judge || ''}
-                          onChange={(значение) => onFieldChange('judge', значение)}
+                    {!isMortgage && (
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 0.5 }}>
+                        <Button
                           size="small"
-                          margin="dense"
-                          placeholder="Фамилия Имя Отчество"
-                          error={!isValidFio(editedFields.judge)}
-                          helperText={!isValidFio(editedFields.judge) ? 'ФИО: Фамилия Имя Отчество или Фамилия И.О.' : undefined}
-                        />
-                      ) : (
-                      <FormControl fullWidth size="small" margin="dense">
-                        <Select
-                          value={editedFields.judge || ''}
-                          onChange={(e) => onFieldChange('judge', e.target.value)}
-                          displayEmpty
-                          renderValue={(selected) => {
-                            if (!selected) {
-                              return <em>Выберите судью</em>;
-                            }
-                            // Если значение уже в формате "Фамилия И.О." (содержит точку), показываем как есть
-                            // Иначе преобразуем полное ФИО в формат "Фамилия И.О."
-                            if (selected.includes('.') && selected.split('.').length > 1) {
-                              return selected;
-                            }
-                            return formatJudgeName(selected);
-                          }}
+                          variant={substitutionEnabled ? 'contained' : 'outlined'}
+                          aria-pressed={substitutionEnabled}
+                          onClick={() => onFieldChange('judgeSubstitutionEnabled', substitutionEnabled ? 'false' : 'true')}
                         >
-                          <MenuItem value="">
-                            <em>Выберите судью</em>
-                          </MenuItem>
-                          {JUDGES.map((judge) => (
-                            <MenuItem key={judge} value={judge}>
-                              {formatJudgeName(judge)}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
+                          Взаимозамена
+                        </Button>
+                      </Box>
+                    )}
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={substitutionEnabled ? 6 : 12}>
+                        <Box sx={LABEL_OVERLAP_BOX}>
+                          <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Судья:</Typography>
+                          {isMortgage ? (
+                            <FieldInput
+                              fullWidth
+                              value={editedFields.judge || ''}
+                              onChange={(value) => onFieldChange('judge', value)}
+                              size="small"
+                              margin="dense"
+                              placeholder="Фамилия Имя Отчество"
+                              error={!isValidFio(editedFields.judge)}
+                              helperText={!isValidFio(editedFields.judge) ? 'ФИО: Фамилия Имя Отчество или Фамилия И.О.' : undefined}
+                            />
+                          ) : (
+                            <JudgeSelect
+                              value={editedFields.judge || ''}
+                              label="Судья"
+                              onChange={(value) => onFieldChange('judge', value)}
+                              required={substitutionEnabled}
+                            />
+                          )}
+                        </Box>
+                      </Grid>
+                      {substitutionEnabled && (
+                        <Grid item xs={12} sm={6}>
+                          <Box sx={LABEL_OVERLAP_BOX}>
+                            <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Судья по взаимозамене:</Typography>
+                            <JudgeSelect
+                              value={editedFields.substituteJudge || ''}
+                              label="Судья по взаимозамене"
+                              onChange={(value) => onFieldChange('substituteJudge', value)}
+                              required
+                            />
+                          </Box>
+                        </Grid>
                       )}
-                    </Box>
+                    </Grid>
                   </Grid>
 
                   {/* Ипотека: адрес/эл. адрес/сайт суда (валидация email и URL). */}
