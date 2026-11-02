@@ -1827,6 +1827,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # Род глаголов тоже считаем по маркерам, пока они на месте.
         self._apply_gender_agreement(doc, cleaned_data)
 
+        from empty_requisites import remove_empty_requisites
+
+        remove_empty_requisites(doc, cleaned_data, field_mapping, self)
         self._apply_field_mapping_replacements(doc, cleaned_data, field_mapping, is_mortgage_document, is_ip, is_physical_collateral)
 
         # Обрабатываем обязательства (договоры) - номера 100-113

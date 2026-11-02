@@ -110,10 +110,12 @@ class TestРеквизитыДолжника:
         doc = акт(gen, ["в отношении должника - [2.1] ([3] года рождения) сведения."])
         assert "Сафиной Рушании Ильдаровны сведения" in текст(doc)
 
-    def test_пустой_огрн_юл_помечается(self, gen):
+    def test_пустой_огрн_юл_удаляется(self, gen):
         doc = акт(gen, ["должника [2] (ОГРН [3], ИНН [4])."], entityType="legal",
                   debtorName="ООО «Ромашка»", applicantName="ООО «Ромашка»", inn="6161")
-        assert "******" in выделенные(doc)
+        assert "ОГРН" not in текст(doc)
+        assert "ИНН 6161" in текст(doc)
+        assert "******" not in выделенные(doc)
 
 
 class TestСуммы:
