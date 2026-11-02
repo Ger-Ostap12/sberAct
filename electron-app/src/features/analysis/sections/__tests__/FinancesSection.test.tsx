@@ -271,7 +271,8 @@ describe('FinancesSection — военная ипотека: два блока (
     expect(screen.getByText('Задолженность по кредитному договору')).toBeInTheDocument();
     expect(screen.getByText('Общая сумма долга:')).toBeInTheDocument();
     expect(screen.getByText('Проценты:')).toBeInTheDocument();
-    expect(screen.getByText('Неустойка:')).toBeInTheDocument();
+    expect(screen.getByText('Неустойка за просроченный основной долг:')).toBeInTheDocument();
+    expect(screen.getByText('Неустойка за просроченные проценты:')).toBeInTheDocument();
     expect(screen.getByText('Просроченный основной долг:')).toBeInTheDocument();
     expect(screen.getByText('Госпошлина:')).toBeInTheDocument();
     expect(screen.getByText('Итоговая сумма:')).toBeInTheDocument();

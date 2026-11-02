@@ -1506,6 +1506,11 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             boundary.getparent().remove(boundary)
         if resolution != PARTIAL:
             self._remove_placeholder_phrase(doc, "[889]")
+        if kind == "civil" and resolution != DENY and (selected is None or selected["foreclosure"]):
+            from civil_mortgage_properties import render_civil_property_awards
+            render_civil_property_awards(
+                doc, paragraphs[2], paragraphs[3], data, self._normalize_date_format,
+            )
 
     def _apply_claim_resolution(self, cleaned_data: Dict[str, Any]) -> None:
         """Готовит тексты [888] и [889] из выбора «Удовлетворение иска».
@@ -2906,6 +2911,13 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         try:
             # Проверяем, есть ли выбранные пользователем акты (могут быть в data или в data.fields)
             fields = data.get("fields") or {}
+            source = data.get("sourceDocumentType") or fields.get("sourceDocumentType")
+            if (source == "mortgage_claim" or str(template_type or "").lower() == "mortgage"
+                    or fields.get("documentCategory") == "mortgage"):
+                from mortgage_choices import mortgage_choices_error
+                choice_error = mortgage_choices_error(data)
+                if choice_error:
+                    return {"success": False, "error": choice_error}
 
             # Несколько должников: при 2+ авторитетно пересобираем плоские поля и падежи
             # из массива debtors (учёт правок пользователя в форме). Склейка через запятую,
@@ -3132,9 +3144,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             ]
 
             for doc_type, template_info in templates.items():
-                military_short = (doc_type == "mortgage_decision"
-                                  and self._mortgage_selection(data)["kind"] == "military")
-                isolated_mortgage_act = doc_type == "mortgage_full_decision" or military_short
+                isolated_short = (doc_type == "mortgage_decision"
+                                  and self._mortgage_selection(data)["kind"] in ("civil", "military"))
+                isolated_mortgage_act = doc_type == "mortgage_full_decision" or isolated_short
                 logger.info(f" Генерируем документ: {template_info['name']}")
 
                 # Акт выбран пользователем — резолвим строго, без подмены произвольным .docx

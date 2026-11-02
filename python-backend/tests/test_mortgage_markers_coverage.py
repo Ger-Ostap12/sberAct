@@ -73,6 +73,7 @@ def test_property_area_taken_from_field_not_only_description():
     """
     fields = {
         "sourceDocumentType": "mortgage_claim",
+        "solidaryLiability": "false", "claimResolution": "full",
         "selectedMortgageKind": "ddu",
         "courtName": "Октябрьский районный суд г. Ростова-на-Дону",
         "caseNumber": "2-1/2026",
@@ -135,6 +136,7 @@ CASE_EXPECTATIONS = [
 def generated_package():
     fields = {
         "sourceDocumentType": "mortgage_claim",
+        "solidaryLiability": "false", "claimResolution": "full",
         "selectedMortgageKind": "civil",
         "courtName": "Октябрьский районный суд г. Ростова-на-Дону",
         "higherCourt": "Ростовский областной суд",
@@ -170,6 +172,7 @@ def test_decision_date_falls_back_to_common_date_field():
     """
     fields = {
         "sourceDocumentType": "mortgage_claim",
+        "solidaryLiability": "false", "claimResolution": "full",
         "selectedMortgageKind": "civil",
         "courtName": "Приморский районный суд г. Новороссийска",
         "caseNumber": "2-777/2026",

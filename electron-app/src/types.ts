@@ -83,6 +83,7 @@ export interface PartyLite {
 export interface MortgageProperty {
   id: string;
   description?: string;
+  area?: string;
   cadastralNumber?: string;
   address?: string;
   value?: string;

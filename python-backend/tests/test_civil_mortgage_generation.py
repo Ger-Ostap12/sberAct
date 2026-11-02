@@ -21,7 +21,7 @@ def mortgage_data(representatives=False, solidary=False, outcome="full", penalty
     """Синтетическое дело с заполненными реквизитами всех шести документов."""
     fields = {
         "selectedMortgageKind": "civil",
-        "solidaryLiability": "true" if solidary else "",
+        "solidaryLiability": "true" if solidary else "false",
         "claimResolution": outcome,
         "caseNumber": "2-1234/2026",
         "caseUid1304": "61RS0001-01-2026-000001-01",

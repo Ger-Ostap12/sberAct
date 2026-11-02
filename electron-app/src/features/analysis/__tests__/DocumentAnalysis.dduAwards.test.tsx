@@ -22,6 +22,9 @@ it('в форме ДДУ передаёт выбор требований и о�
   render(<DocumentAnalysis documentData={document} extractedData={data} mode="mortgage"
     onAnalysisComplete={complete} onBack={() => {}} />);
   const next = await screen.findByRole('button', { name: 'Продолжить' });
+  expect(next).toBeDisabled();
+  fireEvent.click(screen.getByRole('radio', { name: 'Несолидарное' }));
+  fireEvent.click(screen.getByRole('radio', { name: 'Удовлетворить частично' }));
   await waitFor(() => expect(next).toBeEnabled());
   fireEvent.change(screen.getByLabelText('Присуждённая неустойка за проценты'), { target: { value: '-1' } });
   expect(next).toBeDisabled();

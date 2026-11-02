@@ -99,7 +99,7 @@ def test_ddu_property_contract_and_fields():
     assert p["cadastralNumber"] == "11:11:1111111:11111"
     assert p["egrnRecord"].startswith("11:11:1111111:11111")
     assert p["egrnRecordDate"] == "30.10.2023"
-    assert p["description"].startswith("Имущественные права требования")
+    assert p["description"] == "Квартира"
     # Оценка задана как «в заключении № … от …» (без слов «об оценке»).
     assert p["appraisalReport"] == "№2-250513-1847537 от 13.05.2025"
 

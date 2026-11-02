@@ -117,11 +117,6 @@ def extract_court_window(raw_text: str) -> str:
 # документов оценка может выпасть даже за 9000). Тот же класс проблемы, что
 # уже решали для СРО/manager (prayer_window) и representatives (изолированный
 # вызов) — сужаем ДВУМЯ прицельными якорями, не одним бланкет-окном.
-_MP_COLLATERAL_RE = re.compile(
-    r"а\s+именно\s*:?\s*(.+?)(?:В\s+силу\s+(?:п\.?\s*1\s+)?ст\.?\s*77|В\s+силу\s+ст\.|"
-    r"Банк\s+исполнил|Право\s+собственности\s+на\s+вышеуказанн|\n\s*\n|$)",
-    re.IGNORECASE | re.DOTALL,
-)
 _MP_VALUATION_ANCHOR_RE = re.compile(
     r"залогов\w+\s+стоимост\w+|оценка\s+по\s+определению\s+рыночной\s+стоимости|"
     r"провед\w+\s+оценк\w+\s+рыночной\s+стоимости|"
@@ -131,12 +126,9 @@ _MP_VALUATION_ANCHOR_RE = re.compile(
 
 
 def extract_collateral_block(text: str) -> str:
-    """Блок залога: «…залог… а именно: <объекты>» до законной оговорки —
-    компактный, один абзац на объект (description/cadastralNumber/address/
-    egrnRecord), см. _mp_collateral_chunks в document_analyzer.py (тот же
-    якорь, здесь без пообъектной разбивки — её делает сам LLM)."""
-    m = _MP_COLLATERAL_RE.search(text)
-    return m.group(1).strip()[:1500] if m else ""
+    """Окно подсказок использует те же границы объектов, что и основной разбор."""
+    from mortgage_object_parser import collateral_chunks
+    return "\n".join(collateral_chunks(text))[:6000]
 
 
 def extract_valuation_block(text: str) -> str:

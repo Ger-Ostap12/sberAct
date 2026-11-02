@@ -21,6 +21,9 @@ it('проверяет частичное удовлетворение пере�
   render(<DocumentAnalysis documentData={document} extractedData={data} mode="mortgage"
     onAnalysisComplete={complete} onBack={() => {}} />);
   const next = await screen.findByRole('button', { name: 'Продолжить' });
+  expect(next).toBeDisabled();
+  fireEvent.click(screen.getByRole('radio', { name: 'Несолидарное' }));
+  fireEvent.click(screen.getByRole('radio', { name: 'Удовлетворить полностью' }));
   await waitFor(() => expect(next).toBeEnabled());
   fireEvent.click(screen.getByRole('radio', { name: 'Удовлетворить частично' }));
   for (const label of ['Расторгнуть кредитный договор', 'Взыскать задолженность',

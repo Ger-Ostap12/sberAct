@@ -56,6 +56,10 @@ const MortgagePropertySection: React.FC<MortgagePropertySectionProps> = ({
         </Box>
         <Grid container spacing={2}>
           <Grid item xs={12}>
+            <FieldInput fullWidth size="small" label="Общая площадь (кв. м.)"
+              value={property.area || ''} onChange={(value) => onUpdate(index, 'area', value)} />
+          </Grid>
+          <Grid item xs={12}>
             <Box sx={LABEL_OVERLAP_BOX}>
               <Typography variant="body2" sx={LABEL_OVERLAP_SX}>Описание объекта:<LlmHintPending field={`mortgageProperties[${index}].description`} block="properties" /></Typography>
               <FieldInput

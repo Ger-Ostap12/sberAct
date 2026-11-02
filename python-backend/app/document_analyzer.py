@@ -2222,7 +2222,17 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
                 break
             if is_person_name(s):
                 return _normalize_fio(s)
-        return None
+        from representative_extractor import extract_representative
+        block = "\n".join(text[m.end():m.end() + 1600].split("\n")[:6])
+        stop = re.search(
+            r"(?:СНИЛС|ИНН|ОГРН)\s*[:：]?\s*\d|"
+            r"(?:Ответчик|Треть\w+\s+лиц\w*|Почтов\w+\s+адрес|Цена\s+иска|Паспорт)\s*[:：]|"
+            r"(?:^|\n)\s*(?:Ответчик\w*|Истец|Треть\w+\s+лиц\w*|ИСКОВОЕ\s+ЗАЯВЛЕНИЕ)\b",
+            block, re.IGNORECASE)
+        if stop:
+            block = block[:stop.start()]
+        candidate = extract_representative("Представитель истца: " + re.sub(r"\s+", " ", block))
+        return candidate if candidate and is_person_name(candidate) else None
 
     def _extract_respondent_representative_name(self, text: str) -> Optional[str]:
         """ФИО представителя ответчика из блока «Представитель ответчика:».
@@ -6154,30 +6164,15 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
     @staticmethod
     def _mp_type(name: str) -> Optional[str]:
-        """Тип объекта из его наименования/описания (для сопоставления «в том числе»)."""
-        n = (name or "").lower()
-        if "участ" in n:
-            return "участок"
-        if "дом" in n:
-            return "дом"
-        if "квартир" in n:
-            return "квартира"
-        if "машино" in n:
-            return "машиноместо"
-        if "гараж" in n:
-            return "гараж"
-        if "помещ" in n:
-            return "помещение"
-        return None
+        from mortgage_object_parser import physical_type, property_description
+        label = physical_type(property_description(name))
+        return {"Жилой дом": "дом", "Земельный участок": "участок", "Квартира": "квартира",
+                "Машино-место": "машиноместо", "Гараж": "гараж",
+                "Нежилое помещение": "помещение", "Помещение": "помещение"}.get(label)
 
     def _mp_description(self, raw: str) -> str:
-        """Основное описание объекта: до адреса/кадастра/записи ЕГРН."""
-        d = (raw or "").strip().lstrip("-–—• \t").strip()
-        d = re.split(
-            r",?\s*(?:расположен\w*|находящ\w*|по\s+адресу|кадастров\w+|Запис\w+\s+в\s+ЕГРН)",
-            d, maxsplit=1, flags=re.IGNORECASE,
-        )[0].strip(" ,;.")
-        return (d[0].upper() + d[1:]) if d else d
+        from mortgage_object_parser import property_description
+        return property_description(raw)
 
     def _mp_egrn(self, desc: str):
         """(номер ЕГРН, дата) из «Запись в ЕГРН: …, № … от …» описания объекта.
@@ -6194,7 +6189,11 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         )
         if not recs:
             m2 = re.search(r"(?:№|N)\s*([0-9A-Za-zА-Яа-я:/\-]+)", seg)
-            return (m2.group(1).strip(" .") if m2 else ""), ""
+            if not m2:
+                m2 = re.search(r"(?<![\d.])(\d[\d:/-]*[/-][\d:/-]+)", seg)
+            date = re.search(r"\bот\s+(\d{1,2}[.,]\d{1,2}[.,]\d{4})", seg)
+            return ((m2.group(1).strip(" .") if m2 else ""),
+                    date.group(1).replace(",", ".") if m2 and date else "")
         if len(recs) == 1:
             _share, num, date = recs[0]
             return num.strip(" ."), date.replace(",", ".")
@@ -6288,35 +6287,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
     )
 
     def _mp_collateral_chunks(self, text: str) -> List[str]:
-        """Абзацы-предметы из блока «…залог… а именно: …» до «В силу п.1 ст. 77…».
-
-        Объекты идут отдельными строками, но буллет «-» бывает только у первого
-        (грязная вёрстка). Поэтому режем не по буллетам, а по строкам, начинающимся
-        с ключевого слова вида объекта; строки-продолжения (перенос адреса) клеим
-        к текущему объекту."""
-        m = re.search(
-            r"а\s+именно\s*:?\s*(.+?)(?:В\s+силу\s+(?:п\.?\s*1\s+)?ст\.?\s*77|В\s+силу\s+ст\.|"
-            r"Банк\s+исполнил|Право\s+собственности\s+на\s+вышеуказанн|\n\s*\n|$)",
-            text, re.IGNORECASE | re.DOTALL,
-        )
-        if not m:
-            return []
-        block = m.group(1)
-        chunks: List[str] = []
-        cur: Optional[str] = None
-        for raw in block.split("\n"):
-            ln = raw.strip(" -–—•\t")
-            if not ln:
-                continue
-            if self._MP_OBJ_START_RE.match(ln):
-                if cur:
-                    chunks.append(cur)
-                cur = ln
-            elif cur is not None:
-                cur += " " + ln
-        if cur:
-            chunks.append(cur)
-        return chunks
+        from mortgage_object_parser import collateral_chunks
+        return collateral_chunks(text)
 
     @staticmethod
     def _mp_cadastral(chunk: str) -> str:
@@ -6327,8 +6299,8 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
     @staticmethod
     def _mp_address(chunk: str) -> str:
-        m = re.search(r"по\s+адресу\s*:?\s*(.+?)(?:,?\s*кадастров\w+\s+номер|\.\s*Запис\w+|$)", chunk, re.IGNORECASE)
-        return m.group(1).strip(" ,;.") if m else ""
+        from mortgage_object_parser import property_address
+        return property_address(chunk)
 
     def _detect_mortgage_kind(self, text: str) -> str:
         """Вид ипотеки: 'military' | 'ddu' | 'civil'.
@@ -6399,9 +6371,16 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         val_total, _ = self._mp_amounts(text, "value")
         st_total, _ = self._mp_amounts(text, "start")
         addr = self._mp_address(seg)
+        from mortgage_object_parser import physical_type, property_area
+        physical_context = seg if m else next(
+            (line for line in text.splitlines() if re.search(
+                r"Кредит\s+выдавался|Обратить\s+взыскание|права\s+требования", line, re.IGNORECASE)
+             and self._mp_address(line)), "")
+        physical_context = re.split(r"кадастров\w+\s+номер", physical_context, maxsplit=1, flags=re.IGNORECASE)[0]
         return [{
             "id": "mortgageProperty-0",
-            "description": "Имущественные права требования участника долевого строительства",
+            "description": physical_type(physical_context),
+            "area": property_area(seg),
             "cadastralNumber": self._mp_cadastral(seg),
             "address": addr,
             "value": val_total or "",
@@ -6427,11 +6406,14 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
         стратегию НПЦ и отчёт об оценке — общие для всех объектов."""
         if kind == "ddu":
             return self._build_ddu_property(text)
+        from mortgage_object_parser import property_area
 
         chunks = self._mp_collateral_chunks(text)
         # Фолбэк: если блок не найден, но общий парсер что-то дал — используем его.
         if not chunks and collaterals:
-            chunks = [c.get("description") or c.get("objectName") or "" for c in collaterals]
+            from mortgage_object_parser import collateral_chunks
+            fallback = "\n".join(c.get("description") or c.get("objectName") or "" for c in collaterals)
+            chunks = collateral_chunks(fallback)
         chunks = [c for c in chunks if c and len(c) >= 10]
         if not chunks:
             return []
@@ -6451,6 +6433,7 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
             out.append({
                 "id": f"mortgageProperty-{i}",
                 "description": self._mp_description(chunk),
+                "area": property_area(chunk),
                 "cadastralNumber": self._mp_cadastral(chunk),
                 "address": self._mp_address(chunk),
                 "value": value or "",
