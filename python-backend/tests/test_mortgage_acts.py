@@ -49,7 +49,7 @@ def test_four_acts_are_the_same_regardless_of_settings(gen):
 
 
 def test_all_template_files_exist(gen):
-    """Каждый из 16 файлов пакета лежит на диске под тем именем, что в резолвере."""
+    """Каждый подключённый шаблон существует под именем, указанным в резолвере."""
     seen = set()
     for kind in ("civil", "military", "ddu"):
         for solidary in (None, "true"):
@@ -58,15 +58,15 @@ def test_all_template_files_exist(gen):
                 for key, tpl in templates.items():
                     seen.add(tpl["path"])
                     assert tpl["path"].exists(), f"нет файла для {key}: {tpl['path']}"
-    assert len(seen) == 16
+    assert len(seen) == 14
 
 
 # --- ветвление решения-резолютивки ------------------------------------------
 CASES = [
-    ("civil", None, None, "реш_рез обычная должник не солидарное ипот.docx"),
-    ("civil", "true", None, "реш_рез обычная должник солидарное ипот.docx"),
-    ("civil", None, "Иванов И.И.", "реш_рез обычная представители не солидарное ипотека.docx"),
-    ("civil", "true", "Иванов И.И.", "реш_рез представители солидарное обычная ипот.docx"),
+    ("civil", None, None, "реш_рез обычная 1 должник несолид ипот.docx"),
+    ("civil", "true", None, "реш_рез обычная 1 должник несолид ипот.docx"),
+    ("civil", None, "Иванов И.И.", "реш_рез обычная представители солидарное ипотека.docx"),
+    ("civil", "true", "Иванов И.И.", "реш_рез обычная представители солидарное ипотека.docx"),
     ("ddu", None, None, "реш_рез дду должник не_солидарное ипотека.docx"),
     ("ddu", "true", None, "реш_рез дду должник солидарное ипотека.docx"),
     ("ddu", None, "Иванов И.И.", "реш_рез дду представители не_солидарное ипотека.docx"),
@@ -109,7 +109,7 @@ def test_analyzer_kind_used_when_user_did_not_choose(gen):
 def test_defaults_to_civil_debtor_non_solidary(gen):
     """Пустая форма — обычная ипотека, должник, не солидарное."""
     assert gen._get_mortgage_templates({})["mortgage_decision"]["path"].name == (
-        "реш_рез обычная должник не солидарное ипот.docx"
+        "реш_рез обычная 1 должник несолид ипот.docx"
     )
 
 
@@ -127,4 +127,4 @@ def test_selection_read_from_top_level_data(gen):
 
 def test_solidary_only_on_exact_true(gen):
     """Снятая галочка приходит пустой строкой — это НЕ солидарное."""
-    assert "не солидарное" in gen._get_mortgage_templates(_data(kind="civil", solidary=""))["mortgage_decision"]["path"].name
+    assert gen._mortgage_selection(_data(kind="civil", solidary=""))["solidary"] is False

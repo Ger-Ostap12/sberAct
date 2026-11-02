@@ -1504,6 +1504,21 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # Подстановки могут пересобрать run'ы; обе границы убираются заранее.
         for boundary in boundaries:
             boundary.getparent().remove(boundary)
+        if kind == "civil" and resolution != DENY and paragraphs[1].getparent() is body:
+            recovery = next(p for p in doc.paragraphs if p._p is paragraphs[1])
+            self._regex_sub_in_paragraphs(
+                [recovery], re.compile(r"(?<=Взыскать)\s+солидарно\b", re.I), "",
+            )
+            self._regex_sub_in_paragraphs(
+                [recovery], re.compile(r"\s+в солидарном порядке\b", re.I), "",
+            )
+            if self._mortgage_selection(data)["solidary"]:
+                self._regex_sub_in_paragraphs(
+                    [recovery], re.compile(r"^Взыскать\s+с\b", re.I), "Взыскать солидарно с",
+                )
+        if kind == "civil":
+            from civil_mortgage_people import fill_civil_parties
+            fill_civil_parties(doc, data, self)
         if resolution != PARTIAL:
             self._remove_placeholder_phrase(doc, "[889]")
         if kind == "civil" and resolution != DENY and (selected is None or selected["foreclosure"]):

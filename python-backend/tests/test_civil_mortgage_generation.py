@@ -180,7 +180,7 @@ def test_real_packages(generator, representatives, solidary, outcome):
     assert ("В удовлетворении исковых требований" if outcome == "deny" else "Исковые требования") in output
     assert all((command in output) == (outcome != "deny") for command in COMMANDS)
     assert ("остальной части" in output) == (outcome == "partial")
-    assert ("в солидарном порядке" in output) == (solidary and outcome != "deny")
+    assert any(word in output for word in ("солидарно", "в солидарном порядке")) == (solidary and outcome != "deny")
     assert "[888]" not in output and "[889]" not in output and "[15]" not in output
     assert "MortgageAwards" not in xml(doc)
     assert not list(doc.element.iter(qn("w:bookmarkEnd")))

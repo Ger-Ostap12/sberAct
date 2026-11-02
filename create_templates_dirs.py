@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Создаёт структуру папок Shablony для переноса шаблонов."""
 from pathlib import Path
 
