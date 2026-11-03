@@ -27,6 +27,7 @@ from template_manager import TemplateManager
 from creditor_registry import list_banks
 import paths as app_paths
 from llm_api import router as llm_router
+import diagnostics
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +98,10 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Request-ID"],
 )
+
+diagnostics.install(app, app_paths.data_root() / "logs")
 
 # Инициализация компонентов
 document_analyzer = DocumentAnalyzer()
@@ -250,9 +254,12 @@ async def analyze_document(document: UploadFile = File(...)):
 
     except ValueError as e:
         # Ошибки извлечения текста/поврежденный файл -> 400
-        raise HTTPException(status_code=400, detail=f"Ошибка при анализе документа: {str(e)}")
+        raise HTTPException(status_code=400, detail=diagnostics.failure(e, message="Не удалось обработать документ."))
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при анализе документа: {str(e)}")
+        logger.exception("Сбой операции API")
+        raise HTTPException(status_code=500, detail=diagnostics.failure(e, message='Не удалось проанализировать документ.'))
 
 
 class AnalyzeTextRequest(BaseModel):
@@ -286,9 +293,12 @@ async def analyze_text(request: AnalyzeTextRequest):
         }
     except ValueError as e:
         # Пустой/непригодный текст -> 400
-        raise HTTPException(status_code=400, detail=f"Ошибка при анализе документа: {str(e)}")
+        raise HTTPException(status_code=400, detail=diagnostics.failure(e, message="Не удалось обработать документ."))
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при анализе документа: {str(e)}")
+        logger.exception("Сбой операции API")
+        raise HTTPException(status_code=500, detail=diagnostics.failure(e, message='Не удалось проанализировать документ.'))
 
 
 @app.post("/docx-text")
@@ -319,9 +329,12 @@ async def docx_text(document: UploadFile = File(...)):
         finally:
             os.unlink(tmp_path)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Не удалось извлечь текст: {str(e)}")
+        raise HTTPException(status_code=400, detail=diagnostics.failure(e, message="Не удалось обработать документ."))
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Не удалось извлечь текст: {str(e)}")
+        logger.exception("Сбой операции API")
+        raise HTTPException(status_code=500, detail=diagnostics.failure(e, message='Не удалось извлечь текст.'))
 
 
 @app.post("/docx-apply-edits")
@@ -370,7 +383,8 @@ async def docx_apply_edits(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Не удалось применить правки: {str(e)}")
+        logger.exception("Сбой операции API")
+        raise HTTPException(status_code=500, detail=diagnostics.failure(e, message='Не удалось применить правки.'))
 
 
 # Прокси к конвертеру (sidecar-процесс на 127.0.0.1:8008).
@@ -590,13 +604,7 @@ async def converter_start():
 
         command = _converter_command()
         if command is None:
-            return {
-                "ok": False,
-                "error": (
-                    f"Конвертер не найден в {CONVERTER_DIR} "
-                    "(укажите папку через переменную окружения CONVERTER_DIR)"
-                ),
-            }
+            return diagnostics.startup_failure(missing=True)
 
         # Любой сбой спавна/ожидания отдаём как {ok:false}, а не 500 — иначе фронт
         # ловит HTTP-ошибку и показывает пользователю пугающий экран вместо «идёт запуск».
@@ -605,30 +613,36 @@ async def converter_start():
             _converter_process = subprocess.Popen(
                 command,
                 cwd=str(CONVERTER_DIR),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
                 env={
                     **os.environ,
+                    "PYTHONIOENCODING": "utf-8",
+                    "PYTHONUNBUFFERED": "1",
                     "CONVERTER_PORT": CONVERTER_PORT,
                     "CONVERTER_DIR": str(CONVERTER_DIR),
                     **_converter_env(),
                 },
             )
 
+            capture = diagnostics.ProcessOutput(_converter_process)
             deadline = asyncio.get_event_loop().time() + CONVERTER_START_TIMEOUT_S
             while asyncio.get_event_loop().time() < deadline:
                 if _converter_process.poll() is not None:
                     code = _converter_process.returncode
                     _converter_process = None
-                    return {"ok": False, "error": f"Конвертер завершился до готовности (код {code})"}
+                    return diagnostics.startup_failure(capture.output(finished=True), exit_code=code)
                 if await _converter_healthy():
                     return {"ok": True, "external": False}
                 await asyncio.sleep(1.0)
 
             _kill_converter()
-            return {"ok": False, "error": f"Конвертер не поднялся за {CONVERTER_START_TIMEOUT_S} с"}
+            return diagnostics.startup_failure(capture.output(finished=True), timeout=True)
         except Exception as e:
             logger.exception("Сбой запуска конвертера")
             _kill_converter()
-            return {"ok": False, "error": f"Не удалось запустить конвертер: {e}"}
+            return diagnostics.startup_failure(f"{type(e).__name__}: {e}")
 
 
 def _kill_converter() -> None:
@@ -734,8 +748,11 @@ async def get_templates():
     try:
         templates = template_manager.get_all_templates()
         return templates
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при получении шаблонов: {str(e)}")
+        logger.exception("Сбой операции API")
+        raise HTTPException(status_code=500, detail=diagnostics.failure(e, message='Не удалось получить список шаблонов.'))
 
 @app.get("/banks")
 async def get_banks():
@@ -745,8 +762,11 @@ async def get_banks():
     """
     try:
         return list_banks()
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при получении банков: {str(e)}")
+        logger.exception("Сбой операции API")
+        raise HTTPException(status_code=500, detail=diagnostics.failure(e, message='Не удалось получить список кредиторов.'))
 
 @app.post("/generate-document")
 async def generate_document(request_data: Dict[str, Any]):
@@ -765,6 +785,17 @@ async def generate_document(request_data: Dict[str, Any]):
 
         if not template_type or not extracted_data:
             raise HTTPException(status_code=400, detail="Отсутствуют обязательные поля: template_type или data")
+
+        if not isinstance(template_type, str) or not isinstance(extracted_data, dict):
+            raise HTTPException(status_code=422, detail={
+                "code": "INVALID_REQUEST", "message": "Неверный формат данных для генерации.",
+                "hint": "Повторите переход из анализа к генерации.",
+            })
+        fields = extracted_data.get("fields")
+        if fields is not None and not isinstance(fields, dict):
+            raise HTTPException(status_code=422, detail={
+                "code": "INVALID_REQUEST", "message": "Неверный формат полей анализа.",
+            })
 
         # Генерируем документ. Тредпул + лок: генерация пишет в общий
         # `document_generator.documents` и открывает шаблоны с диска.
@@ -797,12 +828,26 @@ async def generate_document(request_data: Dict[str, Any]):
                     "file_path": result["file_path"]
                 }
         else:
-            raise HTTPException(status_code=422 if result.get("error_code") == "templates_unavailable" else 500, detail=result["error"])
+            if result.get("error_code") == "templates_unavailable":
+                raise HTTPException(status_code=422, detail={
+                    "code": "TEMPLATES_UNAVAILABLE", "message": "Не найдены шаблоны выбранных актов: " + ", ".join(
+                        getattr(document_generator, "_TREE_ACT_LABELS", {}).get(act, (act, act))[1]
+                        for act in result.get("unresolved_act_ids", [])
+                    ) + (" (" + diagnostics.template_context(extracted_data) + ")" if diagnostics.template_context(extracted_data) else ""),
+                    "hint": "Измените выбор актов или добавьте недостающие шаблоны.",
+                })
+            # Понятные проверки формы генератор возвращает без исключения.
+            error = result.get("error") or "Не удалось сформировать документы."
+            if any(word in error.lower() for word in ("выберите", "укажите", "обязател", "не заполнен", "требуется", "не выбран")):
+                raise HTTPException(status_code=422, detail={"code": "INVALID_FORM", "message": error})
+            raise HTTPException(status_code=500, detail=diagnostics.failure(
+                RuntimeError(error), message="Не удалось сформировать документы."))
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при генерации документа: {str(e)}")
+        logger.exception("Сбой операции API")
+        raise HTTPException(status_code=500, detail=diagnostics.failure(e, message='Не удалось сформировать документы.'))
 
 @app.get("/download-document/{document_id}")
 async def download_document(document_id: str):
@@ -831,8 +876,11 @@ async def download_document(document_id: str):
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при скачивании документа: {str(e)}")
+        logger.exception("Сбой операции API")
+        raise HTTPException(status_code=500, detail=diagnostics.failure(e, message='Не удалось подготовить документ для сохранения.'))
 
 @app.get("/download-zip")
 async def download_zip_get(ids: str = ""):
@@ -893,8 +941,11 @@ async def download_zip_get(ids: str = ""):
                 "Cache-Control": "no-cache"
             }
         )
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Сбой операции API")
+        raise HTTPException(status_code=500, detail=diagnostics.failure(e, message='Не удалось выполнить операцию.'))
 
 
 @app.post("/download-zip-save")
@@ -967,8 +1018,11 @@ async def download_zip_save(payload: Dict[str, Any]):
             "success": True,
             "filePath": str(target_path),
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при создании архива: {str(e)}")
+        logger.exception("Сбой операции API")
+        raise HTTPException(status_code=500, detail=diagnostics.failure(e, message='Не удалось подготовить архив.'))
 
 
 @app.post("/download-all-documents")
@@ -1026,8 +1080,11 @@ async def download_all_documents(request: dict):
             filename=имя,
             media_type="application/zip"
         )
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при создании архива: {str(e)}")
+        logger.exception("Сбой операции API")
+        raise HTTPException(status_code=500, detail=diagnostics.failure(e, message='Не удалось подготовить архив.'))
 
 @app.get("/download-paths")
 async def get_download_paths():
@@ -1062,8 +1119,11 @@ async def get_download_paths():
             "success": True,
             "paths": paths
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при получении путей: {str(e)}")
+        logger.exception("Сбой операции API")
+        raise HTTPException(status_code=500, detail=diagnostics.failure(e, message='Не удалось получить папки для сохранения.'))
 
 @app.delete("/documents/{document_id}")
 async def delete_document(document_id: str):
@@ -1078,8 +1138,11 @@ async def delete_document(document_id: str):
         else:
             raise HTTPException(status_code=404, detail="Документ не найден")
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при удалении документа: {str(e)}")
+        logger.exception("Сбой операции API")
+        raise HTTPException(status_code=500, detail=diagnostics.failure(e, message='Не удалось удалить документ.'))
 
 if __name__ == "__main__":
     try:

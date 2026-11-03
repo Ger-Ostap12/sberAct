@@ -179,7 +179,7 @@ describe('useGenerateDocument', () => {
       await result.current.generate();
     });
 
-    expect(result.current.generationResult).toEqual({ success: false, error: 'boom' });
+    expect(result.current.generationResult).toMatchObject({ success: false, error: 'Не удалось сформировать документы.', failure: { raw: 'boom', incidentId: expect.any(String) } });
   });
 
   it('исключение → generationResult.error из message', async () => {
@@ -193,9 +193,10 @@ describe('useGenerateDocument', () => {
       await result.current.generate();
     });
 
-    expect(result.current.generationResult).toEqual({
+    expect(result.current.generationResult).toMatchObject({
       success: false,
-      error: 'network down',
+      error: 'Не удалось сформировать документы.',
+      failure: { raw: 'network down', incidentId: expect.any(String) },
     });
   });
 });

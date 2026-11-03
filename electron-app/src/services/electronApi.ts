@@ -1,3 +1,5 @@
+import { guarded } from '../shared/lib/diagnostics';
+import type { DiagnosticEvent } from '../shared/lib/diagnostics';
 import { AnalysisResult, ExtractedData } from '../types';
 import { Bank } from '../shared/constants/banks';
 import { webApi } from './webApi';
@@ -185,6 +187,10 @@ export interface ConvertCancelResult {
 
 /** Результат запуска sidecar-процесса конвертера. */
 export interface ConverterStartResult {
+  message?: string;
+  hint?: string;
+  code?: string;
+  incidentId?: string;
   ok: boolean;
   /** true — сервис уже был запущен снаружи (не наш процесс). */
   external?: boolean;
@@ -222,6 +228,11 @@ export interface DocxTextResult {
  * Единственная точка правды о том, что доступно во `window.electronAPI`.
  */
 export interface ElectronAPI {
+  diagnosticsRecord?: (entry: DiagnosticEvent) => Promise<void>;
+  diagnosticsSnapshot?: () => Promise<unknown>;
+  diagnosticsSave?: (text: string) => Promise<{ saved: boolean; error?: string; code?: string; hint?: string; incidentId?: string }>;
+  diagnosticsCopy?: (text: string) => Promise<void | { copied: boolean; error?: string; code?: string; hint?: string; incidentId?: string }>;
+  onDiagnostic?: (callback: (entry: DiagnosticEvent) => void) => () => void;
   isReady: () => boolean;
   selectFile: () => Promise<string | null>;
   saveFile: (defaultName: string) => Promise<string | null>;
@@ -392,80 +403,80 @@ export const getApi = (): ElectronAPI =>
 // ── Тонкие обёртки: единый вход для компонентов (работают и в Electron, и в браузере) ──
 
 export const analyzeDocument = (input: File | string): Promise<AnalysisResult> =>
-  getApi().analyzeDocument(input);
+  guarded('Не удалось проанализировать документ.', () => getApi().analyzeDocument(input));
 
 export const generateDocument = (
   req: GenerateDocumentRequest
-): Promise<GenerateDocumentResult> => getApi().generateDocument(req);
+): Promise<GenerateDocumentResult> => guarded('Не удалось сформировать документы.', () => getApi().generateDocument(req));
 
 export const downloadDocument = (documentId: string): Promise<DownloadResult> =>
-  getApi().downloadDocument(documentId);
+  guarded('Не удалось сохранить документ.', () => getApi().downloadDocument(documentId));
 
 export const downloadAllDocuments = (
   data: DownloadAllDocumentsRequest
-): Promise<DownloadResult> => getApi().downloadAllDocuments(data);
+): Promise<DownloadResult> => guarded('Не удалось сохранить архив.', () => getApi().downloadAllDocuments(data));
 
 export const getExtractedData = (): Promise<ExtractedData | null> =>
-  getApi().getExtractedData();
+  guarded('Не удалось выполнить действие.', () => getApi().getExtractedData());
 
-export const selectFile = (): Promise<string | null> => getApi().selectFile();
+export const selectFile = (): Promise<string | null> => guarded('Не удалось выбрать файл.', () => getApi().selectFile());
 
-export const getBanks = (): Promise<Bank[]> => getApi().getBanks();
+export const getBanks = (): Promise<Bank[]> => guarded('Не удалось получить список кредиторов.', () => getApi().getBanks());
 
 // ── Convert-шаг ──
 
 export const analyzeText = (text: string, pageCount?: number): Promise<AnalysisResult> =>
-  getApi().analyzeText(text, pageCount);
+  guarded('Не удалось проанализировать текст.', () => getApi().analyzeText(text, pageCount));
 
 export const convertAnalyze = (file: File): Promise<ConvertClassifyResult> =>
-  getApi().convertAnalyze(file);
+  guarded('Не удалось проверить PDF.', () => getApi().convertAnalyze(file));
 
-export const converterWarmup = (): Promise<void> => getApi().converterWarmup();
+export const converterWarmup = (): Promise<void> => guarded('Не удалось подготовить конвертер.', () => getApi().converterWarmup());
 
 export const convertScan = (
   file: File,
   flags?: ConvertScanFlags,
   jobKey?: string
 ): Promise<{ job_id: string; reused?: boolean; warning?: string | null }> =>
-  getApi().convertScan(file, flags, jobKey);
+  guarded('Не удалось начать распознавание PDF.', () => getApi().convertScan(file, flags, jobKey));
 
 export const convertNative = (
   file: File,
   jobKey?: string
 ): Promise<{ job_id: string; reused?: boolean; warning?: string | null }> =>
-  getApi().convertNative(file, jobKey);
+  guarded('Не удалось преобразовать PDF.', () => getApi().convertNative(file, jobKey));
 
 export const convertStatus = (jobId: string): Promise<ConvertJobStatus> =>
-  getApi().convertStatus(jobId);
+  guarded('Не удалось получить состояние конвертации.', () => getApi().convertStatus(jobId));
 
-export const convertHealth = (): Promise<ConvertHealthResult> => getApi().convertHealth();
+export const convertHealth = (): Promise<ConvertHealthResult> => guarded('Не удалось проверить компоненты конвертера.', () => getApi().convertHealth());
 
-export const convertProfile = (): Promise<ConvertProfile> => getApi().convertProfile();
+export const convertProfile = (): Promise<ConvertProfile> => guarded('Не удалось выполнить действие.', () => getApi().convertProfile());
 
-export const convertSettings = (): Promise<ConvertSettings> => getApi().convertSettings();
+export const convertSettings = (): Promise<ConvertSettings> => guarded('Не удалось получить настройки конвертера.', () => getApi().convertSettings());
 
 export const convertSaveSettings = (patch: ConvertSettingsPatch): Promise<ConvertSettings> =>
-  getApi().convertSaveSettings(patch);
+  guarded('Не удалось сохранить настройки конвертера.', () => getApi().convertSaveSettings(patch));
 
 export const convertCancel = (jobId: string): Promise<ConvertCancelResult> =>
-  getApi().convertCancel(jobId);
+  guarded('Не удалось отменить конвертацию.', () => getApi().convertCancel(jobId));
 
 export const convertPolish = (jobId: string): Promise<{ job_id: string; status: string }> =>
-  getApi().convertPolish(jobId);
+  guarded('Не удалось запустить доочистку документа.', () => getApi().convertPolish(jobId));
 
 export const convertLog = (
   jobId: string,
   tail?: number
-): Promise<{ job_id: string; text: string }> => getApi().convertLog(jobId, tail);
+): Promise<{ job_id: string; text: string }> => guarded('Не удалось прочитать журнал конвертации.', () => getApi().convertLog(jobId, tail));
 
 export const convertDownload = (jobId: string): Promise<Blob> =>
-  getApi().convertDownload(jobId);
+  guarded('Не удалось получить результат конвертации.', () => getApi().convertDownload(jobId));
 
 export const docxText = (docx: Blob): Promise<DocxTextResult> =>
-  getApi().docxText(docx);
+  guarded('Не удалось прочитать текст документа.', () => getApi().docxText(docx));
 
 export const docxApplyEdits = (docx: Blob, editedText: string): Promise<Blob> =>
-  getApi().docxApplyEdits(docx, editedText);
+  guarded('Не удалось сохранить правки документа.', () => getApi().docxApplyEdits(docx, editedText));
 
 /** true — UI может (и должен) управлять процессом конвертера (десктоп). */
 export const isConverterManaged = (): boolean => getApi().converterManaged;
@@ -476,11 +487,11 @@ export const isConverterManaged = (): boolean => getApi().converterManaged;
 // Electron, поэтому сторож простоя (CONVERTER_IDLE_TIMEOUT_S) не мог погасить
 // процесс, запущенный не им, — конвертер держал ~3.5 ГБ до закрытия приложения.
 // Единый владелец = backend: один код старта/остановки/простоя на оба режима.
-export const converterStart = (): Promise<ConverterStartResult> => webApi.converterStart();
+export const converterStart = (): Promise<ConverterStartResult> => guarded('Не удалось запустить конвертер.', () => webApi.converterStart());
 
-export const converterStop = (): Promise<{ ok: boolean }> => webApi.converterStop();
+export const converterStop = (): Promise<{ ok: boolean }> => guarded('Не удалось остановить конвертер.', () => webApi.converterStop());
 
-export const converterStatus = (): Promise<ConverterProcessStatus> => webApi.converterStatus();
+export const converterStatus = (): Promise<ConverterProcessStatus> => guarded('Не удалось проверить конвертер.', () => webApi.converterStatus());
 
 // ── Теневые LLM-подсказки ──
 // Тоже всегда через webApi, по той же причине, что и конвертер: жизненным
@@ -499,7 +510,7 @@ export const llmHintsStatus = (jobId: string): Promise<LlmHintsStatus> =>
 export const llmHintsCancel = (jobId: string): Promise<void> => webApi.llmHintsCancel!(jobId);
 
 /** Версия приложения (десктоп — из main-процесса; браузер — REACT_APP_VERSION). */
-export const getAppVersion = (): Promise<string> => getApi().getAppVersion();
+export const getAppVersion = (): Promise<string> => guarded('Не удалось выполнить действие.', () => getApi().getAppVersion());
 
 // ── Офлайн-обновление с флешки (только десктоп) ──
 export const updateCheck = (chosenPath?: string): Promise<UpdateCheckResult> =>

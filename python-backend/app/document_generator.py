@@ -3182,10 +3182,11 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             # Причину пишет резолвер дерева: «шаблон не готов» юристу понятнее,
             # чем «не поддерживается генерацией».
             unresolved_reasons = data.get("_unresolvedReasons") or {}
+            for act_id in unresolved_act_ids:
+                logger.warning("Нет шаблона %s: %s", act_id, unresolved_reasons.get(act_id, "нет файла"))
             warnings: List[str] = [
-                f"Акт «{act_id}» — шаблон не готов: {unresolved_reasons[act_id]}"
-                if act_id in unresolved_reasons
-                else f"Акт «{act_id}» не поддерживается генерацией"
+                "Не найден шаблон «" + self._TREE_ACT_LABELS.get(act_id, (act_id, act_id))[1]
+                + "». Проверьте выбор актов или добавьте недостающий шаблон."
                 for act_id in unresolved_act_ids
             ]
 
@@ -3290,7 +3291,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             return result
 
         except Exception as e:
-            logger.error(f"Ошибка при генерации документов: {str(e)}")
+            logger.exception("Ошибка при генерации документов")
             return {
                 "success": False,
                 "error": str(e)

@@ -231,7 +231,7 @@ describe('ConvertScreen', () => {
     render(<ConvertScreen file={pdfFile} onComplete={jest.fn()} onBack={jest.fn()} />);
 
     expect(await screen.findByRole('button', { name: 'Конвертировать' })).toBeInTheDocument();
-    expect(screen.queryByText(/Сервер конвертера не отвечает/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Сервис приложения не отвечает/)).not.toBeInTheDocument();
   }, 15000);
 
   // ── Профиль: дефолт доочистки ──
@@ -568,7 +568,7 @@ describe('ConvertScreen', () => {
     expect(
       await screen.findByTestId('text-editor', {}, { timeout: 12000 })
     ).toHaveValue('Текст после обрывов');
-    expect(screen.queryByText(/Сервер конвертера не отвечает/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Сервис приложения не отвечает/)).not.toBeInTheDocument();
   }, 20000);
 
   it('404 на опросе не терпим: задачи нет — сразу ошибка', async () => {
@@ -653,7 +653,7 @@ describe('ConvertScreen', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Конвертировать' }));
 
     expect(
-      await screen.findByText(/Сервер конвертера не отвечает/, {}, { timeout: 7000 })
+      await screen.findByText(/Сервис приложения не отвечает/, {}, { timeout: 7000 })
     ).toBeInTheDocument();
     expect(screen.queryByText(/Failed to fetch/)).not.toBeInTheDocument();
   }, 15000);
@@ -678,7 +678,7 @@ describe('ConvertScreen', () => {
     }
     await flush();
 
-    expect(screen.getByText(/Сервер конвертера не отвечает/)).toBeInTheDocument();
+    expect(screen.getByText(/Сервис приложения не отвечает/)).toBeInTheDocument();
     expect(mockStatus).toHaveBeenCalledTimes(6);
   }, 20000);
 

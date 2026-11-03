@@ -441,3 +441,13 @@ export const webApi: ElectronAPI = {
   // В браузере нет Electron: версия из сборочной переменной (иначе метка «dev»).
   getAppVersion: async (): Promise<string> => process.env.REACT_APP_VERSION || 'dev',
 };
+
+
+export async function getBackendDiagnostics(): Promise<unknown> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 2000);
+  try {
+    const response = await fetchBackend('/diagnostics', { signal: controller.signal });
+    return await response.json();
+  } finally { clearTimeout(timer); }
+}

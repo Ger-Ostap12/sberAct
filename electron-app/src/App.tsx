@@ -1,3 +1,7 @@
+import DiagnosticIcon from '@mui/icons-material/Assignment';
+import DiagnosticDialog from './shared/components/DiagnosticDialog';
+import DiagnosticsBoundary from './shared/components/DiagnosticsBoundary';
+import { initializeDiagnostics } from './shared/lib/diagnostics';
 import React, { useState, useEffect } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box, Container, Typography, AppBar, Toolbar, IconButton, Tooltip } from '@mui/material';
@@ -70,6 +74,8 @@ function App() {
   const [appVersion, setAppVersion] = useState<string>('');
   const [updateOpen, setUpdateOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  useEffect(() => initializeDiagnostics(), []);
 
   useEffect(() => {
     getAppVersion().then(setAppVersion).catch(() => setAppVersion(''));
@@ -231,6 +237,11 @@ function App() {
                 <SettingsIcon />
               </IconButton>
             </Tooltip>
+            <Tooltip title="Диагностика и отчёт об ошибке">
+              <IconButton color="inherit" onClick={() => setDiagnosticsOpen(true)} aria-label="Диагностика">
+                <DiagnosticIcon />
+              </IconButton>
+            </Tooltip>
             <Tooltip title="Открыть консоль разработчика (F12)">
               <IconButton
                 color="inherit"
@@ -243,6 +254,7 @@ function App() {
           </Toolbar>
         </AppBar>
 
+        <DiagnosticDialog open={diagnosticsOpen} onClose={() => setDiagnosticsOpen(false)} />
         <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
         <UpdateDialog

@@ -1,3 +1,4 @@
+import ErrorNotice from '../../shared/components/ErrorNotice';
 import React from 'react';
 import {
   Box,
@@ -349,7 +350,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
                     sx={{ mb: 2 }}
                     onClose={dismissMessage}
                   >
-                    {downloadMessage.text}
+                    {downloadMessage.type === 'error' ? <ErrorNotice error={downloadMessage.text} /> : downloadMessage.text}
                   </Alert>
                 )}
 
@@ -383,7 +384,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
             ) : (
               <Box sx={{ textAlign: 'center' }}>
                 <Alert severity="error" sx={{ mb: 3 }}>
-                  {generationResult.error}
+                  <ErrorNotice error={generationResult.failure || generationResult.error} />
                 </Alert>
                 <Button
                   variant="outlined"

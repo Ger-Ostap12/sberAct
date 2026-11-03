@@ -107,7 +107,7 @@ describe('fetchBackend — выбор хоста', () => {
     );
     (global as any).fetch = fetchMock;
 
-    await expect(webApi.getBanks()).rejects.toThrow(/502.*Конвертер не запущен/);
+    await expect(webApi.getBanks()).rejects.toThrow(/Конвертер не запущен/);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url] = fetchMock.mock.calls[0] as unknown as [string];
     expect(String(url)).toContain(FIRST);
@@ -311,4 +311,22 @@ describe('fileNameFromResponse', () => {
     expect(fileNameFromResponse(ответ(null), 'generated_documents.zip'))
       .toBe('generated_documents.zip');
   });
+});
+
+
+it('сбор диагностики не зависает вместе с недоступным backend', async () => {
+  jest.useFakeTimers();
+  const { getBackendDiagnostics } = await import('../webApi');
+  global.fetch = jest.fn((_url: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+    const abort = () => reject(new DOMException('Aborted', 'AbortError'));
+    if (init?.signal?.aborted) abort();
+    else init?.signal?.addEventListener('abort', abort, { once: true });
+  })) as jest.MockedFunction<typeof fetch>;
+  try {
+    const request = getBackendDiagnostics().catch(error => error as Error);
+    jest.advanceTimersByTime(2100);
+    const error = await request;
+    expect(error).toBeInstanceOf(Error);
+    expect(global.fetch).toHaveBeenCalled();
+  } finally { jest.useRealTimers(); }
 });

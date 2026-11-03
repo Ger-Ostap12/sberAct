@@ -46,14 +46,16 @@ describe('parseBackendError — остальные формы ответа', () 
   it('500 без detail — подпись запроса плюс код, тело уходит в raw', () => {
     const f = parseBackendError(new Error('HTTP 500: <html>Internal Error</html>'), 'Конвертация не удалась');
     expect(f.message).toContain('Конвертация не удалась');
-    expect(f.message).toContain('500');
+    expect(f.message).not.toContain('500');
+    expect(f.status).toBe(500);
     expect(f.kind).toBe('server');
     expect(f.raw).toContain('Internal Error');
   });
 
   it('отказ с пустым телом', () => {
     const f = parseBackendError(new Error('HTTP 413: '), 'Файл не принят');
-    expect(f.message).toBe('Файл не принят (413)');
+    expect(f.message).toContain('Файл слишком большой');
+    expect(f.status).toBe(413);
     expect(f.kind).toBe('http');
   });
 
@@ -61,19 +63,21 @@ describe('parseBackendError — остальные формы ответа', () 
     // Регрессия: прокси отвечает 502 с текстом «Конвертер не запущен», и это
     // единственный след причины.
     const f = parseBackendError(new Error('HTTP 502: Конвертер не запущен'), 'Запрос /banks не удался');
-    expect(f.message).toContain('502');
+    expect(f.message).not.toContain('502');
+    expect(f.status).toBe(502);
     expect(f.message).toContain('Конвертер не запущен');
   });
 
   it('HTML от прокси наружу не показывается', () => {
     const f = parseBackendError(new Error('HTTP 500: <html><body>nginx</body></html>'), 'Запрос не удался');
     expect(f.message).not.toContain('<html>');
-    expect(f.message).toContain('Подробности');
+    expect(f.hint).toContain('Подробности');
   });
 
   it('битый JSON в теле не ломает разбор', () => {
     const f = parseBackendError(new Error('HTTP 400: {не json'), 'Запрос не удался');
-    expect(f.message).toBe('Запрос не удался (400)');
+    expect(f.message).toBe('Запрос не удался');
+    expect(f.status).toBe(400);
   });
 });
 
@@ -129,4 +133,33 @@ describe('backendError — сторона, которая держит отве�
     expect(e.code).toBe('PDF_CORRUPTED');
     expect(e.hint).toBe('Откройте файл в Acrobat.');
   });
+});
+
+describe('единый формат диагностики', () => {
+  it('сохраняет номер сбоя и подсказку сервера', () => {
+    const failure = parseBackendError(new Error('HTTP 422: ' + JSON.stringify({ detail: {
+      code: 'TEMPLATES_UNAVAILABLE', message: 'Нет шаблона определения о принятии.',
+      hint: 'Добавьте шаблон.', incidentId: 'case-12345678',
+    } })));
+    expect(failure.message).toBe('Нет шаблона определения о принятии.');
+    expect(failure.hint).toBe('Добавьте шаблон.');
+    expect(failure.incidentId).toBe('case-12345678');
+  });
+  it('старый формат IPC не показывает HTTP пользователю', () => {
+    const failure = parseBackendError(new Error('HTTP error! status: 500'));
+    expect(failure.message).not.toContain('HTTP');
+    expect(failure.status).toBe(500);
+  });
+  it('не выдумывает причину неизвестного сбоя', () => {
+    const failure = parseBackendError(new Error('TypeError: internal secret'), 'Не удалось сохранить документ.');
+    expect(failure.message).toBe('Не удалось сохранить документ.');
+    expect(failure.raw).toContain('internal secret');
+  });
+});
+
+
+it('технический текст HTTP из preload остаётся в диагностике, а не в сообщении', () => {
+  const error = parseBackendError(new Error('HTTP 500: {"detail":"Internal Server Error"}'), 'Не удалось сформировать документы.');
+  expect(error.message).toBe('Не удалось сформировать документы.');
+  expect(error.raw).toBe('Internal Server Error');
 });

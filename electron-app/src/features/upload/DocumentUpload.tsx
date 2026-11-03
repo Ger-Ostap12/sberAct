@@ -1,3 +1,5 @@
+import ErrorNotice from '../../shared/components/ErrorNotice';
+import { BackendFailure, parseBackendError } from '../../shared/lib/convertErrors';
 import React, { useCallback, useState } from 'react';
 import {
   Box,
@@ -47,7 +49,7 @@ const warmLlmAhead = (): void => {
 
 const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded, onPdfSelected }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | BackendFailure | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
@@ -93,11 +95,11 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded, onP
 
         onDocumentUploaded(documentData, analysisResult);
       } else {
-        setError(analysisResult.error || 'Ошибка при анализе документа');
+        setError(parseBackendError(analysisResult, 'Не удалось проанализировать документ.'));
       }
     } catch (err) {
       console.error('Error analyzing document:', err);
-      setError('Ошибка при анализе документа. Попробуйте еще раз.');
+      setError(parseBackendError(err, 'Не удалось проанализировать документ.'));
     } finally {
       setIsAnalyzing(false);
     }
@@ -152,12 +154,12 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded, onP
           };
           onDocumentUploaded(documentData, analysisResult);
         } else {
-          setError(analysisResult.error || 'Ошибка при анализе документа');
+          setError(parseBackendError(analysisResult, 'Не удалось проанализировать документ.'));
         }
       }
     } catch (err) {
       console.error('Error selecting file:', err);
-      setError('Ошибка при выборе файла');
+      setError(parseBackendError(err, 'Не удалось выбрать файл.'));
     } finally {
       setIsAnalyzing(false);
     }
@@ -175,7 +177,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded, onP
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
+          <ErrorNotice error={error} />
         </Alert>
       )}
 

@@ -1,3 +1,4 @@
+import { recordFailure } from '../../../shared/lib/diagnostics';
 import { useState, useCallback } from 'react';
 import { ExtractedData, TemplateType } from '../../../types';
 import { generateDocument } from '../../../services/electronApi';
@@ -89,17 +90,20 @@ export const useGenerateDocument = (
           if (result.file_path) onDocumentGenerated(result.file_path);
         }
       } else {
+        const failure = recordFailure(result, 'Не удалось сформировать документы.');
         setGenerationResult({
           success: false,
-          error: result.error || 'Ошибка при генерации документа',
+          error: failure.message,
+          failure,
         });
       }
     } catch (err) {
-      const e = err as { message?: string; error?: string };
+      const failure = recordFailure(err, 'Не удалось сформировать документы.');
       console.error('Error generating document:', err);
       setGenerationResult({
         success: false,
-        error: e?.message || e?.error || 'Ошибка при генерации документа',
+        error: failure.message,
+        failure,
       });
     } finally {
       setIsGenerating(false);

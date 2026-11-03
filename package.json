@@ -37,6 +37,8 @@
       "electron-app/main.js",
       "electron-app/updater.js",
       "electron-app/preload.js",
+      "electron-app/diagnostics.js",
+      "electron-app/serviceLog.js",
       "electron-app/assets/icon.png",
       "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
       "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",

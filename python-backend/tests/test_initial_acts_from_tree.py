@@ -139,12 +139,13 @@ class TestШаблонНеГотов:
         assert "acceptance_no_motion_no_duty" in нерешённые
         assert data["_unresolvedReasons"]["acceptance_no_motion_no_duty"]
 
-    def test_причина_уходит_в_предупреждения(self, gen):
+    def test_название_акта_показывается_а_причина_сохраняется_в_логе(self, gen, caplog):
         data = данные(selectedCollateralOption="no_collateral")
         результат = gen.generate("rtk_single_obligation", data)
         assert результат["success"], результат
         предупреждения = результат.get("warnings") or []
-        assert any("шаблон не готов" in w for w in предупреждения), предупреждения
+        assert any("Не найден шаблон" in w and "Б/Д нет ГП залог" in w for w in предупреждения), предупреждения
+        assert "no_motion_no_duty_collateral" in caplog.text
 
 
 ПРОМЕЖУТОЧНЫЕ = list(bankruptcy_tree.INTERMEDIATE_ACT_ROLES)

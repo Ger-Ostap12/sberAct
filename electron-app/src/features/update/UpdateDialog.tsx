@@ -1,3 +1,4 @@
+import ErrorNotice from '../../shared/components/ErrorNotice';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
@@ -164,7 +165,7 @@ const UpdateDialog: React.FC<UpdateDialogProps> = ({ open, onClose, currentVersi
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
+            <ErrorNotice error={error} />
           </Alert>
         )}
 

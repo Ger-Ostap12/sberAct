@@ -59,6 +59,19 @@ console.log('[preload] Exposing electronAPI to renderer...');
 try {
   contextBridge.exposeInMainWorld('electronAPI', {
   isReady: () => true,
+  diagnosticsRecord: entry => ipcRenderer.invoke('diagnostics:record', entry),
+  diagnosticsSnapshot: () => ipcRenderer.invoke('diagnostics:snapshot'),
+  diagnosticsSave: text => ipcRenderer.invoke('diagnostics:save', text),
+  diagnosticsCopy: text => ipcRenderer.invoke('diagnostics:copy', text),
+  onDiagnostic: callback => {
+    let active = true;
+    const listener = (_event, entry) => callback(entry);
+    ipcRenderer.on('diagnostic:event', listener);
+    ipcRenderer.invoke('diagnostics:snapshot').then(snapshot => {
+      if (active) for (const entry of snapshot.events || []) callback(entry);
+    }).catch(() => undefined);
+    return () => { active = false; ipcRenderer.removeListener('diagnostic:event', listener); };
+  },
   // Файловые операции
   selectFile: () => ipcRenderer.invoke('select-file'),
   saveFile: (defaultName) => ipcRenderer.invoke('save-file', defaultName),
@@ -134,9 +147,6 @@ try {
 
   generateDocument: async (requestData) => {
     try {
-      console.log('[preload] generateDocument(): requestData:', requestData);
-      console.log('[preload] generateDocument(): requestData.template_type:', requestData.template_type);
-      console.log('[preload] generateDocument(): requestData.data:', requestData.data);
 
       if (!requestData.template_type || !requestData.data) {
         throw new Error('Missing template_type or data in requestData');
@@ -151,7 +161,7 @@ try {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error('HTTP ' + response.status + ': ' + await response.text());
       }
 
       return await response.json();
@@ -166,7 +176,7 @@ try {
       const response = await fetchBackend('/templates');
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error('HTTP ' + response.status + ': ' + await response.text());
       }
 
       return await response.json();
@@ -181,7 +191,7 @@ try {
     try {
       const response = await fetchBackend('/banks');
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error('HTTP ' + response.status + ': ' + await response.text());
       }
       return await response.json();
     } catch (error) {

@@ -19,6 +19,8 @@ class TemplatesResolverMixin:
 
     # Ключ в наборе шаблонов и подпись акта в интерфейсе.
     _TREE_ACT_LABELS = {
+        "short_text": ("short_text", "Резолютивная часть"),
+        "final_rtk_inclusion": ("rtk_inclusion", "Определение о включении в РТК"),
         "acceptance_definition": ("acceptance", "Определение о принятии"),
         "acceptance_after_no_motion": ("acceptance_after_no_motion", "Принятие после Б/Д"),
         "acceptance_no_motion_no_duty": ("acceptance_no_motion", "Определение Б/Д нет ГП"),

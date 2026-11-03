@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, clipboard } = require('electron');
 
 // Отключаем аппаратное ускорение: на некоторых Windows-конфигурациях
 // GPU-процесс падает ("GPU process isn't usable. Goodbye.") и окно не открывается.
@@ -16,6 +16,7 @@ const os = require('os');
 const isDev = require('electron-is-dev');
 const { initUpdater, shutdownUpdater } = require('./updater');
 const { createServiceLog } = require('./serviceLog');
+const { createDiagnostics, redact, sanitize, reportedFailure: reportFailure } = require('./diagnostics');
 
 // Логи сервисов — по одному на сервис, создаются при первом обращении.
 const serviceLogs = new Map();
@@ -29,7 +30,12 @@ function serviceLog(name) {
     } catch (_) {
       dir = path.join(app.getPath('userData'), 'logs');
     }
-    serviceLogs.set(name, createServiceLog(name, dir));
+    const fileLog = createServiceLog(name, dir);
+    serviceLogs.set(name, {
+      file: fileLog.file,
+      write: data => { diagnostics().ingest(name, data); fileLog.write(redact(data)); },
+      line: text => { diagnostics().record({ component: name, level: 'info', message: text }); fileLog.line(redact(text)); },
+    });
   }
   return serviceLogs.get(name);
 }
@@ -45,6 +51,83 @@ if (process.platform === 'linux') {
 
 let mainWindow;
 let pythonProcess;
+let diagnosticJournal;
+function diagnostics() {
+  if (!diagnosticJournal) {
+    let dir;
+    try { dir = app.getPath('logs'); } catch (_) { dir = path.join(app.getPath('userData'), 'logs'); }
+    diagnosticJournal = createDiagnostics(dir, entry => {
+      for (const window of BrowserWindow.getAllWindows()) {
+        if (!window.isDestroyed()) window.webContents.send('diagnostic:event', entry);
+      }
+    });
+  }
+  return diagnosticJournal;
+}
+function reportedFailure(error, fallback = 'Не удалось выполнить операцию.') {
+  return reportFailure(error, fallback, diagnostics().record);
+}
+for (const [method, level] of [['log', 'info'], ['warn', 'warning'], ['error', 'error']]) {
+  const original = console[method].bind(console);
+  console[method] = (...args) => {
+    original(...args);
+    try {
+      if (/^Python (stdout|stderr):|^\\[(backend|converter)\\]/.test(String(args[0]))) return;
+      diagnostics().record({ component: 'electron', level,
+        message: args.map(item => item instanceof Error ? item.stack : typeof item === 'string' ? item : JSON.stringify(item)).join(' ') });
+    } catch (_) { /* Журнал не мешает запуску. */ }
+  };
+}
+process.on('uncaughtExceptionMonitor', error => {
+  diagnostics().record({ component: 'electron', level: 'error', message: error.stack || String(error) });
+});
+process.on('unhandledRejection', error => {
+  diagnostics().record({ component: 'electron', level: 'error', message: error && error.stack || String(error) });
+});
+ipcMain.handle('diagnostics:record', (_event, entry) => {
+  if (entry && typeof entry.message === 'string') diagnostics().record(entry);
+});
+ipcMain.handle('diagnostics:snapshot', async () => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 2000);
+  let backend;
+  try {
+    const response = await fetch('http://127.0.0.1:8000/diagnostics', { signal: controller.signal });
+    if (response.ok) {
+      backend = await response.json();
+      for (const entry of backend.events || []) diagnostics().record(entry);
+    }
+  } catch (_) { backend = { unavailable: true }; }
+  finally { clearTimeout(timer); }
+  return { ...diagnostics().snapshot(), appVersion: app.getVersion(),
+    platform: process.platform, electronVersion: process.versions.electron,
+    nodeVersion: process.versions.node, pythonVersion: backend?.pythonVersion,
+    backendDiagnosticsAvailable: Array.isArray(backend?.events) };
+});
+function reportText(text) {
+  if (typeof text !== 'string' || text.length > 8 * 1024 * 1024) throw Object.assign(new Error('Отчёт слишком большой.'), { code: 'REPORT_TOO_LARGE' });
+  return JSON.stringify(sanitize(JSON.parse(text)), null, 2);
+}
+ipcMain.handle('diagnostics:copy', (_event, text) => {
+  try { clipboard.writeText(reportText(text)); return { copied: true }; }
+  catch (error) { return { copied: false, ...reportedFailure(error, 'Не удалось скопировать отчёт.') }; }
+});
+ipcMain.handle('diagnostics:save', async (_event, text) => {
+  try {
+    const report = reportText(text);
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Сохранить отчёт об ошибке', defaultPath: 'SberAct-diagnostics.json',
+      filters: [{ name: 'Отчёт диагностики', extensions: ['json'] }],
+    });
+    if (result.canceled || !result.filePath) return { saved: false };
+    fs.writeFileSync(result.filePath, report, 'utf8');
+    return { saved: true };
+  } catch (error) {
+    diagnostics().record({ component: 'electron', level: 'error', message: error.stack || String(error) });
+    return { saved: false, ...reportedFailure(error, 'Не удалось сохранить отчёт.') };
+  }
+});
+
 
 // Убиваем процесс ВМЕСТЕ С ДЕРЕВОМ детей. Backend (SberAct.exe) сам спавнит
 // конвертер (python.exe ~6 ГБ) дочерним процессом. На Windows proc.kill() —
@@ -400,6 +483,19 @@ function createWindow() {
     title: 'SberAct Document Generator'
   });
 
+  mainWindow.webContents.on('preload-error', (_event, _path, error) => {
+    diagnostics().record({ component: 'preload', level: 'error', code: 'PRELOAD_FAILED',
+      message: error.stack || String(error) });
+  });
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    diagnostics().record({ component: 'interface', level: 'error', code: 'RENDERER_STOPPED',
+      message: 'Процесс интерфейса завершился: ' + details.reason + '; exit=' + details.exitCode });
+  });
+  mainWindow.on('unresponsive', () => {
+    diagnostics().record({ component: 'interface', level: 'error', code: 'WINDOW_UNRESPONSIVE',
+      message: 'Окно приложения перестало отвечать.' });
+  });
+
   if (isDev) {
     mainWindow.loadURL('http://localhost:3000');
     // Не открываем DevTools автоматически, чтобы избежать спама сообщениями Autofill
@@ -640,14 +736,14 @@ ipcMain.handle('generate-document', async (event, data) => {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error('HTTP ' + response.status + ': ' + await response.text());
     }
 
     const result = await response.json();
     return result;
   } catch (error) {
     console.error('Error generating document:', error);
-    return { success: false, error: error.message };
+    return reportedFailure(error, 'Не удалось сформировать документы.');
   }
 });
 
@@ -730,7 +826,7 @@ ipcMain.handle('download-document', async (event, documentId) => {
     return { success: false, error: 'Сохранение отменено пользователем' };
   } catch (error) {
     console.error('[main] download-document: Error:', error);
-    return { success: false, error: error.message || 'Ошибка при скачивании документа' };
+    return reportedFailure(error, 'Не удалось сохранить документ.');
   }
 });
 
@@ -857,7 +953,7 @@ ipcMain.handle('download-all-documents', async (event, data) => {
     return { success: false, error: 'Сохранение отменено пользователем' };
   } catch (error) {
     console.error('[main] download-all-documents: Error:', error);
-    return { success: false, error: error.message || 'Ошибка при скачивании документов' };
+    return reportedFailure(error, 'Не удалось сохранить архив.');
   }
 });
 
@@ -867,13 +963,13 @@ ipcMain.handle('get-download-paths', async () => {
     const response = await fetch('http://localhost:8000/download-paths');
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error('HTTP ' + response.status + ': ' + await response.text());
     }
 
     const result = await response.json();
     return result;
   } catch (error) {
     console.error('Error getting download paths:', error);
-    return { success: false, error: error.message };
+    return reportedFailure(error, 'Не удалось получить папки сохранения.');
   }
 });

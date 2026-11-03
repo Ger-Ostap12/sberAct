@@ -1,3 +1,5 @@
+import ErrorNotice from '../../shared/components/ErrorNotice';
+import type { ConverterStartResult } from '../../services/electronApi';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -205,16 +207,18 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
       // при первом запуске приложения. Тихо ретраим, показывая «запускается», и
       // только после нескольких неудач показываем ошибку — чтобы транзиентные сбои
       // старта не пугали пользователя.
-      let started: { ok: boolean; error?: string } = { ok: false };
+      let started: ConverterStartResult = { ok: false };
       for (let attempt = 0; attempt < 5 && !cancelled; attempt++) {
         started = await converterStart();
         if (cancelled) return;
         if (started.ok) break;
+        if (['CONVERTER_NOT_INSTALLED', 'CONVERTER_DEPENDENCY_MISSING', 'CONVERTER_LIBRARY_MISSING',
+          'CONVERTER_ACCESS_DENIED', 'CONVERTER_PORT_IN_USE', 'CONVERTER_OUT_OF_MEMORY', 'CONVERTER_FILE_MISSING'].includes(started.code || '')) break;
         await new Promise((r) => setTimeout(r, 3000));
       }
       if (cancelled) return;
       if (!started.ok) {
-        setError(parseBackendError(started.error, 'Конвертер недоступен'));
+        setError(parseBackendError(started, 'Конвертер недоступен'));
         setPhase('error');
         return;
       }
@@ -824,12 +828,7 @@ const ConvertScreen: React.FC<ConvertScreenProps> = ({ file, onComplete, onBack 
           {phase === 'error' && (
             <Stack spacing={2}>
               <Alert severity="error">
-                {error?.message || 'Что-то пошло не так'}
-                {error?.hint && (
-                  <Typography variant="body2" sx={{ mt: 0.5 }}>
-                    {error.hint}
-                  </Typography>
-                )}
+                <ErrorNotice error={error || 'Не удалось выполнить конвертацию.'} />
               </Alert>
               <Stack direction="row" spacing={1}>
                 <Button variant="contained" onClick={handleConvert}>
