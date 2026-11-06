@@ -1,3 +1,5 @@
+!include "${PROJECT_DIR}\scripts\install-migration.nsh"
+
 ; Кастомные шаги установщика SberAct.
 ;
 ; Конвертер (3.5+ ГБ) нельзя вшить в NSIS-payload: 7z-распаковка installer'а
@@ -23,6 +25,7 @@
 ; места на самом деле хватало. Архив читается с флешки и на целевом диске места
 ; не занимает.
 !macro customInit
+  !insertmacro sberactInitMigration
   SectionGetSize 0 $0
   IntOp $0 $0 + 3900000   ; КБ, распакованный converter/ (~3.6 ГБ)
   SectionSetSize 0 $0
@@ -79,6 +82,10 @@
     Goto sberact_skip_converter
 
   sberact_converter_broken:
+    ${if} $sberactLegacyDir != ""
+      SetErrorLevel 2
+      Abort "Converter installation failed; previous installation retained"
+    ${endif}
     DetailPrint "ВНИМАНИЕ: модуль конвертации установлен не полностью."
     MessageBox MB_ICONEXCLAMATION|MB_OK "Модуль конвертации PDF установлен не полностью.$\r$\n$\r$\nПриложение установится и будет работать, но конвертация PDF будет недоступна.$\r$\n$\r$\nВероятные причины: не хватило места на диске или сбой чтения с флешки.$\r$\nОсвободите место (нужно ~7 ГБ) и запустите установку заново."
 
@@ -132,12 +139,12 @@
   sberact_backend_broken:
     DetailPrint "ВНИМАНИЕ: файл бэкенда отсутствует или повреждён."
     MessageBox MB_ICONSTOP|MB_OK "Файл resources\backend\SberAct.exe установлен не полностью.$\r$\n$\r$\nПриложение запустится, но работать не будет.$\r$\n$\r$\nЗакройте приложение и все окна SberAct, освободите место на диске (нужно ~7 ГБ), при необходимости отключите антивирус и установите заново."
-    Goto sberact_backend_done
+    SetErrorLevel 2
+    Abort "Backend installation failed"
 
   sberact_backend_ok:
     DetailPrint "Бэкенд установлен."
 
-  sberact_backend_done:
 !macroend
 
 ; --- Удаление файлов: сохраняем конвертер при ОБНОВЛЕНИИ, сносим при удалении ---
