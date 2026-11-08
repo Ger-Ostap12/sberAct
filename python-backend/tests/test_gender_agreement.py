@@ -38,7 +38,8 @@ def _текст(gen, акты, **поля):
     data.update(поля)
     data["selectedActsIds"] = ",".join(акты)
     data["selectedActsData"] = json.dumps(
-        [{"id": a, "selected": True, "rtkVariant": "realization"} for a in акты])
+        [{"id": a, "selected": True, "rtkVariant":
+          "observation" if data.get("selectedEntityType") == "legal" else "realization"} for a in акты])
     результат = gen.generate("rtk_single_obligation", data)
     assert результат["success"], результат
     куски = []
@@ -63,11 +64,13 @@ class TestУправляющий:
         текст = _текст(gen, ["acceptance_definition"], managerName="Рябинина Е.А.")
         assert "утверждена Рябинина Е.А." in текст
 
-    def test_несклоняемая_фамилия_оставляет_форму_шаблона(self, gen):
-        # Род неизвестен — форму шаблона не трогаем, иначе угадывание вместо факта.
-        # В этом шаблоне написано «утверждена», и она остаётся.
-        текст = _текст(gen, ["acceptance_definition"], managerName="Жигало А.")
-        assert "утверждена Жигало А." in текст
+    @pytest.mark.parametrize("form", ["утвержден", "утверждена"])
+    def test_несклоняемая_фамилия_оставляет_форму_шаблона(self, gen, form):
+        doc = Document()
+        doc.add_paragraph(f"Финансовым управляющим {form} [8]")
+        before = doc.element.xml
+        gen._apply_gender_agreement(doc, {"managerName": "Жигало А."})
+        assert doc.element.xml == before
 
     def test_инициал_не_принимается_за_женское_имя(self, gen):
         # «Жигало А.»: разбор имени по инициалу давал femn, и мужчина становился

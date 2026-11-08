@@ -83,7 +83,12 @@ def test_missing_template_warns_and_does_not_substitute_another_act(gen, tmp_pat
     не подставляется. Результат маппинга подменён напрямую (а не через реально
     отсутствующий файл в Templates), чтобы тест не зависел от того, какой конкретно
     шаблон отсутствует на диске в данный момент."""
-    real_return_path = gen._templates_root() / "промежуточные_особые" / "внести Возврат" / "возврат ртк ГП.docx"
+    available, missing = gen._map_selected_acts_to_templates(
+        "intermediate_return_no_duty", "individual", "no_collateral",
+        {"selectedApplicationKind": "rtk"},
+    )
+    assert not missing
+    real_return_path = available["return_no_duty"]["path"]
     assert real_return_path.exists(), "тест рассчитан на существующий шаблон 'Возврат'"
     corrupted_templates = {
         "return": {"name": "Возврат (РТК ГП)", "path": real_return_path, "order": 1},
@@ -112,15 +117,17 @@ def test_duplicate_act_ids_are_not_reported_as_unresolved(gen):
     assert unresolved == [] and len(templates) == 1
 
 
-def test_strict_resolve_refuses_arbitrary_docx_substitution(gen):
-    """Слепой фолбэк «любой .docx из папки» подменял наблюдение конкурсным.
-    Для выбранных актов он выключен: путь возвращается как есть (файла нет)."""
-    missing = gen._templates_root() / "шаблоны актов без залогов" / "ртк.docx"
-    assert not missing.exists(), "тест рассчитан на отсутствующий шаблон"
-
+def test_strict_resolve_refuses_arbitrary_docx_substitution(gen, tmp_path, monkeypatch):
+    """Явно выбранный акт не заменяется произвольным файлом соседнего шаблона."""
+    folder = tmp_path / "шаблоны актов без залогов" / "физ реализация ВКЛ в РТК"
+    folder.mkdir(parents=True)
+    from docx import Document
+    candidate = folder / "другой.docx"
+    Document().save(candidate)
+    monkeypatch.setattr(gen, "_templates_root", lambda: tmp_path)
+    missing = folder / "ртк.docx"
     assert gen._resolve_template_path(missing, allow_any_docx_fallback=False) == missing
-    # Стандартная логика поведение сохраняет — там подмена по-прежнему разрешена.
-    assert gen._resolve_template_path(missing).exists()
+    assert gen._resolve_template_path(missing) == candidate
 
 
 def test_standard_logic_still_used_when_nothing_selected(gen):

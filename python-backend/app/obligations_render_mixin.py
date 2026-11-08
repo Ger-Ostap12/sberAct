@@ -171,6 +171,10 @@ class ObligationsRenderMixin:
                     найдено.append((min(места), i))
             return sorted(найдено)
 
+        def начало_общего_обозначения(текст, начало, предел):
+            prefix = re.search(r"\bпо\s+договору\s*$", текст[:начало], re.IGNORECASE)
+            return prefix.start() if prefix and prefix.start() >= предел else начало
+
         def обработать(paragraphs):
             for paragraph in paragraphs:
                 текст = paragraph.text
@@ -197,6 +201,9 @@ class ObligationsRenderMixin:
                     свои = [i for _, i in найденные if виды[i]]
                     if not свои:
                         continue
+                    for marker in re.finditer(r"№(?=\S)", фраза):
+                        позиция = m.end() + marker.end()
+                        замены.append((позиция, позиция, " "))
                     # Слева берём ПРЕДЛОЖЕНИЕ целиком: падеж задаёт глагол в
                     # его начале («…заключили: кредитный договор от …,
                     # кредитную карту от …»), а не слово вплотную.
@@ -225,6 +232,13 @@ class ObligationsRenderMixin:
                             падеж=падеж_перечисления)
                         if новое:
                             замены.append((m.start(), m.end(), новое))
+                        for i in свои[1:]:
+                            место = self._элемент_слота(фраза, i, приметы[i])
+                            if место is not None:
+                                конец = m.end() + место
+                                начало = начало_общего_обозначения(текст, конец, m.end())
+                                if начало != конец:
+                                    замены.append((начало, конец, ""))
                         continue
                     # Разные виды в одной фразе множественного числа: одним
                     # словом их не назвать, поэтому головное слово ставим в
@@ -242,7 +256,8 @@ class ObligationsRenderMixin:
                                                 падеж=падеж_перечисления)
                         if место is not None and подпись:
                             начало = m.end() + место
-                            замены.append((начало, начало, f"{подпись} "))
+                            с = начало_общего_обозначения(текст, начало, m.end())
+                            замены.append((с, начало, f"{подпись} "))
                 if замены:
                     self._подменить_в_прогонах(paragraph, замены)
 
@@ -274,6 +289,11 @@ class ObligationsRenderMixin:
         # перед элементом, а не внутри него.
         приставка = re.search(r"(?:№\s*|от\s+)$", фраза[:начало])
         return приставка.start() if приставка else начало
+
+    @staticmethod
+    def _format_contract_number_list(value: str) -> str:
+        """Повторяет знак номера в сводном списке, сохраняя сами номера."""
+        return re.sub(r",\s*(?:№\s*)?(?=[^\s,])", ", № ", value)
 
     def replace_obligations_data(self, doc: Document, data: Dict[str, Any]):
         """
@@ -443,7 +463,7 @@ class ObligationsRenderMixin:
                 continue
 
             contract_date = (obligation.get('contractDate') or '').strip()
-            contract_number = (obligation.get('contractNumber') or '').strip()
+            contract_number = self._format_contract_number_list((obligation.get('contractNumber') or '').strip())
             # Не подставлять мусор вместо номера договора — тогда маркер останется и будет удалён с контекстом
             if contract_number.lower() in ('путем', 'подписания', 'далее', '') or len(contract_number) < 2:
                 contract_number = ''
@@ -530,8 +550,8 @@ class ObligationsRenderMixin:
                 self._replace_regex_in_doc(doc, r"по\s+договору\s+№\s*от\s*\s*,", "")
                 # Последний пустой слот перед продолжением фразы: «…, по договору № от в размере».
                 self._replace_regex_in_doc(doc, r",\s*по\s+договору\s+№\s*от\s+(?=[а-яё])", " ")
-                self._replace_regex_in_doc(doc, r",\s*по\s+договору\s+№\s*\-?\s*", ",")
-                self._replace_regex_in_doc(doc, r"по\s+договору\s+№\s*\-?\s*", "")
+                self._replace_regex_in_doc(doc, r",\s*по\s+договору\s+№\s*-?\s*(?=от(?:\s*[,.;)]|$)|[,.;)]|$)", ",")
+                self._replace_regex_in_doc(doc, r"по\s+договору\s+№\s*-?\s*(?=от(?:\s*[,.;)]|$)|[,.;)]|$)", "")
 
             # Дополнительная зачистка: запятая перед точкой и лишние пробелы
             self._replace_regex_in_doc(doc, r",\s*\.", ".")

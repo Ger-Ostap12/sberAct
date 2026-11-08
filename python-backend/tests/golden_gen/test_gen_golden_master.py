@@ -22,7 +22,6 @@ sys.path.insert(0, _THIS)
 
 from _gen_snapshot import GOLDEN_PATH, corpus_files, snapshot_one  # noqa: E402
 
-logging.disable(logging.CRITICAL)
 
 
 def _load_golden():
@@ -33,6 +32,8 @@ def _load_golden():
 
 
 _GOLDEN = _load_golden()
+with open(os.path.join(_THIS, "unavailable_cases.json"), encoding="utf-8") as source:
+    _UNAVAILABLE = json.load(source)
 _FILES = corpus_files()
 
 
@@ -67,6 +68,19 @@ def test_gen_golden_master_per_file(analyzer, generator, rel_path):
         pytest.skip(f"{rel_path} отсутствует в эталоне")
     expected = _GOLDEN[rel_path]
     actual = snapshot_one(analyzer, generator, rel_path)
+    assert "__error__" not in actual, actual
+    if rel_path in _UNAVAILABLE:
+        assert actual.get("rejection", {}).get("code") == _UNAVAILABLE[rel_path]["code"], actual
+    else:
+        assert "rejection" not in actual, actual
     exp_s = json.dumps(expected, ensure_ascii=False, sort_keys=True, indent=1)
     act_s = json.dumps(actual, ensure_ascii=False, sort_keys=True, indent=1)
     assert act_s == exp_s, f"Регрессия в generate() для {rel_path}"
+
+
+@pytest.mark.skipif(_GOLDEN is None, reason="No generation baseline")
+def test_expected_rejection_registry_matches_baseline():
+    assert set(_UNAVAILABLE) <= set(_FILES)
+    rejected = {name for name, value in _GOLDEN.items() if "rejection" in value}
+    assert rejected == set(_UNAVAILABLE)
+    assert all("__error__" not in value for value in _GOLDEN.values())

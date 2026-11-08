@@ -49,7 +49,14 @@ def test_box_width_leaves_room_for_recipients():
 
 def test_box_autofits_height():
     """Ширина уменьшена — текст может перенестись, высота должна подстраиваться."""
-    assert "mso-fit-shape-to-text:t" in _box_style()
+    from lxml import etree
+    with zipfile.ZipFile(TEMPLATE) as archive:
+        tree = etree.fromstring(archive.read("word/document.xml"))
+    ns = {"v": "urn:schemas-microsoft-com:vml"}
+    boxes = [box for box in tree.xpath("//v:textbox", namespaces=ns)
+             if "width:" in box.getparent().get("style", "")]
+    assert boxes
+    assert all("mso-fit-shape-to-text:t" in box.get("style", "") for box in boxes)
 
 
 def test_docx_still_valid():

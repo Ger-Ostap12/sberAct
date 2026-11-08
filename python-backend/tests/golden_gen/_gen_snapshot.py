@@ -79,6 +79,27 @@ def _docx_text(path: str) -> str:
     return "\n".join(parts)
 
 
+def generation_request(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Запрос предпросмотра с явными решениями для ипотечного сценария."""
+    fields = data.get("fields") or {}
+    result = {
+        **fields,
+        "sourceDocumentType": fields.get("sourceDocumentType")
+        or data.get("sourceDocumentType") or data.get("documentType"),
+        "obligations": data.get("obligations") or fields.get("obligations") or [],
+    }
+    for key in ("heirs", "thirdParties", "debtors", "mortgageProperties", "coborrowers", "guarantors"):
+        result[key] = data.get(key) or []
+    if result["sourceDocumentType"] == "mortgage_claim":
+        result.pop("selectedActsIds", None)
+        result.pop("selectedActsData", None)
+        # Решения заданы явно для тестового сценария, а не как значения приложения.
+        result["claimResolution"] = "full"
+        result["solidaryLiability"] = "true" if len(result["debtors"]) > 1 else "false"
+        result["selectedMortgageKind"] = data.get("mortgageKind") or "civil"
+    return result
+
+
 def snapshot_one(analyzer, generator, rel_path: str) -> Dict[str, Any]:
     """Снимок: analyze(вход) -> generate('', data) -> текст каждого docx.
 
@@ -96,15 +117,8 @@ def snapshot_one(analyzer, generator, rel_path: str) -> Dict[str, Any]:
     # разворачивает analyze()['fields'] в top-level + sourceDocumentType + obligations.
     # Без этого generate() читает пустой top-level и рендерит акты без сумм/сторон.
     # Тест обязан повторять реальный путь фронта, иначе не проверяет генерацию.
-    _fields = data.get("fields") or {}
-    gen_data = {
-        **_fields,
-        "sourceDocumentType": _fields.get("sourceDocumentType")
-        or data.get("sourceDocumentType") or data.get("documentType"),
-        "obligations": data.get("obligations") or _fields.get("obligations") or [],
-    }
+    gen_data = generation_request(data)
 
-    # Каждый прогон — в свежий temp-каталог, чтобы не мусорить generated/.
     with tempfile.TemporaryDirectory() as tmp:
         from pathlib import Path
 
@@ -116,6 +130,11 @@ def snapshot_one(analyzer, generator, rel_path: str) -> Dict[str, Any]:
             return {"__error__": f"generate {type(exc).__name__}: {exc}"}
 
         if not res.get("success"):
+            if res.get("error_code") == "templates_unavailable":
+                return {"rejection": {
+                    "code": "templates_unavailable",
+                    "unresolved_act_ids": sorted(res.get("unresolved_act_ids") or []),
+                }}
             return {"__error__": f"generate failed: {res.get('error')}"}
 
         docs_out: Dict[str, Any] = {}

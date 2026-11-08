@@ -70,6 +70,15 @@ class TemplatesResolverMixin:
         kind = str(data.get("selectedApplicationKind") or data.get("applicationKind") or "").strip().lower()
         status = str(data.get("selectedDebtorStatus") or data.get("debtorStatus") or "").strip().lower()
         entity = entity_type if entity_type in ("individual", "ip", "legal", "kfh") else "individual"
+        if not kind:
+            source = str(data.get("sourceDocumentType") or "")
+            initiation_acts = {"final_realization", "final_restructuring", "final_observation", "final_competition"}
+            if "final_rtk_inclusion" in act_ids:
+                kind = "rtk"
+            elif source.startswith("initiation_") or initiation_acts.intersection(act_ids) or status in ("deceased", "liquidation", "absent"):
+                kind = "other"
+            else:
+                kind = "rtk"
 
         if kind == "rtk":
             branch, applicant = bankruptcy_tree.BRANCH_RTK, (
@@ -132,6 +141,74 @@ class TemplatesResolverMixin:
         data["_unresolvedReasons"] = routing.get("_unresolvedReasons", {})
         data["_default_unresolved_act_ids"] = missing
         return templates, "initiation"
+
+    def _rtk_default_templates(self, data: Dict[str, Any], template: str, source: str):
+        """Стандартный комплект РТК берём из того же дерева, что и выбранные акты."""
+        fields = data.get("fields") or {}
+        routing = {**fields, **data}
+        kind = str(routing.get("selectedApplicationKind") or routing.get("applicationKind") or "")
+        supported = {
+            "",
+            "rtk_single_obligation",
+            "rtk_multiple_obligations",
+            "realization",
+            "restructuring",
+            "observation",
+            "observation_collateral",
+            "competition_collateral",
+            "physical_realization_collateral",
+            "physical_restructuring_collateral",
+            "kfh_observation",
+            "kfh_observation_collateral",
+            "ip_enforcement",
+            "ip_enforcement_realization",
+            "ip_enforcement_realization_collateral",
+            "ip_enforcement_restructuring",
+            "ip_enforcement_restructuring_collateral",
+        }
+        if kind not in ("", "rtk") or template not in supported:
+            return None
+        if source == "mortgage_claim" or "collection" in source or source.startswith("initiation_"):
+            return None
+        if source == "deceased" or routing.get("procedureType") == "deceased":
+            return None
+        routing["selectedApplicationKind"] = "rtk"
+        entity = routing.get("selectedEntityType") or routing.get("entityType") or "individual"
+        if routing.get("isKfh") or template.startswith("kfh_"):
+            entity = "kfh"
+        elif template.startswith("ip_") or source.startswith("ip_"):
+            entity = "ip"
+        collateral = routing.get("selectedCollateralOption")
+        if not collateral:
+            collateral = "collateral" if "collateral" in (template or source) else "no_collateral"
+        procedure = str(routing.get("procedureType") or "").lower()
+        raw = str(routing.get("procedureTypeRaw") or "").lower()
+        default_variant = (
+            "restructuring" if "restructur" in (template or source)
+            or procedure == "restructuring" or "\u0440\u0435\u0441\u0442\u0440\u0443\u043a\u0442\u0443\u0440" in raw
+            else "observation" if entity in ("legal", "kfh") else "realization"
+        )
+        explicit_variant = str(routing.get("final_rtk_inclusion_variant") or "")
+        if "competition" in (template or source):
+            explicit_variant = "competition"
+        elif "restructur" in template:
+            explicit_variant = "restructuring"
+        variant = bankruptcy_tree.procedure_for_case(
+            entity,
+            str(routing.get("selectedDebtorStatus") or routing.get("debtorStatus") or ""),
+            rtk_variant=explicit_variant,
+            introduced=str(routing.get("introducedProcedure") or default_variant),
+        )
+        routing["final_rtk_inclusion_variant"] = variant
+        templates, missing = self._map_selected_acts_to_templates(
+            "final_rtk_inclusion,acceptance_definition",
+            entity,
+            collateral,
+            routing,
+        )
+        data["_unresolvedReasons"] = routing.get("_unresolvedReasons", {})
+        data["_default_unresolved_act_ids"] = missing
+        return templates, variant
 
     @staticmethod
     def _is_fns_creditor(data: Dict[str, Any]) -> bool:
