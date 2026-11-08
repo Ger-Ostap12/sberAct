@@ -79,7 +79,7 @@ if ($rc -ge 8) { throw "robocopy failed with code $rc" }
 # .part файлы моделей (куски для склейки) в дистрибутив не нужны
 $models = Join-Path $dst 'models'
 if (Test-Path $models) {
-    Get-ChildItem $models -Filter '*.part*' -Force -EA SilentlyContinue | Remove-Item -Force -EA SilentlyContinue
+    Get-ChildItem -LiteralPath $models -Recurse -File -Filter '*.part*' -Force | Remove-Item -Force -EA SilentlyContinue
 }
 
 # --- Post-check: тихо неполная раздача — главный источник битых установок ---
@@ -154,22 +154,11 @@ if ($LASTEXITCODE -ne 0) { throw 'Converter packing failed; previous archive ret
 $zipSize = (Get-Item -LiteralPath $zipPending).Length
 Write-Host ("Archive: {0:N2} GB (from {1:N2} GB)" -f ($zipSize / 1GB), ($dstStats.Bytes / 1GB))
 
-# Сверяем состав архива с папкой: молча потерянный при упаковке файл — тот же
-# класс дефекта, от которого мы уходим.
-$archive = [System.IO.Compression.ZipFile]::OpenRead($zipPending)
-try {
-    $entryFiles = @($archive.Entries | Where-Object { $_.Name -ne '' }).Count
-} finally {
-    $archive.Dispose()
-}
-$dstFiles = (Get-ChildItem $dst -Recurse -File -Force | Measure-Object).Count
-if ($entryFiles -ne $dstFiles) {
-    throw "Archive is incomplete: $entryFiles entries vs $dstFiles files in $dst"
-}
+# Verify only the manifest payload; staging may contain excluded model parts.
+& (Join-Path $PSScriptRoot 'verify-converter-archive.ps1') -Zip $zipPending -ManifestFile (Join-Path $dst 'converter-manifest.json')
 if (Test-Path -LiteralPath $zipPath) {
     [IO.File]::Replace($zipPending, $zipPath, $null)
 } else {
     Move-Item -LiteralPath $zipPending -Destination $zipPath
 }
-Write-Host "Archive verified: $entryFiles files"
 Write-Host "Done: put converter.zip next to SberAct-Setup exe on the flash drive"
