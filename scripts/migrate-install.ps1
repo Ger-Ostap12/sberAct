@@ -27,20 +27,15 @@ function Get-SafeDirectory([string]$Directory) {
 }
 
 function Copy-VerifiedTree([string]$From, [string]$To) {
-    $base = (Get-SafeDirectory $From) + '\'
-    New-Item -ItemType Directory -Force -Path $To | Out-Null
-    foreach ($item in Get-ChildItem -LiteralPath $From -Force -Recurse) {
-        if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "Reparse point: $($item.FullName)" }
-        if ($item.PSIsContainer) { continue }
-        $relative = $item.FullName.Substring($base.Length)
-        $destination = Join-Path $To $relative
-        $null = Get-SafeDirectory (Split-Path -Parent $destination)
-        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
-        Copy-Item -LiteralPath $item.FullName -Destination $destination -Force
-        if ((Get-FileHash -LiteralPath $item.FullName).Hash -ne (Get-FileHash -LiteralPath $destination).Hash) {
-            throw "Copy verification failed: $relative"
-        }
+    if (-not ('SberActVerifiedCopy' -as [type])) {
+        Add-Type -Path (Join-Path $PSScriptRoot 'verified-copy.cs')
     }
+    $progress = [Action[long,long,int,int,string]] {
+        param($copied, $totalBytes, $done, $totalFiles, $phase)
+        $percent = if ($totalFiles) { [int][math]::Floor(100.0 * $done / $totalFiles) } else { 0 }
+        Write-Host ("{0}: {1}/{2} files ({3}%); {4:N0}/{5:N0} MiB" -f $phase, $done, $totalFiles, $percent, ($copied / 1MB), ($totalBytes / 1MB))
+    }
+    [SberActVerifiedCopy]::Copy($From, $To, $progress)
 }
 
 try {

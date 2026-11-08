@@ -7,6 +7,7 @@ Var oldShortcutName
 Var oldMenuDirectory
 
 !include "common.nsh"
+ShowInstDetails show
 !include "MUI2.nsh"
 !include "multiUser.nsh"
 !include "${PROJECT_DIR}\scripts\install-policy.nsh"

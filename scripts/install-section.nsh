@@ -4,7 +4,7 @@
 InitPluginsDir
 
 ${IfNot} ${Silent}
-  SetDetailsPrint none
+  SetDetailsPrint both
 ${endif}
 
 StrCpy $appExe "$INSTDIR\${APP_EXECUTABLE_FILENAME}"

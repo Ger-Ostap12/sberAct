@@ -26,9 +26,8 @@
 ; не занимает.
 !macro customInit
   !insertmacro sberactInitMigration
-  SectionGetSize 0 $0
-  IntOp $0 $0 + 3900000   ; КБ, распакованный converter/ (~3.6 ГБ)
-  SectionSetSize 0 $0
+  ; Converter space is checked exactly by the preflight helper.
+
 
   ; Штатная проверка electron-builder закрывает только окно приложения. Бэкенд,
   ; запущенный отдельно (ярлыком из resources\backend или вручную из cmd при
@@ -46,6 +45,8 @@
 ;                   CRC на каждый файл, «наполовину установленным» быть не может);
 ;   converter\    — старый формат, папкой (поддерживаем ради уже нарезанных флешек).
 !macro customInstall
+  InitPluginsDir
+  File "/oname=$PLUGINSDIR\converter-transaction.ps1" "${PROJECT_DIR}\scripts\converter-transaction.ps1"
   IfFileExists "$EXEDIR\converter.zip" sberact_converter_zip 0
   IfFileExists "$EXEDIR\converter\*.*" sberact_converter_dir 0
   Goto sberact_skip_converter
@@ -66,7 +67,11 @@
   ; --- Папка: обычная шелл-копия ---
   sberact_converter_dir:
     DetailPrint "Установка модуля конвертации PDF (несколько минут, ~4-7 ГБ)..."
-    CopyFiles "$EXEDIR\converter" "$INSTDIR\resources"
+    nsExec::ExecToLog 'powershell -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\converter-transaction.ps1" -Action Install -SourceDir "$EXEDIR\converter" -Dest "$INSTDIR\resources"'
+    Pop $0
+    ${if} $0 != 0
+      Goto sberact_converter_broken
+    ${endif}
     Goto sberact_converter_verify
 
   ; CopyFiles (SHFileOperation) не сообщает об ошибке: при обрыве копирования
@@ -82,12 +87,8 @@
     Goto sberact_skip_converter
 
   sberact_converter_broken:
-    ${if} $sberactLegacyDir != ""
-      SetErrorLevel 2
-      Abort "Converter installation failed; previous installation retained"
-    ${endif}
-    DetailPrint "ВНИМАНИЕ: модуль конвертации установлен не полностью."
-    MessageBox MB_ICONEXCLAMATION|MB_OK "Модуль конвертации PDF установлен не полностью.$\r$\n$\r$\nПриложение установится и будет работать, но конвертация PDF будет недоступна.$\r$\n$\r$\nВероятные причины: не хватило места на диске или сбой чтения с флешки.$\r$\nОсвободите место (нужно ~7 ГБ) и запустите установку заново."
+    SetErrorLevel 2
+    Abort "Converter preparation failed; previous converter retained"
 
   sberact_skip_converter:
 
@@ -156,16 +157,59 @@
 ; (мгновенно, это move в пределах диска), чистим $INSTDIR, возвращаем на место —
 ; новая установка кладёт app+backend поверх сохранённого конвертера. При
 ; НАСТОЯЩЕМ удалении сносим всё, включая конвертер.
+!macro sberactSaveConverterItem NAME
+  ${if} $R9 == "0"
+  ${andIf} ${FileExists} "$INSTDIR\resources\${NAME}"
+    ClearErrors
+    Rename "$INSTDIR\resources\${NAME}" "$INSTDIR.converter-keep\${NAME}"
+    ${if} ${Errors}
+      StrCpy $R9 "1"
+    ${endif}
+  ${endif}
+!macroend
+!macro sberactRestoreConverterItem NAME
+  ${if} ${FileExists} "$INSTDIR.converter-keep\${NAME}"
+    ClearErrors
+    Rename "$INSTDIR.converter-keep\${NAME}" "$INSTDIR\resources\${NAME}"
+    ${if} ${Errors}
+      SetErrorLevel 2
+      Abort "Cannot restore ${NAME}; recovery copy retained"
+    ${endif}
+  ${endif}
+!macroend
 !macro customRemoveFiles
   ${if} ${isUpdated}
-    ${if} ${FileExists} "$INSTDIR\resources\converter\*.*"
-      Rename "$INSTDIR\resources\converter" "$INSTDIR.converter-keep"
+    ${if} ${FileExists} "$INSTDIR.converter-keep"
+      SetErrorLevel 2
+      Abort "Previous installer recovery directory exists; refusing to overwrite it"
+    ${endif}
+    ClearErrors
+    CreateDirectory "$INSTDIR.converter-keep"
+    ${if} ${Errors}
+      SetErrorLevel 2
+      Abort "Cannot create installer recovery directory"
+    ${endif}
+    StrCpy $R9 "0"
+    !insertmacro sberactSaveConverterItem "converter"
+    !insertmacro sberactSaveConverterItem ".converter-next"
+    !insertmacro sberactSaveConverterItem ".converter-previous"
+    !insertmacro sberactSaveConverterItem ".converter-update.json"
+    ${if} $R9 != "0"
+      !insertmacro sberactRestoreConverterItem "converter"
+      !insertmacro sberactRestoreConverterItem ".converter-next"
+      !insertmacro sberactRestoreConverterItem ".converter-previous"
+      !insertmacro sberactRestoreConverterItem ".converter-update.json"
+      RMDir "$INSTDIR.converter-keep"
+      SetErrorLevel 2
+      Abort "Cannot preserve converter; previous installation retained"
     ${endif}
     RMDir /r "$INSTDIR"
-    ${if} ${FileExists} "$INSTDIR.converter-keep\*.*"
-      CreateDirectory "$INSTDIR\resources"
-      Rename "$INSTDIR.converter-keep" "$INSTDIR\resources\converter"
-    ${endif}
+    CreateDirectory "$INSTDIR\resources"
+    !insertmacro sberactRestoreConverterItem "converter"
+    !insertmacro sberactRestoreConverterItem ".converter-next"
+    !insertmacro sberactRestoreConverterItem ".converter-previous"
+    !insertmacro sberactRestoreConverterItem ".converter-update.json"
+    RMDir "$INSTDIR.converter-keep"
   ${else}
     RMDir /r "$INSTDIR"
   ${endif}

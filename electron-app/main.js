@@ -15,6 +15,7 @@ const fs = require('fs');
 const os = require('os');
 const isDev = require('electron-is-dev');
 const { initUpdater, shutdownUpdater } = require('./updater');
+const converterUpdate = require('./converter-update');
 const { createServiceLog } = require('./serviceLog');
 const { createDiagnostics, redact, sanitize, reportedFailure: reportFailure } = require('./diagnostics');
 
@@ -599,18 +600,38 @@ async function warmConverterIfRoomy() {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  const updateConverterDir = process.env.CONVERTER_DIR || (isDev ? path.join(app.getAppPath(),'converter') : path.join(process.resourcesPath,'converter'));
+  let pendingConverter = null;
+  if (!isDev && process.platform === 'win32') {
+    try {
+      await converterUpdate.transaction('Recover',updateConverterDir);
+      pendingConverter = await converterUpdate.state(updateConverterDir);
+    } catch (error) {
+      dialog.showErrorBox('Восстановление конвертера',String(error.message || error));
+      app.quit();
+      return;
+    }
+  }
   console.log(`[logs] ${path.dirname(serviceLog('backend').file)}`);
   startPythonBackend();
   createWindow();
-  warmConverterIfRoomy();
+  if (pendingConverter && pendingConverter.phase === 'pending') {
+    converterUpdate.finishPendingUpdate({converterDir:updateConverterDir,backendPort:8000,currentVersion:app.getVersion()})
+      .then(result => {
+        if (result.rolledBack) dialog.showErrorBox('Обновление конвертера отменено',
+          result.message + '\nВосстановлена предыдущая версия модуля конвертации.');
+        if (result.failed) dialog.showErrorBox("\u0423\u0441\u0442\u0430\u043d\u043e\u0432\u043a\u0430 \u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0435\u0440\u0430 \u043d\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0430", result.message + "\n\u041f\u0440\u0435\u0434\u044b\u0434\u0443\u0449\u0435\u0439 \u0432\u0435\u0440\u0441\u0438\u0438 \u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0435\u0440\u0430 \u043d\u0435 \u0431\u044b\u043b\u043e. \u0423\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u0435 \u0438\u0441\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043a\u043e\u043c\u043f\u043b\u0435\u043a\u0442.");
+      })
+      .catch(error => dialog.showErrorBox('Проверка конвертера',String(error.message || error)));
+  } else {
+    warmConverterIfRoomy();
+  }
 
   // Офлайн-обновление с флешки: конвертер лежит рядом с backend'ом в resources.
   initUpdater({
     getMainWindow: () => mainWindow,
-    converterDir: isDev
-      ? path.join(app.getAppPath(), 'converter')
-      : path.join(process.resourcesPath, 'converter'),
+    converterDir: updateConverterDir,
     backendPort: 8000
   });
 

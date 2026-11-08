@@ -54,6 +54,29 @@ Var sberactUserDir
 
 !macro sberactPrepareMigration
   InitPluginsDir
+  File "/oname=$PLUGINSDIR\converter-transaction.ps1" "${PROJECT_DIR}\scripts\converter-transaction.ps1"
+  StrCpy $R8 ""
+  ${if} $sberactLegacyDir != ""
+    StrCpy $R8 '-LegacyDir "$sberactLegacyDir"'
+  ${endif}
+  IfFileExists "$EXEDIR\converter.zip" sberact_check_zip 0
+  IfFileExists "$EXEDIR\converter\*.*" sberact_check_directory 0
+  nsExec::ExecToLog 'powershell -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\converter-transaction.ps1" -Action Check -Dest "$INSTDIR\resources" -ReserveKB ${APP_64_UNPACKED_SIZE} $R8'
+  Pop $0
+  Goto sberact_checked_package
+  sberact_check_zip:
+    nsExec::ExecToLog 'powershell -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\converter-transaction.ps1" -Action Check -Zip "$EXEDIR\converter.zip" -Dest "$INSTDIR\resources" -ReserveKB ${APP_64_UNPACKED_SIZE} $R8'
+    Pop $0
+    Goto sberact_checked_package
+  sberact_check_directory:
+    nsExec::ExecToLog 'powershell -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\converter-transaction.ps1" -Action Check -SourceDir "$EXEDIR\converter" -Dest "$INSTDIR\resources" -ReserveKB ${APP_64_UNPACKED_SIZE} $R8'
+    Pop $0
+  sberact_checked_package:
+    ${if} $0 != 0
+      SetErrorLevel 2
+      Abort "Package preflight failed; previous application retained"
+    ${endif}
+  File "/oname=$PLUGINSDIR\verified-copy.cs" "${PROJECT_DIR}\scripts\verified-copy.cs"
   File "/oname=$PLUGINSDIR\migrate-install.ps1" "${PROJECT_DIR}\scripts\migrate-install.ps1"
   ${if} $sberactLegacyDir != ""
     StrCpy $keepShortcuts "false"

@@ -12,7 +12,7 @@ assert.equal(config.build.nsis.perMachine, false);
 assert.equal(config.build.nsis.script, 'scripts/installer.nsi');
 assert.equal(require('app-builder-lib/package.json').version, '24.13.3', 'Review vendored NSIS templates when upgrading electron-builder');
 let expected = fs.readFileSync(path.join(upstream, 'installer.nsi'), 'utf8').replace(/\r\n/g, '\n');
-expected = expected.replace('!insertmacro initMultiUser', '!insertmacro sberactInitMultiUser').replace('!include "multiUser.nsh"', '!include "multiUser.nsh"\n!include "${PROJECT_DIR}\\scripts\\install-policy.nsh"')
+expected = expected.replace('!include "common.nsh"', '!include "common.nsh"\nShowInstDetails show').replace('!insertmacro initMultiUser', '!insertmacro sberactInitMultiUser').replace('!include "multiUser.nsh"', '!include "multiUser.nsh"\n!include "${PROJECT_DIR}\\scripts\\install-policy.nsh"')
   .replace('!include "installSection.nsh"', '!include "${PROJECT_DIR}\\scripts\\install-section.nsh"')
   .replace('!ifdef BUILD_UNINSTALLER\n  !include "uninstaller.nsh"\n!endif', '!define BUILD_UNINSTALLER\nFunction un._GetProcessInfo\n  !insertmacro FUNC_GETPROCESSINFO\nFunctionEnd\nUninstPage instfiles\n!include "uninstaller.nsh"\n!undef BUILD_UNINSTALLER');
 assert.equal(read('scripts/installer.nsi').split('\n').slice(1).join('\n'), expected);
@@ -39,11 +39,26 @@ try {
   write('resources/converter/pyruntime/python.exe', 'python fixture');
   write('resources/converter/nested/[Content_Types].xml', 'keep brackets');
   write('generated/act.docx', 'original document');
+  const longName='nested/'+ 'x'.repeat(120)+'.py';
+  write('resources/converter/'+longName,'long filename fixture');
+  const binary=Buffer.alloc(2*1024*1024+73,0xA5);
+  write('resources/converter/binary.dat',binary);
+  const stale=path.join(target,'resources/converter/nested/[Content_Types].xml');
+  fs.mkdirSync(path.dirname(stale),{recursive:true});
+  fs.writeFileSync(stale,'stale readonly destination');
+  fs.chmodSync(stale,0o444);
+  const sourceTime=new Date('2020-01-02T03:04:05Z');
+  fs.utimesSync(path.join(legacy,'resources/converter',longName),sourceTime,sourceTime);
+
   const run = (overrides = {}) => spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'scripts/migrate-install.ps1'),
     '-Mode', overrides.mode || 'Prepare', '-Source', legacy, '-Target', overrides.target || target, '-AppExe', exe],
     { encoding: 'utf8', env: { ...process.env, LOCALAPPDATA: work }, windowsHide: true });
   let result = run();
   assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout,/100%/);
+  assert.deepEqual(fs.readFileSync(path.join(target,'resources/converter/binary.dat')),binary);
+  assert.equal(fs.readFileSync(path.join(target,'resources/converter',longName),'utf8'),'long filename fixture');
+  assert.equal(fs.statSync(path.join(target,'resources/converter',longName)).mtimeMs,sourceTime.getTime());
   assert.equal(fs.readFileSync(path.join(target, 'resources/converter/nested/[Content_Types].xml'), 'utf8'), 'keep brackets');
   assert.equal(fs.readFileSync(path.join(legacy, 'generated/act.docx'), 'utf8'), 'original document');
   const backupRoot = path.join(work, 'SberAct/migration-backups');
