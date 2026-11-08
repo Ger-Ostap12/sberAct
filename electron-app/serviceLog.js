@@ -67,4 +67,10 @@ function createServiceLog(name, dir, maxBytes = MAX_BYTES) {
   };
 }
 
-module.exports = { createServiceLog, MAX_BYTES };
+// Readable.setEncoding keeps incomplete UTF-8 characters between data chunks.
+function captureUtf8Output(stream, onText) {
+  stream.setEncoding('utf8');
+  stream.on('data', onText);
+}
+
+module.exports = { createServiceLog, captureUtf8Output, MAX_BYTES };

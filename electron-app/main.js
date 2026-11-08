@@ -16,7 +16,7 @@ const os = require('os');
 const isDev = require('electron-is-dev');
 const { initUpdater, shutdownUpdater } = require('./updater');
 const converterUpdate = require('./converter-update');
-const { createServiceLog } = require('./serviceLog');
+const { createServiceLog, captureUtf8Output } = require('./serviceLog');
 const { createDiagnostics, redact, sanitize, reportedFailure: reportFailure } = require('./diagnostics');
 
 // Логи сервисов — по одному на сервис, создаются при первом обращении.
@@ -34,7 +34,8 @@ function serviceLog(name) {
     const fileLog = createServiceLog(name, dir);
     serviceLogs.set(name, {
       file: fileLog.file,
-      write: data => { diagnostics().ingest(name, data); fileLog.write(redact(data)); },
+      write: (data, channel) => { diagnostics().ingest(name, data, channel); fileLog.write(redact(data)); },
+      flush: () => { diagnostics().flush(name, 'stdout'); diagnostics().flush(name, 'stderr'); },
       line: text => { diagnostics().record({ component: name, level: 'info', message: text }); fileLog.line(redact(text)); },
     });
   }
@@ -240,16 +241,17 @@ class ManagedService {
     this.external = false;
     this.process = spawn(cmd.command, cmd.args || [], {
       cwd: cmd.cwd,
-      env: { ...process.env, ...(cmd.env || {}) },
+      env: { ...process.env, ...(cmd.env || {}), PYTHONIOENCODING: 'utf-8:backslashreplace', PYTHONUTF8: '1' },
       detached: SPAWN_DETACHED
     });
-    this.process.stdout.on('data', (d) => { log.write(d); console.log(`[${this.name}] ${d}`); });
-    this.process.stderr.on('data', (d) => { log.write(d); console.error(`[${this.name}] ${d}`); });
+    captureUtf8Output(this.process.stdout, (d) => { log.write(d, 'stdout'); console.log(`[${this.name}] ${d}`); });
+    captureUtf8Output(this.process.stderr, (d) => { log.write(d, 'stderr'); console.error(`[${this.name}] ${d}`); });
     this.process.on('error', (e) => {
       log.line(`spawn error: ${e && e.message ? e.message : e}`);
       console.error(`[${this.name}] spawn error:`, e);
     });
     this.process.on('close', (code) => {
+      log.flush();
       log.line(`exited with code ${code}`);
       console.log(`[${this.name}] exited with code ${code}`);
       this.process = null;
@@ -417,6 +419,8 @@ async function startPythonBackend() {
       env: {
         ...process.env,
         ...backend.env,
+        PYTHONIOENCODING: 'utf-8:backslashreplace',
+        PYTHONUTF8: '1',
         // Записываемые данные (generated/, temp/) — вне папки установки, переживают обновление
         SBERACT_DATA_DIR: app.getPath('userData'),
         // Бэкенд владеет конвертером: в проде его дефолтный путь (от __file__) неверен
@@ -429,13 +433,13 @@ async function startPythonBackend() {
     const log = serviceLog('backend');
     log.line(`starting: ${backend.command} ${(backend.args || []).join(' ')} (cwd ${backend.cwd})`);
 
-    pythonProcess.stdout.on('data', (data) => {
-      log.write(data);
+    captureUtf8Output(pythonProcess.stdout, (data) => {
+      log.write(data, 'stdout');
       console.log(`Python stdout: ${data}`);
     });
 
-    pythonProcess.stderr.on('data', (data) => {
-      log.write(data);
+    captureUtf8Output(pythonProcess.stderr, (data) => {
+      log.write(data, 'stderr');
       console.error(`Python stderr: ${data}`);
     });
 
@@ -445,6 +449,7 @@ async function startPythonBackend() {
     });
 
     pythonProcess.on('close', (code) => {
+      log.flush();
       log.line(`exited with code ${code}`);
       console.log(`Python backend exited with code ${code}`);
     });
