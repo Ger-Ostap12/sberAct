@@ -69,7 +69,7 @@ try {
   result = run({ mode: 'Retire' });
   assert.notEqual(result.status, 0, 'Incomplete new installation must not execute old uninstaller');
   assert.equal(fs.readFileSync(path.join(legacy, exe), 'utf8'), 'old application');
-  const compiler = path.join(process.env.LOCALAPPDATA, 'electron-builder/Cache/nsis/nsis-3.0.4.1/Bin/makensis.exe');
+  const compiler = path.join(process.env.SBERACT_NSIS_DIR || path.join(process.env.LOCALAPPDATA, 'electron-builder/Cache/nsis/nsis-3.0.4.1'), 'Bin/makensis.exe');
   assert.ok(fs.existsSync(compiler), 'Install cached NSIS compiler before running Windows migration checks');
   const fixtureScript = path.join(work, 'legacy-uninstaller.nsi');
   fs.writeFileSync(fixtureScript, `Unicode true\nOutFile "${path.join(legacy, 'Uninstall ' + exe)}"\nSilentInstall silent\nRequestExecutionLevel user\nSection\nDelete "$EXEDIR\\${exe}"\nSectionEnd\n`);

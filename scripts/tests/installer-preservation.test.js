@@ -21,7 +21,7 @@ try {
     '!include "'+path.join(root,'scripts/installer.nsh')+'"',
     'Section','StrCpy $INSTDIR "'+path.join(work,'app')+'"','!insertmacro customRemoveFiles','SectionEnd'
   ].join('\n'));
-  const compiler=path.join(process.env.LOCALAPPDATA,'electron-builder/Cache/nsis/nsis-3.0.4.1/Bin/makensis.exe');
+  const compiler=path.join(process.env.SBERACT_NSIS_DIR || path.join(process.env.LOCALAPPDATA, 'electron-builder/Cache/nsis/nsis-3.0.4.1'), 'Bin/makensis.exe');
   let result=spawnSync(compiler,['/V2','-INPUTCHARSET','UTF8',script],{encoding:'utf8',windowsHide:true});
   assert.equal(result.status,0,result.stdout+result.stderr);
   result=spawnSync(exe,['/S'],{encoding:'utf8',windowsHide:true});

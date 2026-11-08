@@ -1,0 +1,161 @@
+name: SberAct Windows
+
+on:
+  push:
+    branches: [release, main]
+  pull_request:
+    branches: [release, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sberact-windows-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  policy:
+    name: Repository policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check allowed source
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+          if (event.pull_request) {
+            if (event.pull_request.head.repo.full_name !== event.repository.full_name)
+              throw new Error('External pull requests must not run on the personal Windows runner');
+            if (event.pull_request.base.ref === 'main' && event.pull_request.head.ref !== 'release')
+              throw new Error('Only release may target main');
+          } else if (!['release', 'main'].includes(process.env.REF_NAME)) {
+            throw new Error('Run this workflow on release or main');
+          }
+          NODE
+
+  windows:
+    name: Windows checks
+    needs: policy
+    runs-on: [self-hosted, Windows, X64, sberact]
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: powershell
+    env:
+      CI: 'true'
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: '1'
+      PYTHONNOUSERSITE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      SBERACT_CI_HOME: ${{ vars.SBERACT_CI_HOME || 'C:\Диск D\Сбер\SberAct-CI' }}
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - name: Prepare local temporary and cache directories
+        run: |
+          $ciTemp = Join-Path $env:SBERACT_CI_HOME 'temp'
+          New-Item -ItemType Directory -Force -Path $ciTemp | Out-Null
+          $ciEnvironment = @{
+            TEMP = $ciTemp
+            TMP = $ciTemp
+            npm_config_cache = (Join-Path $env:SBERACT_CI_HOME 'cache/npm')
+            ELECTRON_CACHE = (Join-Path $env:SBERACT_CI_HOME 'cache/electron')
+            ELECTRON_BUILDER_CACHE = (Join-Path $env:SBERACT_CI_HOME 'cache/electron-builder')
+            PYINSTALLER_CONFIG_DIR = (Join-Path $env:SBERACT_CI_HOME 'cache/pyinstaller')
+            HF_HOME = (Join-Path $env:SBERACT_CI_HOME 'cache/huggingface')
+            TORCH_HOME = (Join-Path $env:SBERACT_CI_HOME 'cache/torch')
+            XDG_CACHE_HOME = (Join-Path $env:SBERACT_CI_HOME 'cache/xdg')
+            PIP_CACHE_DIR = (Join-Path $env:SBERACT_CI_HOME 'cache/pip')
+          }
+          foreach ($ciKey in $ciEnvironment.Keys) {
+            [IO.File]::AppendAllText($env:GITHUB_ENV, "$ciKey=$($ciEnvironment[$ciKey])" + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
+          }
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          submodules: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.21.0'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            electron-app/package-lock.json
+      - name: Install Electron dependencies
+        run: npm ci
+      - name: Install frontend dependencies
+        run: npm ci --prefix electron-app
+      - name: Check release version and changelog
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ci/release-metadata.js
+      - name: Restore and verify pinned local assets
+        run: node scripts/ci/assets.js restore
+      - name: Check Python environment
+        run: '& $env:CI_PYTHON scripts/ci/check-python.py'
+      - name: Prepare NSIS compiler
+        run: node scripts/ci/prepare-nsis.js
+      - name: Prepare test reports
+        run: |
+          New-Item -ItemType Directory -Force -Path temp/ci | Out-Null
+          $dataDirectory = Join-Path $env:RUNNER_TEMP ("sberact-data-" + $env:GITHUB_RUN_ID + "-" + $env:GITHUB_RUN_ATTEMPT)
+          [IO.File]::AppendAllText($env:GITHUB_ENV, "SBERACT_DATA_DIR=$dataDirectory" + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
+      - name: Check CI helpers
+        run: node --test scripts/tests/ci-contract.test.js
+      - name: Check frontend types
+        run: '& .\electron-app\node_modules\.bin\tsc.cmd --noEmit -p electron-app/tsconfig.json'
+      - name: Test frontend
+        run: npm --prefix electron-app test -- --watchAll=false --runInBand --json --outputFile="$env:GITHUB_WORKSPACE\temp\ci\frontend.json"
+      - name: Test diagnostics
+        run: npm run test:diagnostics
+      - name: Test updater
+        run: npm run test:updater
+      - name: Test installer
+        run: npm run test:installer
+      - name: Check fatal Python errors
+        run: '& $env:CI_PYTHON -m ruff check --no-cache --select E9,F63,F7,F82 python-backend/app'
+      - name: Test complete backend including golden corpora
+        run: '& $env:CI_PYTHON -m pytest python-backend/tests --require-golden-corpus -q --tb=short -p no:cacheprovider --junitxml=temp/ci/backend.xml'
+      - name: Build frontend
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          CI: 'false'
+        run: npm run build
+      - name: Build backend
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: '& $env:CI_PYTHON -m PyInstaller --noconfirm SberAct.spec'
+      - name: Build Windows installer
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: npx --no-install electron-builder --win --publish never
+      - name: Refresh converter launcher from checked source
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: Copy-Item -LiteralPath python-backend/app/run_converter.py -Destination release/converter/run_converter.py -Force
+      - name: Build complete offline update
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: npm run build:update
+      - name: Verify full OCR package with installer reader
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: node scripts/tests/full-package.test.js release/SberAct-Update release/win-unpacked/resources/msvc-runtime
+      - name: Save full release on runner
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: node scripts/ci/assets.js publish
+      - name: Upload installer when enabled
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.SBERACT_UPLOAD_INSTALLER == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: SberAct-Windows-${{ github.run_id }}
+          path: |
+            release/SberAct-Update/SberAct-Setup-*.exe
+            release/SberAct-Update/*.blockmap
+            release/SberAct-Update/latest.yml
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - name: Keep test reports on runner
+        if: always()
+        run: node scripts/ci/assets.js reports
