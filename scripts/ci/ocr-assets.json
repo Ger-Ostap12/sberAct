@@ -1,0 +1,38 @@
+{
+  "repository": "Ger-Ostap12/sberAct",
+  "tag": "ci-ocr-7dc90fd871184668",
+  "version": "7dc90fd871184668",
+  "archive": {
+    "name": "converter.zip",
+    "size": 4949128432,
+    "sha256": "6896f20f6e2edf24b0cb17e8986194776b49e3b237cd324f3d6adb90f8012309"
+  },
+  "parts": [
+    {
+      "name": "converter.zip.part-000",
+      "size": 1610612736,
+      "sha256": "c3a31ba3f4d5f4d50cfcaa4fa795db184ea424eda4aa7affe826c4fd4909f112"
+    },
+    {
+      "name": "converter.zip.part-001",
+      "size": 1610612736,
+      "sha256": "51a177a6cc8f744fdf1003c22b0ba1d545a00bd7481ace3132c898825777fa70"
+    },
+    {
+      "name": "converter.zip.part-002",
+      "size": 1610612736,
+      "sha256": "72df502d060a3c6db7b1941dba4844a5890e17b4805c5db5edca1d9720755726"
+    },
+    {
+      "name": "converter.zip.part-003",
+      "size": 117290224,
+      "sha256": "afc2e37d226e9b987e6bf634048311a1057dbde6a9ed74f864ab4e2bb998376d"
+    }
+  ],
+  "manifest": {
+    "name": "converter-manifest.json",
+    "size": 6603145,
+    "sha256": "94bd959a25ffd6d3854d97809c4b62c938714f4464b75c985e971587705c470e"
+  },
+  "launcherTextSha256": "fe457db98105acba386c842fb45887752886633d7c569d16471c43b558773b01"
+}

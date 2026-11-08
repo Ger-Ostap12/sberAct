@@ -131,5 +131,5 @@ async function main(args) {
     if (fs.existsSync(source)) copyFiles(source, path.join(home, 'reports', id), await scan(source));
   } else throw new Error('Usage: node scripts/ci/assets.js lock|prepare [python.exe]|restore|publish|reports');
 }
-module.exports = { summary, outside, check };
+module.exports = { summary, outside, check, scan };
 if (require.main === module) main(process.argv.slice(2)).catch(error => { console.error(error.message); process.exitCode = 1; });

@@ -63,26 +63,32 @@ test('restore and publish refuse execution in the developer checkout', () => {
     assert.match(result.stderr, /only allowed inside GitHub Actions/);
   }
 });
-test('workflow requires successful checks before main builds', () => {
+test('cloud workflow requires both check jobs and pins the private corpus', () => {
   const workflow = yaml.load(fs.readFileSync(path.join(root, '.github/workflows/windows.yml'), 'utf8'));
   assert.deepEqual(workflow.on.push.branches, ['release', 'main']);
   assert.deepEqual(workflow.on.pull_request.branches, ['release', 'main']);
   assert.equal(workflow.permissions.contents, 'read');
   assert.equal(workflow.concurrency['cancel-in-progress'], false);
-  const job = workflow.jobs.windows;
-  assert.equal(job.needs, 'policy');
-  assert.deepEqual(job['runs-on'], ['self-hosted', 'Windows', 'X64', 'sberact']);
-  const steps = job.steps;
-  const backend = steps.findIndex(step => step.name === 'Test complete backend including golden corpora');
-  assert.match(steps[backend].run, /--require-golden-corpus/);
-  for (const step of steps) assert.equal(step['continue-on-error'], undefined);
-  for (const name of ['Build backend', 'Build Windows installer', 'Build complete offline update', 'Save full release on runner']) {
-    const index = steps.findIndex(step => step.name === name);
-    assert.ok(index > backend, name);
-    assert.match(steps[index].if, /github.ref == 'refs\/heads\/main'/);
-    assert.match(steps[index].if, /github.event_name != 'pull_request'/);
+  assert.equal(workflow.jobs.windows['runs-on'], 'windows-2022');
+  assert.equal(workflow.jobs.backend['runs-on'], 'windows-2022');
+  const config = require('../ci/private-data.json');
+  const checkout = workflow.jobs.backend.steps.find(step => step.name === 'Checkout pinned private verification corpus');
+  assert.equal(checkout.with.repository, config.repository);
+  assert.equal(checkout.with.ref, config.commit);
+  assert.match(config.commit, /^[a-f0-9]{40}$/);
+  assert.equal(checkout.with['persist-credentials'], false);
+  assert.ok(checkout.with['ssh-key'].includes(config.secret));
+  assert.equal(workflow.jobs.backend.steps.some(step => step.uses?.startsWith('actions/upload-artifact')), false);
+  assert.deepEqual(workflow.jobs.build.needs, ['windows', 'backend']);
+  assert.equal(workflow.jobs.package.needs, 'build');
+  assert.equal(workflow.jobs.package.permissions.contents, 'write');
+  for (const job of Object.values(workflow.jobs)) {
+    for (const step of job.steps) assert.equal(step['continue-on-error'], undefined);
   }
-  assert.match(steps.find(step => step.name === 'Build Windows installer').run, /--publish never/);
+  for (const name of ['build', 'package']) {
+    assert.match(workflow.jobs[name].if, /github.ref == 'refs\/heads\/main'/);
+    assert.match(workflow.jobs[name].if, /github.event_name != 'pull_request'/);
+  }
 });
 
 test('pinned assets reject missing files and corruption even at the same size', async () => {
@@ -104,5 +110,32 @@ test('pinned assets reject missing files and corruption even at the same size', 
     groups.corpus[0].sha256 = 'a'.repeat(64);
     fs.writeFileSync(path.join(assets, 'index.json'), JSON.stringify(groups));
     await assert.rejects(check(dir, expected), /index does not match/);
+  } finally { remove(dir); }
+});
+
+test('private corpus verifier detects missing, extra and changed data without printing document text', async () => {
+  const { verify } = require('../ci/corpus');
+  const dir = fixture();
+  try {
+    const folder = path.join(dir, 'corpus');
+    fs.mkdirSync(folder);
+    const file = path.join(folder, 'source.docx');
+    fs.writeFileSync(file, 'input');
+    const files = await require('../ci/assets').scan(folder);
+    const fingerprint = summary({ corpus: files }).corpus;
+    const manifest = path.join(dir, 'corpus-manifest.json');
+    fs.writeFileSync(manifest, JSON.stringify({ schema: 1, files }));
+    assert.equal((await verify(dir, fingerprint)).length, 1);
+    fs.writeFileSync(file, 'INPUT');
+    await assert.rejects(verify(dir, fingerprint), /differs from the pinned fingerprint/);
+    fs.writeFileSync(file, 'input');
+    fs.writeFileSync(path.join(folder, 'extra.docx'), 'extra');
+    await assert.rejects(verify(dir, fingerprint), /differs from the pinned fingerprint/);
+    fs.unlinkSync(path.join(folder, 'extra.docx'));
+    fs.unlinkSync(file);
+    await assert.rejects(verify(dir, fingerprint), /differs from the pinned fingerprint/);
+    fs.writeFileSync(file, 'input');
+    fs.writeFileSync(manifest, JSON.stringify({ schema: 1, files: [{ ...files[0], path: '../outside.docx' }] }));
+    await assert.rejects(verify(dir, fingerprint), /manifest differs from files/);
   } finally { remove(dir); }
 });
