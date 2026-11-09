@@ -329,9 +329,19 @@ def procedure_for_case(
     introduced: str = "",
 ) -> str:
     """Процедура дела: сначала выбор юриста, затем статус, затем тип лица."""
+    allowed = (("observation", "competition") if entity in ("legal", "kfh")
+               else ("realization", "restructuring"))
     known = tuple(p for p, _ in PROCEDURE_RULES)
+
+    def explicit(procedure: str) -> str:
+        if procedure not in allowed:
+            raise ValueError(
+                "Выбранная процедура «%s» несовместима с типом должника «%s». "
+                "Проверьте выбор типа должника и финального акта." % (procedure, entity))
+        return procedure
+
     if rtk_variant in known:
-        return rtk_variant
+        return explicit(rtk_variant)
 
     by_final = {
         "final_restructuring": "restructuring",
@@ -341,16 +351,17 @@ def procedure_for_case(
     }
     for act_id, procedure in by_final.items():
         if act_ids and act_id in act_ids:
-            return procedure
+            return explicit(procedure)
 
     # Статус сужает процедуру жёстче типа лица: у ликвидируемого и отсутствующего
     # бывает только конкурсное, у умершего — только реализация имущества.
-    if status in ("liquidation", "absent"):
+    if entity in ("legal", "kfh") and status in ("liquidation", "absent"):
         return "competition"
-    if status == "deceased":
+    if entity == "individual" and status == "deceased":
         return "realization"
 
-    if introduced in known:
+    # Результат анализа не может направить поиск в чужую типу лица ветку.
+    if introduced in allowed:
         return introduced
     return "observation" if entity in ("legal", "kfh") else "realization"
 

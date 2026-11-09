@@ -362,3 +362,59 @@ class TestПапкаНеНайдена:
         итог = resolve(tmp_path, entity="legal", role="acceptance", procedure="competition")
         assert итог.path is None
         assert "нет папки" in итог.reason
+
+
+@pytest.mark.parametrize("entity,wrong,expected", [
+    ("individual", "competition", "realization"),
+    ("individual", "observation", "realization"),
+    ("ip", "competition", "realization"),
+    ("legal", "realization", "observation"),
+    ("kfh", "restructuring", "observation"),
+])
+def test_incompatible_analysis_procedure_cannot_choose_foreign_tree(entity, wrong, expected):
+    from bankruptcy_tree import procedure_for_case
+    assert procedure_for_case(entity, introduced=wrong) == expected
+    with pytest.raises(ValueError, match="несовместима"):
+        procedure_for_case(entity, rtk_variant=wrong)
+
+
+@pytest.mark.parametrize("entity,chosen,automatic", [
+    ("individual", "realization", "competition"),
+    ("individual", "restructuring", "realization"),
+    ("ip", "restructuring", "competition"),
+    ("legal", "observation", "competition"),
+    ("kfh", "competition", "observation"),
+])
+def test_explicit_procedure_wins_over_analysis(entity, chosen, automatic):
+    from bankruptcy_tree import procedure_for_case
+    assert procedure_for_case(entity, rtk_variant=chosen, introduced=automatic) == chosen
+
+
+@pytest.mark.parametrize("entity", ["individual", "ip", "legal", "kfh"])
+@pytest.mark.parametrize("procedure", ["realization", "restructuring", "observation", "competition"])
+def test_every_entity_procedure_combination(entity, procedure):
+    from bankruptcy_tree import procedure_for_case
+    allowed = ({"realization", "restructuring"} if entity in ("individual", "ip")
+               else {"observation", "competition"})
+    if procedure in allowed:
+        assert procedure_for_case(entity, introduced=procedure) == procedure
+        assert procedure_for_case(entity, rtk_variant=procedure) == procedure
+    else:
+        assert procedure_for_case(entity, introduced=procedure) in allowed
+        with pytest.raises(ValueError, match="несовместима"):
+            procedure_for_case(entity, rtk_variant=procedure)
+        act_id = {"realization": "final_realization", "restructuring": "final_restructuring",
+                  "observation": "final_observation", "competition": "final_competition"}[procedure]
+        with pytest.raises(ValueError, match="несовместима"):
+            procedure_for_case(entity, act_ids=[act_id])
+
+
+@pytest.mark.parametrize("entity,stale,expected", [
+    ("individual", "liquidation", "realization"),
+    ("ip", "absent", "realization"),
+    ("legal", "deceased", "observation"),
+    ("kfh", "deceased", "observation"),
+])
+def test_status_from_other_entity_cannot_change_procedure(entity, stale, expected):
+    from bankruptcy_tree import procedure_for_case
+    assert procedure_for_case(entity, stale) == expected

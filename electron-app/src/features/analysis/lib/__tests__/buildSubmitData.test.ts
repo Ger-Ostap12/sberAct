@@ -191,3 +191,37 @@ describe('buildSubmitData — резолютивная часть только �
     expect(run({ applicationKind: 'rtk', shortText: false }).fields.selectedShortText).toBeUndefined();
   });
 });
+
+
+it('выбранный акт РТК заменяет скрытый вариант анализа и не отправляет снятые акты', () => {
+  const result = run({
+    applicationKind: 'rtk', entityType: 'individual',
+    analysisResult: baseAnalysis({ introducedProcedure: 'competition', final_rtk_inclusion_variant: 'competition' }),
+    selectedActs: [
+      { id: 'final_rtk_inclusion', name: 'Реализация', category: 'final', selected: true, rtkVariant: 'realization' },
+      { id: 'final_competition', name: 'Конкурсное', category: 'final', selected: false },
+    ],
+  });
+  expect(result.fields.final_rtk_inclusion_variant).toBe('realization');
+  expect(result.fields.selectedActsIds).toBe('final_rtk_inclusion');
+  const acts = JSON.parse(result.fields.selectedActsData!);
+  expect(acts).toHaveLength(1);
+  expect(acts[0].rtkVariant).toBe('realization');
+});
+
+it('снятый акт РТК не оставляет скрытого варианта из анализа', () => {
+  expect(run({
+    applicationKind: 'initiation',
+    analysisResult: baseAnalysis({ final_rtk_inclusion_variant: 'competition' }),
+    selectedActs: [],
+  }).fields.final_rtk_inclusion_variant).toBeUndefined();
+});
+
+
+it('снятый пользователем статус заменяет старый статус анализа', () => {
+  const result = run({
+    entityType: 'legal', debtorStatus: null,
+    analysisResult: baseAnalysis({ selectedDebtorStatus: 'liquidation', debtorStatus: 'liquidation' }),
+  });
+  expect(result.fields.selectedDebtorStatus).toBe('');
+});

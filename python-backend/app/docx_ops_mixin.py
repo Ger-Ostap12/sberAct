@@ -275,6 +275,19 @@ class DocxOpsMixin:
                 if run is None or run.tag != qn("w:r"):
                     node.text = node.text.replace(sentinel, display)
                     continue
+                # В одном run могут быть несколько w:t, переносы и табуляции.
+                # Вставлять выделенный текст после всего run нельзя: его хвост
+                # тогда оказывается перед началом предложения.
+                following = list(run)[list(run).index(node) + 1:]
+                if following:
+                    from copy import deepcopy
+                    tail = deepcopy(run)
+                    for child in list(tail):
+                        if child.tag != qn("w:rPr"):
+                            tail.remove(child)
+                    for child in following:
+                        tail.append(child)
+                    run.addnext(tail)
                 pieces = node.text.split(sentinel)
                 node.text = pieces[0]
                 node.set(qn("xml:space"), "preserve")

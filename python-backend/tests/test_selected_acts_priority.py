@@ -135,3 +135,92 @@ def test_standard_logic_still_used_when_nothing_selected(gen):
     result = gen.generate(AUTO_TEMPLATE, _data())
 
     assert result["success"] and result["count"] >= 1
+
+
+@pytest.mark.parametrize("variant", [None, "realization", "restructuring"])
+def test_physical_rtk_generation_survives_wrong_automatic_competition(gen, variant):
+    act = {"id": "final_rtk_inclusion", "selected": True}
+    if variant:
+        act["rtkVariant"] = variant
+    result = gen.generate(AUTO_TEMPLATE, _data(
+        selectedApplicationKind="rtk", selectedEntityType="individual",
+        selectedCollateralOption="no_collateral", introducedProcedure="competition",
+        selectedActsIds="final_rtk_inclusion,acceptance_definition",
+        selectedActsData=json.dumps([act, {"id": "acceptance_definition", "selected": True}]),
+    ))
+    assert result["success"], result
+    assert set(result["documents"]) == {"rtk_inclusion", "acceptance"}
+    assert not result.get("unresolved_act_ids")
+    assert not result.get("warnings")
+
+
+def test_unselected_rtk_metadata_cannot_change_selected_acceptance(gen):
+    result = gen.generate(AUTO_TEMPLATE, _data(
+        selectedApplicationKind="rtk", selectedEntityType="individual",
+        selectedCollateralOption="no_collateral",
+        selectedActsIds="acceptance_definition",
+        selectedActsData=json.dumps([
+            {"id": "final_rtk_inclusion", "selected": False, "rtkVariant": "competition"},
+            {"id": "acceptance_definition", "selected": True},
+        ]),
+    ))
+    assert result["success"], result
+    assert list(result["documents"]) == ["acceptance"]
+
+
+def test_incompatible_explicit_act_is_not_replaced_by_another_document(gen):
+    result = gen.generate(AUTO_TEMPLATE, _data(
+        selectedApplicationKind="rtk", selectedEntityType="individual",
+        selectedActsIds="final_rtk_inclusion",
+        selectedActsData=json.dumps([
+            {"id": "final_rtk_inclusion", "selected": True, "rtkVariant": "competition"},
+        ]),
+    ))
+    assert not result["success"]
+    assert "несовместима" in result["error"]
+    assert not result.get("documents")
+
+
+@pytest.mark.parametrize("entity,variant,automatic", [
+    ("individual", "realization", "competition"),
+    ("individual", "restructuring", "observation"),
+    ("ip", "realization", "competition"),
+    ("ip", "restructuring", "observation"),
+    ("legal", "observation", "realization"),
+    ("legal", "competition", "restructuring"),
+    ("kfh", "observation", "realization"),
+    ("kfh", "competition", "restructuring"),
+])
+def test_each_entity_routes_selected_rtk_act_to_its_real_template(gen, entity, variant, automatic):
+    import bankruptcy_tree
+    data = {"selectedApplicationKind": "rtk", "introducedProcedure": automatic,
+            "final_rtk_inclusion_variant": variant}
+    templates, missing = gen._map_selected_acts_to_templates(
+        "final_rtk_inclusion,acceptance_definition", entity, "no_collateral", data)
+    assert not missing, data.get("_unresolvedReasons")
+    assert set(templates) == {"rtk_inclusion", "acceptance"}
+    for template in templates.values():
+        assert template["path"].is_file()
+        assert bankruptcy_tree._ENTITY_DIRS[entity] in template["path"].parts
+    assert variant in bankruptcy_tree.file_procedures(templates["rtk_inclusion"]["path"].name)
+
+
+@pytest.mark.parametrize("entity,stale", [
+    ("individual", "absent"), ("ip", "deceased"),
+    ("legal", "deceased"), ("kfh", "deceased"),
+])
+def test_foreign_status_does_not_redirect_template_folder(gen, entity, stale):
+    templates, missing = gen._map_selected_acts_to_templates(
+        "acceptance_definition", entity, "no_collateral",
+        {"selectedApplicationKind": "rtk", "debtorStatus": stale})
+    assert not missing
+    assert templates["acceptance"]["path"].is_file()
+    assert "Умерший" not in templates["acceptance"]["path"].parts
+
+
+def test_cleared_legal_status_does_not_restore_automatic_liquidation(gen):
+    axes = gen._bankruptcy_tree_axes(
+        {"selectedApplicationKind": "rtk", "selectedDebtorStatus": "", "debtorStatus": "liquidation"},
+        "legal", "no_collateral", ["acceptance_definition"])
+    assert axes["status"] == ""
+    assert axes["procedure"] == "observation"

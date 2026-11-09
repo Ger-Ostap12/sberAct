@@ -59,6 +59,15 @@ class TemplatesResolverMixin:
         return bankruptcy_tree.fns_queue_for_case(
             self._fns_sum_present(data, "2"), self._fns_sum_present(data, "3"))
 
+    @staticmethod
+    def _selected_case_status(data: Dict[str, Any], entity: str) -> str:
+        # Пустой явный выбор тоже приоритетен: это снятый пользователем статус.
+        raw = data.get("selectedDebtorStatus") if "selectedDebtorStatus" in data else data.get("debtorStatus")
+        status = str(raw or "").strip().lower()
+        allowed = (("liquidation", "absent") if entity in ("legal", "kfh")
+                   else ("deceased",) if entity == "individual" else ())
+        return status if status in allowed else ""
+
     def _bankruptcy_tree_axes(
         self,
         data: Dict[str, Any],
@@ -68,8 +77,8 @@ class TemplatesResolverMixin:
     ) -> Optional[Dict[str, Any]]:
         """Оси дела для дерева «Банкротство». None — ветка ещё не подключена."""
         kind = str(data.get("selectedApplicationKind") or data.get("applicationKind") or "").strip().lower()
-        status = str(data.get("selectedDebtorStatus") or data.get("debtorStatus") or "").strip().lower()
         entity = entity_type if entity_type in ("individual", "ip", "legal", "kfh") else "individual"
+        status = self._selected_case_status(data, entity)
         if not kind:
             source = str(data.get("sourceDocumentType") or "")
             initiation_acts = {"final_realization", "final_restructuring", "final_observation", "final_competition"}
@@ -96,6 +105,11 @@ class TemplatesResolverMixin:
             rtk_variant=str(data.get("final_rtk_inclusion_variant") or "").strip().lower(),
             act_ids=act_ids,
             introduced=str(data.get("introducedProcedure") or "").strip().lower(),
+        )
+        logger.info(
+            "Выбор шаблонов: entity=%s, branch=%s, status=%s, rtk_variant=%s, introduced=%s, procedure=%s",
+            entity, branch, status, data.get("final_rtk_inclusion_variant") or "",
+            data.get("introducedProcedure") or "", procedure,
         )
         return {
             "entity": entity,
@@ -127,7 +141,7 @@ class TemplatesResolverMixin:
             routing["selectedDebtorStatus"] = "absent"
         elif template.endswith("_liquidation"):
             routing["selectedDebtorStatus"] = "liquidation"
-        status = routing.get("selectedDebtorStatus") or routing.get("debtorStatus")
+        status = self._selected_case_status(routing, entity)
         if entity in ("legal", "kfh"):
             finals = ["final_competition"] if status in ("absent", "liquidation") else ["final_observation"]
         else:
@@ -195,7 +209,7 @@ class TemplatesResolverMixin:
             explicit_variant = "restructuring"
         variant = bankruptcy_tree.procedure_for_case(
             entity,
-            str(routing.get("selectedDebtorStatus") or routing.get("debtorStatus") or ""),
+            self._selected_case_status(routing, entity),
             rtk_variant=explicit_variant,
             introduced=str(routing.get("introducedProcedure") or default_variant),
         )
