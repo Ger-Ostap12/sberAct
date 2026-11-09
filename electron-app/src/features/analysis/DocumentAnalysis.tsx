@@ -1,3 +1,5 @@
+import { datesSectionError } from './lib/dateFields';
+import StepNavigation from '../../shared/components/StepNavigation';
 import { judgeSubstitutionError, resetJudgeSubstitution } from './lib/judgeSubstitution';
 import { mortgageChoicesError, resetMortgageChoices } from './lib/mortgageChoices';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -88,6 +90,7 @@ interface DocumentAnalysisProps {
   mode?: 'bankruptcy' | 'mortgage';
   onAnalysisComplete: (data: ExtractedData) => void;
   onBack: () => void;
+  onMainMenu?: () => void;
 }
 
 // Человекочитаемые названия для всех documentType, которые возвращает backend
@@ -129,7 +132,8 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   extractedData: propExtractedData,
   mode = 'bankruptcy',
   onAnalysisComplete,
-  onBack
+  onBack,
+  onMainMenu
 }) => {
   const isMortgage = mode === 'mortgage';
   const [isAnalyzing, setIsAnalyzing] = useState(true);
@@ -1058,6 +1062,19 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
     );
   };
 
+  const setActSelections = (ids: string[], selected: boolean) => {
+    setSelectedActs(previous => previous.map(act => {
+      if (!ids.includes(act.id)) return act;
+      if (act.id === 'final_rtk_inclusion' && selected) {
+        const variants = rtkVariantsForEntity(entityType);
+        const rtkVariant = act.rtkVariant && variants.includes(act.rtkVariant)
+          ? act.rtkVariant : defaultRtkVariant(introducedProcedure, entityType) || variants[0];
+        return { ...act, selected, rtkVariant };
+      }
+      return { ...act, selected };
+    }));
+  };
+
   // Смена вида заявления. Набор финальных актов переставит эффект по контексту.
   const handleApplicationKindChange = (v: ApplicationKind) => {
     setApplicationKind(v);
@@ -1109,7 +1126,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   ) => {
     setSelectedActs(prevActs =>
       prevActs.map(act =>
-        act.id === actId ? { ...act, rtkVariant: variant } : act
+        act.id === actId ? { ...act, selected: true, rtkVariant: variant } : act
       )
     );
   };
@@ -1120,7 +1137,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
   const substitutionError = isMortgage ? '' : judgeSubstitutionError(editedFields);
 
   const handleContinue = () => {
-    if (!analysisResult || mortgageAwardError || substitutionError) return;
+    if (!analysisResult || mortgageAwardError || substitutionError || datesSectionError(editedFields, mode)) return;
     const пустые = kindsWithoutCards(collateralKinds, analysisResult.collaterals || []);
     if (пустые.length > 0) {
       setCollateralNotice(
@@ -1195,19 +1212,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
 
   return (
     <Box sx={{ width: '100%', maxWidth: 1600, mx: 'auto', px: 1 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <Button
-          variant="outlined"
-          onClick={onBack}
-          startIcon={<BackIcon />}
-          sx={{ mr: 2 }}
-        >
-          Назад
-        </Button>
-        <Typography variant="h4" component="h1">
-          Анализ документа
-        </Typography>
-      </Box>
+      <StepNavigation title="Анализ документа" onBack={onBack} onMainMenu={onMainMenu} />
 
       <Grid container spacing={3}>
         {/* Информация о документе */}
@@ -1298,6 +1303,8 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
             setDebtorStatus={setDebtorStatus}
             selectedActs={selectedActs}
             toggleActSelection={toggleActSelection}
+            setActSelections={setActSelections}
+            fnsCreditor={fnsCreditor}
             updateActAdditionalFields={updateActAdditionalFields}
             updateActRtkVariant={updateActRtkVariant}
             introducedProcedure={introducedProcedure}
@@ -1617,7 +1624,7 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
           onClick={handleContinue}
           startIcon={<CheckIcon />}
           sx={{ px: 4 }}
-          disabled={!entityType || !collateralOption || selectedActs.filter(a => a.selected).length === 0 || Boolean(mortgageAwardError) || Boolean(substitutionError)}
+          disabled={!entityType || !collateralOption || selectedActs.filter(a => a.selected).length === 0 || Boolean(mortgageAwardError) || Boolean(substitutionError) || datesSectionError(editedFields, mode)}
         >
           Продолжить
         </Button>

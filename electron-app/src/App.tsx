@@ -184,6 +184,7 @@ function App() {
             mode={analysisMode}
             onAnalysisComplete={handleAnalysisComplete}
             onBack={() => setCurrentStep('category')}
+            onMainMenu={resetToUpload}
           />
         );
       case 'preview':

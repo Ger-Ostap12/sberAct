@@ -2,6 +2,7 @@
 import React from 'react';
 import {
   Alert,
+  Button,
   Card,
   Typography,
   Box,
@@ -28,6 +29,7 @@ import {
 } from '../lib/intermediateActs';
 import {
   IntroducedProcedure,
+  initiationFinalActs,
   RTK_VARIANT_LABEL,
   RtkVariant,
   rtkVariantsForEntity,
@@ -56,6 +58,8 @@ interface ActSelectionSectionProps {
   setDebtorStatus: (v: DebtorStatus | null) => void;
   selectedActs: SelectedAct[];
   toggleActSelection: (actId: string) => void;
+  setActSelections: (ids: string[], selected: boolean) => void;
+  fnsCreditor: boolean;
   /** Больше не используется секцией: поля «Причина»/«Для сторон»/«Запросы суда»
    *  убраны из окон актов. Проп оставлен — родитель по-прежнему им владеет. */
   updateActAdditionalFields?: (actId: string, field: 'reason' | 'forParties' | 'courtRequests', value: string) => void;
@@ -86,6 +90,8 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
   setDebtorStatus,
   selectedActs,
   toggleActSelection,
+  setActSelections,
+  fnsCreditor,
   updateActRtkVariant,
   introducedProcedure,
   recommendationsApplied,
@@ -95,6 +101,34 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
 }) => {
   const состояниеОтложений = groupState(
     selectedActs.filter(act => act.selected).map(act => act.id));
+
+  const actUnavailable = (act: SelectedAct) =>
+    (act.id === COLLATERAL_NO_DUTY_ID && (!collateralNoDutyAvailable(applicationKind) || fnsCreditor))
+    || (act.id === 'acceptance_no_motion_no_duty' && fnsCreditor);
+
+  const categoryActions = (category: SelectedAct['category'], label: string) => {
+    const acts = selectedActs.filter(act => act.category === category);
+    const available = acts.filter(act => !actUnavailable(act) && (category !== 'final'
+      || (applicationKind === 'rtk' ? act.id === 'final_rtk_inclusion'
+        : initiationFinalActs(entityType, debtorStatus).includes(act.id))));
+    const select = (checked: boolean) => {
+      setActSelections((checked ? available : acts).map(act => act.id), checked);
+      if (category === 'final' && applicationKind === 'rtk') setShortText(checked);
+    };
+    const allSelected = available.length > 0 && available.every(act => act.selected
+      && (act.id !== 'final_rtk_inclusion' || !!act.rtkVariant))
+      && (category !== 'final' || applicationKind !== 'rtk' || shortText);
+    const noneSelected = !acts.some(act => act.selected)
+      && (category !== 'final' || applicationKind !== 'rtk' || !shortText);
+    return (
+      <Box role="group" aria-label={`Выбор актов: ${label}`} sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+        <Button size="small" onClick={() => select(true)} disabled={allSelected || available.length === 0}>
+          Выбрать все
+        </Button>
+        <Button size="small" onClick={() => select(false)} disabled={noneSelected}>Снять все</Button>
+      </Box>
+    );
+  };
 
   return (
           <Card sx={{ p: 3 }}>
@@ -270,13 +304,13 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                     </Typography>
                   </AccordionSummary>
                   <AccordionDetails>
+                    {categoryActions('acceptance', 'Принятие')}
               <Box>
                       {selectedActs
                         .filter(act => act.category === 'acceptance')
                         .map(act => {
                           // В инициировании залоговость задана папкой — отдельного акта нет.
-                          const недоступен = act.id === COLLATERAL_NO_DUTY_ID
-                            && !collateralNoDutyAvailable(applicationKind);
+                          const недоступен = actUnavailable(act);
                           return (
                             <Box key={act.id} sx={{ mb: 2 }}>
                               <FormControlLabel
@@ -306,6 +340,7 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                 </Typography>
                   </AccordionSummary>
                   <AccordionDetails>
+                    {categoryActions('intermediate', 'Промежуточные')}
                     <Box>
                       {/* Отложение — два акта под общей галкой: она включает и
                           гасит оба, каждый при этом снимается по отдельности. */}
@@ -374,13 +409,14 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                     </Typography>
                   </AccordionSummary>
                   <AccordionDetails>
+                    {categoryActions('final', 'Финальные СА')}
                     <Box>
                       {applicationKind === 'rtk' ? (
                         // Включение в РТК: виды акта взаимоисключающие, набор
                         // гейтится типом лица, «За реестр» доступен обоим.
                         rtkVariantsForEntity(entityType).map(variant => {
                           const act = selectedActs.find(a => a.id === 'final_rtk_inclusion');
-                          const выбран = act?.rtkVariant === variant;
+                          const выбран = act?.selected && act.rtkVariant === variant;
                           const рекомендован = act?.selected && !!introducedProcedure
                             && variant === introducedProcedure;
                           return (

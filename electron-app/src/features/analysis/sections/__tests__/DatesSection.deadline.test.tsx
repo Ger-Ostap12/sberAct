@@ -33,7 +33,7 @@ describe('DatesSection — срок возражений', () => {
       <DatesSection editedFields={{ objectionsDeadline18: 'в течение 30 дней' }} onFieldChange={onFieldChange} mode="mortgage" />
     );
     // В секции несколько input[type=date]; наш — скрытый, при поле срока.
-    const picker = container.querySelector('input[type="date"][aria-hidden="true"]') as HTMLInputElement;
+    const picker = container.querySelector('input[data-calendar-for="Установка срока на предоставление возражений:"]') as HTMLInputElement;
     expect(picker).toBeTruthy();
     const поле3 = picker;
     fireEvent.change(поле3, { target: { value: '2026-04-10' } });
@@ -45,7 +45,7 @@ describe('DatesSection — срок возражений', () => {
     const { container } = render(
       <DatesSection editedFields={{ objectionsDeadline18: 'в течение 30 дней' }} onFieldChange={() => {}} mode="mortgage" />
     );
-    const picker = container.querySelector('input[type="date"][aria-hidden="true"]') as HTMLInputElement;
+    const picker = container.querySelector('input[data-calendar-for="Установка срока на предоставление возражений:"]') as HTMLInputElement;
     expect(picker.value).toBe('');
     expect((screen.getByPlaceholderText('ДД.ММ.ГГГГ или текст') as HTMLInputElement).value).toBe('в течение 30 дней');
   });

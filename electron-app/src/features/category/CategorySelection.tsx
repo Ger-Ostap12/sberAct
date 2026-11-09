@@ -1,9 +1,9 @@
 import React from 'react';
 import { Box, Typography, Card, CardActionArea, CardContent, Button, Chip, Grid } from '@mui/material';
+import BackIcon from '@mui/icons-material/ArrowBack';
 import BankruptcyIcon from '@mui/icons-material/Gavel';
 import CollectionIcon from '@mui/icons-material/AccountBalance';
 import MortgageIcon from '@mui/icons-material/Home';
-import BackIcon from '@mui/icons-material/ArrowBack';
 import { DocumentCategory, ExtractedData } from '../../types';
 import { deriveCategory } from './lib/deriveCategory';
 
