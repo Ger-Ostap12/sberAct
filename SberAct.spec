@@ -68,7 +68,7 @@ a = Analysis(
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=[str(app_dir / 'stdio_encoding.py')],
     excludes=[
         'torch', 'transformers', 'tensorflow', 'tensorboard', 'sklearn',
         'scikit-learn', 'nltk', 'pandas', 'triton', 'cupy',

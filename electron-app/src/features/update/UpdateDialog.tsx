@@ -124,8 +124,7 @@ const UpdateDialog: React.FC<UpdateDialogProps> = ({ open, onClose, currentVersi
         appDownloaded = true;
       }
       const applyRes = await updateApply({
-        appDownloaded,
-        converterPlan: result._converterPlan || null
+        appDownloaded
       });
       if (!applyRes.ok) {
         setError(applyRes.error || 'Не удалось применить обновление');
@@ -157,7 +156,7 @@ const UpdateDialog: React.FC<UpdateDialogProps> = ({ open, onClose, currentVersi
         {phase === 'checking' && (
           <Box sx={{ py: 2 }}>
             <Typography variant="body2" sx={{ mb: 1 }}>
-              Поиск обновления…
+              Проверка комплекта обновления…
             </Typography>
             <LinearProgress />
           </Box>
@@ -186,7 +185,7 @@ const UpdateDialog: React.FC<UpdateDialogProps> = ({ open, onClose, currentVersi
                 </Typography>
               ) : (
                 <Typography variant="body2" color="text.secondary">
-                  {result.app.error ? `Не проверено: ${result.app.error}` : 'Актуальная версия'}
+                  {result.app.error ? `Не проверено: ${result.app.error}` : 'Версия приложения совпадает с комплектом.'}
                 </Typography>
               )}
             </Box>
@@ -197,20 +196,36 @@ const UpdateDialog: React.FC<UpdateDialogProps> = ({ open, onClose, currentVersi
             <Box>
               <Typography variant="subtitle2">Модуль конвертации (OCR)</Typography>
               {result.converter.available ? (
-                <Typography variant="body2" color="success.main">
-                  Изменённых файлов: {result.converter.filesChanged}
-                  {result.converter.filesDeleted ? `, удаляемых: ${result.converter.filesDeleted}` : ''}
-                  {' '}({formatBytes(result.converter.bytes || 0)})
-                </Typography>
+                <Box>
+                  <Typography variant="body2" color="success.main">
+                    Добавить: {result.converter.filesMissing || 0}, заменить: {result.converter.filesChanged || 0},{' '}
+                    удалить лишних: {result.converter.filesDeleted || 0}.
+                  </Typography>
+                  <Typography variant="body2">
+                    Объём добавленных и изменённых файлов: {formatBytes(result.converter.bytes || 0)}.
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    При установке модуль заменяется целиком: {result.converter.replacementFiles || 0} файлов
+                    {' '}({formatBytes(result.converter.replacementBytes || 0)}).
+                  </Typography>
+                </Box>
               ) : (
                 <Typography variant="body2" color="text.secondary">
-                  Актуальная версия
+                  {result.converter.status === 'matches_package'
+                    ? "Установленные файлы OCR совпадают с комплектом."
+                    : result.converter.status === 'not_in_package'
+                      ? result.converter.installed === false
+                        ? "В комплекте нет OCR. Модуль конвертации не будет установлен."
+                        : "В комплекте нет обновления OCR. Установленный модуль будет сохранён."
+                      : "Версия установленного OCR не проверена."}
                 </Typography>
               )}
             </Box>
 
+            {result.converter.warning && <Alert severity="warning">{result.converter.warning}</Alert>}
+
             {nothingToDo && (
-              <Alert severity="info">Установлена последняя версия — обновлять нечего.</Alert>
+              <Alert severity="info">Обновлений в выбранном комплекте нет.</Alert>
             )}
 
             {working && (

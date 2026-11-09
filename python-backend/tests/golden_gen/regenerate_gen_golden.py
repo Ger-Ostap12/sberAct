@@ -36,7 +36,19 @@ def main() -> int:
     generator = DocumentGenerator()
     snapshot = build_snapshot(analyzer, generator, files)
 
-    errors = [f for f, s in snapshot.items() if "__error__" in s]
+    with open(os.path.join(_THIS, "unavailable_cases.json"), encoding="utf-8") as source:
+        unavailable = json.load(source)
+    errors = [f for f, item in snapshot.items() if "__error__" in item or
+              ("rejection" in item and (f not in unavailable or
+               item["rejection"].get("code") != unavailable[f]["code"]))]
+    rejected = {name for name, item in snapshot.items() if "rejection" in item}
+    if rejected != set(unavailable):
+        print("Реестр проверенных недоступных веток больше не совпадает с корпусом", file=sys.stderr)
+        return 1
+    if errors:
+        for name in errors:
+            print(f"Неожиданная ошибка генерации: {name}: {snapshot[name]}", file=sys.stderr)
+        return 1
     with open(GOLDEN_PATH, "w", encoding="utf-8") as w:
         json.dump(snapshot, w, ensure_ascii=False, indent=1, sort_keys=True)
 

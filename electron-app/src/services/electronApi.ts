@@ -329,21 +329,22 @@ export interface ElectronAPI {
 
 /** Состояние одного канала обновления (app или converter). */
 export interface UpdateChannelState {
+  status?: 'not_in_package' | 'update_available' | 'matches_package';
+  installed?: boolean;
   available: boolean;
   version?: string | null;
   currentVersion?: string | null;
   installedVersion?: string | null;
   filesChanged?: number;
+  filesMissing?: number;
+  replacementFiles?: number;
+  replacementBytes?: number;
+  removedBytes?: number;
+  manifestRecorded?: boolean;
+  warning?: string | null;
   filesDeleted?: number;
   bytes?: number;
   error?: string;
-}
-
-/** Внутренний план converter-sync (передаётся обратно в updateApply как есть). */
-export interface ConverterSyncPlan {
-  toCopy: Array<{ path: string; sha256?: string; size?: number }>;
-  toDelete: string[];
-  flashManifestPath: string;
 }
 
 export interface UpdateCheckResult {
@@ -352,12 +353,10 @@ export interface UpdateCheckResult {
   source?: string;
   app: UpdateChannelState;
   converter: UpdateChannelState;
-  _converterPlan?: ConverterSyncPlan | null;
 }
 
 export interface UpdateApplyOptions {
   appDownloaded: boolean;
-  converterPlan?: ConverterSyncPlan | null;
 }
 
 export interface UpdateDownloadProgress {

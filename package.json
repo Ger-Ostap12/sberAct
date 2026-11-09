@@ -1,6 +1,6 @@
 {
   "name": "sberact-document-generator",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "description": "Генератор судебных актов на основе заявлений для Astra Linux",
   "main": "electron-app/main.js",
   "scripts": {
@@ -14,7 +14,9 @@
     "build:update": "powershell -ExecutionPolicy Bypass -File scripts/build-update.ps1",
     "build:linux": "powershell -ExecutionPolicy Bypass -File scripts/build-linux.ps1",
     "build:linux-converter": "powershell -ExecutionPolicy Bypass -File scripts/build-converter-linux.ps1",
-    "test:updater": "node scripts/tests/converter-sync.test.js && node scripts/tests/feed-server.test.js",
+    "test:diagnostics": "node --test scripts/tests/diagnostics.test.js scripts/tests/backend-log-encoding.test.js",
+    "test:installer": "node scripts/tests/installer-contract.test.js && node scripts/tests/installer-preservation.test.js && node scripts/tests/converter-archive.test.js",
+    "test:updater": "node scripts/tests/converter-comparison.test.js && node scripts/tests/converter-sync.test.js && node scripts/tests/feed-server.test.js && node scripts/tests/update-package.test.js && node scripts/tests/updater-ipc.test.js",
     "dist:win": "npm run build && npm run pack:backend && npm run pack:converter && electron-builder --win && npm run stage:converter -- -Zip",
     "dist:linux": "powershell -ExecutionPolicy Bypass -File scripts/build-dist-linux.ps1",
     "postinstall": "electron-builder install-app-deps"
@@ -50,7 +52,9 @@
       "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
       "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
       "!**/{appveyor.yml,.travis.yml,circle.yml}",
-      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}",
+      "electron-app/update-package.js",
+      "electron-app/converter-update.js"
     ],
     "extraResources": [
       {
@@ -63,6 +67,10 @@
         "filter": [
           "*.dll"
         ]
+      },
+      {
+        "from": "scripts/converter-transaction.ps1",
+        "to": "update-tools/converter-transaction.ps1"
       }
     ],
     "win": {
@@ -80,13 +88,14 @@
     "nsis": {
       "oneClick": false,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
+      "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "SberAct",
       "installerIcon": "electron-app/assets/icon.ico",
       "uninstallerIcon": "electron-app/assets/icon.ico",
-      "include": "scripts/installer.nsh"
+      "include": "scripts/installer.nsh",
+      "script": "scripts/installer.nsi"
     },
     "linux": {
       "target": [
@@ -105,13 +114,15 @@
   },
   "dependencies": {
     "electron-is-dev": "^2.0.0",
-    "electron-updater": "^6.3.9"
+    "electron-updater": "^6.3.9",
+    "js-yaml": "4.1.0",
+    "semver": "7.7.3"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
     "cross-env": "^10.1.0",
     "electron": "^38.0.0",
-    "electron-builder": "^24.13.3",
+    "electron-builder": "24.13.3",
     "wait-on": "^7.2.0"
   },
   "keywords": [

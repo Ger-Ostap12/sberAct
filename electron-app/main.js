@@ -15,7 +15,8 @@ const fs = require('fs');
 const os = require('os');
 const isDev = require('electron-is-dev');
 const { initUpdater, shutdownUpdater } = require('./updater');
-const { createServiceLog } = require('./serviceLog');
+const converterUpdate = require('./converter-update');
+const { createServiceLog, captureUtf8Output } = require('./serviceLog');
 const { createDiagnostics, redact, sanitize, reportedFailure: reportFailure } = require('./diagnostics');
 
 // Логи сервисов — по одному на сервис, создаются при первом обращении.
@@ -33,7 +34,8 @@ function serviceLog(name) {
     const fileLog = createServiceLog(name, dir);
     serviceLogs.set(name, {
       file: fileLog.file,
-      write: data => { diagnostics().ingest(name, data); fileLog.write(redact(data)); },
+      write: (data, channel) => { diagnostics().ingest(name, data, channel); fileLog.write(redact(data)); },
+      flush: () => { diagnostics().flush(name, 'stdout'); diagnostics().flush(name, 'stderr'); },
       line: text => { diagnostics().record({ component: name, level: 'info', message: text }); fileLog.line(redact(text)); },
     });
   }
@@ -239,16 +241,17 @@ class ManagedService {
     this.external = false;
     this.process = spawn(cmd.command, cmd.args || [], {
       cwd: cmd.cwd,
-      env: { ...process.env, ...(cmd.env || {}) },
+      env: { ...process.env, ...(cmd.env || {}), PYTHONIOENCODING: 'utf-8:backslashreplace', PYTHONUTF8: '1' },
       detached: SPAWN_DETACHED
     });
-    this.process.stdout.on('data', (d) => { log.write(d); console.log(`[${this.name}] ${d}`); });
-    this.process.stderr.on('data', (d) => { log.write(d); console.error(`[${this.name}] ${d}`); });
+    captureUtf8Output(this.process.stdout, (d) => { log.write(d, 'stdout'); console.log(`[${this.name}] ${d}`); });
+    captureUtf8Output(this.process.stderr, (d) => { log.write(d, 'stderr'); console.error(`[${this.name}] ${d}`); });
     this.process.on('error', (e) => {
       log.line(`spawn error: ${e && e.message ? e.message : e}`);
       console.error(`[${this.name}] spawn error:`, e);
     });
     this.process.on('close', (code) => {
+      log.flush();
       log.line(`exited with code ${code}`);
       console.log(`[${this.name}] exited with code ${code}`);
       this.process = null;
@@ -416,6 +419,8 @@ async function startPythonBackend() {
       env: {
         ...process.env,
         ...backend.env,
+        PYTHONIOENCODING: 'utf-8:backslashreplace',
+        PYTHONUTF8: '1',
         // Записываемые данные (generated/, temp/) — вне папки установки, переживают обновление
         SBERACT_DATA_DIR: app.getPath('userData'),
         // Бэкенд владеет конвертером: в проде его дефолтный путь (от __file__) неверен
@@ -428,13 +433,13 @@ async function startPythonBackend() {
     const log = serviceLog('backend');
     log.line(`starting: ${backend.command} ${(backend.args || []).join(' ')} (cwd ${backend.cwd})`);
 
-    pythonProcess.stdout.on('data', (data) => {
-      log.write(data);
+    captureUtf8Output(pythonProcess.stdout, (data) => {
+      log.write(data, 'stdout');
       console.log(`Python stdout: ${data}`);
     });
 
-    pythonProcess.stderr.on('data', (data) => {
-      log.write(data);
+    captureUtf8Output(pythonProcess.stderr, (data) => {
+      log.write(data, 'stderr');
       console.error(`Python stderr: ${data}`);
     });
 
@@ -444,6 +449,7 @@ async function startPythonBackend() {
     });
 
     pythonProcess.on('close', (code) => {
+      log.flush();
       log.line(`exited with code ${code}`);
       console.log(`Python backend exited with code ${code}`);
     });
@@ -599,18 +605,38 @@ async function warmConverterIfRoomy() {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  const updateConverterDir = process.env.CONVERTER_DIR || (isDev ? path.join(app.getAppPath(),'converter') : path.join(process.resourcesPath,'converter'));
+  let pendingConverter = null;
+  if (!isDev && process.platform === 'win32') {
+    try {
+      await converterUpdate.transaction('Recover',updateConverterDir);
+      pendingConverter = await converterUpdate.state(updateConverterDir);
+    } catch (error) {
+      dialog.showErrorBox('Восстановление конвертера',String(error.message || error));
+      app.quit();
+      return;
+    }
+  }
   console.log(`[logs] ${path.dirname(serviceLog('backend').file)}`);
   startPythonBackend();
   createWindow();
-  warmConverterIfRoomy();
+  if (pendingConverter && pendingConverter.phase === 'pending') {
+    converterUpdate.finishPendingUpdate({converterDir:updateConverterDir,backendPort:8000,currentVersion:app.getVersion()})
+      .then(result => {
+        if (result.rolledBack) dialog.showErrorBox('Обновление конвертера отменено',
+          result.message + '\nВосстановлена предыдущая версия модуля конвертации.');
+        if (result.failed) dialog.showErrorBox("\u0423\u0441\u0442\u0430\u043d\u043e\u0432\u043a\u0430 \u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0435\u0440\u0430 \u043d\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0430", result.message + "\n\u041f\u0440\u0435\u0434\u044b\u0434\u0443\u0449\u0435\u0439 \u0432\u0435\u0440\u0441\u0438\u0438 \u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0435\u0440\u0430 \u043d\u0435 \u0431\u044b\u043b\u043e. \u0423\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u0435 \u0438\u0441\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043a\u043e\u043c\u043f\u043b\u0435\u043a\u0442.");
+      })
+      .catch(error => dialog.showErrorBox('Проверка конвертера',String(error.message || error)));
+  } else {
+    warmConverterIfRoomy();
+  }
 
   // Офлайн-обновление с флешки: конвертер лежит рядом с backend'ом в resources.
   initUpdater({
     getMainWindow: () => mainWindow,
-    converterDir: isDev
-      ? path.join(app.getAppPath(), 'converter')
-      : path.join(process.resourcesPath, 'converter'),
+    converterDir: updateConverterDir,
     backendPort: 8000
   });
 

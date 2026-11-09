@@ -39,6 +39,9 @@ def _текст(gen, акты, **поля):
     for инфо in результат["documents"].values():
         d = Document(инфо["file_path"])
         куски.append("\n".join(p.text for p in d.paragraphs))
+        for table in d.tables:
+            for row in table.rows:
+                куски.append(" ".join(cell.text for cell in row.cells))
     return re.sub(r"\s+", " ", "\n".join(куски))
 
 

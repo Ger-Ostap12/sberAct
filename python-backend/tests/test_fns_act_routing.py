@@ -1,89 +1,64 @@
-# -*- coding: utf-8 -*-
-"""Роутинг актов ФНС: какой файл берётся под какое заявление (05.10.2026).
-
-Повод. 05.10.2026 в ветку пришли обновлённые акты, и один сменил имя:
-«реструк_3-я_очередь__признание_банкротом__налоговая_маркированный» ->
-«Принятие - реструктуризация финал». Бэкенд искал его по ДВУМ подстрокам
-(«реструк» и «признание»), второй в новом имени нет — `_resolve_fns_act`
-начал отдавать None, и акт переставал создаваться совсем.
-
-⚠️ Полная сюита при этом осталась ЗЕЛЁНОЙ: ветку ФНС не проверял ни один
-тест. `test_uaaua_scenarios.py` стережёт залоговые и беззалоговые пути, а
-ФНС — нет. Поэтому здесь проверяется не поведение `_find_docx_by_name`
-(оно очевидно), а то, что КАЖДЫЙ акт ФНС находится: следующее
-переименование должно красить тест, а не уходить в прод молча.
-"""
-import os
+"""ФНС: актуальное дерево, очереди и запрет подмены включения инициированием."""
+from pathlib import Path
 
 import pytest
-
-_THIS = os.path.dirname(os.path.abspath(__file__))
-ШАБЛОНЫ = os.path.abspath(os.path.join(_THIS, "..", "..", "Templates"))
-
-pytestmark = pytest.mark.skipif(
-    not os.path.isdir(ШАБЛОНЫ), reason="папка Templates недоступна")
+from document_generator import DocumentGenerator
 
 
 @pytest.fixture(scope="module")
 def ген():
-    import sys
-    sys.path.insert(0, os.path.abspath(os.path.join(_THIS, "..", "app")))
-    from document_generator import DocumentGenerator
     return DocumentGenerator()
 
 
-# Суммы 2-й очереди переключают папку: есть — «2-я и 3-я очередь», нет — «3-я».
-С_ВТОРОЙ_ОЧЕРЕДЬЮ = {"fnsQ2Total": "1 000,00"}
-БЕЗ_ВТОРОЙ_ОЧЕРЕДИ: dict = {}
+def _включение(ген, entity="individual", variant="realization", **amounts):
+    data = {
+        "selectedApplicationKind": "rtk",
+        "creditorName": "ФНС России",
+        "final_rtk_inclusion_variant": variant,
+        **amounts,
+    }
+    templates, missing = ген._map_selected_acts_to_templates(
+        "final_rtk_inclusion", entity, "no_collateral", data,
+    )
+    assert not missing, (missing, data.get("_unresolvedReasons"))
+    assert set(templates) == {"rtk_inclusion"}
+    path = templates["rtk_inclusion"]["path"]
+    assert path.is_file()
+    assert path.relative_to(ген._templates_root()).parts[:2] == ("Банкротство", "Включение в РТК")
+    assert "ФНС" in path.parts
+    assert ("ЮЛ" if entity == "legal" else "ФЛ") in path.parts
+    return path
 
 
-@pytest.mark.parametrize("акт,тип_лица,данные,ждём_в_имени", [
-    # Реструктуризация (признание банкротом) — тот самый сломавшийся путь.
-    ("final_restructuring", "individual", БЕЗ_ВТОРОЙ_ОЧЕРЕДИ, "реструктуризация финал"),
-    ("final_restructuring", "legal", БЕЗ_ВТОРОЙ_ОЧЕРЕДИ, "реструктуризация финал"),
-    ("final_restructuring", "individual", С_ВТОРОЙ_ОЧЕРЕДЬЮ, "реструк_2-"),
-    # Включение в РТК: внутри «3-я очередь» ФЛ и ЮЛ различаются файлами.
-    ("final_rtk_inclusion", "individual", БЕЗ_ВТОРОЙ_ОЧЕРЕДИ, "включенка_резолютивка_налоговая"),
-    ("final_rtk_inclusion", "legal", БЕЗ_ВТОРОЙ_ОЧЕРЕДИ, "юл"),
-    ("final_rtk_inclusion", "individual", С_ВТОРОЙ_ОЧЕРЕДЬЮ, "вкл_резолютивка"),
+@pytest.mark.parametrize("entity,variant", [
+    ("individual", "realization"), ("individual", "restructuring"), ("legal", "observation"),
 ])
-def test_акт_фнс_находится(ген, акт, тип_лица, данные, ждём_в_имени):
-    найдено = ген._resolve_fns_act(акт, тип_лица, данные)
-    assert найдено is not None, (
-        f"акт ФНС не найден: {акт}/{тип_лица}/"
-        f"{'с 2-й очередью' if данные else 'без 2-й очереди'} — "
-        "файл переименовали, а подстроку в роутинге не поправили")
-    ключ, путь, имя = найдено
-    assert путь.exists(), путь
-    assert ждём_в_имени.lower() in путь.name.lower(), путь.name
+@pytest.mark.parametrize("amount,prefix", [("0", "3-я_"), ("1000", "2-я_")])
+def test_акт_фнс_находится(ген, entity, variant, amount, prefix):
+    path = _включение(ген, entity, variant, fnsQ2Total=amount)
+    assert path.name.startswith(prefix), path
+    assert "реализация+реструктуризация" in path.name
 
 
-def test_реструктуризация_не_путается_с_включенкой(ген):
-    """Обратная сторона: одна подстрока «реструк» не должна хватать чужой файл.
-
-    В папке «3-я очередь» лежат ещё две включенки. Если роутинг однажды
-    начнёт отдавать их под реструктуризацию, это увидит именно этот тест.
-    """
-    _, путь, _ = ген._resolve_fns_act("final_restructuring", "individual", БЕЗ_ВТОРОЙ_ОЧЕРЕДИ)
-    assert "включенка" not in путь.name.lower()
-    assert "реструк" in путь.name.lower()
+@pytest.mark.parametrize("field", ["fnsQ2Total", "fnsQ2Arrears", "fnsQ2Penalties"])
+def test_любая_сумма_второй_очереди_переключает_файл(ген, field):
+    without = _включение(ген)
+    with_second = _включение(ген, **{field: "10,01"})
+    assert without != with_second
+    assert without.name.startswith("3-я_")
+    assert with_second.name.startswith("2-я_")
 
 
-def test_вторая_очередь_переключает_папку(ген):
-    """Признак — любая сумма fnsQ2*, а не отдельная галочка."""
-    _, без, _ = ген._resolve_fns_act("final_restructuring", "individual", БЕЗ_ВТОРОЙ_ОЧЕРЕДИ)
-    _, с_, _ = ген._resolve_fns_act("final_restructuring", "individual", С_ВТОРОЙ_ОЧЕРЕДЬЮ)
-    assert без.parent.name == "3-я очередь"
-    assert с_.parent.name == "2-я и 3-я очередь"
+def test_нулевые_суммы_второй_очереди_файл_не_переключают(ген):
+    path = _включение(ген, fnsQ2Total="0,00", fnsQ2Arrears="0", fnsQ2Penalties="")
+    assert path.name.startswith("3-я_")
 
 
-def test_нулевые_суммы_второй_очереди_папку_не_переключают(ген):
-    """«0,00» в полях 2-й очереди — это ОТСУТСТВИЕ сумм, а не их наличие."""
-    _, путь, _ = ген._resolve_fns_act(
-        "final_restructuring", "individual",
-        {"fnsQ2Total": "0,00", "fnsQ2Arrears": "0", "fnsQ2Penalties": ""})
-    assert путь.parent.name == "3-я очередь"
-
-
-def test_чужой_акт_роутинг_фнс_не_обслуживает(ген):
-    assert ген._resolve_fns_act("acceptance_definition", "individual", {}) is None
+def test_инициирование_фнс_не_подменяется_включенкой(ген):
+    data = {"selectedApplicationKind": "other", "creditorName": "ФНС России"}
+    templates, missing = ген._map_selected_acts_to_templates(
+        "final_restructuring", "individual", "no_collateral", data,
+    )
+    assert templates == {}
+    assert missing == ["final_restructuring"]
+    assert data.get("_unresolvedReasons", {}).get("final_restructuring")

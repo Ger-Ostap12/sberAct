@@ -166,3 +166,6 @@ python-backend/tests/llm_bench_results_*.json
 # Отчёт о расхождениях regex и LLM — там значения полей из тех же
 # заявлений (ИНН, адреса, номера ЕГРН). Генерируется по требованию.
 python-backend/tests/llm_mismatches.txt
+
+# Private CI checkout
+/_ci_data/

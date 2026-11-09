@@ -116,7 +116,7 @@ class TestРегистрИмёнПапок:
     def test_пути_шаблонов_ипотеки_совпадают_по_регистру(self, gen):
         root = gen._templates_root()
         пакет = gen._get_mortgage_templates()
-        assert len(пакет) == 5, пакет
+        assert len(пакет) == 6, пакет
         for сведения in пакет.values():
             self._точный_путь(root, сведения["path"])
 

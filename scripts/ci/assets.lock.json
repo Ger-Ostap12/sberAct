@@ -1,0 +1,17 @@
+{
+  "corpus": {
+    "files": 120,
+    "bytes": 14114071,
+    "sha256": "072e8c7a7e2a5a77551e12dcde168cff270093042d75af8b93662f6a784af15c"
+  },
+  "converter": {
+    "files": 33761,
+    "bytes": 6174219542,
+    "sha256": "278dd69e21d919082fe6d2fa8acd6cf8a01034d54a2f680a1b2969ab78565070"
+  },
+  "models": {
+    "files": 15,
+    "bytes": 959362150,
+    "sha256": "34c405504a28453edde967b6b1ab0edc4b210895db83c6b43f869f157c637c32"
+  }
+}

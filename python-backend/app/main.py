@@ -1,3 +1,5 @@
+import stdio_encoding  # noqa: F401 - configure pipes before logging imports
+
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware

@@ -21,7 +21,6 @@ sys.path.insert(0, _THIS)
 
 from _snapshot import GOLDEN_PATH, corpus_files, snapshot_one  # noqa: E402
 
-logging.disable(logging.CRITICAL)
 
 
 def _load_golden():

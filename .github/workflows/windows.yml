@@ -1,0 +1,234 @@
+name: SberAct Windows
+
+on:
+  push:
+    branches: [release, main]
+  pull_request:
+    branches: [release, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sberact-windows-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  policy:
+    name: Repository policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check trusted source
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+          if (event.pull_request) {
+            if (event.pull_request.head.repo.full_name !== event.repository.full_name)
+              throw new Error('External pull requests cannot access the private verification corpus');
+            if (event.pull_request.base.ref === 'main' && event.pull_request.head.ref !== 'release')
+              throw new Error('Only release may target main');
+          } else if (!['release', 'main'].includes(process.env.REF_NAME)) {
+            throw new Error('Run this workflow on release or main');
+          }
+          NODE
+
+  windows:
+    name: Windows checks
+    needs: policy
+    runs-on: windows-2022
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: powershell
+    env:
+      CI: 'true'
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.21.0'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            electron-app/package-lock.json
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12.6'
+      - run: npm ci
+      - run: npm ci --prefix electron-app
+      - name: Check release version and changelog
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ci/release-metadata.js
+      - name: Prepare NSIS
+        run: node scripts/ci/prepare-nsis.js
+      - name: Test CI helpers
+        run: node --test scripts/tests/ci-contract.test.js scripts/tests/cloud-ci.test.js
+      - name: Check frontend types
+        run: '& .\electron-app\node_modules\.bin\tsc.cmd --noEmit -p electron-app/tsconfig.json'
+      - name: Test frontend
+        run: npm --prefix electron-app test -- --watchAll=false --runInBand
+      - name: Test diagnostics
+        run: npm run test:diagnostics
+      - name: Test updater
+        run: npm run test:updater
+      - name: Test installer
+        run: npm run test:installer
+      - name: Build frontend
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          CI: 'false'
+        run: npm run build
+      - name: Transfer built frontend
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-build
+          path: electron-app/build
+          if-no-files-found: error
+          retention-days: 1
+
+  backend:
+    name: Backend checks
+    needs: policy
+    runs-on: windows-2022
+    timeout-minutes: 150
+    defaults:
+      run:
+        shell: powershell
+    env:
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: utf-8
+      PYTHONNOUSERSITE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      TOKENIZERS_PARALLELISM: 'false'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.21.0'
+          package-manager-cache: false
+      - run: npm ci --omit=dev --ignore-scripts
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12.6'
+      - name: Install pinned Python environment
+        run: python -m pip install --no-cache-dir -r python-backend/requirements-ci.lock
+      - name: Check Python environment
+        run: python scripts/ci/check-python.py
+      - name: Assemble and load pinned backend model
+        run: python scripts/ci/check-model.py
+      - name: Check fatal Python errors
+        run: python -m ruff check --no-cache --select E9,F63,F7,F82 python-backend/app scripts/ci
+      - name: Checkout pinned private verification corpus
+        uses: actions/checkout@v7
+        with:
+          repository: Andrew09127/data-for-verification-CI-CD
+          ref: 29930862660b3da94c7c477789ceef30a6b968e7
+          ssh-key: ${{ secrets.CI_DATA_SSH_KEY }}
+          persist-credentials: false
+          path: _ci_data
+          show-progress: false
+      - name: Restore verified corpus
+        run: node scripts/ci/corpus.js restore _ci_data
+      - name: Isolate generated documents
+        run: |
+          $data = Join-Path $env:RUNNER_TEMP 'sberact-private-data'
+          [IO.File]::AppendAllText($env:GITHUB_ENV, "SBERACT_DATA_DIR=$data" + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
+      - name: Test complete backend including golden corpora
+        run: python scripts/ci/private-tests.py
+
+  build:
+    name: Build Windows installer
+    needs: [windows, backend]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: windows-2022
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: powershell
+    env:
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: utf-8
+      PYTHONNOUSERSITE: '1'
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.21.0'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12.6'
+      - run: python -m pip install --no-cache-dir -r python-backend/requirements-ci.lock
+      - uses: actions/download-artifact@v8
+        with:
+          name: frontend-build
+          path: electron-app/build
+      - name: Build backend
+        run: python -m PyInstaller --noconfirm SberAct.spec
+      - name: Build installer
+        run: npx --no-install electron-builder --win --publish never
+      - name: Prepare application component
+        run: npm run build:update -- -AppOnly
+      - name: Transfer application component
+        uses: actions/upload-artifact@v7
+        with:
+          name: application-component
+          path: release/SberAct-Update
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  package:
+    name: Complete offline package
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: windows-2022
+    timeout-minutes: 120
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.21.0'
+          package-manager-cache: false
+      - run: npm ci --omit=dev --ignore-scripts
+      - uses: actions/download-artifact@v8
+        with:
+          name: application-component
+          path: release/SberAct-Update
+      - name: Pack small application-only update
+        run: |
+          $version = (Get-Content -LiteralPath package.json -Raw | ConvertFrom-Json).version
+          & scripts/ci/pack-application.ps1 -SourceDir release/SberAct-Update -Destination ("release/SberAct-App-Update-" + $version + ".zip")
+      - name: Compose complete pinned OCR package
+        run: node scripts/ci/ocr-component.js compose release/SberAct-Update
+      - name: Verify archived OCR payload
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-converter-archive.ps1 -Zip release/SberAct-Update/converter.zip -ManifestFile release/SberAct-Update/converter-manifest.json
+      - name: Save verified draft release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ci/publish-draft.js release/SberAct-Update

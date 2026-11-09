@@ -1456,12 +1456,29 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             # Word переставляет совпадающие границы; далее проверяются сам абзац и весь его текст.
             if nodes.index(inner_start) >= nodes.index(inner_end):
                 raise ValueError(f"Перепутаны границы {name}")
-            if body_child(inner_start) is not paragraph or body_child(inner_end) is not paragraph:
+            for boundary, before in ((inner_start, True), (inner_end, False)):
+                owner = body_child(boundary)
+                if owner is paragraph:
+                    continue
+                if boundary.getparent() is not body:
+                    raise ValueError(f"Закладка {name} должна охватывать свой абзац")
+                at = children.index(boundary)
+                paragraph_at = children.index(paragraph)
+                between = children[at + 1 : paragraph_at] if before else children[paragraph_at + 1 : at]
+                if (
+                    (before and at >= paragraph_at)
+                    or (not before and at <= paragraph_at)
+                    or any(node.tag not in (qn("w:bookmarkStart"), qn("w:bookmarkEnd")) for node in between)
+                ):
+                    raise ValueError(f"Закладка {name} должна охватывать свой абзац")
+            expected_text = [node for node in paragraph.iter(qn("w:t")) if (node.text or "").strip()]
+            covered_text = [
+                node
+                for node in nodes[nodes.index(inner_start) + 1 : nodes.index(inner_end)]
+                if node.tag == qn("w:t") and (node.text or "").strip()
+            ]
+            if covered_text != expected_text:
                 raise ValueError(f"Закладка {name} должна охватывать свой абзац")
-            content = list(paragraph.iter())
-            outside = content[:content.index(inner_start)] + content[content.index(inner_end) + 1:]
-            if any(node.tag == qn("w:t") and (node.text or "").strip() for node in outside):
-                raise ValueError(f"Закладка {name} должна охватывать абзац целиком")
             boundaries.extend((inner_start, inner_end))
 
         debt_clause, duty_clause, total_clause = (
@@ -1568,6 +1585,12 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         спец-поля ИП/ФЛ-залога и нормализация дат. Мутирует doc. Вынесено из
         replace_document_data без изменения поведения (gen-golden).
         """
+        if cleaned_data.get("contractNumber"):
+            cleaned_data = {
+                **cleaned_data,
+                "contractNumber": self._format_contract_number_list(str(cleaned_data["contractNumber"])),
+            }
+
         # Для ипотеки сначала заменяем приоритетные поля, чтобы избежать конфликтов
         if is_mortgage_document:
             # Приоритетные поля для ипотеки (заменяются первыми)
@@ -1827,7 +1850,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         # Род глаголов тоже считаем по маркерам, пока они на месте.
         self._apply_gender_agreement(doc, cleaned_data)
 
-        from empty_requisites import remove_empty_requisites
+        from empty_requisites import empty_value, remove_empty_requisites
+        if empty_value(cleaned_data.get("creditorPostalAddress")):
+            self._replace_regex_in_doc(doc, r";\s*почтовый\s+адрес:\s*\[995\]", "")
 
         remove_empty_requisites(doc, cleaned_data, field_mapping, self)
         self._apply_field_mapping_replacements(doc, cleaned_data, field_mapping, is_mortgage_document, is_ip, is_physical_collateral)
@@ -2746,6 +2771,9 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         )
         if initiation is not None:
             return initiation
+        rtk = self._rtk_default_templates(data, normalized_template, source_document_type)
+        if rtk is not None:
+            return rtk
         # Стандартная логика (для обратной совместимости и для явного выбора template_type)
         if normalized_template in {"observation_single", "observation_multiple"}:
             normalized_template = "observation"

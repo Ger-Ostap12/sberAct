@@ -84,14 +84,15 @@ function createDiagnostics(dir, publish = () => {}) {
     try { publish(event); } catch (_) { /* Закрытое окно не мешает работе сервиса. */ }
     return event;
   }
-  function ingest(component, chunk) {
-    if (!decoders.has(component)) decoders.set(component, new StringDecoder('utf8'));
-    const decoded = Buffer.isBuffer(chunk) ? decoders.get(component).write(chunk) : String(chunk);
-    const combined = (buffers.get(component) || '') + decoded;
+  function ingest(component, chunk, channel = 'combined') {
+    const key = JSON.stringify([component, channel]);
+    if (!decoders.has(key)) decoders.set(key, new StringDecoder('utf8'));
+    const decoded = Buffer.isBuffer(chunk) ? decoders.get(key).write(chunk) : String(chunk);
+    const combined = (buffers.get(key) || '') + decoded;
     const lines = combined.split(/\r?\n/);
     let pending = lines.pop() || '';
     if (pending.length > 32768) { lines.push(pending.slice(-32768)); pending = ''; }
-    buffers.set(component, pending);
+    buffers.set(key, pending);
     for (const line of lines) {
       if (!line.trim()) continue;
       const start = line.indexOf('SBERACT_DIAGNOSTIC ');
@@ -101,10 +102,14 @@ function createDiagnostics(dir, publish = () => {}) {
       record({ component, level: /error|exception|traceback|failed|ошиб/i.test(line) ? 'error' : 'info', message: line });
     }
   }
-  function flush(component) {
-    const pending = (buffers.get(component) || '') + (decoders.get(component)?.end() || '');
-    decoders.delete(component);
-    if (pending) { buffers.delete(component); ingest(component, pending + '\n'); }
+  function flush(component, channel = 'combined') {
+    const key = JSON.stringify([component, channel]);
+    const pending = (buffers.get(key) || '') + (decoders.get(key)?.end() || '');
+    decoders.delete(key);
+    buffers.delete(key);
+    if (pending) ingest(component, pending + '\n', channel);
+    decoders.delete(key);
+    buffers.delete(key);
   }
   return { record, ingest, flush, snapshot: () => ({ events: [...events] }) };
 }

@@ -1,32 +1,20 @@
-// Офлайн-обновление с флешки.
-//
-// Два независимых канала за одной кнопкой «Проверить обновления»:
-//   1. app + backend — через electron-updater (NSIS-артефакт latest.yml + .exe).
-//      electron-updater умеет только http(s), не file://, поэтому над выбранной
-//      папкой на флешке поднимаем локальный статический HTTP-сервер (с Range —
-//      апдейтер качает по диапазонам) и указываем feed на 127.0.0.1.
-//   2. converter (~6 ГБ, вне NSIS-payload) — своя синхронизация по манифесту
-//      SHA-256: копируем только изменённые/новые файлы, удаляем исчезнувшие.
-//      Конвертер меняется редко — тогда папки converter/ на флешке просто нет,
-//      и этот канал мгновенно «нет обновления».
-//
-// Всё работает офлайн: сеть не нужна, источник — папка SberAct-Update/ на флешке.
-
 const { app, ipcMain, dialog } = require('electron');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
-const crypto = require('crypto');
+const semver = require('semver');
+const { inspectPackage, compareConverter, recordConverterManifest, readJson } = require('./update-package');
+const converterUpdate = require('./converter-update');
 
 // Имя папки-источника на флешке и файлов внутри неё.
 const UPDATE_DIR_NAME = 'SberAct-Update';
-const CONVERTER_SUBDIR = 'converter';
 const CONVERTER_MANIFEST = 'converter-manifest.json';
 
 let deps = null; // { getMainWindow, converterDir, backendPort }
 let sourceDir = null; // выбранная/найденная папка SberAct-Update
 let feedServer = null; // http.Server над sourceDir
 let feedBaseUrl = null;
+let feedRoot = null;
 
 function send(channel, payload) {
   const win = deps && deps.getMainWindow && deps.getMainWindow();
@@ -107,7 +95,7 @@ function startFeedServer(rootDir) {
 
 async function ensureFeed(dir) {
   // Пересоздаём сервер, если сменился источник.
-  if (feedServer && sourceDir === dir) return;
+  if (feedServer && feedRoot === dir) return;
   if (feedServer) {
     try { feedServer.closeAllConnections(); } catch (_e) { /* Node < 18.2 */ }
     try { feedServer.close(); } catch (_e) { /* уже закрыт */ }
@@ -115,6 +103,7 @@ async function ensureFeed(dir) {
   }
   const { server, port } = await startFeedServer(dir);
   feedServer = server;
+  feedRoot = dir;
   feedBaseUrl = `http://127.0.0.1:${port}/`;
   sourceDir = dir;
 }
@@ -161,36 +150,6 @@ function autoDetectSource() {
   return null;
 }
 
-// --- converter-sync ---
-function sha256File(file) {
-  return new Promise((resolve, reject) => {
-    const h = crypto.createHash('sha256');
-    const s = fs.createReadStream(file);
-    s.on('error', reject);
-    s.on('data', (d) => h.update(d));
-    s.on('end', () => resolve(h.digest('hex')));
-  });
-}
-
-function readManifest(file) {
-  try {
-    // PowerShell (Out-File -Encoding utf8) пишет BOM — JSON.parse на нём падает.
-    const raw = fs.readFileSync(file, 'utf8').replace(/^﻿/, '');
-    return JSON.parse(raw);
-  } catch (_e) {
-    return null;
-  }
-}
-
-// Что именно надо докопировать/удалить. Чистая функция (никакого модульного
-// состояния) — она же покрыта тестами scripts/tests/converter-sync.test.js.
-//
-// Манифесты сравниваем по path+sha, не хэшируя 6 ГБ на каждой проверке, НО
-// дополнительно смотрим на файл на диске: installer.nsh копирует конвертер
-// шелл-копией и обрыв копирования не замечает, а манифест (мелкий файл)
-// доезжает всегда — установка выглядит целой, будучи наполовину пустой. Именно
-// так приезжали сборки, где из 33 682 файлов доехало 19 163. statSync по
-// ~37 тыс. путей занимает секунды, в отличие от хэширования.
 function planConverterSync(flashManifest, installedManifest, converterDir, statFile) {
   const stat = statFile || ((p) => {
     try { return fs.statSync(p); } catch (_e) { return null; }
@@ -227,200 +186,156 @@ function planConverterSync(flashManifest, installedManifest, converterDir, statF
   return { toCopy, toDelete, bytes };
 }
 
-function diffConverter() {
-  if (!sourceDir) return { available: false };
-  const flashManifestPath = path.join(sourceDir, CONVERTER_MANIFEST);
-  const flashManifest = readManifest(flashManifestPath);
-  if (!flashManifest || !Array.isArray(flashManifest.files)) {
-    return { available: false }; // на флешке нет обновления конвертера
-  }
-  const converterDir = deps.converterDir;
-  const installedManifest = readManifest(path.join(converterDir, CONVERTER_MANIFEST));
 
-  const { toCopy, toDelete, bytes } =
-    planConverterSync(flashManifest, installedManifest, converterDir);
-
-  const changed = toCopy.length > 0 || toDelete.length > 0;
-  return {
-    available: changed,
-    version: flashManifest.version || null,
-    installedVersion: installedManifest ? installedManifest.version || null : null,
-    filesChanged: toCopy.length,
-    filesDeleted: toDelete.length,
-    bytes,
-    _plan: { toCopy, toDelete, flashManifestPath }
-  };
-}
-
-async function applyConverterSync(plan, flashManifestPath) {
-  const converterDir = deps.converterDir;
-  const srcRoot = path.join(sourceDir, CONVERTER_SUBDIR);
-  const total = plan.toCopy.length + plan.toDelete.length;
-  let done = 0;
-
-  // Останавливаем конвертер, иначе его файлы под Windows заблокированы.
-  try {
-    await fetch(`http://127.0.0.1:${deps.backendPort}/converter/stop`, { method: 'POST' });
-  } catch (_e) { /* не поднят — файлы и так свободны */ }
-
-  for (const f of plan.toCopy) {
-    const src = path.join(srcRoot, f.path);
-    const dst = path.join(converterDir, f.path);
-    fs.mkdirSync(path.dirname(dst), { recursive: true });
-    fs.copyFileSync(src, dst);
-    // Проверяем целостность копии по SHA — тихий сбой копирования недопустим.
-    if (f.sha256) {
-      const got = await sha256File(dst);
-      if (got !== f.sha256) {
-        throw new Error(`Контрольная сумма не сошлась после копии: ${f.path}`);
-      }
-    }
-    done += 1;
-    send('update:converter-progress', { done, total });
-  }
-  for (const rel of plan.toDelete) {
-    try { fs.rmSync(path.join(converterDir, rel), { force: true }); } catch (_e) { /* уже нет */ }
-    done += 1;
-    send('update:converter-progress', { done, total });
-  }
-  // Обновляем установленный манифест (копией с флешки) — это новая «истина».
-  try {
-    fs.copyFileSync(flashManifestPath, path.join(converterDir, CONVERTER_MANIFEST));
-  } catch (_e) { /* не критично для работы, но желательно */ }
-}
-
-// --- Инициализация и IPC ---
 function initUpdater(dependencies) {
   deps = dependencies;
-
-  // Ленивая загрузка: в dev-режиме electron-updater не нужен и кидает
-  // «app is not packed». Грузим только во frozen.
   let autoUpdater = null;
+  let checked = null;
+  let downloaded = false;
+  let busy = false;
   function getAutoUpdater() {
     if (!app.isPackaged) return null;
     if (!autoUpdater) {
       ({ autoUpdater } = require('electron-updater'));
       autoUpdater.autoDownload = false;
       autoUpdater.autoInstallOnAppQuit = false;
-      autoUpdater.on('download-progress', (p) => send('update:progress', p));
-      autoUpdater.on('error', (e) => send('update:error', String(e && e.message || e)));
+      autoUpdater.disableDifferentialDownload = true;
+      autoUpdater.on('download-progress', p => send('update:progress', p));
+      autoUpdater.on('error', error => send('update:error', String(error.message || error)));
     }
     return autoUpdater;
   }
-
-  // Выбор источника вручную (диалог) или автопоиск.
+  function invalidate() { checked = null; downloaded = false; }
   ipcMain.handle('update:pick-source', async () => {
-    const win = deps.getMainWindow && deps.getMainWindow();
-    const res = await dialog.showOpenDialog(win, {
-      title: 'Выберите папку обновления (SberAct-Update) на флешке',
-      properties: ['openDirectory']
+    if (busy) return {ok:false};
+    const response = await dialog.showOpenDialog(deps.getMainWindow && deps.getMainWindow(), {
+      title:'Выберите папку обновления (SberAct-Update) на флешке', properties:['openDirectory']
     });
-    if (res.canceled || !res.filePaths.length) return { ok: false };
-    sourceDir = res.filePaths[0];
-    return { ok: true, path: sourceDir };
+    if (response.canceled || !response.filePaths.length) return {ok:false};
+    sourceDir=response.filePaths[0]; invalidate();
+    return {ok:true,path:sourceDir};
   });
-
   ipcMain.handle('update:auto-detect', () => {
-    const found = autoDetectSource();
-    if (found) sourceDir = found;
-    return { ok: !!found, path: found || null };
+    if (busy) return {ok:false,path:null};
+    const found=autoDetectSource();
+    if (found) { sourceDir=found; invalidate(); }
+    return {ok:!!found,path:found || null};
   });
-
-  // Проверка обоих каналов. Возвращает состояние для UI.
-  ipcMain.handle('update:check', async (_e, chosenPath) => {
-    if (!app.isPackaged) {
-      return { ok: false, error: 'Обновление доступно только в установленном приложении' };
-    }
-    const dir = chosenPath || sourceDir || autoDetectSource();
-    if (!dir || !fs.existsSync(dir)) {
-      return { ok: false, error: 'Папка обновления не найдена. Вставьте флешку или выберите папку вручную.' };
-    }
-    sourceDir = dir;
-
-    const result = { ok: true, source: dir, app: { available: false }, converter: { available: false } };
-
-    // Канал 1: app+backend через electron-updater (если на флешке есть latest.yml).
-    if (fs.existsSync(path.join(dir, 'latest.yml'))) {
-      try {
+  async function verifyChecked() {
+    if (!checked) throw new Error('Сначала проверьте комплект обновления.');
+    const current=await inspectPackage(checked.package.root);
+    if (current.identity!==checked.package.identity) throw new Error('Комплект изменился после проверки. Проверьте его заново.');
+    return current;
+  }
+  ipcMain.handle('update:check', async (_event,chosenPath) => {
+    if (!app.isPackaged) return {ok:false,error:'Обновление доступно только в установленном приложении'};
+    if (busy) return {ok:false,error:'Дождитесь завершения текущей операции обновления.'};
+    busy=true;
+    invalidate();
+    try {
+      const pending=await converterUpdate.state(deps.converterDir);
+      if (pending) throw new Error('Предыдущее обновление конвертера ещё проверяется. Дождитесь проверки или перезапустите приложение.');
+      const dir=chosenPath || sourceDir || autoDetectSource();
+      if (!dir || !fs.existsSync(dir)) throw new Error('Папка обновления не найдена. Вставьте флешку или выберите папку вручную.');
+      const pkg=await inspectPackage(dir);
+      if (semver.lt(pkg.version,app.getVersion())) throw new Error('На носителе более старая версия приложения. Выберите актуальный комплект.');
+      const appAvailable=semver.gt(pkg.version,app.getVersion());
+      const comparison=pkg.converter ? await compareConverter(deps.converterDir,pkg.converter.manifestData) : null;
+      const converterAvailable=!!comparison && !comparison.matches;
+      let manifestRecorded=false,warning=null;
+      if(comparison && comparison.matches) {
+        try {recordConverterManifest(deps.converterDir,pkg.converter.manifestData,comparison);manifestRecorded=true;}
+        catch(error){console.error('[updater] record manifest',error);warning="\u0424\u0430\u0439\u043b\u044b OCR \u0441\u043e\u0432\u043f\u0430\u0434\u0430\u044e\u0442, \u043d\u043e \u0441\u0432\u0435\u0434\u0435\u043d\u0438\u044f \u043e \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0435 \u043d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c.";}
+      }
+      sourceDir=dir;
+      if (appAvailable) {
         await ensureFeed(dir);
-        const au = getAutoUpdater();
-        au.setFeedURL({ provider: 'generic', url: feedBaseUrl });
-        const info = await au.checkForUpdates();
-        const remote = info && info.updateInfo ? info.updateInfo.version : null;
-        const isNewer = remote && remote !== app.getVersion();
-        result.app = {
-          available: !!isNewer,
-          version: remote,
-          currentVersion: app.getVersion()
-        };
-      } catch (err) {
-        result.app = { available: false, error: String(err && err.message || err) };
+        const updater=getAutoUpdater();
+        updater.setFeedURL({provider:'generic',url:feedBaseUrl});
+        await updater.checkForUpdates();
       }
-    }
-
-    // Канал 2: converter-sync.
-    const conv = diffConverter();
-    result.converter = {
-      available: conv.available,
-      version: conv.version,
-      installedVersion: conv.installedVersion,
-      filesChanged: conv.filesChanged || 0,
-      filesDeleted: conv.filesDeleted || 0,
-      bytes: conv.bytes || 0
-    };
-    result._converterPlan = conv._plan || null;
-
-    return result;
+      const converterInstalled=fs.existsSync(path.join(deps.converterDir,'main.py')) &&
+        fs.existsSync(path.join(deps.converterDir,'pyruntime','python.exe'));
+      let installedVersion=null;
+      try { installedVersion=readJson(path.join(deps.converterDir,'converter-manifest.json')).version || null; } catch (_) {}
+      checked={package:pkg,appAvailable,converterAvailable};
+      return {
+        ok:true,source:dir,
+        app:{available:appAvailable,version:pkg.version,currentVersion:app.getVersion()},
+        converter:{
+          available:converterAvailable,installed:converterInstalled,installedVersion,
+          status:!pkg.converter ? 'not_in_package' : converterAvailable ? 'update_available' : 'matches_package',
+          version:pkg.converter ? pkg.converter.version : null,
+          filesChanged:comparison ? comparison.changedFiles : 0,
+          filesMissing:comparison ? comparison.missingFiles : 0,
+          filesDeleted:comparison ? comparison.extraFiles : 0,
+          bytes:comparison ? comparison.changedBytes+comparison.missingBytes : 0,
+          removedBytes:comparison ? comparison.extraBytes : 0,
+          replacementFiles:pkg.converter ? pkg.converter.manifestData.files.length : 0,
+          replacementBytes:pkg.converter ? pkg.converter.unpackedBytes : 0,
+          manifestRecorded,warning
+        }
+      };
+    } catch(error) { return {ok:false,error:String(error.message || error)}; }
+    finally { busy=false; }
   });
-
-  // Скачивание app-обновления (в staging electron-updater). Прогресс — событиями.
   ipcMain.handle('update:download', async () => {
-    const au = getAutoUpdater();
-    if (!au) return { ok: false, error: 'Недоступно в dev' };
+    if (busy) return {ok:false,error:'Дождитесь завершения текущей операции обновления.'};
+    busy=true;
     try {
-      await au.downloadUpdate();
-      return { ok: true };
-    } catch (err) {
-      return { ok: false, error: String(err && err.message || err) };
-    }
+      if (!checked || !checked.appAvailable) throw new Error('Нет проверенного обновления приложения.');
+      await verifyChecked();
+      await getAutoUpdater().downloadUpdate();
+      downloaded=true;
+      return {ok:true};
+    } catch(error) { return {ok:false,error:String(error.message || error)}; }
+    finally { busy=false; }
   });
-
-  // Применение: сначала converter-sync (если есть), затем перезапуск/установка.
-  // appDownloaded — качали ли app-обновление; converterPlan — из update:check.
-  ipcMain.handle('update:apply', async (_e, opts) => {
-    const { appDownloaded, converterPlan } = opts || {};
+  ipcMain.handle('update:apply', async (_event,options) => {
+    if (busy) return {ok:false,error:'Дождитесь завершения текущей операции обновления.'};
+    busy=true;
     try {
-      if (converterPlan && (converterPlan.toCopy.length || converterPlan.toDelete.length)) {
-        await applyConverterSync(converterPlan, converterPlan.flashManifestPath);
+      const pkg=await verifyChecked();
+      if (checked.appAvailable && (!downloaded || !options || !options.appDownloaded)) {
+        throw new Error('Сначала загрузите проверенный установщик приложения.');
       }
-      if (appDownloaded) {
-        const au = getAutoUpdater();
-        // quitAndInstall сам гасит app (before-quit → killTree), ставит NSIS
-        // тихо и перезапускает. Конвертер сохраняется (customRemoveFiles).
-        setImmediate(() => au.quitAndInstall(false, true));
-        return { ok: true, restarting: true };
+      if (!checked.appAvailable && !checked.converterAvailable) throw new Error('Нет обновления для установки.');
+      if (checked.converterAvailable) {
+        send('update:converter-progress',{done:0,total:3});
+        const prepareOutput=await converterUpdate.transaction('Prepare',deps.converterDir,{
+          zip:path.join(pkg.root,pkg.converter.archive),manifest:path.join(pkg.root,pkg.converter.manifest)
+        });
+        const prepared=JSON.parse(prepareOutput.trim().split(/\r?\n/).pop());
+        send('update:converter-progress',{done:1,total:3});
+        if (prepared.prepared) {
+          await converterUpdate.stopConverter(deps.backendPort);
+          await converterUpdate.transaction('Activate',deps.converterDir);
+        }
+        send('update:converter-progress',{done:3,total:3});
       }
-      // Обновился только конвертер — перезапускаем, чтобы бэкенд переинициализировал его.
-      setImmediate(() => { app.relaunch(); app.exit(0); });
-      return { ok: true, restarting: true };
-    } catch (err) {
-      return { ok: false, error: String(err && err.message || err) };
-    }
+      if (checked.appAvailable) {
+        const updater=getAutoUpdater();
+        setImmediate(()=>updater.quitAndInstall(false,true));
+      } else {
+        setImmediate(()=>{app.relaunch();app.quit();});
+      }
+      return {ok:true,restarting:true};
+    } catch(error) {
+      try {
+        const pending=await converterUpdate.state(deps.converterDir);
+        if (pending && ['prepared','preparing'].includes(pending.phase)) {
+          await converterUpdate.transaction('Recover',deps.converterDir);
+        }
+      } catch(recoveryError) { console.error('[updater] recovery',recoveryError); }
+      return {ok:false,error:String(error.message || error)};
+    } finally { busy=false; }
   });
 }
-
 function shutdownUpdater() {
   if (feedServer) {
-    // close() перестаёт принимать новые соединения, но ЖДЁТ закрытия открытых,
-    // а electron-updater держит keep-alive — сервер бы не освободился, и выход
-    // упёрся бы в трёхсекундный бюджет before-quit. Рвём соединения явно.
-    try { feedServer.closeAllConnections(); } catch (_e) { /* Node < 18.2 */ }
-    try { feedServer.close(); } catch (_e) { /* игнор */ }
-    feedServer = null;
+    try { feedServer.closeAllConnections(); } catch (_) { /* Older Node. */ }
+    feedServer.close();
+    feedServer=null;feedRoot=null;
   }
 }
-
-// planConverterSync и startFeedServer экспортируются ради тестов
-// (scripts/tests/converter-sync.test.js, scripts/tests/feed-server.test.js):
-// CRA-jest видит только electron-app/src, до main-процесса он не достаёт.
-module.exports = { initUpdater, shutdownUpdater, planConverterSync, startFeedServer };
+module.exports={initUpdater,shutdownUpdater,planConverterSync,startFeedServer};
