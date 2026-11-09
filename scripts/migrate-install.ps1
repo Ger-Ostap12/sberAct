@@ -49,8 +49,10 @@ try {
     $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 
     if ($Mode -eq 'Prepare') {
-        $expectedTarget = Join-Path $env:LOCALAPPDATA 'Programs\SberAct'
-        if ($targetDir -ne $expectedTarget) { throw 'Target must be the current user installation directory' }
+        $expectedTarget = Get-SafeDirectory (Join-Path $env:LOCALAPPDATA 'Programs\SberAct')
+        if (-not [string]::Equals($targetDir, $expectedTarget, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Target must be the current user installation directory. Actual=[$targetDir]; Expected=[$expectedTarget]; LOCALAPPDATA=[$env:LOCALAPPDATA]"
+        }
         New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
         $probe = Join-Path $targetDir ([guid]::NewGuid().ToString() + '.write-test')
         [IO.File]::WriteAllText($probe, 'SberAct')

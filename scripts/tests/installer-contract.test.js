@@ -56,7 +56,7 @@ try {
   const run = (overrides = {}) => {
     const command = [
       '$ErrorActionPreference = \'Stop\'',
-      '$env:LOCALAPPDATA = ' + psLiteral(work),
+      '$env:LOCALAPPDATA = ' + psLiteral(overrides.localAppData || work),
       '& ' + psLiteral(path.join(root, 'scripts/migrate-install.ps1')) +
         ' -Mode ' + psLiteral(overrides.mode || 'Prepare') +
         ' -Source ' + psLiteral(legacy) +
@@ -78,8 +78,11 @@ try {
   const backupRoot = path.join(work, 'SberAct/migration-backups');
   const backup = fs.readdirSync(backupRoot)[0];
   assert.equal(fs.readFileSync(path.join(backupRoot, backup, 'generated/act.docx'), 'utf8'), 'original document');
+  result = run({ localAppData: work + '\\.' });
+  assert.equal(result.status, 0, 'Equivalent profile paths must work: ' + result.stdout + result.stderr);
   result = run({ target: path.join(work, 'unexpected') });
   assert.notEqual(result.status, 0, 'Reject arbitrary target directory');
+  assert.match(result.stdout + result.stderr, /Actual=\[[\s\S]*\]; Expected=\[[\s\S]*\]; LOCALAPPDATA=\[/);
   result = run({ mode: 'Retire' });
   assert.notEqual(result.status, 0, 'Incomplete new installation must not execute old uninstaller');
   assert.equal(fs.readFileSync(path.join(legacy, exe), 'utf8'), 'old application');
