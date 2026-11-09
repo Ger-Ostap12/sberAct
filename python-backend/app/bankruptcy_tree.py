@@ -309,9 +309,12 @@ def fns_queue_for_case(has_second: bool, has_third: bool) -> str:
     return "3"
 
 
-def pick_fns_inclusion(folder: Path, queue: str) -> Resolution:
+def pick_fns_inclusion(folder: Path, queue: str, procedure: Optional[str] = None) -> Resolution:
     """Резолютивка ВКЛ у ФНС: полного текста нет, выбор идёт по очереди требований."""
     candidates = [p for p in act_files(folder) if fns_queue_from_name(p.name) == queue]
+    if procedure:
+        exact = [p for p in candidates if procedure in file_procedures(p.name)]
+        candidates = exact or [p for p in candidates if not file_procedures(p.name)]
     if not candidates:
         return Resolution(None, folder, "нет резолютивки ВКЛ для очереди «%s»" % queue)
     if len(candidates) > 1:
@@ -418,7 +421,12 @@ def resolve_final(
                                 branch=branch)
         if folder.folder is None:
             return folder
-        return pick_fns_inclusion(folder.folder, fns_queue)
+        allowed = (("observation", "competition") if entity in ("legal", "kfh")
+                   else ("realization", "restructuring"))
+        if procedure not in allowed:
+            return Resolution(None, folder.folder,
+                              "процедура «%s» несовместима с типом должника «%s»" % (procedure, entity))
+        return pick_fns_inclusion(folder.folder, fns_queue, procedure)
 
     procedure_dir = PROCEDURE_DIRS.get(procedure)
     if procedure_dir is None:
