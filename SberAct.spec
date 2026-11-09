@@ -50,7 +50,7 @@ hiddenimports += [
     'inflection_mixin', 'ip_mixin', 'label_synonyms', 'morph_utils', 'nlp_natasha',
     'obligations_mixin', 'obligations_render_mixin', 'org_normalizer', 'parties_mixin',
     'paths', 'patterns', 'prior_collection_mixin', 'requisites_validation',
-    'sro_data', 'sro_registry', 'template_manager', 'templates_resolver_mixin',
+    'sro_data', 'sro_registry', 'template_manager', 'templates_resolver_mixin', 'publication_fields',
 ]
 hiddenimports += [
     'uvicorn.logging', 'uvicorn.loops', 'uvicorn.loops.auto',

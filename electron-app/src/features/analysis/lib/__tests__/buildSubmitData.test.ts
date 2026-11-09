@@ -225,3 +225,17 @@ it('снятый пользователем статус заменяет ста
   });
   expect(result.fields.selectedDebtorStatus).toBe('');
 });
+
+
+it('сохраняет скрытые публикации и отдельно передаёт исправленные даты штампа и Моего Арбитра', () => {
+  const hidden = {
+    messageNumber: '998877665', efirsbPublicationDate: '12.08.2026',
+    kommersantNumber: '321', kommersantDate: '14.08.2026',
+  };
+  const r = run({ analysisResult: baseAnalysis(hidden), editedFields: {
+    applicationReceiptDate23: '2026-08-17', courtSubmissionDate24: '2026-08-18',
+  } });
+  expect(r.fields).toMatchObject({ ...hidden,
+    applicationReceiptDate23: '2026-08-17', courtSubmissionDate24: '2026-08-18',
+  });
+});

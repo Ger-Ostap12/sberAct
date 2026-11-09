@@ -2185,6 +2185,7 @@
    "creditorOgrn": "1027739019142",
    "debtAmount": "545 418,01",
    "debtorName": "Анохина Маргарита Николаевна",
+   "efirsbPublicationDate": "28.04.2026",
    "entityType": "individual",
    "forfeit": "0,00",
    "forfeit15": "0,00",
@@ -2195,6 +2196,7 @@
    "managerAddress": "610000, Кировская обл., г. Киров, а/я 99",
    "managerName": "Шалегин Вячеслав Владимирович",
    "messageDate": "28.04.2026",
+   "messageNumber": "22642774",
    "obligations": [
     {
      "contractDate": "21.09.2023",
@@ -4324,12 +4326,12 @@
    "interest14": "0,00",
    "introducedProcedure": "realization",
    "kommersantDate": "30.05.2026",
+   "kommersantNumber": "95",
    "loanDebt": "10 138,00",
    "managerAddress": "344019, Ростовская обл., г. Ростов-на-Дону, пр-кт Шолохова, д. 34А, оф.З.2",
    "managerInn": "615519848330",
    "managerName": "Удодов Сергей Александрович",
    "messageDate": "30.05.2026",
-   "messageNumber": "77240708355",
    "obligationType": "кредитный договор",
    "obligations": [
     {

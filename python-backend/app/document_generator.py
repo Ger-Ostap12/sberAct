@@ -1907,27 +1907,38 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         finalize_judge_substitution(doc, data)
 
     def _apply_efrsb_kommersant_priority(self, doc: DocxDocument, cleaned_data: Dict[str, Any]) -> None:
-        """В части актов рядом упомянуты обе публикации — ЕФРСБ (обёрнута в
-        квадратные скобки как опциональный блок) и «Коммерсантъ» (без скобок).
-        Приоритет — «Коммерсантъ»: если для него есть данные, блок ЕФРСБ убирается
-        целиком вместе со скобками; если данных «Коммерсантъ» нет, а ЕФРСБ есть —
-        оставляем ЕФРСБ, но снимаем скобки-разметку и убираем упоминание «Коммерсантъ».
-        Должно вызываться до замены маркеров [9]/[11]/[67]/[68] на значения.
-        """
-        has_kommersant = bool(str(cleaned_data.get("kommersantNumber") or "").strip()) and \
-            bool(str(cleaned_data.get("kommersantDate") or "").strip())
-
-        efrsb_block_pattern = r"\[\s*на сайте ЕФРСБ\s*№\s*\[9\]\s*от\s*\[11\]\s*\]\s*"
-        kommersant_block_pattern = r"в газете\s*«Коммерсантъ»\s*№\s*\[67\]\s*от\s*\[68\]\s*"
-
-        if has_kommersant:
-            self._replace_regex_in_doc(doc, efrsb_block_pattern, "")
-        else:
-            def _strip_brackets(match) -> str:
-                inner = match.group(0).strip()
-                return inner[1:-1].strip() + " "
-            self._replace_regex_in_doc(doc, efrsb_block_pattern, _strip_brackets)
-            self._replace_regex_in_doc(doc, kommersant_block_pattern, "")
+        """Выбираем источник в каждом абзаце до замены маркеров; даты не затрагиваем."""
+        ef_any = any(str(cleaned_data.get(k) or "").strip() for k in ("messageNumber", "efirsbPublicationDate"))
+        kom_any = any(str(cleaned_data.get(k) or "").strip() for k in ("kommersantNumber", "kommersantDate"))
+        kom_full = all(str(cleaned_data.get(k) or "").strip() for k in ("kommersantNumber", "kommersantDate"))
+        kom = re.compile(r'в\s+газете\s+[«"]?Коммерсантъ?[»"]?\s*№?\s*\[67\]\s*от\s*\[68\]', re.I)
+        ef = re.compile(r'на\s+сайте\s+ЕФРСБ\s+(?:№\s*\[9\]\s*от\s*\[11\]|сообщение\s*\[11\]\s*\(сообщение\s*№\s*\)?\s*\[9\]\)?)', re.I)
+        optional = re.compile(r'\[\s*на сайте ЕФРСБ\s*№\s*\[9\]\s*от\s*\[11\]\s*\]\s*', re.I)
+        for par in list(self._iter_all_paragraphs(doc)):
+            text = self._paragraph_text(par)
+            has_ef = "[9]" in text or "[11]" in text
+            has_kom = "[67]" in text or "[68]" in text
+            if has_ef and has_kom:
+                if kom_full or (kom_any and not ef_any):
+                    match = optional.search(text)
+                    if match:
+                        self._replace_span_in_paragraph(par, match.start(), match.end(), "")
+                else:
+                    match = kom.search(text)
+                    if match:
+                        self._replace_span_in_paragraph(par, match.start(), match.end(), "")
+                    text = self._paragraph_text(par)
+                    match = optional.search(text)
+                    if match:
+                        self._replace_span_in_paragraph(par, match.start(), match.end(), match.group().strip()[1:-1].strip() + " ")
+            elif has_kom and ef_any and not kom_full:
+                match = kom.search(text)
+                if match:
+                    self._replace_span_in_paragraph(par, match.start(), match.end(), "на сайте ЕФРСБ № [9] от [11]")
+            elif has_ef and not ef_any and kom_any:
+                match = ef.search(text)
+                if match:
+                    self._replace_span_in_paragraph(par, match.start(), match.end(), "в газете «Коммерсантъ» № [67] от [68]")
 
     # Правовая форма, которую шаблон пишет перед «[маркер]» сам (под Сбербанк и ООО).
     _TEMPLATE_OPF = (
@@ -2765,7 +2776,6 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         for paragraph in doc.paragraphs:
             text = paragraph.text
 
-            
             if case_number and separate_dispute_number:
                 pattern_case_sep = rf"({re.escape(case_number)})\s+{re.escape(separate_dispute_number)}\b"
                 if re.search(pattern_case_sep, text):
@@ -2777,17 +2787,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                             " Удалено дублирование номера обособленного спора рядом с номером дела"
                         )
 
-            # [9] и [11] — только ЕФРСБ: номер и дата сообщения на сайте
-            efirsb_date = data.get('efirsbPublicationDate', '')
-            if efirsb_date and 'ЕФРСБ' in text and 'сообщение' in text:
-                pattern = r'ЕФРСБ\s+сообщение[^0-9]*?(\d{1,2}[.,]\d{1,2}[.,]\d{4})'
-                if re.search(pattern, text):
-                    paragraph.text = re.sub(pattern, f'ЕФРСБ сообщение {efirsb_date}', text)
-                    logger.info(f"Заменена дата сообщения в контексте ЕФРСБ [11]: {efirsb_date}")
-                elif 'ЕФРСБ сообщение' in text and not re.search(r'ЕФРСБ\s+сообщение\s+\d{1,2}[.,]\d{1,2}[.,]\d{4}', text):
-                    paragraph.text = text.replace('ЕФРСБ сообщение', f'ЕФРСБ сообщение {efirsb_date}')
-                    logger.info(f"Добавлена дата сообщения после ЕФРСБ [11]: {efirsb_date}")
-
+            # Публикации заполняются только в местах маркеров, без повторной
+            # контекстной замены уже готовых номеров и дат.
             # [67] и [68] подставляются только через маркеры в шаблоне (замена в основном цикле).
             # Контекстную подстановку в абзацы с «Коммерсант» не делаем — дата и номер только в местах [68] и [67].
 
