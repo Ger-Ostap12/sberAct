@@ -50,9 +50,23 @@ try {
   const sourceTime=new Date('2020-01-02T03:04:05Z');
   fs.utimesSync(path.join(legacy,'resources/converter',longName),sourceTime,sourceTime);
 
-  const run = (overrides = {}) => spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'scripts/migrate-install.ps1'),
-    '-Mode', overrides.mode || 'Prepare', '-Source', legacy, '-Target', overrides.target || target, '-AppExe', exe],
-    { encoding: 'utf8', env: { ...process.env, LOCALAPPDATA: work }, windowsHide: true });
+  const psLiteral = value => "'" + value.replace(/'/g, "''") + "'";
+  // Set the fixture profile after PowerShell starts, so startup environment
+  // handling cannot redirect this test to the runner's real user profile.
+  const run = (overrides = {}) => {
+    const command = [
+      '$ErrorActionPreference = \'Stop\'',
+      '$env:LOCALAPPDATA = ' + psLiteral(work),
+      '& ' + psLiteral(path.join(root, 'scripts/migrate-install.ps1')) +
+        ' -Mode ' + psLiteral(overrides.mode || 'Prepare') +
+        ' -Source ' + psLiteral(legacy) +
+        ' -Target ' + psLiteral(overrides.target || target) +
+        ' -AppExe ' + psLiteral(exe),
+      'exit $LASTEXITCODE',
+    ].join('; ');
+    return spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command],
+      { encoding: 'utf8', windowsHide: true });
+  };
   let result = run();
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.match(result.stdout,/100%/);
@@ -73,7 +87,7 @@ try {
   assert.ok(fs.existsSync(compiler), 'Install cached NSIS compiler before running Windows migration checks');
   const fixtureScript = path.join(work, 'legacy-uninstaller.nsi');
   fs.writeFileSync(fixtureScript, `Unicode true\nOutFile "${path.join(legacy, 'Uninstall ' + exe)}"\nSilentInstall silent\nRequestExecutionLevel user\nSection\nDelete "$EXEDIR\\${exe}"\nSectionEnd\n`);
-  result = spawnSync(compiler, ['/V2', fixtureScript], { encoding: 'utf8', windowsHide: true });
+  result = spawnSync(compiler, ['/V2', '-INPUTCHARSET', 'UTF8', fixtureScript], { encoding: 'utf8', windowsHide: true });
   assert.equal(result.status, 0, result.stdout + result.stderr);
   for (const relative of [exe, 'resources/app.asar', 'resources/backend/SberAct.exe']) {
     const file = path.join(target, relative);
