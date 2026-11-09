@@ -69,7 +69,7 @@ export const buildSubmitData = (input: SubmitDataInput): ExtractedData => {
       selectedApplicationKind: wireApplicationKind,
       selectedActsIds: selected.map((a) => a.id).join(',') || undefined,
       selectedActsData: JSON.stringify(selected) || undefined,
-      selectedShortText: shortText ? 'true' : undefined,
+      selectedShortText: wireApplicationKind === 'rtk' && shortText ? 'true' : undefined,
       // Выбор юриста в блоке «Вид ипотеки»: бэкенд по нему выбирает решение-резолютивку.
       selectedMortgageKind: mortgageKind || undefined,
       documentCategory: documentCategory || undefined,

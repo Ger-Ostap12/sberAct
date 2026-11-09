@@ -8,6 +8,32 @@ function assertDraft(release, sha) {
   assert.ok(release.draft && release.target_commitish === sha && release.body?.includes('SberAct CI commit: ' + sha),
     'Release already exists; published releases and drafts from another commit are not overwritten');
 }
+async function reuseAsset(existing, record, update) {
+  if (!existing || existing.name !== record.name || existing.size !== record.size) return false;
+  const checksum = 'sha256:' + record.sha256;
+  if (existing.digest !== checksum && existing.label !== checksum) return false;
+  // Migrate old SHA labels without downloading or uploading the asset again.
+  if (existing.label !== record.name) await update(existing.id, { name: record.name, label: record.name });
+  return true;
+}
+function releaseBody(pkg, sha) {
+  return [
+    'SberAct CI commit: ' + sha,
+    '## Обновление установленного приложения',
+    'Скачайте **SberAct-App-Update-' + pkg.version + '.zip**, распакуйте архив и в приложении откройте «Обновление с флешки». Выберите распакованную папку и установите обновление. Установленный модуль OCR сохраняется; части конвертера скачивать не нужно.',
+    '## Первая установка или замена модуля OCR',
+    'Скачайте в одну отдельную папку следующие файлы этого релиза:',
+    '- `' + pkg.installer + '` и `' + pkg.installer + '.blockmap`\n' +
+      '- `latest.yml` и `update-package.json`\n' +
+      '- `converter-manifest.json` и `ocr-assets.json`\n' +
+      '- все четыре части `converter.zip.part-000` — `converter.zip.part-003`\n' +
+      '- `Assemble-Update.ps1`',
+    'Откройте PowerShell в этой папке и выполните:\n\n```powershell\npowershell -NoProfile -ExecutionPolicy Bypass -File .\\Assemble-Update.ps1\n```',
+    'Скрипт объединит части конвертера и проверит комплект. После успешной проверки запустите установщик из этой же папки. Для обновления через приложение выберите эту папку в окне «Обновление с флешки».',
+    'Контрольные суммы файлов доступны в `SHA256SUMS`. Автоматические архивы `Source code` для установки не нужны.',
+    'Перед публикацией: проверить установку, OCR, анализ, генерацию актов и отчёт об ошибках. До окончания проверки релиз остаётся черновиком.',
+  ].join('\n\n');
+}
 async function collectAssets(directory, pkg, component) {
   validate(component);
   const names = [
@@ -70,9 +96,7 @@ async function main() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         tag_name: tag, target_commitish: sha, name: 'SberAct ' + pkg.version, draft: true,
-        body: marker + '\n\nApplication update: download SberAct-App-Update-' + pkg.version +
-          '.zip, extract it and select the extracted folder in SberAct. Installed OCR is preserved.\n\n' +
-          'First installation or OCR replacement: download the installer, feed, manifests, OCR parts and Assemble-Update.ps1 into one folder. Run the script to join and verify the full offline package.\n\nThe release remains a draft until manual verification.',
+        body: releaseBody(pkg, sha),
       }),
     });
   } else {
@@ -82,9 +106,11 @@ async function main() {
   }
   for (const record of records) {
     const existing = release.assets.find(asset => asset.name === record.name);
-    if (existing?.label === 'sha256:' + record.sha256 && existing.size === record.size) continue;
+    if (await reuseAsset(existing, record, (id, fields) => request(api + '/releases/assets/' + id, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields),
+    }))) continue;
     if (existing) await request(api + '/releases/assets/' + existing.id, { method: 'DELETE' });
-    const url = release.upload_url.replace(/\{.*$/, '') + '?name=' + encodeURIComponent(record.name) + '&label=' + encodeURIComponent('sha256:' + record.sha256);
+    const url = release.upload_url.replace(/\{.*$/, '') + '?name=' + encodeURIComponent(record.name) + '&label=' + encodeURIComponent(record.name);
     const streamOptions = record.start === undefined ? {} : { start: record.start, end: record.end };
     await request(url, {
       method: 'POST', duplex: 'half',
@@ -95,5 +121,5 @@ async function main() {
   }
   if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, 'Verified full release saved as a draft: ' + release.html_url + '\n');
 }
-module.exports = { assertDraft, collectAssets };
+module.exports = { assertDraft, collectAssets, reuseAsset, releaseBody };
 if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
