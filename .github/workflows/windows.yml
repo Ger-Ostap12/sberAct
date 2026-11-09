@@ -59,6 +59,9 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             electron-app/package-lock.json
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12.6'
       - run: npm ci
       - run: npm ci --prefix electron-app
       - name: Check release version and changelog

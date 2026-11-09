@@ -48,8 +48,13 @@ test('split UTF-8 stdout and stderr survive in both service log and developer re
 });
 
 test('backend startup changes legacy pipes to UTF-8 before logging and configures child Python', async () => {
-  const hook = path.resolve('python-backend/app/stdio_encoding.py');
-  const python = path.resolve('python-backend/venv/Scripts/python.exe');
+  const root = path.resolve(__dirname, '../..');
+  const hook = path.join(root, 'python-backend/app/stdio_encoding.py');
+  const localPython = path.join(root, 'python-backend/venv',
+    process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
+  const python = process.env.PYTHON || process.env.pythonLocation &&
+    path.join(process.env.pythonLocation, process.platform === 'win32' ? 'python.exe' : 'bin/python') ||
+    (fs.existsSync(localPython) ? localPython : 'python');
   const message = '\u041f\u0440\u0438\u043c\u0435\u043d\u0451\u043d \u0441\u0442\u0438\u043b\u044c \u0434\u043b\u044f \u0430\u0431\u0437\u0430\u0446\u0430: Intense Quote';
   const code = [
     'import sys, runpy, logging, os, subprocess',
