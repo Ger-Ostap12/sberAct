@@ -1,5 +1,6 @@
+import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import DatesSection from '../DatesSection';
 
 describe('DatesSection — срок возражений', () => {
@@ -49,4 +50,23 @@ describe('DatesSection — срок возражений', () => {
     expect(picker.value).toBe('');
     expect((screen.getByPlaceholderText('ДД.ММ.ГГГГ или текст') as HTMLInputElement).value).toBe('в течение 30 дней');
   });
+});
+
+it.each([
+  'На рассмотрение заявления в срок:',
+  'Срок для оставления без движения:',
+])('позволяет начать срок с цифр и продолжить текстом: %s', async label => {
+  const changed = jest.fn();
+  render(<DatesSection editedFields={{}} onFieldChange={changed} />);
+  const input = screen.getByRole('textbox', { name: label });
+  const user = userEvent.setup();
+  await act(async () => { await user.click(input); });
+  for (const key of '10 дней') {
+    await act(async () => { await user.keyboard(key); });
+  }
+  fireEvent.blur(input);
+  expect(input).toHaveValue('10 дней');
+  expect(input).toHaveAttribute('aria-invalid', 'false');
+  const field = label.startsWith('На рассмотрение') ? 'considerationDeadline19' : 'withoutMovementDeadline20';
+  expect(changed).toHaveBeenLastCalledWith(field, '10 дней');
 });

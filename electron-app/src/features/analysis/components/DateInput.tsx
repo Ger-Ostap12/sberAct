@@ -2,7 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { IconButton, InputAdornment, TextField, Tooltip } from '@mui/material';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import { toInputDate } from '../../../shared/lib/dates';
-import { dateFieldError, dateTemplate, displayDate, editDateSlots, isTextDeadline, storedDate } from '../lib/dateFields';
+import { dateFieldError, dateTemplate, displayDate, editDateSlots, storedDate } from '../lib/dateFields';
 
 interface Props {
   value: string;
@@ -66,20 +66,18 @@ const DateInput: React.FC<Props> = ({ value, onChange, label, withTime = false, 
       value={draft} placeholder={allowText ? 'ДД.ММ.ГГГГ или текст' : withTime ? 'ДД.ММ.ГГГГ ЧЧ:ММ' : 'ДД.ММ.ГГГГ'}
       error={showError} helperText={showError ? error : undefined}
       inputProps={{ 'aria-label': label, inputMode: allowText ? 'text' : 'numeric', autoComplete: 'off' }}
-      onClick={() => { if (draft === dateTemplate(withTime)) input.current?.setSelectionRange(0, 0); }}
-      onFocus={() => { if (!draft) { setDraft(dateTemplate(withTime)); caret.current = 0; } }}
+      onClick={() => { if (!allowText && draft === dateTemplate(withTime)) input.current?.setSelectionRange(0, 0); }}
+      onFocus={() => { if (!allowText && !draft) { setDraft(dateTemplate(withTime)); caret.current = 0; } }}
       onBlur={() => {
         setTouched(true);
-        const next = draft === dateTemplate(withTime) ? '' : draft;
+        const plain = allowText && /^\d{8}$/.test(draft)
+          ? `${draft.slice(0, 2)}.${draft.slice(2, 4)}.${draft.slice(4)}` : draft;
+        const next = draft === dateTemplate(withTime) ? '' : allowText ? displayDate(plain, withTime) : draft;
         if (pending.current || next !== draft || storedDate(next, withTime, allowText) !== value) change(next, undefined, true);
       }}
       onKeyDown={event => {
         if (event.ctrlKey || event.metaKey || event.altKey) return;
-        if (allowText && isTextDeadline(draft)) return;
-        if (allowText && /^[a-zа-яё]$/i.test(event.key) && (!/\d/.test(draft)
-          || (input.current?.selectionStart === 0 && input.current?.selectionEnd === draft.length))) {
-          event.preventDefault(); change(event.key); return;
-        }
+        if (allowText) return;
         if (/^\d$/.test(event.key)) { event.preventDefault(); edit(event.key); }
         else if (event.key === 'Backspace' || event.key === 'Delete') {
           event.preventDefault(); edit('', event.key === 'Backspace' ? 'backward' : 'forward');
@@ -93,7 +91,7 @@ const DateInput: React.FC<Props> = ({ value, onChange, label, withTime = false, 
       }}
       onChange={event => {
         const raw = event.target.value;
-        if (allowText && isTextDeadline(raw)) { change(raw.replace(/_/g, '')); return; }
+        if (allowText) { change(raw); return; }
         const normalized = displayDate(raw, withTime);
         if (normalized !== raw || /[._: -]/.test(raw)) { change(normalized); return; }
         const template = dateTemplate(withTime);
@@ -103,7 +101,14 @@ const DateInput: React.FC<Props> = ({ value, onChange, label, withTime = false, 
       onPaste={event => {
         event.preventDefault();
         const raw = event.clipboardData.getData('text/plain').trim();
-        if (allowText && isTextDeadline(raw)) { change(raw); return; }
+        if (allowText) {
+          const text = /^\d{8}$/.test(raw)
+            ? `${raw.slice(0, 2)}.${raw.slice(2, 4)}.${raw.slice(4)}` : displayDate(raw, withTime);
+          const start = input.current?.selectionStart || 0;
+          const end = input.current?.selectionEnd || 0;
+          change(draft.slice(0, start) + text + draft.slice(end), start + text.length);
+          return;
+        }
         const normalized = displayDate(raw, withTime);
         if (/^\d{8}$/.test(raw) && !withTime) {
           change(`${raw.slice(0, 2)}.${raw.slice(2, 4)}.${raw.slice(4)}`); return;
@@ -116,7 +121,7 @@ const DateInput: React.FC<Props> = ({ value, onChange, label, withTime = false, 
         if (!node || node.selectionStart === node.selectionEnd) return;
         event.preventDefault();
         event.clipboardData.setData('text/plain', draft.slice(node.selectionStart || 0, node.selectionEnd || 0));
-        if (allowText && isTextDeadline(draft)) {
+        if (allowText) {
           change(draft.slice(0, node.selectionStart || 0) + draft.slice(node.selectionEnd || 0), node.selectionStart || 0);
         } else edit('');
       }}
