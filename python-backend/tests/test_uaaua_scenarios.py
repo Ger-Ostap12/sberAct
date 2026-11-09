@@ -208,8 +208,8 @@ def test_short_text_restructuring_collateral_exists(gen):
         "Кредиторы", "Залог", "Реструктуризация", "Вкл в РТК реструктуризация залог резолютивная часть.docx",
     )
 
-def test_short_text_competition_missing_reports_no_template(gen):
-    """Недоступная резолютивка явно отклоняется, вместо фиктивного пути к файлу."""
+def test_initiation_competition_ignores_short_text(gen):
+    """Инициирование не запрашивает дополнительную резолютивку."""
     data = {"selectedApplicationKind": "other", "selectedShortText": "true",
             "selectedDebtorStatus": "liquidation"}
     templates, missing = gen._map_selected_acts_to_templates(
@@ -217,8 +217,8 @@ def test_short_text_competition_missing_reports_no_template(gen):
     )
     assert templates["final_competition"]["path"].is_file()
     assert "short_text" not in templates
-    assert missing == ["short_text"]
-    assert data["_unresolvedReasons"]["short_text"]
+    assert missing == []
+    assert "short_text" not in data.get("_unresolvedReasons", {})
 
 def test_short_text_absent_when_flag_off(gen):
     templates, _ = gen._map_selected_acts_to_templates(

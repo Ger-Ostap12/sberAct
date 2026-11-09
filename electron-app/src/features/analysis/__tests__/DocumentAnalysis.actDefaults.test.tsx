@@ -66,8 +66,9 @@ describe('умолчания окон «Принятие» и «Промежут
     ПРОМЕЖУТОЧНЫЕ.forEach(name => expect(checkbox(name)).toBeChecked());
   });
 
-  it('«Резолютивная часть» отмечена сразу', () => {
+  it('«Резолютивная часть» отмечена сразу при выборе РТК', () => {
     renderForm();
+    fireEvent.click(screen.getByRole('radio', { name: 'Включение в РТК' }));
     expect(checkbox('Резолютивная часть')).toBeChecked();
   });
 
@@ -225,4 +226,16 @@ describe('ФНС и акт «Б/Д нет ГП»', () => {
     fireEvent.click(checkbox('Определение Б/Д нет ГП'));
     expect(checkbox('Определение Б/Д нет ГП')).toBeChecked();
   });
+});
+
+
+it('показывает резолютивную часть только для РТК при переключении вида заявления', () => {
+  renderForm();
+  expect(screen.queryByRole('checkbox', { name: 'Резолютивная часть' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('radio', { name: 'Включение в РТК' }));
+  expect(checkbox('Резолютивная часть')).toBeChecked();
+  fireEvent.click(screen.getByRole('radio', { name: 'Инициирование' }));
+  expect(screen.queryByRole('checkbox', { name: 'Резолютивная часть' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('radio', { name: 'Включение в РТК' }));
+  expect(checkbox('Резолютивная часть')).toBeChecked();
 });

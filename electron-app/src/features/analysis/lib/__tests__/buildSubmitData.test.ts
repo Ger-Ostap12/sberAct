@@ -175,3 +175,19 @@ describe('buildSubmitData — выбранные акты', () => {
     expect(r.fields.selectedApplicationKind).toBe('rtk');
   });
 });
+
+
+describe('buildSubmitData — резолютивная часть только для РТК', () => {
+  it.each([false, true])('не отправляет старый флаг инициирования, самобанкрот=%s', selfBankruptcy => {
+    const result = run({
+      applicationKind: 'initiation', selfBankruptcy, shortText: true,
+      analysisResult: baseAnalysis({ selectedShortText: 'true' }),
+      editedFields: { selectedShortText: 'true' },
+    });
+    expect(result.fields.selectedShortText).toBeUndefined();
+  });
+  it('сохраняет выбор резолютивной части для РТК', () => {
+    expect(run({ applicationKind: 'rtk', shortText: true }).fields.selectedShortText).toBe('true');
+    expect(run({ applicationKind: 'rtk', shortText: false }).fields.selectedShortText).toBeUndefined();
+  });
+});

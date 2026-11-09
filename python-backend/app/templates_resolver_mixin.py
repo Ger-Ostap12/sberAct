@@ -1559,9 +1559,14 @@ class TemplatesResolverMixin:
         # чекбокс. Процедуру берём из выбранного финального акта / варианта ВКЛ. Для ФНС
         # включенка сама по себе является резолютивкой (генерится как final_rtk_inclusion) —
         # отдельный короткий текст не добавляем.
-        want_short_text = bool(data.get("selectedShortText") or data.get("shortText"))
+        # Инициирование не предусматривает отдельной резолютивки. Игнорируем
+        # также старый флаг, сохранённый прежней версией интерфейса.
+        is_initiation = (tree_axes is not None
+                         and tree_axes["branch"] == bankruptcy_tree.BRANCH_INITIATION)
+        want_short_text = (not is_initiation
+                           and bool(data.get("selectedShortText") or data.get("shortText")))
         # У ФНС включение само по себе резолютивка, отдельный короткий текст не нужен.
-        # Инициирование тоже проверяем в своей папке, без подмены резолютивкой РТК.
+        # Для инициирования отдельный короткий текст не запрашивается.
         if want_short_text and tree_axes is not None and not is_fns:
             resolution = bankruptcy_tree.resolve_final(
                 self._templates_root(), role="rtk_short",

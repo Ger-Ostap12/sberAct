@@ -444,12 +444,8 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                           })
                       )}
                     </Box>
-                    {/* Короткий текст — доп. генерация резолютивки основной процедуры
-                        к выбранным финальным актам. Стоит здесь, а не отдельным блоком
-                        сверху: относится ровно к этому окну (решение суда пишется в
-                        полном или коротком варианте). Если резолютивки нет (конкурсное,
-                        наблюдение с залогом) — при генерации придёт предупреждение
-                        «нет шаблона». */}
+                    {/* Отдельная резолютивная часть предусмотрена только для РТК. */}
+                    {applicationKind === 'rtk' && (
                     <Box sx={{ mt: 1, pt: 1, borderTop: 1, borderColor: 'divider' }}>
                       <FormControlLabel
                         control={
@@ -461,6 +457,7 @@ const ActSelectionSection: React.FC<ActSelectionSectionProps> = ({
                         label="Резолютивная часть"
                       />
                     </Box>
+                    )}
                   </AccordionDetails>
                 </Accordion>
               </Grid>

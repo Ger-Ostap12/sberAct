@@ -261,13 +261,19 @@ def test_ambiguous_primary_role_is_not_hidden_by_duty_alias(tmp_path):
 
 
 @pytest.mark.parametrize("entity", ["individual", "ip", "legal", "kfh"])
-def test_initiation_short_text_reports_missing_without_borrowing_rtk(generator, entity):
-    data = request_data(entity, "self", selectedShortText="true")
+@pytest.mark.parametrize("kind", ["other", "self"])
+@pytest.mark.parametrize("flag", ["selectedShortText", "shortText"])
+def test_initiation_ignores_legacy_short_text_without_warning(generator, entity, kind, flag):
+    baseline = request_data(entity, kind)
+    expected_templates, expected_missing = resolve(generator, baseline, ["acceptance_definition"])
+    data = request_data(entity, kind, **{flag: "true"})
     templates, missing = resolve(generator, data, ["acceptance_definition"])
-    assert list(templates) == ["acceptance"]
-    assert missing == ["short_text"]
-    assert data["_unresolvedReasons"]["short_text"]
-    assert "Инициирование" in templates["acceptance"]["path"].parts
+    assert templates == expected_templates
+    assert missing == expected_missing
+    assert "short_text" not in templates
+    assert "short_text" not in missing
+    assert "short_text" not in data.get("_unresolvedReasons", {})
+    assert all("\u0418\u043d\u0438\u0446\u0438\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435" in item["path"].parts for item in templates.values())
 
 
 def test_ogrnip_always_uses_own_marker_not_birth_date_in_actual_templates():

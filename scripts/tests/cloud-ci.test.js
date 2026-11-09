@@ -202,3 +202,25 @@ test('private backend wrapper refuses all-skipped and empty reports', () => {
     assert.doesNotMatch(result.stdout + result.stderr, /PRIVATE_ZERO/);
   } finally { cleanup(dir); }
 });
+
+
+test('release assets replace legacy SHA labels without reupload and only reuse verified content', async () => {
+  const { reuseAsset } = require('../ci/publish-draft');
+  const record = { name: 'SberAct-App-Update-2.1.3.zip', size: 123, sha256: 'a'.repeat(64) };
+  const legacy = { id: 7, name: record.name, size: record.size, label: 'sha256:' + record.sha256 };
+  const updates = [];
+  const update = async (id, fields) => updates.push({ id, ...fields });
+  assert.equal(await reuseAsset(legacy, record, update), true);
+  assert.deepEqual(updates, [{ id: 7, name: record.name, label: record.name }]);
+  updates.length = 0;
+  const modern = { ...legacy, label: record.name, digest: 'sha256:' + record.sha256 };
+  assert.equal(await reuseAsset(modern, record, update), true);
+  assert.deepEqual(updates, []);
+  for (const changed of [
+    { ...modern, digest: 'sha256:' + 'b'.repeat(64) },
+    { ...modern, size: record.size + 1 },
+    { ...modern, name: 'another.zip' },
+    { ...modern, digest: undefined },
+  ]) assert.equal(await reuseAsset(changed, record, update), false);
+  assert.deepEqual(updates, []);
+});
