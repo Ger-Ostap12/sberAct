@@ -1,3 +1,4 @@
+import StepNavigation from '../../shared/components/StepNavigation';
 import ErrorNotice from '../../shared/components/ErrorNotice';
 import React from 'react';
 import {
@@ -17,7 +18,6 @@ import {
   ListItemText,
   ListItemIcon
 } from '@mui/material';
-import BackIcon from '@mui/icons-material/ArrowBack';
 import CheckIcon from '@mui/icons-material/CheckCircle';
 import DownloadIcon from '@mui/icons-material/Download';
 import AddIcon from '@mui/icons-material/Add';
@@ -132,19 +132,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
 
   return (
     <Box sx={{ width: '100%', maxWidth: 1600, mx: 'auto', px: 1 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <Button
-          variant="outlined"
-          onClick={onBack}
-          startIcon={<BackIcon />}
-          sx={{ mr: 2 }}
-        >
-          Назад
-        </Button>
-        <Typography variant="h4" component="h1">
-          Предварительный просмотр
-        </Typography>
-      </Box>
+      <StepNavigation title="Предварительный просмотр" onBack={onBack} onMainMenu={onNewDocument} />
 
       <Grid container spacing={3}>
         {/* Информация о шаблоне */}

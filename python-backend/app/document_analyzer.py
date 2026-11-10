@@ -5251,6 +5251,9 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
 
 
         self._drop_law_context_dates(extracted_fields, text)
+        from publication_fields import apply_publication_fields, apply_filing_dates
+        apply_publication_fields(extracted_fields, text)
+        apply_filing_dates(extracted_fields, text)
 
         logger.info(f"Итоговые извлеченные поля: {extracted_fields}")
         return extracted_fields
@@ -5258,88 +5261,15 @@ class DocumentAnalyzer(ClassifyMixin, PartiesMixin, AmountsMixin, IpExtractionMi
     _LAW_DATE_FIELDS = ("contractDate", "courtDecisionDate", "priorDecisionDate")
 
     def _extract_kommersant_publication(self, extracted_fields, text):
-        """[67]/[68] — номер и дата публикации в газете «Коммерсантъ» (вынесено из extract_fields)."""
-        # [68] — дата газеты «Коммерсантъ» (не путать с [11] ЕФРСБ)
-        # Приоритет: типичная формулировка "в газете «Коммерсантъ» № 123 от 27.12.2025"
-        kommersant_date_match = re.search(
-            r"(?:газет[аы]\s+)?[«\"]?Коммерсант[ъ\"»']?[»\"]?\s*№\s*[0-9\-\/]+\s*от\s*(\d{1,2}[.,]\d{1,2}[.,]\d{4})",
-            text,
-            re.IGNORECASE,
-        )
-        if not kommersant_date_match:
-            # Вариант "в газете «Коммерсантъ» от 27.12.2025" — без номера
-            kommersant_date_match = re.search(
-                r"в[\s\u00a0\u202f]+газет[аы][\s\u00a0\u202f]+«?Коммерсант[\"ъ»']?»?\s*[^0-9]{0,40}?от[\s\u00a0\u202f]*(\d{1,2}[.,]\d{1,2}[.,]\d{4})",
-                text,
-                re.IGNORECASE,
-            )
-        if not kommersant_date_match:
-            # Вариант "27.12.2025 в газете «Коммерсантъ»" — дата стоит ПЕРЕД упоминанием газеты
-            kommersant_date_match = re.search(
-                r"(\d{1,2}[.,]\d{1,2}[.,]\d{4})[\s\u00a0\u202f]+в[\s\u00a0\u202f]+газет[аы][\s\u00a0\u202f]+«?Коммерсант[\"ъ»']?»?",
-                text,
-                re.IGNORECASE,
-            )
-        if not kommersant_date_match:
-
-            kommersant_date_match = re.search(
-                r"официальн[а-яё\s]+издан[а-яё\s]+газет[аы]\s+«?Коммерсант[\"ъ»']?»?[^0-9]{0,400}?от\s*(\d{1,2}[.,]\d{1,2}[.,]\d{4})",
-                text,
-                re.IGNORECASE,
-            )
-        if not kommersant_date_match:
-
-            kommersant_date_match = re.search(
-                r"Коммерсант[ъ\"»']?\s*[^0-9]{0,200}?(\d{1,2}[.,]\d{1,2}[.,]\d{4})",
-                text,
-                re.IGNORECASE,
-            )
-            if not kommersant_date_match and re.search(r"Коммерсант", text, re.IGNORECASE):
-                date_pattern = re.compile(r"(\d{1,2}[.,]\d{1,2}[.,]\d{4})")
-                best_match = None
-                best_date = None  # сравниваем реальные даты, чтобы не брать старый закон 2002 года
-                for m in date_pattern.finditer(text):
-                    start, end = m.start(), m.end()
-                    window_start = max(0, start - 150)
-                    window_end = min(len(text), end + 150)
-                    window = text[window_start:window_end]
-                    if re.search(r"Коммерсант", window, re.IGNORECASE):
-                        date_str = m.group(1).replace(",", ".")
-                        try:
-                            day, month, year = map(int, date_str.split("."))
-                            # Грубая фильтрация нереалистичных годов
-                            if year < 1990 or year > 2100:
-                                continue
-                            from datetime import date as _date
-                            cur_date = _date(year, month, day)
-                        except Exception:
-                            continue
-                        if best_date is None or cur_date > best_date:
-                            best_date = cur_date
-                            best_match = m
-                if best_match:
-                    kommersant_date_match = best_match
-        if kommersant_date_match:
-            kommersant_date = kommersant_date_match.group(1).strip().replace(",", ".")
-            extracted_fields["kommersantDate"] = kommersant_date
-            logger.info(f"Дата газеты «Коммерсантъ» [68]: {kommersant_date}")
-        # [67] — номер газеты «Коммерсантъ» (только при явном «№ …», не путать с [9] ЕФРСБ)
-        kommersant_number_match = re.search(
-            r"(?:газет[аы]\s+)?[«\"]?Коммерсант[ъ\"»']?[»\"]?\s*№\s*([0-9\-\/]+)",
-            text,
-            re.IGNORECASE,
-        )
-        if kommersant_number_match:
-            extracted_fields["kommersantNumber"] = kommersant_number_match.group(1).strip()
-            logger.info(f"Номер газеты «Коммерсантъ» [67]: {extracted_fields['kommersantNumber']}")
+        """[67]/[68] извлекаются только из контекста соответствующей публикации."""
+        from publication_fields import KOMMERSANT, publication_fields
+        if re.search(KOMMERSANT, text, re.IGNORECASE):
+            extracted_fields.pop("kommersantNumber", None)
+            extracted_fields.pop("kommersantDate", None)
+        extracted_fields.update({key: value for key, value in publication_fields(text).items()
+                                 if key in ("kommersantNumber", "kommersantDate")})
 
 
-
-
-
-
-
-    # Поля падежных форм имени должника и падеж каждого: маркеры [2.1]–[2.4].
     _ПАДЕЖНЫЕ_ПОЛЯ = (
         ("applicantNameGenitive", "gent"),
         ("applicantNameDative", "datv"),

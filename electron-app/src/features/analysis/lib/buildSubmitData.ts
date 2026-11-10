@@ -65,10 +65,12 @@ export const buildSubmitData = (input: SubmitDataInput): ExtractedData => {
       // Оригинальный выбор пользователя — в поля для передачи в backend
       selectedEntityType: entityType || undefined,
       selectedCollateralOption: collateralOption || undefined,
-      selectedDebtorStatus: debtorStatus || undefined,
+      selectedDebtorStatus: debtorStatus || '',
       selectedApplicationKind: wireApplicationKind,
       selectedActsIds: selected.map((a) => a.id).join(',') || undefined,
       selectedActsData: JSON.stringify(selected) || undefined,
+      // Выбор акта заменяет также прежнее скрытое значение из анализа.
+      final_rtk_inclusion_variant: selected.find(a => a.id === 'final_rtk_inclusion')?.rtkVariant || undefined,
       selectedShortText: wireApplicationKind === 'rtk' && shortText ? 'true' : undefined,
       // Выбор юриста в блоке «Вид ипотеки»: бэкенд по нему выбирает решение-резолютивку.
       selectedMortgageKind: mortgageKind || undefined,

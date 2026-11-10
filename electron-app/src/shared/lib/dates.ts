@@ -29,10 +29,13 @@ export const isValidDateStr = (value?: string): boolean => {
   if (!value) return true;
   const match = value.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
   if (!match) return false;
-  const [, dd, mm, yyyy] = match.map(Number) as unknown as [string, number, number, number];
-  const date = new Date(yyyy, mm - 1, dd);
-  // Date молча переносит перелёт («31.02» → 3 марта) — сверяем компоненты обратно.
-  return date.getFullYear() === yyyy && date.getMonth() === mm - 1 && date.getDate() === dd;
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  if (year < 1 || month < 1 || month > 12 || day < 1) return false;
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return day <= days[month - 1];
 };
 
 /** ГГГГ-ММ-ДД → ДД.ММ.ГГГГ. Возвращает вход как есть, если это не ISO-дата. */

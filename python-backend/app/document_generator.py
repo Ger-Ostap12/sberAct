@@ -557,13 +557,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             cleaned_data["stateDuty"] = cleaned_data["stateDuty16"]
 
        
-        _sd16 = cleaned_data.get("stateDuty16") or cleaned_data.get("stateDuty")
-        _sd17 = cleaned_data.get("loanStateDuty17")
-        if _sd17 and not _sd16:
-            cleaned_data["stateDuty16"] = _sd17
-            cleaned_data["stateDuty"] = _sd17
-        elif _sd16 and not _sd17:
-            cleaned_data["loanStateDuty17"] = _sd16
+        # [16] и [17] — независимые госпошлины: отсутствующая сумма
+        # не заполняется значением другой пошлины.
 
         # Форматирование сумм: приводим все суммы к виду '1 234 567,89'
         amount_fields = ["loanDebt", "principalDebt", "principalDebt13", "interest", "interest14",
@@ -1725,6 +1720,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             doc, data, self._replace_span_in_paragraph,
             self._format_amount_value, self._normalize_date_format,
         )
+        self._remove_zero_fns_penalty_paragraph(doc, data)
         cleaned_data = self._prepare_replacement_data(doc, data)
         # is_ip нужен ниже по методу; пролог его не возвращает — пересчёт из cleaned_data
         is_ip = "ip_enforcement" in (cleaned_data.get("sourceDocumentType") or "").lower()
@@ -1911,27 +1907,38 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         finalize_judge_substitution(doc, data)
 
     def _apply_efrsb_kommersant_priority(self, doc: DocxDocument, cleaned_data: Dict[str, Any]) -> None:
-        """В части актов рядом упомянуты обе публикации — ЕФРСБ (обёрнута в
-        квадратные скобки как опциональный блок) и «Коммерсантъ» (без скобок).
-        Приоритет — «Коммерсантъ»: если для него есть данные, блок ЕФРСБ убирается
-        целиком вместе со скобками; если данных «Коммерсантъ» нет, а ЕФРСБ есть —
-        оставляем ЕФРСБ, но снимаем скобки-разметку и убираем упоминание «Коммерсантъ».
-        Должно вызываться до замены маркеров [9]/[11]/[67]/[68] на значения.
-        """
-        has_kommersant = bool(str(cleaned_data.get("kommersantNumber") or "").strip()) and \
-            bool(str(cleaned_data.get("kommersantDate") or "").strip())
-
-        efrsb_block_pattern = r"\[\s*на сайте ЕФРСБ\s*№\s*\[9\]\s*от\s*\[11\]\s*\]\s*"
-        kommersant_block_pattern = r"в газете\s*«Коммерсантъ»\s*№\s*\[67\]\s*от\s*\[68\]\s*"
-
-        if has_kommersant:
-            self._replace_regex_in_doc(doc, efrsb_block_pattern, "")
-        else:
-            def _strip_brackets(match) -> str:
-                inner = match.group(0).strip()
-                return inner[1:-1].strip() + " "
-            self._replace_regex_in_doc(doc, efrsb_block_pattern, _strip_brackets)
-            self._replace_regex_in_doc(doc, kommersant_block_pattern, "")
+        """Выбираем источник в каждом абзаце до замены маркеров; даты не затрагиваем."""
+        ef_any = any(str(cleaned_data.get(k) or "").strip() for k in ("messageNumber", "efirsbPublicationDate"))
+        kom_any = any(str(cleaned_data.get(k) or "").strip() for k in ("kommersantNumber", "kommersantDate"))
+        kom_full = all(str(cleaned_data.get(k) or "").strip() for k in ("kommersantNumber", "kommersantDate"))
+        kom = re.compile(r'в\s+газете\s+[«"]?Коммерсантъ?[»"]?\s*№?\s*\[67\]\s*от\s*\[68\]', re.I)
+        ef = re.compile(r'на\s+сайте\s+ЕФРСБ\s+(?:№\s*\[9\]\s*от\s*\[11\]|сообщение\s*\[11\]\s*\(сообщение\s*№\s*\)?\s*\[9\]\)?)', re.I)
+        optional = re.compile(r'\[\s*на сайте ЕФРСБ\s*№\s*\[9\]\s*от\s*\[11\]\s*\]\s*', re.I)
+        for par in list(self._iter_all_paragraphs(doc)):
+            text = self._paragraph_text(par)
+            has_ef = "[9]" in text or "[11]" in text
+            has_kom = "[67]" in text or "[68]" in text
+            if has_ef and has_kom:
+                if kom_full or (kom_any and not ef_any):
+                    match = optional.search(text)
+                    if match:
+                        self._replace_span_in_paragraph(par, match.start(), match.end(), "")
+                else:
+                    match = kom.search(text)
+                    if match:
+                        self._replace_span_in_paragraph(par, match.start(), match.end(), "")
+                    text = self._paragraph_text(par)
+                    match = optional.search(text)
+                    if match:
+                        self._replace_span_in_paragraph(par, match.start(), match.end(), match.group().strip()[1:-1].strip() + " ")
+            elif has_kom and ef_any and not kom_full:
+                match = kom.search(text)
+                if match:
+                    self._replace_span_in_paragraph(par, match.start(), match.end(), "на сайте ЕФРСБ № [9] от [11]")
+            elif has_ef and not ef_any and kom_any:
+                match = ef.search(text)
+                if match:
+                    self._replace_span_in_paragraph(par, match.start(), match.end(), "в газете «Коммерсантъ» № [67] от [68]")
 
     # Правовая форма, которую шаблон пишет перед «[маркер]» сам (под Сбербанк и ООО).
     _TEMPLATE_OPF = (
@@ -1993,6 +2000,55 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         except ValueError:
             return False
 
+    def _remove_zero_fns_penalty_paragraph(self, doc: DocxDocument, data: Dict[str, Any]) -> None:
+        """Убираем только абзац об отдельном учёте санкций в резолютивке ФНС."""
+        if not self._is_fns_creditor(data):
+            return
+        if data.get("_current_doc_type") not in {
+            "short_text", "rtk_inclusion", "fns_inclusion", "resolution",
+        }:
+            return
+
+        def penalty_values(record):
+            for key, value in record.items():
+                if key in {"forfeit", "forfeit15", "penalties", "penalty0071"} or re.fullmatch(
+                    r"fnsQ[123](?:Forfeit|Penalties)", key,
+                ):
+                    yield value
+
+        values = list(penalty_values(data))
+        for obligation in data.get("obligations") or []:
+            if isinstance(obligation, dict):
+                values.extend(penalty_values(obligation))
+        # Любая ненулевая или нераспознанная сумма запрещает удаление.
+        if not all(self._is_zero_amount(value) for value in values):
+            return
+        pattern = re.compile(
+            r'В соответствии с пунктом 3 статьи 137 Федерального закона от 26\.10\.2002 '
+            r'№\s*127-ФЗ «О несостоятельности \(банкротстве\)» '
+            r'(?:требования об установлении \[15\] руб\. неустойки|'
+            r'требование в части неустоек \(штрафов, пеней\) и иных финансовых санкций) '
+            r'учесть отдельно в реестре требований кредиторов, как подлежащие удовлетворению '
+            r'после погашения основной суммы задолженности и причитающихся процентов\.'
+        )
+        from docx.text.paragraph import Paragraph
+
+        for element in list(doc.element.body.iter(qn("w:p"))):
+            paragraph = Paragraph(element, doc)
+            text = re.sub(r"\s+", " ", self._paragraph_text(paragraph)).strip()
+            if not pattern.fullmatch(text):
+                continue
+            element = paragraph._element
+            parent = element.getparent()
+            if parent is not None:
+                # В ячейке Word должен остаться хотя бы один абзац.
+                if parent.tag == qn("w:tc") and len(parent.findall(qn("w:p"))) == 1:
+                    for child in list(element):
+                        if child.tag != qn("w:pPr"):
+                            element.remove(child)
+                else:
+                    parent.remove(element)
+
     def _marker_value(self, cleaned_data: Dict[str, Any], field_mapping: Dict[str, str],
                       number: str, priority: Dict[str, str]) -> Any:
         """Значение, которое подстановка положит в маркер: приоритетное поле, иначе
@@ -2004,6 +2060,35 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
             if field_mapping.get(field) == number and value:
                 return value
         return None
+
+    def _remove_combined_duty_clauses(self, paragraphs, empty) -> None:
+        """Разделяет две госпошлины в одной фразе, сохраняя соседний текст и run'ы."""
+        if "16" not in empty and "17" not in empty:
+            return
+        pattern = re.compile(
+            r"(?P<left>[;,]\s*)?"
+            r"(?P<loan>\[17\](?:\s*руб(?:\.|л\w*)?)?\s*[–—-]\s*государственная\s+пошлина)"
+            r"(?P<link>\s*[,;]\s*)"
+            r"(?P<request>о\s+взыскании|взыскание)\s+с\s+должника\s+"
+            r"государственной\s+пошлины\s+в\s+размере\s*\[16\]\s*руб(?:\.|л\w*\.?)?",
+            re.IGNORECASE,
+        )
+        for par in paragraphs:
+            text = self._paragraph_text(par)
+            for match in reversed(list(pattern.finditer(text))):
+                if "16" in empty and "17" in empty:
+                    # Убираем также разделитель после последней оставшейся суммы.
+                    replacement = "." if text[:match.start()].strip() else ""
+                    self._replace_span_in_paragraph(par, match.start(), match.end(), replacement)
+                elif "16" in empty:
+                    self._replace_span_in_paragraph(par, match.start("link"), match.end(), ".")
+                else:
+                    # Сохраняем форматирование оставшейся суммы и меняем лишь связку.
+                    self._replace_span_in_paragraph(
+                        par, match.start("request"), match.end("request"), "взыскание")
+                    separator = " " if match.group("left") and not match.group("left")[-1].isspace() else ""
+                    self._replace_span_in_paragraph(
+                        par, match.start("loan"), match.start("request"), separator)
 
     def _apply_empty_amounts_removal(self, doc: DocxDocument, cleaned_data: Dict[str, Any],
                                      field_mapping: Dict[str, str], has_priority: bool) -> None:
@@ -2024,6 +2109,7 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         rub = r"(?:\s*руб(?:\.|л\w*)?)?"
         dash = r"\s*[–—-]\s*"
         paragraphs = list(self._iter_all_paragraphs(doc))
+        self._remove_combined_duty_clauses(paragraphs, empty)
         for number in empty:
             m_ = re.escape(f"[{number}]")
             items = [
@@ -2690,7 +2776,6 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
         for paragraph in doc.paragraphs:
             text = paragraph.text
 
-            
             if case_number and separate_dispute_number:
                 pattern_case_sep = rf"({re.escape(case_number)})\s+{re.escape(separate_dispute_number)}\b"
                 if re.search(pattern_case_sep, text):
@@ -2702,17 +2787,8 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                             " Удалено дублирование номера обособленного спора рядом с номером дела"
                         )
 
-            # [9] и [11] — только ЕФРСБ: номер и дата сообщения на сайте
-            efirsb_date = data.get('efirsbPublicationDate', '')
-            if efirsb_date and 'ЕФРСБ' in text and 'сообщение' in text:
-                pattern = r'ЕФРСБ\s+сообщение[^0-9]*?(\d{1,2}[.,]\d{1,2}[.,]\d{4})'
-                if re.search(pattern, text):
-                    paragraph.text = re.sub(pattern, f'ЕФРСБ сообщение {efirsb_date}', text)
-                    logger.info(f"Заменена дата сообщения в контексте ЕФРСБ [11]: {efirsb_date}")
-                elif 'ЕФРСБ сообщение' in text and not re.search(r'ЕФРСБ\s+сообщение\s+\d{1,2}[.,]\d{1,2}[.,]\d{4}', text):
-                    paragraph.text = text.replace('ЕФРСБ сообщение', f'ЕФРСБ сообщение {efirsb_date}')
-                    logger.info(f"Добавлена дата сообщения после ЕФРСБ [11]: {efirsb_date}")
-
+            # Публикации заполняются только в местах маркеров, без повторной
+            # контекстной замены уже готовых номеров и дат.
             # [67] и [68] подставляются только через маркеры в шаблоне (замена в основном цикле).
             # Контекстную подстановку в абзацы с «Коммерсант» не делаем — дата и номер только в местах [68] и [67].
 
@@ -3117,8 +3193,11 @@ class DocumentGenerator(TemplatesResolverMixin, GeneratorInflectionMixin, DocxOp
                     try:
                         import json
                         selected_acts_list = json.loads(selected_acts_data_str)
+                        requested_ids = {item.strip() for item in selected_acts_ids.split(",")}
                         for act in selected_acts_list:
                             act_id = act.get("id")
+                            if act_id not in requested_ids or act.get("selected") is False:
+                                continue
                             additional_fields = act.get("additionalFields", {})
                             rtk_variant = act.get("rtkVariant")
 
